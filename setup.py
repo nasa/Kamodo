@@ -4,7 +4,7 @@ setup(
     name='kamodo',
     version='0.1dev',
     author='Asher Pembroke',
-    url='https://ccmc.gsfc.nasa.gov/',
+    url='https://github.com/asher-pembroke/kamodo',
     author_email='apembroke@gmail.com',
     packages=['kamodo',],
     license='Apache2.0',
