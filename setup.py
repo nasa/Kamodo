@@ -1,13 +1,34 @@
-from distutils.core import setup
+import setuptools
 
-setup(
-    name='kamodo',
-    version='0.1dev',
-    author='Asher Pembroke',
-    url='https://github.com/asher-pembroke/kamodo',
-    author_email='apembroke@gmail.com',
-    packages=['kamodo',],
-    license='Apache2.0',
-    long_description=open('README.md').read(),
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name = 'kamodo',
+    version = '0.0.1',
+    author = 'Asher Pembroke',
+    author_email = 'apembroke@gmail.com',
+    description = 'A functional api for scientific data',
+    long_description = long_description,
+    long_description_content_type = "text/markdown",
+    url = 'https://github.com/asher-pembroke/kamodo',
+    packages = setuptools.find_packages(),
+    classifiers = [
+		"Programming Language :: Python :: 3.7",
+	    "Operating System :: OS Independent",
+	    "License :: OSI Approved :: NASA Open Source Agreement",
+    ],
+    install_requires = [
+		'numpy',
+		'scipy',
+		'sympy',
+		'pandas',
+		'plotly',
+		'pytest',
+		'psutil',
+		'antlr4-python3-runtime',
+    	],
+    license='NASA OPEN SOURCE AGREEMENT VERSION 1.3',
+
 )
 
