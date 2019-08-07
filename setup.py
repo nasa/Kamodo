@@ -11,12 +11,12 @@ setuptools.setup(
     description = 'A functional api for scientific data',
     long_description = long_description,
     long_description_content_type = "text/markdown",
-    url = 'https://github.com/asher-pembroke/kamodo',
+    url = 'https://ccmc.gsfc.nasa.gov/Kamodo/',
     packages = setuptools.find_packages(),
     classifiers = [
 		"Programming Language :: Python :: 3.7",
 	    "Operating System :: OS Independent",
-	    "License :: OSI Approved :: NASA Open Source Agreement",
+	    "License :: OSI Approved",
     ],
     install_requires = [
 		'numpy',
