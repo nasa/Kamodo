@@ -1,0 +1,23 @@
+site_name: Kamodo Analysis Suite
+
+nav:
+- Home: README.md
+- About: about.md
+- Introduction: notebooks/Kamodo.ipynb
+- Visualization: notebooks/Visualization.ipynb
+- Syntax: notebooks/Syntax.ipynb
+
+theme: readthedocs
+plugins:
+    - mknotebooks:
+        execute: true
+markdown_extensions:
+  - admonition
+  - tables
+  - mdx_math:
+      enable_dollar_delimiter: True 
+  - toc:
+      permalink: true
+
+extra_javascript: 
+    - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML
