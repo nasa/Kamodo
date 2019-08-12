@@ -6,6 +6,7 @@ nav:
 - Introduction: notebooks/Kamodo.ipynb
 - Visualization: notebooks/Visualization.ipynb
 - Syntax: notebooks/Syntax.ipynb
+- Kamodofying Models: notebooks/Kamodofying_Models.ipynb
 
 theme: readthedocs
 plugins:

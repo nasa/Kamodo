@@ -1,3 +1,5 @@
+# 2019-08-12 12:14:17.649049: clock-out
+* Adding example notebook on kamodofication
 
 # 2019-08-12 10:27:35.850505: clock-in
 
