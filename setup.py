@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name = 'kamodo',
-    version = '0.0.1',
+    version = '0.0.2',
     author = 'Asher Pembroke',
     author_email = 'apembroke@gmail.com',
     description = 'A functional api for scientific data',
