@@ -1,3 +1,9 @@
+# 2019-08-16 16:27:22.801411: clock-out: cleaned up imports, added Kamodofication example, bug fixes
+* testing install without psutil
+* creating conda package
+* cleaned up imports
+* added click dependency
+* updated pip
 
 # 2019-08-16 14:25:59.427481: clock-in
 

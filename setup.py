@@ -25,8 +25,7 @@ setuptools.setup(
 		'pandas',
 		'plotly',
 		'pytest',
-		'psutil',
-		'antlr4-python3-runtime',
+        'click',
     	],
     license='NASA OPEN SOURCE AGREEMENT VERSION 1.3',
 
