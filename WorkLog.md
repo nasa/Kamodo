@@ -1,3 +1,6 @@
+
+# 2019-08-16 14:25:59.427481: clock-in
+
 # 2019-08-14 16:18:12.261596: clock-out
 * finishing kamodofied models example
 
@@ -7,6 +10,7 @@ pip install --upgrade --force-reinstall pip==9.0.3
 pip install xxx --disable-pip-version-check
 pip install --upgrade pip
 ```
+
 # 2019-08-14 10:37:19.291831: clock-in
 
 # 2019-08-12 12:14:17.649049: clock-out
