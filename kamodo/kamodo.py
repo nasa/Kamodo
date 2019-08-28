@@ -22,7 +22,7 @@ from sympy.core.function import UndefinedFunction
 from inspect import getargspec
 from sympy import Eq
 import pandas as pd
-from IPython.display import Latex
+# from IPython.display import Latex
 
 
 from sympy.physics import units as sympy_units

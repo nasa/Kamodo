@@ -181,7 +181,7 @@ class DefaultOrderedDict(OrderedDict):
 											   OrderedDict.__repr__(self))
 
 
-def komodo_wrapper(f, *args, **kwargs):
+def decorator_wrapper(f, *args, **kwargs):
 	"""Wrapper needed by decorator.decorate to pass through args, kwargs"""
 	return f(*args, **kwargs)
 
@@ -222,7 +222,7 @@ def kamodofy(_func = None, units = '', data = None, update = None, equation = No
 
 
 
-		return decorate(f,komodo_wrapper) #preserves signature
+		return decorate(f,decorator_wrapper) #preserves signature
 	
 	if _func is None:
 		return decorator_kamodofy
@@ -471,4 +471,40 @@ def test_bibtex():
 
 	assert '@phdthesis' in h.meta['citation']
 
+
+
+
+# manually generate the appropriate function signature
+grid_wrapper_def =r"""def wrapped({}):
+	coordinates = np.meshgrid({}, indexing = 'ij')
+	points = np.column_stack([c.ravel() for c in coordinates])
+	return {}(points).reshape(coordinates[0].shape, order = 'A')"""
+
+
+def gridify(_func = None, **defaults):
+	"""Given a function of shape (n,dim) and arguments of shape (L), (M), calls f with points L*M"""
+	def decorator_gridify(f):
+
+		arg_str = ', '.join([k for k in defaults])
+
+		signature = ''
+		for k,v in defaults.items():
+			signature = signature + "{} = {},".format(k,k)
+
+		scope = {**defaults}
+		scope['np'] = np
+		scope[f.__name__] = f
+
+		exec(grid_wrapper_def.format(signature, arg_str, f.__name__), scope)
+		wrapped = scope['wrapped']
+		wrapped.__name__ = f.__name__
+		wrapped.__doc__ = f.__doc__
+		
+		decorate(wrapped, decorator_wrapper)
+		return wrapped
+
+	if _func is None:
+		return decorator_gridify
+	else:
+		return decorator_gridify(_func)
 

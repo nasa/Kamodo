@@ -1,3 +1,7 @@
+# 2019-08-28 16:30:55.501447: clock-out: added gridify decorator
+* Expanding kamodofication tutorial to support more variables
+* Looking at Numpy's generalized universal function API - would formalize our mapping to plotting routines
+* Add example of point interpolation for trajectory
 
 # 2019-08-28 10:24:56.645799: clock-in
 
