@@ -632,7 +632,12 @@ class Kamodo(collections.OrderedDict):
 		chart_type = None
 		traces = []
 
-		arg_shapes = get_arg_shapes(*[v for v in list(result.values())[:-1]])
+		hidden_args = []
+		if 'hidden_args' in self[variable].meta:
+			hidden_args = self[variable].meta['hidden_args']
+		arg_arrays = [result[k] for k in result if k not in hidden_args][:-1]
+
+		arg_shapes = get_arg_shapes(*arg_arrays)
 		try:
 			out_dim, arg_dims = get_plot_key(result[variable].shape, *arg_shapes)
 		except:

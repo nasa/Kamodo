@@ -197,6 +197,8 @@ def kamodofy(_func = None, units = '', data = None, update = None, equation = No
 	"""
 	def decorator_kamodofy(f):
 		f.meta = dict(units = units, citation = citation, equation = equation, hidden_args = hidden_args)
+		if citation is not None:
+			f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
 		f.update = update
 		if data is None:
 			try:
@@ -217,7 +219,8 @@ def kamodofy(_func = None, units = '', data = None, update = None, equation = No
 			latex_eq = latex(Eq(lhs, lambda_(*lhs.args)))
 			f._repr_latex_ = lambda : "${}$".format(latex(latex_eq))
 
-		# f.citation = citation
+
+
 
 		return decorate(f,komodo_wrapper) #preserves signature
 	
