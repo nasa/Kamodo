@@ -1,3 +1,6 @@
+
+# 2019-08-30 10:47:31.579538: clock-in
+
 # 2019-08-28 16:30:55.501447: clock-out: added gridify decorator
 * Expanding kamodofication tutorial to support more variables
 * Looking at Numpy's generalized universal function API - would formalize our mapping to plotting routines
