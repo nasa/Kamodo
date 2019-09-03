@@ -1,3 +1,6 @@
+
+# 2019-09-03 16:44:51.693606: clock-in
+
 # 2019-09-03 14:09:22.239226: clock-out: T-6m
 * Deduct 6m
 * Handled pandas output for plotting 3d vector fields
