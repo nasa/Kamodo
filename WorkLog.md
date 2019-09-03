@@ -1,3 +1,8 @@
+# 2019-09-03 14:09:22.239226: clock-out: T-6m
+* Deduct 6m
+* Handled pandas output for plotting 3d vector fields
+* Fixing integration symbol for solver
+* Fixed griddable vector fields
 
 # 2019-09-03 13:07:54.277159: clock-in
 
