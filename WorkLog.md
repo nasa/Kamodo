@@ -1,4 +1,13 @@
+
+# 2019-09-03 13:07:54.277159: clock-in
+
 # 2019-08-30 10:49:09.145324: clock-out
+
+* Issue when calling util.parse_latex:
+
+> ImportError: LaTeX parsing requires the antlr4 python package, provided by pip (antlr4-python2-runtime or antlr4-python3-runtime) or conda (antlr-python-runtime)
+
+* reconsider `antlr4` dependency
 
 # 2019-08-30 10:47:31.579538: clock-in
 
