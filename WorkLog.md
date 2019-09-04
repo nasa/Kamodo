@@ -1,3 +1,6 @@
+
+# 2019-09-04 09:42:08.493375: clock-in
+
 # 2019-09-03 18:33:35.737108: clock-out
 * working on streamlines
 
