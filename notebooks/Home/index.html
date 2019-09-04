@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>Kamodo Project Page - Kamodo Analysis Suite</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Kamodo Project Page";
+    var mkdocs_page_input_path = "notebooks/Home.ipynb";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> Kamodo Analysis Suite</a>
+        
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../about/">About</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodo/">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Visualization/">Visualization</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Syntax/">Syntax</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodofying_Models/">Kamodofying Models</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">Kamodo Analysis Suite</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Kamodo Project Page</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="kamodo-project-page">Kamodo Project Page<a class="headerlink" href="#kamodo-project-page" title="Permanent link">&para;</a></h1>
+<p>Kamodo is a new CCMC tool for access, interpolation, and visualization of space weather models and data in python. Kamodo allows model developers to represent simulation results as mathematical functions which may be manipulated directly by end users. Kamodo handles unit conversion transparently and supports interactive science discovery through jupyter notebooks with minimal coding and is accessible through python and fortran.</p>
+<h1 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h1>
+<p>Suppose we have a vector field defined by a function of positions in the x-y plane:</p>
+<pre><code class="python">from kamodo import kamodofy
+import numpy as np
+
+x = np.linspace(-np.pi, np.pi, 25)
+y = np.linspace(-np.pi, np.pi, 30)
+xx, yy = np.meshgrid(x,y)
+points = np.array(list(zip(xx.ravel(), yy.ravel())))
+
+@kamodofy(units = 'km/s')
+def fvec(rvec = points):
+    ux = np.sin(rvec[:,0])
+    uy = np.cos(rvec[:,1])
+    return np.vstack((ux,uy)).T
+</code></pre>
+
+<p>The @kamodofy decorator lets us register this field with units to enable unit-conversion downstream:</p>
+<pre><code class="python">from kamodo import Kamodo
+
+kamodo = Kamodo(fvec = fvec)
+kamodo
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\vec{f}{\left(\vec{r} \right)} [km/s] = \lambda{\left(\vec{r} \right)}\end{equation}</script>
+</p>
+<pre><code class="python">kamodo.to_latex()
+</code></pre>
+
+<pre><code>'\\begin{equation}\\vec{f}{\\left(\\vec{r} \\right)} [km/s] = \\lambda{\\left(\\vec{r} \\right)}\\end{equation}'
+</code></pre>
+<p>We can now evaluate our function using dot notation:</p>
+<pre><code class="python">kamodo.fvec(np.array([[-1,1]]))
+</code></pre>
+
+<pre><code>array([[-0.84147098,  0.54030231]])
+</code></pre>
+<p>We can perform unit conversion:</p>
+<pre><code class="python">kamodo['gvec[m/s]'] = 'fvec'
+kamodo
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\vec{f}{\left(\vec{r} \right)} [km/s] = \lambda{\left(\vec{r} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\vec{g}{\left(\vec{r} \right)} [m/s] = 1000 \vec{f}{\left(\vec{r} \right)}\end{equation}</script>
+</p>
+<pre><code class="python">kamodo.gvec(np.array([[-1,1]]))
+</code></pre>
+
+<pre><code>array([[-841.47098481,  540.30230587]])
+</code></pre>
+<p>We can even generate plots.</p>
+<pre><code class="python">import plotly.io as pio
+
+fig = kamodo.plot('fvec')
+pio.write_image(fig, 'images/fig2d-usage.svg')
+</code></pre>
+
+<p><img alt="usage" src="../images/fig2d-usage.svg" /></p>
+<h2 id="getting-started">Getting started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h2>
+<h3 id="where-to-download">Where to download<a class="headerlink" href="#where-to-download" title="Permanent link">&para;</a></h3>
+<p>If you have a nasa.developer.gov account, you may access the kamodo repository with <a href="https://git-scm.com/">git</a>:</p>
+<pre><code>git pull https://developer.nasa.gov/CCMC/Kameleon2.0
+</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Kamodo is currently only available to users with NASA credentials. We are in the process of making Kamodo open to the public as an open-source project. </p>
+</div>
+<h4 id="download-miniconda">Download (mini)conda<a class="headerlink" href="#download-miniconda" title="Permanent link">&para;</a></h4>
+<p>We strongly recommend using the conda environment system to avoid library conflicts with your host machine's python.</p>
+<p>Download and install miniconda from <a href="https://conda.io/miniconda.html">here</a>.</p>
+<h4 id="create-kamodo-environment">Create Kamodo environment<a class="headerlink" href="#create-kamodo-environment" title="Permanent link">&para;</a></h4>
+<p>Create a new environment for kamodo</p>
+<pre><code>conda create -n kamodo python=2.7 jupyter pandas numpy
+</code></pre>
+<h4 id="activate-new-environment">Activate new environment<a class="headerlink" href="#activate-new-environment" title="Permanent link">&para;</a></h4>
+<p>From a bash shell:</p>
+<pre><code>source activate kamodo
+</code></pre>
+<p>Requirements</p>
+<ul>
+<li>numpy</li>
+<li>scipy</li>
+<li>sympy</li>
+<li>pandas</li>
+<li>plotly==3.3</li>
+<li>pytest</li>
+<li>psutil</li>
+</ul>
+<h4 id="loading-a-notebook">Loading a notebook<a class="headerlink" href="#loading-a-notebook" title="Permanent link">&para;</a></h4>
+<p>Start the notebook server in the <code>Prototypes</code> subdirectory</p>
+<pre><code>jupyter notebook Prototypes
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
+
+</body>
+</html>

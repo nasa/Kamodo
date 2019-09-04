@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>Kamodofying Models - Kamodo Analysis Suite</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Kamodofying Models";
+    var mkdocs_page_input_path = "notebooks/Kamodofying_Models.ipynb";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> Kamodo Analysis Suite</a>
+        
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../about/">About</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodo/">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Visualization/">Visualization</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Syntax/">Syntax</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Kamodofying Models</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#kamodofication-requirements">Kamodofication requirements</a></li>
+    
+
+    <li class="toctree-l2"><a href="#kamodofying-model-readers">Kamodofying Model Readers</a></li>
+    
+
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">Kamodo Analysis Suite</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Kamodofying Models</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="kamodofication-requirements">Kamodofication requirements<a class="headerlink" href="#kamodofication-requirements" title="Permanent link">&para;</a></h2>
+<p>To Kamodofy models and data representing physical quantities, we need to define a set of functions representing the interpolation of each physical variable having the following properties:</p>
+<ul>
+<li>A function name and arguments that follows kamodo's <a href="../Syntax/">Syntax</a> conventions </li>
+<li>Default arrays for input arguments</li>
+<li>A meta attribute containing:<ul>
+<li>'units' - physical units of the values returned by the function</li>
+<li>'citation' - How the model or data source should be cited</li>
+<li>'equation' - LaTeX representation of this model/data source (if available)</li>
+<li>'hidden_args' - A list of function arguments that should not be rendered</li>
+</ul>
+</li>
+<li>A data attribute - The array holding the variable (if available)</li>
+<li>Any docstrings that provide further context</li>
+</ul>
+<h2 id="kamodofying-model-readers">Kamodofying Model Readers<a class="headerlink" href="#kamodofying-model-readers" title="Permanent link">&para;</a></h2>
+<p>Model Readers load data from disk (or server) and provide methods for interpolation. We require that for each variable of interest, the model reader should provide at least one interpolation method that satisfies all of the above requirements. Each model reader will:</p>
+<ol>
+<li>Open/close files</li>
+<li>Manage state variables</li>
+<li>Initialize interpolators</li>
+<li>Kamodofy interpolators</li>
+<li>Register functions</li>
+</ol>
+<pre><code class="python">from kamodo import Kamodo, kamodofy
+from scipy.interpolate import RegularGridInterpolator
+import numpy as np
+
+class MyModel(Kamodo): # the only change
+    def __init__(self, filename, **kwargs):
+        # perform any necessary I/O
+        print('opening {}'.format(filename))
+        self.filename = filename
+        self.missing_value = np.NAN
+
+        # store any data needed for interpolation
+        self.x = np.linspace(1, 4, 11)
+        self.y = np.linspace(4, 7, 22)
+        self.z = np.linspace(7, 9, 33)        
+        xx, yy, zz = np.meshgrid(self.x, self.y, self.z, indexing='ij', sparse=True)
+        self.data = 2 * xx**3 + 3 * yy**2 - zz
+
+        # set up the interpolator
+        self.interpolator = RegularGridInterpolator((self.x, self.y, self.z), self.data, 
+                                                    bounds_error = False,
+                                                   fill_value = self.missing_value)
+
+        # Prepare model for function registration
+        super(MyModel, self).__init__(**kwargs) 
+
+
+        # Kamodofy the interpolating function
+        @kamodofy(  units = 'kg/m^3',
+                    citation = &quot;Pembroke et al 2019&quot;, 
+                    hidden_args = ['indexing'],
+                    data = self.data)
+        def rho(x = self.x, y = self.y, z = self.z):
+            &quot;&quot;&quot;A function that returns density in [kg/m^3]. Positions are assumed to be unitless&quot;&quot;&quot;
+            xx, yy, zz = np.meshgrid(x, y, z, indexing = 'xy')
+            points = np.array(list(zip(xx.ravel(),yy.ravel(),zz.ravel())))
+            result = self.interpolator(points).reshape(zz.shape, order = 'A')
+            return result
+
+        # Register the function
+        self['rho'] = rho 
+
+model = MyModel('myfile.dat')
+
+</code></pre>
+
+<pre><code>opening myfile.dat
+</code></pre>
+<p>Here the <code>@kamodofy</code> decorator handles the provisioning of kamodo-specific metadata. For example, the declared function <code>rho</code> now has a <code>meta</code> attribute:</p>
+<pre><code class="python">model.rho.meta
+</code></pre>
+
+<pre><code>{'units': 'kg/m^3',
+ 'citation': 'Pembroke et al 2019',
+ 'equation': None,
+ 'hidden_args': ['indexing']}
+</code></pre>
+<p><code>@kamodofy</code> also adds the data attribute, by calling the function with its default parameters:</p>
+<pre><code class="python">model.rho.data.shape
+</code></pre>
+
+<pre><code>(11, 22, 33)
+</code></pre>
+<p>We could also register the model's interpolating method as part of some other Kamodo object, such as another kamodofied model reader or data source:</p>
+<pre><code class="python">from kamodo import Kamodo
+kamodo = Kamodo(rho = model.rho)
+kamodo
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\rho{\left(x,y,z \right)} [kg/m^3] = \lambda{\left(x,y,z \right)}\end{equation}</script>
+</p>
+<p>We can now compose our density function with expressions defined by other models:</p>
+<pre><code class="python">kamodo['vol [cm^3]'] = '4/3 * pi * (x**2 + y**2)**(3/2)'
+kamodo['mass [g]'] = 'rho*vol'
+kamodo
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\rho{\left(x,y,z \right)} [kg/m^3] = \lambda{\left(x,y,z \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{vol}{\left(x,y \right)} [cm^3] = \frac{4 \pi \left(x^{2} + y^{2}\right)^{\frac{3}{2}}}{3}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{mass}{\left(x,y,z \right)} [g] = \frac{\rho{\left(x,y,z \right)} \operatorname{vol}{\left(x,y \right)}}{1000}\end{equation}</script>
+</p>
+<pre><code class="python">kamodo.detail()
+</code></pre>
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>lhs</th>
+      <th>rhs</th>
+      <th>symbol</th>
+      <th>units</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>rho(x, y, z)</th>
+      <td>rho</td>
+      <td>None</td>
+      <td>rho(x, y, z)</td>
+      <td>kg/m^3</td>
+    </tr>
+    <tr>
+      <th>vol(x, y)</th>
+      <td>vol</td>
+      <td>4*pi*(x**2 + y**2)**(3/2)/3</td>
+      <td>vol(x, y)</td>
+      <td>cm^3</td>
+    </tr>
+    <tr>
+      <th>mass(x, y, z)</th>
+      <td>mass</td>
+      <td>rho(x, y, z)*vol(x, y)/1000</td>
+      <td>mass(x, y, z)</td>
+      <td>g</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>The following lines will save the image to your working directory.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Saving images requires <code>plotly-orca-1.2.1</code>, available through conda: <code>conda install -c plotly plotly-orca</code></p>
+</div>
+<pre><code class="python">import plotly.io as pio
+
+pio.write_image(model.plot(rho = dict(z = model.z.mean())), 'kamodofied_model_1.svg', validate = False)
+</code></pre>
+
+<p>We use markdown to embed the image into the notebook.
+<img alt="Kamodofied Density" src="../kamodofied_model_1.svg?4" /></p>
+<p>Alternative ways to graph:</p>
+<pre><code class="python">## uncomment to open interactive plot in the notebook
+# from plotly.offline import init_notebook_mode, iplot
+# init_notebook_mode(connected = True)
+# iplot(kamodo.plot(rho = dict(x = model.x.mean()))) 
+</code></pre>
+
+<pre><code class="python"># # uncomment to open interactive plot in separate tab
+# from plotly.offline import plot
+# plot(kamodo.plot(rho = dict(z = 8))) 
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../Syntax/" class="btn btn-neutral" title="Syntax"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../Syntax/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
+
+</body>
+</html>
