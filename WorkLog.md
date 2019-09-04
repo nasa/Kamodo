@@ -1,3 +1,6 @@
+
+# 2019-09-04 10:53:23.666033: clock-in
+
 # 2019-09-04 10:00:42.819821: clock-out
 * looking at complex parameters for streamlines
 
