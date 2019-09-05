@@ -1,3 +1,6 @@
+
+# 2019-09-05 11:09:34.195206: clock-in
+
 # 2019-09-04 15:29:02.593470: clock-out
 * got fieldline tracer working (ivp solver)
 
