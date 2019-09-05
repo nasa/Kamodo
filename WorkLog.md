@@ -1,3 +1,8 @@
+# 2019-09-05 17:04:36.774012: clock-out
+* solver decorator
+* dipole field test
+* stopping integration at boundary
+* can choose resolution of knots
 
 # 2019-09-05 11:09:34.195206: clock-in
 
