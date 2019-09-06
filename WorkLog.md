@@ -1,3 +1,6 @@
+# 2019-09-06 15:26:26.921477: clock-out
+* Looking into LFM wrapper
+* https://wiki.ucar.edu/display/LTR/pyLTR seems to have been written for python 2
 
 # 2019-09-06 15:20:58.638859: clock-in
 
