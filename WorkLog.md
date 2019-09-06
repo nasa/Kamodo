@@ -1,3 +1,6 @@
+
+# 2019-09-06 15:20:58.638859: clock-in
+
 # 2019-09-05 17:04:36.774012: clock-out
 * solver decorator
 * dipole field test
