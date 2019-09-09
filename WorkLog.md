@@ -1,3 +1,5 @@
+# 2019-09-09 13:43:18.711955: clock-out
+* Added pandas i/o for 3d line and vector plots
 
 # 2019-09-09 11:07:35.809509: clock-in
 
