@@ -1,3 +1,6 @@
+
+# 2019-09-09 11:07:35.809509: clock-in
+
 # 2019-09-09 10:52:08.229479: clock-out
 * Added pointlike decorator
 
