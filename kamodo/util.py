@@ -478,7 +478,7 @@ def test_bibtex():
 grid_wrapper_def =r"""def wrapped({}):
 	coordinates = np.meshgrid({}, indexing = 'ij')
 	points = np.column_stack([c.ravel() for c in coordinates])
-	return {}(points).reshape(coordinates[0].shape, order = 'A')"""
+	return np.squeeze({}(points).reshape([-1,*coordinates[0].shape], order = 'A'))"""
 
 
 def gridify(_func = None, **defaults):
@@ -500,11 +500,108 @@ def gridify(_func = None, **defaults):
 		wrapped.__name__ = f.__name__
 		wrapped.__doc__ = f.__doc__
 		
-		decorate(wrapped, decorator_wrapper)
-		return wrapped
+		return decorate(wrapped, decorator_wrapper)
 
 	if _func is None:
 		return decorator_gridify
 	else:
 		return decorator_gridify(_func)
 
+
+def pointlike(_func = None, signature = None, otypes = [np.float], squeeze = None):
+	"""Transforms a single-argument function to one that accepts m points of dimension n"""
+	def decorator_pointlike(func):
+		def argument_wrapper(f, *args, **kwargs):
+			"""Wrapper needed by decorator.decorate to pass through args, kwargs"""
+			if type(args[0]) != np.array:
+				args = [np.array(x) for x in args]
+			for i,x in enumerate(args):
+				if len(x.shape) == 1:
+					args[i] = np.expand_dims(x, axis = 0)
+			if squeeze is not None:
+				try:
+					return np.vectorize(f, otypes = otypes, signature = signature)(*args, **kwargs).squeeze(squeeze)
+				except:
+					return np.vectorize(f, otypes = otypes, signature = signature)(*args, **kwargs)
+			else:
+				return np.vectorize(f, otypes = otypes, signature = signature)(*args, **kwargs)
+
+		return decorate(func, argument_wrapper)
+
+
+	if _func is None:
+		return decorator_pointlike
+	else:
+		return decorator_pointlike(_func)
+
+
+
+def solve(fprime = None, seeds = None, varname = None, interval = None, 
+		  dense_output = True, # generate a callable solution
+		  events = None, # stop when event is triggered
+		  vectorized = True,
+		  npoints = 50,
+		 ):
+	"""Decorator that solves initial value problem for a given function
+	
+	Can be used to generate streamlines, streaklines, fieldlines, etc
+	"""
+
+	if len(seeds.shape) > 1:
+		pass
+	else:
+		seeds = np.expand_dims(seeds, axis = 0)
+
+	t_eval = np.linspace(*interval, npoints)
+	nseeds = len(seeds)
+	
+	def decorator_solve(f):
+		solutions = []
+		t = []
+		fprime_ = lambda s, y: f(y.T)
+		
+		for i, seed in enumerate(seeds):
+			result = solve_ivp(fprime_, interval, seed, 
+								dense_output = dense_output, 
+								events = events, 
+								vectorized = vectorized,
+								t_eval = t_eval)
+			solutions.append(result['sol'])
+			interval_bounded = result['t']
+			t.extend(list(np.ones(len(interval_bounded))*i + interval_bounded*1j))
+			t.extend([np.nan + np.nan*1j])
+		
+		t = np.hstack(t)
+			
+
+		def solution(s = t):
+			s = np.array(s)
+			if len(s.shape) == 0:
+				s = np.expand_dims(s, axis=0)
+			i = np.floor(s.real).astype(int)
+			t = s.imag
+			results = []
+			seed_number = []
+			integral = []
+			for i_, t_ in zip(i,t):
+				seed_number.append(i_)
+				integral.append(t_)
+				try:
+					if np.isnan(abs(i_+t_)):
+						results.append(np.ones(seeds.shape[-1])*np.nan)
+					else:
+						results.append(solutions[i_](t_))
+				except:
+					results.append(np.ones(seeds.shape[-1])*np.nan)
+			index_ = pd.MultiIndex.from_arrays([seed_number, integral], 
+											   names = ['seed', 'integral'])
+			return pd.DataFrame(np.vstack(results), index = index_)
+
+		solution.__name__ = varname
+
+		return decorate(solution,decorator_wrapper) #preserves signature
+
+	if fprime is None:
+		return decorator_solve
+	else:
+		return decorator_solve(fprime)

@@ -12,6 +12,8 @@ from collections import defaultdict
 
 def line_plot(result, titles, verbose = False, **kwargs):
 	'''N-d line plot f(t)'''
+	if verbose:
+		print('N-d line plot f(t)')
 	f = result[titles['variable']]
 	t_name, t = list(result.items())[0]
 	if len(result) == 2:
@@ -43,9 +45,14 @@ def line_plot(result, titles, verbose = False, **kwargs):
 		elif f.shape[1] == 3: 
 			if verbose:
 				print('\t3-d output', f.shape)
-			x = f[:,0]
-			y = f[:,1]
-			z = f[:,2]
+			if type(f) == pd.DataFrame:
+				x = f.values[:,0]
+				y = f.values[:,1]
+				z = f.values[:,2]
+			else:
+				x = f[:,0]
+				y = f[:,1]
+				z = f[:,2]
 			# t_name, t = result.items()[0]
 			text = ["{}:{}".format(t_name, v) for v in t]
 			layout = go.Layout(
@@ -120,12 +127,22 @@ def vector_plot(result, titles, verbose = False, **kwargs):
 	elif (result[variable].shape == val0.shape) & (val0.shape[1] == 3):
 		if verbose:
 			print('\t 3-d output', result[variable].shape)
-		u = result[variable][:,0].tolist()
-		v = result[variable][:,1].tolist()
-		w = result[variable][:,2].tolist()
-		x = val0[:,0].tolist()
-		y = val0[:,1].tolist()
-		z = val0[:,2].tolist()
+		if type(result[variable]) == pd.DataFrame:
+			u = result[variable].values[:,0].tolist()
+			v = result[variable].values[:,1].tolist()
+			w = result[variable].values[:,2].tolist()
+		else:
+			u = result[variable][:,0].tolist()
+			v = result[variable][:,1].tolist()
+			w = result[variable][:,2].tolist()
+		if type(val0) == pd.DataFrame:
+			x = val0.values[:,0].tolist()
+			y = val0.values[:,1].tolist()
+			z = val0.values[:,2].tolist()
+		else:
+			x = val0[:,0].tolist()
+			y = val0[:,1].tolist()
+			z = val0[:,2].tolist()
 		trace = go.Cone(x = x, y = y, z = z, u = u, v = v, w = w)
 
 		layout = go.Layout(
@@ -371,6 +388,8 @@ def get_arg_shapes(*args):
 	for a in args:
 		if type(a) == np.ndarray:
 			shape = a.shape
+		elif type(a) == pd.DataFrame:
+			shape = a.values.shape
 		else:
 			try:
 				shape = (len(a),)

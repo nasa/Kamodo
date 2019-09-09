@@ -52,6 +52,7 @@ from .util import existing_plot_types
 
 from sympy import Wild
 from types import GeneratorType
+import inspect
 
 def get_unit_quantities():
 	subs = {} 
@@ -607,15 +608,26 @@ class Kamodo(collections.OrderedDict):
 			events = None, # stop when event is triggered
 			vectorized = True,):
 		from scipy.integrate import solve_ivp
+
+		
 		result = solve_ivp(self[fprime], interval, y0, 
 			dense_output = dense_output, 
 			events = events, 
 			vectorized = vectorized)
 		if self.verbose:
 			print(result['message'])
-		def solution(t = result['t']):
-			return result['sol'].__call__(t).T.squeeze()
-		return solution
+
+
+		varname = next(iter(inspect.signature(self[fprime]).parameters.keys()))
+
+		scope = {'result':result, 'varname': varname}
+
+		soln_str = r"""def solution({varname} = result['t']):
+			return result['sol'].__call__({varname}).T.squeeze()""".format(varname = varname)
+
+		exec(soln_str.format(), scope)
+
+		return scope['solution']
 
 
 	def figure(self, variable, indexing = 'ij', return_type = False, **kwargs):
@@ -649,66 +661,6 @@ class Kamodo(collections.OrderedDict):
 			print('not supported: out_dim {}, arg_dims {}'.format(out_dim, arg_dims))
 			raise
 		traces, chart_type, layout = plot_func(result, titles,indexing = indexing, verbose = self.verbose)
-		# if len(result) == 2: 
-		# 	arg0, val0 = result.items()[0]
-		# 	if self.verbose:
-		# 		print '1 input: {}-d shape: {}'.format(len(val0.shape), val0.shape)
-		# 	if len(val0.shape) == 1:
-		# 		lines, chart_type, layout = line_plot(result, titles, self.verbose)
-		# 		traces.extend(lines)
-
-		# 	elif len(val0.shape) == 2:
-		# 		vectors, chart_type, layout = vector_plot(result, titles, self.verbose)
-		# 		traces.extend(vectors)
-		# 	else: 
-		# 		raise NotImplementedError('shape not supported'.format(val0.shape))
-		# elif len(result) == 3: 
-		# 	if len(result[variable].shape) == 2:
-		# 		contours, chart_type, layout = contour_plot(result, titles, indexing, self.verbose)
-		# 		traces.extend(contours)
-
-			
-		# elif len(result) == 4:
-		# 	result = to_arrays(result) # loses the date-time index
-		# 	arg0, val0 = result.items()[0]
-		# 	arg1, val1 = result.items()[1]
-		# 	arg2, val2 = result.items()[2]
-		# 	if self.verbose:
-		# 		print '3 inputs: {}{}, {}{}, {}{}'.format(
-		# 			arg0, val0.shape, 
-		# 			arg1, val1.shape,
-		# 			arg2, val2.shape)
-		# 	if len(result[variable].shape) == 3:
-		# 		planes, chart_type, layout = plane(result, titles, indexing, self.verbose)
-		# 		traces.extend(planes)
-
-		# 	elif len(result[variable].shape) == 2:
-		# 		if self.verbose:
-		# 			print '\t2-d output', result[variable].shape
-		# 		surfaces, chart_type, layout = surface(result, titles, self.verbose)
-		# 		traces.extend(surfaces)
-
-		# 	elif len(result[variable].shape) == 1:
-		# 		if self.verbose:
-		# 			print '\tscalar output', result[variable].shape
-		# 		if result[variable].shape == val0.shape:
-		# 			lines, chart_type, layout = line_plot(result, titles, self.verbose)
-		# 			traces.extend(lines)
-
-		# 		elif result[variable].shape[0] == 1:
-		# 			surfaces, chart_type, layout = surface(result, titles, self.verbose)
-		# 			traces.extend(surfaces)
-
-		# 	elif len(result[variable]) == 1: #scalar or color value?
-		# 		surfaces, chart_type, layout = surface(result, titles, self.verbose)
-		# 		traces.extend(surfaces)
-
-		# 	else:
-		# 		print '{}-d not yet supported'.format(result[variable].shape)
-			
-		# else:
-		# 	print 'not supported yet: {}'.format(type(result[variable]))
-
 
 		layout.update(
 			dict(autosize=False,
