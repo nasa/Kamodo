@@ -1,3 +1,5 @@
+# 2019-09-10 14:49:49.344817: clock-out
+* fixed cone colors in plotting
 
 # 2019-09-10 11:39:05.825143: clock-in
 
