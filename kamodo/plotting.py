@@ -17,6 +17,20 @@ def line_plot(result, titles, verbose = False, **kwargs):
 	f = result[titles['variable']]
 	t_name, t = list(result.items())[0]
 	if len(result) == 2:
+		if type(f) == pd.DataFrame:
+			if type(f.index) == pd.MultiIndex:
+				assert len(t) == len(f)
+				l = []
+				t_start = 0
+				t_ = []
+				for seed, locs in f.groupby(level = 0):
+					locs = locs.append(pd.Series(), ignore_index=True)
+					l.append(locs)
+					t_.extend(t[t_start:t_start+len(locs)].tolist() + [np.nan])
+				f = pd.concat(l)
+				t = t_
+
+
 		if len(f.shape) == 1:
 			if verbose:
 				print('\t1-d output', f.shape)
@@ -126,7 +140,8 @@ def vector_plot(result, titles, verbose = False, **kwargs):
 
 	elif (result[variable].shape == val0.shape) & (val0.shape[1] == 3):
 		if verbose:
-			print('\t 3-d output', result[variable].shape)
+			print('\t 3-d output', result[variable].shape, val0.shape)
+			print('\t 3d vector plot')
 		if type(result[variable]) == pd.DataFrame:
 			u = result[variable].values[:,0].tolist()
 			v = result[variable].values[:,1].tolist()
@@ -143,7 +158,11 @@ def vector_plot(result, titles, verbose = False, **kwargs):
 			x = val0[:,0].tolist()
 			y = val0[:,1].tolist()
 			z = val0[:,2].tolist()
-		trace = go.Cone(x = x, y = y, z = z, u = u, v = v, w = w)
+		norms = np.linalg.norm(result[variable], axis = 1)
+		trace = go.Cone(x = x, y = y, z = z, u = u, v = v, w = w,
+			hoverinfo = 'x+y+z+u+v+w+norm', colorscale = 'Reds',
+			cmin = 0, cmax = norms.max(),
+			)
 
 		layout = go.Layout(
 			title = titles['title'],

@@ -23,7 +23,7 @@ import numpy as np
 from sympy import latex, Eq
 from sympy.parsing.latex import parse_latex
 import pandas as pd
-
+from scipy.integrate import solve_ivp
 
 
 def get_unit_quantity(name, base, scale_factor, abbrev = None, unit_system = 'SI'):
@@ -541,6 +541,8 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
 		  events = None, # stop when event is triggered
 		  vectorized = True,
 		  npoints = 50,
+		  directions = (-1,1),
+		  verbose = False,
 		 ):
 	"""Decorator that solves initial value problem for a given function
 	
@@ -558,18 +560,27 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
 	def decorator_solve(f):
 		solutions = []
 		t = []
-		fprime_ = lambda s, y: f(y.T)
+
+		fprime_ = {}
+		for d in directions:
+			fprime_[d] = lambda s, y: d*f(y.T)
 		
 		for i, seed in enumerate(seeds):
-			result = solve_ivp(fprime_, interval, seed, 
-								dense_output = dense_output, 
-								events = events, 
-								vectorized = vectorized,
-								t_eval = t_eval)
-			solutions.append(result['sol'])
-			interval_bounded = result['t']
-			t.extend(list(np.ones(len(interval_bounded))*i + interval_bounded*1j))
-			t.extend([np.nan + np.nan*1j])
+			for d in directions:
+				result = solve_ivp(fprime_[d], interval, seed, 
+									dense_output = dense_output, 
+									events = events, 
+									vectorized = vectorized,
+									t_eval = t_eval)
+				solutions.append(result['sol'])
+				interval_bounded = result['t']
+				seed_numbers = np.ones(len(interval_bounded))*i #*len(directions) + 1*(d > 0) 
+				integrals =   interval_bounded[::d]*d*1j
+				if d < 0:
+					t.extend(list(seed_numbers + integrals))
+				else:
+					t.extend(list(seed_numbers + integrals)[1:])
+
 		
 		t = np.hstack(t)
 			
@@ -578,24 +589,25 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
 			s = np.array(s)
 			if len(s.shape) == 0:
 				s = np.expand_dims(s, axis=0)
-			i = np.floor(s.real).astype(int)
-			t = s.imag
+			
+			isolution = np.floor(s.real).astype(int)*len(directions) + (s.imag > 0) 
+
 			results = []
 			seed_number = []
 			integral = []
-			for i_, t_ in zip(i,t):
-				seed_number.append(i_)
-				integral.append(t_)
+			for soln, imag_ in zip(isolution, s.imag):
+				seed_number.append(np.floor(soln/len(directions)))
+				integral.append(imag_)
 				try:
-					if np.isnan(abs(i_+t_)):
-						results.append(np.ones(seeds.shape[-1])*np.nan)
+					if np.isnan(abs(soln+imag_)):
+						results.append(np.ones(isolution.shape[-1])*np.nan)
 					else:
-						results.append(solutions[i_](t_))
+						results.append(solutions[soln](np.abs(imag_)))
 				except:
-					results.append(np.ones(seeds.shape[-1])*np.nan)
+					results.append(np.ones(isolution.shape[-1])*np.nan)
 			index_ = pd.MultiIndex.from_arrays([seed_number, integral], 
 											   names = ['seed', 'integral'])
-			return pd.DataFrame(np.vstack(results), index = index_)
+			return pd.DataFrame(np.vstack(results), index = index_).drop_duplicates()
 
 		solution.__name__ = varname
 
