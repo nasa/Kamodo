@@ -1,3 +1,6 @@
+
+# 2019-09-10 11:39:05.825143: clock-in
+
 # 2019-09-10 10:43:05.346628: clock-out
 * removing nans from solver output in favor of MultiIndex seeds
 
