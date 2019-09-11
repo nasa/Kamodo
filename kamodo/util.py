@@ -475,10 +475,11 @@ def test_bibtex():
 
 
 # manually generate the appropriate function signature
-grid_wrapper_def =r"""def wrapped({}):
-	coordinates = np.meshgrid({}, indexing = 'ij')
+grid_wrapper_def =r"""def wrapped({signature}):
+	coordinates = np.meshgrid({arg_str}, indexing = 'xy')
 	points = np.column_stack([c.ravel() for c in coordinates])
-	return np.squeeze({}(points).reshape([-1,*coordinates[0].shape], order = 'A'))"""
+	return {fname}(points).reshape(coordinates[0].shape, order = 'A')
+	"""
 
 
 def gridify(_func = None, **defaults):
@@ -495,7 +496,7 @@ def gridify(_func = None, **defaults):
 		scope['np'] = np
 		scope[f.__name__] = f
 
-		exec(grid_wrapper_def.format(signature, arg_str, f.__name__), scope)
+		exec(grid_wrapper_def.format(signature = signature, arg_str = arg_str, fname = f.__name__), scope)
 		wrapped = scope['wrapped']
 		wrapped.__name__ = f.__name__
 		wrapped.__doc__ = f.__doc__
@@ -535,6 +536,13 @@ def pointlike(_func = None, signature = None, otypes = [np.float], squeeze = Non
 		return decorator_pointlike(_func)
 
 
+def event(func, terminal = True, direction = 0):
+    def wrapped(*args, **kwargs):
+        return func(*args, **kwargs)
+    wrapped.terminal = terminal
+    wrapped.direction = direction
+    return wrapped
+    
 
 def solve(fprime = None, seeds = None, varname = None, interval = None, 
 		  dense_output = True, # generate a callable solution

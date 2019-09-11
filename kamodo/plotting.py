@@ -9,6 +9,46 @@ from plotly import figure_factory as ff
 import pandas as pd
 from collections import defaultdict
 
+def scatter_plot(result, titles, verbose = False, **kwargs):
+	if verbose:
+		print('3-d scatter plot')
+
+	variable = titles['variable']
+	val0 = list(result.values())[0]
+	if result[variable].shape[0] == val0.shape[0]:
+		if verbose:
+			print('\t 3-d output', result[variable].shape, val0.shape)
+			print('\t 3d scatter plot')
+
+		if type(val0) == pd.DataFrame:
+			x = val0.values[:,0].tolist()
+			y = val0.values[:,1].tolist()
+			z = val0.values[:,2].tolist()
+		else:
+			x = val0[:,0].tolist()
+			y = val0[:,1].tolist()
+			z = val0[:,2].tolist()
+		
+		trace = go.Scatter3d(x = x, y = y, z = z,
+			mode = 'markers',
+			marker = dict(color = result[variable], colorscale = 'Viridis'),
+			)
+
+		layout = go.Layout(
+			title = titles['title'],
+			scene = dict(
+				xaxis = dict(title = 'x'),
+				yaxis = dict(title = 'y'),
+				zaxis = dict(title = 'z'),
+				))
+		chart_type = '3d-vector'
+	else:
+		print(result[variable].shape, val0.shape)
+		raise NotImplementedError('Not implemented yet')
+
+	return [trace], chart_type, layout
+
+
 
 def line_plot(result, titles, verbose = False, **kwargs):
 	'''N-d line plot f(t)'''
@@ -378,7 +418,8 @@ plot_dict = {
 	(1,)	:	{(('N','M'), ('N','M'), ('N','M')): {'name': '3d-parametric', 'func': surface}},
 	('N',)	:	{
 		(('N',),) : {'name': '1d-line', 'func': line_plot},
-		(('N',),('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},},
+		(('N',),('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},
+		(('N',3),): {'name': '3d scatter', 'func': scatter_plot},},
 	('N',2) :	{
 		(('N',),) :{'name': '2d-line', 'func': line_plot},
 		(('N',2),):{'name': '2d-vector', 'func': vector_plot},
@@ -452,6 +493,9 @@ def get_plot_key(out_shape, *arg_shapes):
 			elif out_dim == ('N',3):
 				if arg_shapes[0][0] == out_shape[0]:
 					arg_dims = (('N',),)
+			elif out_dim == ('N',):
+				if arg_shapes[0] == (out_shape[0], 3):
+					arg_dims = (('N',3),)
 		elif nargs == 2:
 			if out_dim == ('N','M'):
 				if (arg_shapes[0][0] in out_shape) & (arg_shapes[1][0] in out_shape):
