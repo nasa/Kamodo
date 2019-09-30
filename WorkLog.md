@@ -1,8 +1,12 @@
+
+# 2019-09-30 10:00:33.528255: clock-in
+
 # 2019-09-11 13:32:56.778768: clock-out
 * Created Fieldline Tutorial
 * made griddify return in `xy` indexing to work with map-to-plane
 * added scatter plot to available plot_types
 * Finished kamodofying_models tutorial
+* Need to check if plotting map-to-plane works for each axis
 
 # 2019-09-11 08:19:33.545586: clock-in
 
