@@ -1,3 +1,6 @@
+# 2019-09-30 12:34:55.407880: clock-out: added kamodofied kameleon example
+* Kameleon-kamodo bridge development
+* Added kamodofied kameleon object
 
 # 2019-09-30 10:00:33.528255: clock-in
 
