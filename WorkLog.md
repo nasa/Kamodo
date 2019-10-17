@@ -1,3 +1,6 @@
+
+# 2019-10-17 17:34:05.273266: clock-in
+
 # 2019-10-17 15:54:57.284128: clock-out
 * Kamodofied pyTIEGCM
 
