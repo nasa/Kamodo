@@ -1,7 +1,13 @@
+# 2019-10-18 16:47:23.366813: clock-out
+* looking at inverse mapping
+* Kamodofied pytiegcm
+* need to finish gridifying inverse mapping
+* consider adding indexing option to gridify
 
 # 2019-10-18 11:58:47.333047: clock-in
 
 # 2019-10-17 17:54:11.880758: clock-out
+* kamodofying pyTIEGCM
 
 # 2019-10-17 17:34:05.273266: clock-in
 
