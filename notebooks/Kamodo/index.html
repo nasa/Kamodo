@@ -110,6 +110,11 @@
     <a class="" href="../Kamodofying_Models/">Kamodofying Models</a>
 	    </li>
           
+            <li class="toctree-l1">
+		
+    <a class="" href="../FieldIntegration/">Field Integration</a>
+	    </li>
+          
         </ul>
       </div>
       &nbsp;
@@ -481,22 +486,22 @@ from plotly.offline import iplot,plot, init_notebook_mode
 init_notebook_mode(connected=True)
 </code></pre>
 
-<pre><code>    &lt;script type="text/javascript"&gt;
-    window.PlotlyConfig = {MathJaxConfig: 'local'};
-    if (window.MathJax) {MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}
-    if (typeof require !== 'undefined') {
-    require.undef("plotly");
-    requirejs.config({
-        paths: {
-            'plotly': ['https://cdn.plot.ly/plotly-latest.min']
-        }
-    });
-    require(['plotly'], function(Plotly) {
-        window._Plotly = Plotly;
-    });
+<script type="text/javascript">
+window.PlotlyConfig = {MathJaxConfig: 'local'};
+if (window.MathJax) {MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}
+if (typeof require !== 'undefined') {
+require.undef("plotly");
+requirejs.config({
+    paths: {
+        'plotly': ['https://cdn.plot.ly/plotly-latest.min']
     }
-    &lt;/script&gt;
-</code></pre>
+});
+require(['plotly'], function(Plotly) {
+    window._Plotly = Plotly;
+});
+}
+</script>
+
 <pre><code class="python">@kamodofy(units = 'kg/m^3')
 def rho(x = np.linspace(0,1, 20), y = np.linspace(-1, 1, 40)):
     &quot;&quot;&quot;A function that computes density&quot;&quot;&quot;
