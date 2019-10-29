@@ -9,12 +9,68 @@ from plotly import figure_factory as ff
 import pandas as pd
 from collections import defaultdict
 
+def scatter_plot(result, titles, verbose = False, **kwargs):
+	if verbose:
+		print('3-d scatter plot')
+
+	variable = titles['variable']
+	val0 = list(result.values())[0]
+	if result[variable].shape[0] == val0.shape[0]:
+		if verbose:
+			print('\t 3-d output', result[variable].shape, val0.shape)
+			print('\t 3d scatter plot')
+
+		if type(val0) == pd.DataFrame:
+			x = val0.values[:,0].tolist()
+			y = val0.values[:,1].tolist()
+			z = val0.values[:,2].tolist()
+		else:
+			x = val0[:,0].tolist()
+			y = val0[:,1].tolist()
+			z = val0[:,2].tolist()
+		
+		trace = go.Scatter3d(x = x, y = y, z = z,
+			mode = 'markers',
+			marker = dict(color = result[variable], colorscale = 'Viridis'),
+			)
+
+		layout = go.Layout(
+			title = titles['title'],
+			scene = dict(
+				xaxis = dict(title = 'x'),
+				yaxis = dict(title = 'y'),
+				zaxis = dict(title = 'z'),
+				))
+		chart_type = '3d-vector'
+	else:
+		print(result[variable].shape, val0.shape)
+		raise NotImplementedError('Not implemented yet')
+
+	return [trace], chart_type, layout
+
+
 
 def line_plot(result, titles, verbose = False, **kwargs):
 	'''N-d line plot f(t)'''
+	if verbose:
+		print('N-d line plot f(t)')
 	f = result[titles['variable']]
 	t_name, t = list(result.items())[0]
 	if len(result) == 2:
+		if type(f) == pd.DataFrame:
+			if type(f.index) == pd.MultiIndex:
+				assert len(t) == len(f)
+				l = []
+				t_start = 0
+				t_ = []
+				for seed, locs in f.groupby(level = 0):
+					locs = locs.append(pd.Series(), ignore_index=True)
+					l.append(locs)
+					t_.extend(t[t_start:t_start+len(locs)].tolist() + [np.nan])
+				f = pd.concat(l)
+				t = t_
+
+
 		if len(f.shape) == 1:
 			if verbose:
 				print('\t1-d output', f.shape)
@@ -43,9 +99,14 @@ def line_plot(result, titles, verbose = False, **kwargs):
 		elif f.shape[1] == 3: 
 			if verbose:
 				print('\t3-d output', f.shape)
-			x = f[:,0]
-			y = f[:,1]
-			z = f[:,2]
+			if type(f) == pd.DataFrame:
+				x = f.values[:,0]
+				y = f.values[:,1]
+				z = f.values[:,2]
+			else:
+				x = f[:,0]
+				y = f[:,1]
+				z = f[:,2]
 			# t_name, t = result.items()[0]
 			text = ["{}:{}".format(t_name, v) for v in t]
 			layout = go.Layout(
@@ -119,14 +180,29 @@ def vector_plot(result, titles, verbose = False, **kwargs):
 
 	elif (result[variable].shape == val0.shape) & (val0.shape[1] == 3):
 		if verbose:
-			print('\t 3-d output', result[variable].shape)
-		u = result[variable][:,0].tolist()
-		v = result[variable][:,1].tolist()
-		w = result[variable][:,2].tolist()
-		x = val0[:,0].tolist()
-		y = val0[:,1].tolist()
-		z = val0[:,2].tolist()
-		trace = go.Cone(x = x, y = y, z = z, u = u, v = v, w = w)
+			print('\t 3-d output', result[variable].shape, val0.shape)
+			print('\t 3d vector plot')
+		if type(result[variable]) == pd.DataFrame:
+			u = result[variable].values[:,0].tolist()
+			v = result[variable].values[:,1].tolist()
+			w = result[variable].values[:,2].tolist()
+		else:
+			u = result[variable][:,0].tolist()
+			v = result[variable][:,1].tolist()
+			w = result[variable][:,2].tolist()
+		if type(val0) == pd.DataFrame:
+			x = val0.values[:,0].tolist()
+			y = val0.values[:,1].tolist()
+			z = val0.values[:,2].tolist()
+		else:
+			x = val0[:,0].tolist()
+			y = val0[:,1].tolist()
+			z = val0[:,2].tolist()
+		norms = np.linalg.norm(result[variable], axis = 1)
+		trace = go.Cone(x = x, y = y, z = z, u = u, v = v, w = w,
+			hoverinfo = 'x+y+z+u+v+w+norm', colorscale = 'Reds',
+			cmin = 0, cmax = norms.max(),
+			)
 
 		layout = go.Layout(
 			title = titles['title'],
@@ -342,7 +418,8 @@ plot_dict = {
 	(1,)	:	{(('N','M'), ('N','M'), ('N','M')): {'name': '3d-parametric', 'func': surface}},
 	('N',)	:	{
 		(('N',),) : {'name': '1d-line', 'func': line_plot},
-		(('N',),('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},},
+		(('N',),('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},
+		(('N',3),): {'name': '3d scatter', 'func': scatter_plot},},
 	('N',2) :	{
 		(('N',),) :{'name': '2d-line', 'func': line_plot},
 		(('N',2),):{'name': '2d-vector', 'func': vector_plot},
@@ -371,6 +448,8 @@ def get_arg_shapes(*args):
 	for a in args:
 		if type(a) == np.ndarray:
 			shape = a.shape
+		elif type(a) == pd.DataFrame:
+			shape = a.values.shape
 		else:
 			try:
 				shape = (len(a),)
@@ -414,6 +493,9 @@ def get_plot_key(out_shape, *arg_shapes):
 			elif out_dim == ('N',3):
 				if arg_shapes[0][0] == out_shape[0]:
 					arg_dims = (('N',),)
+			elif out_dim == ('N',):
+				if arg_shapes[0] == (out_shape[0], 3):
+					arg_dims = (('N',3),)
 		elif nargs == 2:
 			if out_dim == ('N','M'):
 				if (arg_shapes[0][0] in out_shape) & (arg_shapes[1][0] in out_shape):

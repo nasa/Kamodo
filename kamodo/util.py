@@ -23,7 +23,7 @@ import numpy as np
 from sympy import latex, Eq
 from sympy.parsing.latex import parse_latex
 import pandas as pd
-
+from scipy.integrate import solve_ivp
 
 
 def get_unit_quantity(name, base, scale_factor, abbrev = None, unit_system = 'SI'):
@@ -36,7 +36,9 @@ def get_unit_quantity(name, base, scale_factor, abbrev = None, unit_system = 'SI
 
 unit_subs = dict(nT = get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
 				R_E = get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
-				erg = get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),)
+				erg = get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
+				nPa = get_unit_quantity('nanopascals', 'pascal', .000000001, 'nPa', 'SI'),
+				)
 
 # global_ureg = UnitRegistry()
 # global_ureg.define('m^3 = m * m * m = m3')
@@ -181,7 +183,7 @@ class DefaultOrderedDict(OrderedDict):
 											   OrderedDict.__repr__(self))
 
 
-def komodo_wrapper(f, *args, **kwargs):
+def decorator_wrapper(f, *args, **kwargs):
 	"""Wrapper needed by decorator.decorate to pass through args, kwargs"""
 	return f(*args, **kwargs)
 
@@ -222,7 +224,7 @@ def kamodofy(_func = None, units = '', data = None, update = None, equation = No
 
 
 
-		return decorate(f,komodo_wrapper) #preserves signature
+		return decorate(f,decorator_wrapper) #preserves signature
 	
 	if _func is None:
 		return decorator_kamodofy
@@ -472,3 +474,159 @@ def test_bibtex():
 	assert '@phdthesis' in h.meta['citation']
 
 
+
+
+# manually generate the appropriate function signature
+grid_wrapper_def =r"""def wrapped({signature}):
+	coordinates = np.meshgrid({arg_str}, indexing = 'xy')
+	points = np.column_stack([c.ravel() for c in coordinates])
+	return {fname}(points).reshape(coordinates[0].shape, order = 'A')
+	"""
+
+
+def gridify(_func = None, **defaults):
+	"""Given a function of shape (n,dim) and arguments of shape (L), (M), calls f with points L*M"""
+	def decorator_gridify(f):
+
+		arg_str = ', '.join([k for k in defaults])
+
+		signature = ''
+		for k,v in defaults.items():
+			signature = signature + "{} = {},".format(k,k)
+
+		scope = {**defaults}
+		scope['np'] = np
+		scope[f.__name__] = f
+
+		exec(grid_wrapper_def.format(signature = signature, arg_str = arg_str, fname = f.__name__), scope)
+		wrapped = scope['wrapped']
+		wrapped.__name__ = f.__name__
+		wrapped.__doc__ = f.__doc__
+		
+		return decorate(wrapped, decorator_wrapper)
+
+	if _func is None:
+		return decorator_gridify
+	else:
+		return decorator_gridify(_func)
+
+
+def pointlike(_func = None, signature = None, otypes = [np.float], squeeze = None):
+	"""Transforms a single-argument function to one that accepts m points of dimension n"""
+	def decorator_pointlike(func):
+		def argument_wrapper(f, *args, **kwargs):
+			"""Wrapper needed by decorator.decorate to pass through args, kwargs"""
+			if type(args[0]) != np.array:
+				args = [np.array(x) for x in args]
+			for i,x in enumerate(args):
+				if len(x.shape) == 1:
+					args[i] = np.expand_dims(x, axis = 0)
+			if squeeze is not None:
+				try:
+					return np.vectorize(f, otypes = otypes, signature = signature)(*args, **kwargs).squeeze(squeeze)
+				except:
+					return np.vectorize(f, otypes = otypes, signature = signature)(*args, **kwargs)
+			else:
+				return np.vectorize(f, otypes = otypes, signature = signature)(*args, **kwargs)
+
+		if not hasattr(func, '__name__'):
+			func.__name__ = 'pointlike'
+
+		return decorate(func, argument_wrapper)
+
+
+	if _func is None:
+		return decorator_pointlike
+	else:
+		return decorator_pointlike(_func)
+
+
+def event(func, terminal = True, direction = 0):
+    def wrapped(*args, **kwargs):
+        return func(*args, **kwargs)
+    wrapped.terminal = terminal
+    wrapped.direction = direction
+    return wrapped
+    
+
+def solve(fprime = None, seeds = None, varname = None, interval = None, 
+		  dense_output = True, # generate a callable solution
+		  events = None, # stop when event is triggered
+		  vectorized = True,
+		  npoints = 50,
+		  directions = (-1,1),
+		  verbose = False,
+		 ):
+	"""Decorator that solves initial value problem for a given function
+	
+	Can be used to generate streamlines, streaklines, fieldlines, etc
+	"""
+
+	if len(seeds.shape) > 1:
+		pass
+	else:
+		seeds = np.expand_dims(seeds, axis = 0)
+
+	t_eval = np.linspace(*interval, npoints)
+	nseeds = len(seeds)
+	
+	def decorator_solve(f):
+		solutions = []
+		t = []
+
+		fprime_ = {}
+		for d in directions:
+			fprime_[d] = lambda s, y: d*f(y.T)
+		
+		for i, seed in enumerate(seeds):
+			for d in directions:
+				result = solve_ivp(fprime_[d], interval, seed, 
+									dense_output = dense_output, 
+									events = events, 
+									vectorized = vectorized,
+									t_eval = t_eval)
+				solutions.append(result['sol'])
+				interval_bounded = result['t']
+				seed_numbers = np.ones(len(interval_bounded))*i #*len(directions) + 1*(d > 0) 
+				integrals =   interval_bounded[::d]*d*1j
+				if d < 0:
+					t.extend(list(seed_numbers + integrals))
+				else:
+					t.extend(list(seed_numbers + integrals)[1:])
+
+		
+		t = np.hstack(t)
+			
+
+		def solution(s = t):
+			s = np.array(s)
+			if len(s.shape) == 0:
+				s = np.expand_dims(s, axis=0)
+			
+			isolution = np.floor(s.real).astype(int)*len(directions) + (s.imag > 0) 
+
+			results = []
+			seed_number = []
+			integral = []
+			for soln, imag_ in zip(isolution, s.imag):
+				seed_number.append(np.floor(soln/len(directions)))
+				integral.append(imag_)
+				try:
+					if np.isnan(abs(soln+imag_)):
+						results.append(np.ones(isolution.shape[-1])*np.nan)
+					else:
+						results.append(solutions[soln](np.abs(imag_)))
+				except:
+					results.append(np.ones(isolution.shape[-1])*np.nan)
+			index_ = pd.MultiIndex.from_arrays([seed_number, integral], 
+											   names = ['seed', 'integral'])
+			return pd.DataFrame(np.vstack(results), index = index_).drop_duplicates()
+
+		solution.__name__ = varname
+
+		return decorate(solution,decorator_wrapper) #preserves signature
+
+	if fprime is None:
+		return decorator_solve
+	else:
+		return decorator_solve(fprime)
