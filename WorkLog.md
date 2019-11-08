@@ -1,3 +1,6 @@
+
+# 2019-11-08 15:53:02.859151: clock-in
+
 # 2019-10-18 16:47:23.366813: clock-out
 * looking at inverse mapping
 * Kamodofied pytiegcm
