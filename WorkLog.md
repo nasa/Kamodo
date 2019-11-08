@@ -121,12 +121,7 @@
 # 2019-08-14 16:18:12.261596: clock-out
 * finishing kamodofied models example
 
-* Had issues installing locally with `pip install .` Resolved by following tip [here](https://github.com/pypa/pip/issues/5247#issuecomment-410910018): 
-```console
-pip install --upgrade --force-reinstall pip==9.0.3
-pip install xxx --disable-pip-version-check
-pip install --upgrade pip
-```
+* Had issues installing locally with `pip install .` Need to use `pip install -e .` instead.
 
 # 2019-08-14 10:37:19.291831: clock-in
 
