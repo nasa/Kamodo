@@ -1,3 +1,7 @@
+# 2019-11-08 16:51:57.754553: clock-out
+* begin work on command line interface
+* trying facebook's hydra cli architecture
+* `pip install hydra-core --upgrade`
 
 # 2019-11-08 15:53:02.859151: clock-in
 
