@@ -1,3 +1,6 @@
+
+# 2019-11-11 09:35:53.331821: clock-in
+
 # 2019-11-08 16:51:57.754553: clock-out
 * begin work on command line interface
 * trying facebook's hydra cli architecture
