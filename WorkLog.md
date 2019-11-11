@@ -1,3 +1,5 @@
+# 2019-11-11 10:20:48.198321: clock-out
+* set up command-line plotting
 
 # 2019-11-11 09:35:53.331821: clock-in
 
