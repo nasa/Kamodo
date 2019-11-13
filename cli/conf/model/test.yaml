@@ -1,0 +1,48 @@
+model:
+  class: kamodo.Kamodo
+  params:
+    f[km]: x**2
+    g[cm]: y**2
+    h[m]: f+g
+    F: y**3
+
+  evaluate:
+    f:
+      x: [3, 4, 5]
+    g:
+      y:
+        min: -5
+        max: 5
+        n: 33
+    h:
+      x: 100
+      y: 100.
+    F:
+      y: [9, 10, 11]
+
+  plot:
+    g:
+      y:
+        min: -5
+        max: 5
+        n: 88
+  fig_layout:
+      width: 1200
+      height: 600
+
+  plot_conf:
+    show_link: False
+    link_text: 'Export to plot.ly'
+    validate: True
+    output_type: file
+    include_plotlyjs: True
+    filename: temp-plot.html
+    auto_open: True
+    image: Null
+    image_filename: plot_image
+    # image_width: 800
+    # image_height: 600
+    config: Null
+    include_mathjax: 'cdn'
+    auto_play: True
+    animation_opts: Null

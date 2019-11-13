@@ -13,6 +13,7 @@ setuptools.setup(
     long_description_content_type = "text/markdown",
     url = 'https://ccmc.gsfc.nasa.gov/Kamodo/',
     packages = setuptools.find_packages(),
+    entry_points={"console_scripts": ["kamodo = cli.main:entry"]},
     classifiers = [
 		"Programming Language :: Python :: 3.7",
 	    "Operating System :: OS Independent",
