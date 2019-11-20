@@ -3,9 +3,10 @@
 Kamodo is a tool for interacting with space weather models for use in visualization, research, education, and operations. Kamodo provides access to space weather models through readers and interpolators, and returns results in the users's preferred units coordinate system.
 
 ## Resources
-SciVision, Inc
 
-    https://www.scivision.co/f2py-running-fortran-code-in-python-on-windows/
+Examples of using Numpy `f2py` to compile Fortran code into importable Python modules:
+
+    https://www.scivision.dev/f2py-running-fortran-code-in-python-on-windows/
     https://github.com/scivision/f2py-examples
 
 Tutorial: Using Fortran from Python
