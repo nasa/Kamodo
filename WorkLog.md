@@ -1,3 +1,6 @@
+
+# 2019-11-20 15:30:59.817396: clock-in
+
 # 2019-11-20 12:42:32.541944: clock-out
 
 * on forwarding defaults: consider leveraging a function's .data during composition.
