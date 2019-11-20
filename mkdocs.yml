@@ -9,6 +9,7 @@ nav:
 - Kamodofying Models: notebooks/Kamodofying_Models.ipynb
 - Field Integration: notebooks/FieldIntegration.ipynb
 - Kameleon: notebooks/kameleon-kamodo.ipynb
+- TIEGCM: notebooks/TIEGCM.ipynb
 
 theme: readthedocs
 plugins:
