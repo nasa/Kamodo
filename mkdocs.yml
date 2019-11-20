@@ -8,6 +8,7 @@ nav:
 - Syntax: notebooks/Syntax.ipynb
 - Kamodofying Models: notebooks/Kamodofying_Models.ipynb
 - Field Integration: notebooks/FieldIntegration.ipynb
+- Kameleon: notebooks/kameleon-kamodo.ipynb
 
 theme: readthedocs
 plugins:
