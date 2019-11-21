@@ -1,3 +1,6 @@
+
+# 2019-11-21 09:50:46.684607: clock-in
+
 # 2019-11-20 16:27:17.501485: clock-out
 * moved docs/notebooks/kameleon/kameleon_gateway.py into kamodo/readers
 * pushed recent work
