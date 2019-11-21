@@ -1,3 +1,5 @@
+# 2019-11-21 10:27:47.314091: clock-out
+* cdflib: switching to multiindex for all dependencies
 
 # 2019-11-21 09:50:46.684607: clock-in
 
