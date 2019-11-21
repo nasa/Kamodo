@@ -59,7 +59,8 @@ class cdf_Kamodo(Kamodo):
 
     def __init__(self, filename, varformat = '*', 
                  var_types = ['data', 'support_data'], 
-                 center_measurement = False, **kwargs):
+                 center_measurement = False, raise_errors = False, **kwargs):
+        self._raise_errors = raise_errors
         self._filename = filename
         self._varformat = varformat
         self._var_types = var_types
@@ -72,6 +73,7 @@ class cdf_Kamodo(Kamodo):
         self._dependencies = {}
         self._var_types = var_types
         self._center_measurement = center_measurement
+
         self._citation = self.get_citation()
         
         super(cdf_Kamodo, self).__init__(**kwargs)
@@ -88,8 +90,12 @@ class cdf_Kamodo(Kamodo):
         """Sets variable dependency unique to filename"""
         self._dependencies[self._filename + x_axis_var] = x_axis_data
     
-    def set_epoch(self, x_axis_var, data_type_description):
+    def set_epoch(self, x_axis_var):
         """Stores epoch dependency"""
+
+        data_type_description \
+            = self._cdf_file.varinq(x_axis_var)['Data_Type_Description']
+
         center_measurement = self._center_measurement
         cdf_file = self._cdf_file
         if self.get_dependency(x_axis_var) is None:
@@ -153,7 +159,42 @@ class cdf_Kamodo(Kamodo):
                 xdata = np.array(xdata) + delta_time
                 # xdata = pd.to_datetime(xdata,  unit = 's')
                 self.set_dependency(x_axis_var, xdata)
-                
+
+    def get_index(self, variable_name):
+        var_atts = self._cdf_file.varattsget(variable_name)
+
+        if "DEPEND_TIME" in var_atts:
+            x_axis_var = var_atts["DEPEND_TIME"]
+            self.set_epoch(x_axis_var)
+        elif "DEPEND_0" in var_atts:
+            x_axis_var = var_atts["DEPEND_0"]
+            self.set_epoch(x_axis_var)
+
+        dependencies = []
+        for suffix in ['TIME'] + list('0123'):
+            dependency = "DEPEND_{}".format(suffix)
+            dependency_name = var_atts.get(dependency)
+            if dependency_name is not None:
+                dependency_data = self.get_dependency(dependency_name)
+                if dependency_data is None:
+                    dependency_data = self._cdf_file.varget(dependency_name)
+                    # get first unique row
+                    dependency_data = pd.DataFrame(dependency_data).drop_duplicates().values[0]
+                    self.set_dependency(dependency_name, dependency_data)
+                dependencies.append(dependency_data)
+
+        index_ = None
+        if len(dependencies) == 0:
+            pass
+        elif len(dependencies) == 1:
+            index_ = dependencies[0]
+        else:
+            index_ = pd.MultiIndex.from_product(dependencies)
+
+        return index_
+
+
+
         
     def load_variables(self):
         """loads cdf variables based on varformat
@@ -182,20 +223,6 @@ class cdf_Kamodo(Kamodo):
                 continue
 
             var_properties = self._cdf_file.varinq(variable_name)
-            if "DEPEND_TIME" in var_atts:
-                x_axis_var = var_atts["DEPEND_TIME"]
-            elif "DEPEND_0" in var_atts:
-                x_axis_var = var_atts["DEPEND_0"]
-            else:
-#                 print("skipping {} (no DEPEND_TIME or DEPEND_0)".format(variable_name))
-                continue
-
-            data_type_description \
-                = self._cdf_file.varinq(x_axis_var)['Data_Type_Description']
-
-            if self.get_dependency(x_axis_var) is None:
-                self.set_epoch(x_axis_var, data_type_description)
-            xdata = self.get_dependency(x_axis_var)
 
             try:
                 ydata = self._cdf_file.varget(variable_name)
@@ -219,39 +246,25 @@ class cdf_Kamodo(Kamodo):
                     if ydata[ydata == var_atts["FILLVAL"]].size != 0:
                         ydata[ydata == var_atts["FILLVAL"]] = np.nan
             
-            dependencies = []
-            for suffix in list('123'):
-                dependency = "DEPEND_{}".format(suffix)
-                dependency_name = var_atts.get(dependency)
-                if dependency_name is not None:
-                    if self.get_dependency(dependency_name) is None:
-                        dependency_data = self._cdf_file.varget(dependency_name)
-                        # get first unique row
-                        dependency_data = pd.DataFrame(dependency_data).drop_duplicates().values[0]
-                        self.set_dependency(dependency_name, dependency_data)
-                    dependencies.append(self.get_dependency(dependency_name))
+            index = self.get_index(variable_name)
 
-            columns = None
-            if len(dependencies) == 0:
-                pass
-            elif len(dependencies) == 1:
-                columns = dependencies[0]
-            else:
-                columns = pd.MultiIndex.from_product(dependencies)
-                
+            
+            try:
+                if isinstance(index, pd.MultiIndex):
+                    self.data[variable_name] = pd.DataFrame(ydata.ravel(), index = index)
+                else:
+                    if len(ydata.shape) == 1:
+                        self.data[variable_name] = pd.Series(ydata, index = index)
+                    elif len(ydata.shape) > 1:
+                        self.data[variable_name] = convert_ndimensional(ydata, index = index)
+                    else:
+                        raise NotImplementedError('Cannot handle {} with shape {}'.format(variable_name, ydata.shape))
+            except:
+                self.data[variable_name] = {'ydata':ydata, 'index':index}
+
             self.meta[variable_name] = var_atts
-                    
-            if len(ydata.shape) == 1:
-#                 print('registering {} without columns'.format(variable_name))
-                self.data[variable_name] = pd.Series(ydata, index = xdata)
-            elif len(ydata.shape) > 1:
-                self.data[variable_name] = convert_ndimensional(
-                    ydata, index = xdata, columns = columns) # don't pass deps yet
+            
 
-            else:
-#                 print('skipping {} ({})'.format(variable_name, ydata.shape))
-                continue
-    
     def get_citation(self, docs = ['Project', 
                                     'Source_name', 
                                     'PI_name', 
@@ -277,14 +290,16 @@ class cdf_Kamodo(Kamodo):
         for variable_name, df in self.data.items():
         
             dependencies = []
-            for i in list('01234'):
+            for i in ['TIME'] + list('01234'):
                 dependency_name = self.meta[variable_name].get('DEPEND_{}'.format(i))
                 if dependency_name is not None:
                     dependencies.append(dependency_name)
-                    
+            if len(dependencies) == 0:
+                # print('not registering {}: no dependencies'.format(variable_name))
+                continue
 
 
-            probe, inst, param, coord = variable_name.split('_')[:4]
+            # probe, inst, param, coord = variable_name.split('_')[:4]
 #             regname = '{param}{component}_{probe}__{coord}'.format(
 #                 probe = probe, param = param, coord = coord, 
 #                 component = '')
@@ -292,23 +307,31 @@ class cdf_Kamodo(Kamodo):
             docstring = self.meta[variable_name]['CATDESC']
             units = self.meta[variable_name]['UNITS']
             citation = self._citation
-            
 
-            if (len(dependencies) == 1) & (dependencies[0].lower() in ['epoch']):
+
+            if isinstance(df.index, pd.MultiIndex):
+                indices = df.index.levels
+                data_shape = [len(i) for i in indices]
+                grid_interpolator = RegularGridInterpolator(
+                    indices, 
+                    df.values.reshape(data_shape),
+                    bounds_error = False)
+
+                grid_interpolator.__name__ = variable_name
+
+                grid_args = {d: self.get_dependency(d) for d in dependencies}
+                interpolator = gridify(grid_interpolator, **grid_args)
+
+            elif (len(dependencies) == 1) & (dependencies[0].lower() in ['epoch']):
                 interpolator = get_interpolator(time_interpolator, 
                                                 regname,
                                                 df,
                                                 df.index,
                                                 docstring)
             else:
-                grid_interpolator = RegularGridInterpolator(
-                    (df.index, df.columns), 
-                    df.values, 
-                    bounds_error = False)
-                grid_interpolator.__name__ = variable_name
+                print('can not register {}'.format(variable_name))
+                continue
 
-                grid_args = {d: self.get_dependency(d) for d in dependencies}
-                interpolator = gridify(grid_interpolator, **grid_args)
 
             
             self[regname] = kamodofy(interpolator, 
