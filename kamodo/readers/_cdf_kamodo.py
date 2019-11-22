@@ -57,22 +57,36 @@ class cdf_Kamodo(Kamodo):
     Loading routines borrows heavily from pyspedas's cdf_to_tplot function
     """
 
-    def __init__(self, filename, varformat = '*', 
-                 var_types = ['data', 'support_data'], 
-                 center_measurement = False, raise_errors = False, **kwargs):
+    def __init__(self, filename, 
+                varformat = '*', # regular expressions
+                var_types = ['data', 'support_data'], 
+                center_measurement = False,
+                raise_errors = False,
+                regnames = None,
+                datetime = False,
+                **kwargs):
         self._raise_errors = raise_errors
         self._filename = filename
         self._varformat = varformat
         self._var_types = var_types
-        self._cdf_file = cdflib.CDF(self._filename)
-        self._cdf_info = self._cdf_file.cdf_info()
-        self.data = {}
-        self.meta = {}
-        self._variable_names = self._cdf_info['rVariables'] +\
-            self._cdf_info['zVariables']
-        self._dependencies = {}
+        self._datetime = datetime
         self._var_types = var_types
         self._center_measurement = center_measurement
+
+        #registration names map from file parameters to kamodo-compatible names
+        if regnames is None:
+            regnames = {}
+        self._regnames = regnames 
+
+        self._cdf_file = cdflib.CDF(self._filename)
+        self._cdf_info = self._cdf_file.cdf_info()
+        self.data = {} #python-in-Heliophysics Community data standard
+        self.meta = {} #python-in-Heliophysics Community metadata standard
+        self._dependencies = {}
+
+        self._variable_names = self._cdf_info['rVariables'] +\
+            self._cdf_info['zVariables']
+        
 
         self._citation = self.get_citation()
         
@@ -157,7 +171,8 @@ class cdf_Kamodo(Kamodo):
                     ('CDF_EPOCH' in data_type_description):
                 xdata = cdflib.cdfepoch.unixtime(xdata)
                 xdata = np.array(xdata) + delta_time
-                # xdata = pd.to_datetime(xdata,  unit = 's')
+                if self._datetime:
+                    xdata = pd.to_datetime(xdata,  unit = 's')
                 self.set_dependency(x_axis_var, xdata)
 
     def get_index(self, variable_name):
@@ -194,8 +209,6 @@ class cdf_Kamodo(Kamodo):
         return index_
 
 
-
-        
     def load_variables(self):
         """loads cdf variables based on varformat
 
@@ -299,11 +312,7 @@ class cdf_Kamodo(Kamodo):
                 continue
 
 
-            # probe, inst, param, coord = variable_name.split('_')[:4]
-#             regname = '{param}{component}_{probe}__{coord}'.format(
-#                 probe = probe, param = param, coord = coord, 
-#                 component = '')
-            regname = variable_name
+            regname = self._regnames.get(variable_name, variable_name)
             docstring = self.meta[variable_name]['CATDESC']
             units = self.meta[variable_name]['UNITS']
             citation = self._citation
