@@ -1,3 +1,61 @@
+# 2019-11-22 09:57:46.571462: clock-out
+
+# 2019-11-22 09:09:13.743347: clock-in
+
+# 2019-11-21 12:09:12.103191: clock-out
+
+# 2019-11-21 11:01:35.147547: clock-in
+
+# 2019-11-21 10:27:47.314091: clock-out
+* cdflib: switching to multiindex for all dependencies
+
+# 2019-11-21 09:50:46.684607: clock-in
+
+# 2019-11-20 16:27:17.501485: clock-out
+* moved docs/notebooks/kameleon/kameleon_gateway.py into kamodo/readers
+* pushed recent work
+* created pull request
+
+# 2019-11-20 15:30:59.817396: clock-in
+
+# 2019-11-20 12:42:32.541944: clock-out
+
+* on forwarding defaults: consider leveraging a function's .data during composition.
+this would allow each downstream function to have automatic defaults!
+* need to push these changes
+
+# 2019-11-20 12:06:16.296442: clock-in
+
+# 2019-11-20 11:58:22.508485: clock-out
+* Kamodofied cdflib!
+
+# 2019-11-20 09:35:49.895291: clock-in
+
+# 2019-11-13 09:40:03.974566: clock-out
+
+# 2019-11-13 08:58:52.993108: clock-in
+
+# 2019-11-12 20:37:52.561965: clock-out
+
+# 2019-11-12 19:17:10.399952: clock-in
+
+# 2019-11-12 18:55:01.500196: clock-out
+* command line
+
+# 2019-11-12 18:37:46.018928: clock-in
+
+# 2019-11-11 10:20:48.198321: clock-out
+* set up command-line plotting
+
+# 2019-11-11 09:35:53.331821: clock-in
+
+# 2019-11-08 16:51:57.754553: clock-out
+* begin work on command line interface
+* trying facebook's hydra cli architecture
+* `pip install hydra-core --upgrade`
+
+# 2019-11-08 15:53:02.859151: clock-in
+
 # 2019-10-18 16:47:23.366813: clock-out
 * looking at inverse mapping
 * Kamodofied pytiegcm
@@ -121,12 +179,7 @@
 # 2019-08-14 16:18:12.261596: clock-out
 * finishing kamodofied models example
 
-* Had issues installing locally with `pip install .` Resolved by following tip [here](https://github.com/pypa/pip/issues/5247#issuecomment-410910018): 
-```console
-pip install --upgrade --force-reinstall pip==9.0.3
-pip install xxx --disable-pip-version-check
-pip install --upgrade pip
-```
+* Had issues installing locally with `pip install .` Need to use `pip install -e .` instead.
 
 # 2019-08-14 10:37:19.291831: clock-in
 
