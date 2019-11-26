@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>TIEGCM - Kamodo Analysis Suite</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "TIEGCM";
+    var mkdocs_page_input_path = "notebooks/TIEGCM.ipynb";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> Kamodo Analysis Suite</a>
+        
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../about/">About</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodo/">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Visualization/">Visualization</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Syntax/">Syntax</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodofying_Models/">Kamodofying Models</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../FieldIntegration/">Field Integration</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../kameleon-kamodo/">Kameleon</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">TIEGCM</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#tiegcm">TIEGCM</a></li>
+    
+
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">Kamodo Analysis Suite</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>TIEGCM</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="tiegcm">TIEGCM<a class="headerlink" href="#tiegcm" title="Permanent link">&para;</a></h1>
+<p>The kamodofied tiegcm requires the pytiegcm reader available on github:</p>
+<pre><code>pip install -e git+https://github.com/asher-pembroke/pytiegcm.git#egg=pytiegcm
+</code></pre>
+<p>The TIEGCM reader also requires <code>netcdf4</code> (and numpy, scipy, and pandas, but those are required by kamodo)</p>
+<pre><code>pip install netcdf4
+</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This is a work in progress!</p>
+</div>
+<pre><code class="python">filename = '/Users/apembrok/Work/TIEGCM/sample_data/jasoon_shim_040118_IT_1/s001.nc' # ccmc run (no zgmid)
+fname = '/Users/apembrok/Downloads/2013.03.01.tie-gcm.data/s003.nc' # (no zgmid)
+</code></pre>
+
+<pre><code class="python">from kamodo import readers
+</code></pre>
+
+<pre><code class="python">from kamodo.readers.tiegcm import TIEGCM_Kamodo
+</code></pre>
+
+<p>By default, the kamodofied TIEGCM reader will load all 3d and 4d variables from the model. For performance reasons, you may want to only include certain variables for analysis. To do so, pass a list of variables in addition to the filename:</p>
+<pre><code class="python">tiegcm = TIEGCM_Kamodo(fname, ['TN', 'UN', 'VN', 'EFLUX', 'Z'])
+
+</code></pre>
+
+<pre><code>initializing tiegcm with /Users/apembrok/Downloads/2013.03.01.tie-gcm.data/s003.nc
+
+
+/Users/apembrok/git/kamodo/docs/notebooks/src/pytiegcm/tiegcm/tiegcm.py:213: UserWarning:
+
+WARNING: missing_value not used since it
+cannot be safely cast to variable data type
+
+
+
+registered 5 variables
+</code></pre>
+<pre><code class="python">tiegcm
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{TN}{\left(t,ilev,lat,lon \right)} [K] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{UN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{VN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}Z{\left(t,ilev,lat,lon \right)} [cm] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{EFLUX}{\left(t,lat,lon \right)} = \lambda{\left(t,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{ilev}{\left(t,z,lat,lon \right)} = \lambda{\left(t,z,lat,lon \right)}\end{equation}</script>
+</p>
+<p>Below is an attempt to use function composition to solve variables as a function of height.</p>
+<pre><code class="python">from scipy.interpolate import interp1d
+</code></pre>
+
+<pre><code class="python">import numpy as np
+z = np.squeeze(tiegcm.Z(tiegcm._time[0], lat = 0, lon = 0))
+</code></pre>
+
+<pre><code class="python">tiegcm['T_N(t, z, lat, lon)'] = 'TN(t,ilev, lat, lon)'
+</code></pre>
+
+<pre><code class="python">tiegcm
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{TN}{\left(t,ilev,lat,lon \right)} [K] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{UN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{VN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}Z{\left(t,ilev,lat,lon \right)} [cm] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{EFLUX}{\left(t,lat,lon \right)} = \lambda{\left(t,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{ilev}{\left(t,z,lat,lon \right)} = \lambda{\left(t,z,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{T_{N}}{\left(t,z,lat,lon \right)} = \operatorname{TN}{\left(t,\operatorname{ilev}{\left(t,z,lat,lon \right)},lat,lon \right)}\end{equation}</script>
+</p>
+<pre><code class="python">import numpy as np
+
+@np.vectorize
+def lev(self, t, z, lat, lon):
+    # 1) meshgrid and squeeze the shapes of time, lat, lon if they are not the same
+    # 2) calculate z_levels for all points
+    # 3) construct rgi for (time, z_level, lat, lon)
+    # 4) interpolate over z
+
+    z_levels = self.Z(time = t, lat = lat, lon = lon)
+    level = scipy.interpolate.interp1d(z_levels, ilev, bounds_error=False)
+    return level(z)
+tiegcm.lev = lev
+</code></pre>
+
+<pre><code class="python">tiegcm['ilev'] = lev
+</code></pre>
+
+<pre><code class="python">tiegcm['T_N(t, z, lat, lon)'] = 'TN(t, ilev, lat, lon)'
+</code></pre>
+
+<pre><code class="python">tiegcm
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{TN}{\left(t,ilev,lat,lon \right)} [K] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{UN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{VN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}Z{\left(t,ilev,lat,lon \right)} [cm] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{EFLUX}{\left(t,lat,lon \right)} = \lambda{\left(t,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{ilev}{\left(t,z,lat,lon \right)} = \lambda{\left(t,z,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{T_{N}}{\left(t,z,lat,lon \right)} = \operatorname{TN}{\left(t,\operatorname{ilev}{\left(t,z,lat,lon \right)},lat,lon \right)}\end{equation}</script>
+</p>
+<pre><code class="python">tiegcm['eflux'] = 'EFLUX(t, lat, lon)'
+</code></pre>
+
+<pre><code class="python">tiegcm
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{TN}{\left(t,ilev,lat,lon \right)} [K] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{UN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{VN}{\left(t,ilev,lat,lon \right)} [cm/s] = \lambda{\left(t,ilev,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{EFLUX}{\left(t,lat,lon \right)} = \lambda{\left(t,lat,lon \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}t{\left(ilev \right)} = \lambda{\left(ilev \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{eflux}{\left(ilev,lat,lon \right)} = \operatorname{EFLUX}{\left(t{\left(ilev \right)},lat,lon \right)}\end{equation}</script>
+</p>
+<pre><code class="python">%load_ext autoreload
+%autoreload 2
+</code></pre>
+
+<pre><code>The autoreload extension is already loaded. To reload it, use:
+  %reload_ext autoreload
+</code></pre>
+<pre><code class="python">
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../kameleon-kamodo/" class="btn btn-neutral" title="Kameleon"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../kameleon-kamodo/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
+
+</body>
+</html>

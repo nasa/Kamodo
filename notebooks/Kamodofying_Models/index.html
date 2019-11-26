@@ -99,6 +99,16 @@
     <a class="" href="../FieldIntegration/">Field Integration</a>
 	    </li>
           
+            <li class="toctree-l1">
+		
+    <a class="" href="../kameleon-kamodo/">Kameleon</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../TIEGCM/">TIEGCM</a>
+	    </li>
+          
         </ul>
       </div>
       &nbsp;
@@ -164,6 +174,10 @@ import numpy as np
 import plotly.io as pio
 </code></pre>
 
+<pre><code>/Users/apembrok/git/kamodo/kamodo/readers/__init__.py:7: UserWarning:
+
+TIEGCM reader not installed
+</code></pre>
 <pre><code class="python">class MyModel(Kamodo): 
     def __init__(self, filename, **kwargs):
         # perform any necessary I/O
@@ -384,15 +398,15 @@ model
 <script type="math/tex; mode=display">\begin{equation}P{\left(\vec{x} \right)} [nPa] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
 <script type="math/tex; mode=display">\begin{equation}\operatorname{P_{ijk}}{\left(x_{i},y_{j},z_{k} \right)} [nPa] = \lambda{\left(x_{i},y_{j},z_{k} \right)}\end{equation}</script>
 </p>
-<pre><code class="python">model.variables['rho']['data'][1,1,1]
+<pre><code class="python">model.rho((2,5,8))
 </code></pre>
 
-<pre><code>48.82129591836735
+<pre><code>array(83.244)
 </code></pre>
-<pre><code class="python">model.variables['P']['data'][1,1,1]
+<pre><code class="python">model.P((2,5,8))
 </code></pre>
 
-<pre><code>68.73217155612245
+<pre><code>array(93.02)
 </code></pre>
 <pre><code class="python">model.detail()
 </code></pre>

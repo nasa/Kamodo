@@ -8,7 +8,7 @@
   
   
   <link rel="shortcut icon" href="../../img/favicon.ico">
-  <title>Purpose - Kamodo Analysis Suite</title>
+  <title>Kameleon - Kamodo Analysis Suite</title>
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
   <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
@@ -17,7 +17,7 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "Purpose";
+    var mkdocs_page_name = "Kameleon";
     var mkdocs_page_input_path = "notebooks/kameleon-kamodo.ipynb";
     var mkdocs_page_url = null;
   </script>
@@ -79,6 +79,22 @@
     <a class="" href="../FieldIntegration/">Field Integration</a>
 	    </li>
           
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Kameleon</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#purpose">Purpose</a></li>
+    
+
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../TIEGCM/">TIEGCM</a>
+	    </li>
+          
         </ul>
       </div>
       &nbsp;
@@ -101,7 +117,7 @@
     
       
     
-    <li>Purpose</li>
+    <li>Kameleon</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -114,107 +130,20 @@
                 <h1 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h1>
 <p>This notebook tracks development of a wrapper for the kameleon software suite to support legacy ccmc models until python 3 model readers become available. </p>
 <p>This notebook should be executed from a python3 environment with kamodo installed.</p>
-<pre><code class="python">!which python
-</code></pre>
-
-<pre><code>/Users/apembrok/miniconda3/envs/kamodo/bin/python
-</code></pre>
 <pre><code class="python">!python --version
 </code></pre>
 
 <pre><code>Python 3.7.3
 </code></pre>
-<pre><code class="python">from kamodo import kamodofy
+<pre><code class="python">from kamodo.readers._kameleon_kamodo import Kameleon
 </code></pre>
 
-<pre><code class="python">from kamodo import Kamodo, kamodofy
-from kameleon import kameleon_gateway
-
-import execnet
-
-class Kameleon(Kamodo):
-    def __init__(self, filename, python_path, *variables, **kwargs):
-
-        self._current_file = filename
-        self._python_path = python_path
-        self.make_gateway()
-
-        self.open_file(filename, *variables)
-
-        super(Kameleon, self).__init__(**kwargs)
-
-        self.make_interpolators()
-
-
-    def get_coords(self):
-        &quot;&quot;&quot;Extracts coordinate list from grid_system_1 metadata:
-            STRING: grid_system_1: [X,Y,Z]
-        '&quot;&quot;&quot;
-        coords = self._metadata['grid_system_1'].split(':')[-1].strip()
-        coords = ''.join(c for c in coords if c not in '[]') # remove brackets
-        coords = [c.strip().lower() for c in coords.split(',')]
-        return coords
-
-    def make_gateway(self):
-        &quot;&quot;&quot;Create a gateway into python installed with kameleon&quot;&quot;&quot;
-        gateway_spec = 'popen//dont_write_bytecode//python={}'.format(self._python_path)
-        self._gw = execnet.makegateway(gateway_spec)
-        self._ch = self._gw.remote_exec(kameleon_gateway)
-
-    def open_file(self, file_name, *variables):
-        args = [file_name] + list(variables)
-        cmd_args = &quot;, &quot;.join([&quot;'{}'&quot;.format(s) for s in args])
-        cmd = &quot;initialize({})&quot;.format(cmd_args)
-        try:
-            self._ch.send(cmd) # execute func-call remotely
-        except self._ch.RemoteError as m:
-            print(m)
-
-        try:
-            self._metadata = self._ch.receive()
-            for variable_name in variables:
-                assert variable_name in self._metadata['variables']
-            # sort variable metadata in the same order as input
-            self._metadata['variables'] = {variable : self._metadata['variables'][variable] \
-                                           for variable in variables}
-
-            self._current_file = file_name
-        except:
-            print('could not open file')
-            print('offending command:\n\t{}'.format(cmd))
-            print(self._metadata)
-        print('{} opened'.format(file_name))
-
-
-    def interpolate(self, variable_name, c0, c1, c2):
-
-        self._ch.send(&quot;interpolate('{}',{},{},{})&quot;.format(variable_name, c0, c1, c2))
-
-        return self._ch.receive()
-
-    def make_interpolators(self):
-        for variable, metadata in self._metadata['variables'].items():
-            coords = self.get_coords()
-            units = metadata['units']
-            exec_str = &quot;&quot;&quot;def interpolate({components}):
-                package = '{varname}', {c0}, {c1}, {c2}
-                self._ch.send(package)
-                return self._ch.receive()
-            &quot;&quot;&quot;.format(components = ', '.join(coords),
-                      varname = variable,
-                      c0 = coords[0],
-                      c1 = coords[1],
-                      c2 = coords[2])
-            d = {'self':self}
-            exec(exec_str, d)
-            interp_func = d['interpolate']
-            self[variable] = kamodofy(interp_func, units = units)
-
-# may need to specify the full path to lfm, else file doesn't load correctly
+<pre><code class="python"># may need to specify the full path to cdf, else file doesn't load correctly
 fname = '/Users/apembrok/Work/Kameleon_Sample_Data/LFM/Nov2015.LFM.S1-OF_mhd_2002-09-30T03-16-00Z.cdf'
+
+# python_path should point to a python2 executeable with kameleon installed
 python_path = '/Users/apembrok/miniconda2/envs/klive/bin/python'
 kameleon = Kameleon(fname, python_path, 'rho', 'p', 'bx','by','bz')
-
 </code></pre>
 
 <pre><code>/Users/apembrok/Work/Kameleon_Sample_Data/LFM/Nov2015.LFM.S1-OF_mhd_2002-09-30T03-16-00Z.cdf opened
@@ -223,38 +152,76 @@ kameleon = Kameleon(fname, python_path, 'rho', 'p', 'bx','by','bz')
 </code></pre>
 
 <p>
-<script type="math/tex; mode=display">\begin{equation}\rho{\left(x,y,z \right)} [amu/cm^3] = \lambda{\left(x,y,z \right)}\end{equation}</script>
-<script type="math/tex; mode=display">\begin{equation}p{\left(x,y,z \right)} [nPa] = \lambda{\left(x,y,z \right)}\end{equation}</script>
-<script type="math/tex; mode=display">\begin{equation}\operatorname{bx}{\left(x,y,z \right)} [nT] = \lambda{\left(x,y,z \right)}\end{equation}</script>
-<script type="math/tex; mode=display">\begin{equation}\operatorname{by}{\left(x,y,z \right)} [nT] = \lambda{\left(x,y,z \right)}\end{equation}</script>
-<script type="math/tex; mode=display">\begin{equation}\operatorname{bz}{\left(x,y,z \right)} [nT] = \lambda{\left(x,y,z \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\rho{\left(\vec{x} \right)} [amu/cm^3] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}p{\left(\vec{x} \right)} [nPa] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{bx}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{by}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{bz}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
 </p>
-<pre><code class="python">kameleon.p(-30,0,0)
+<pre><code class="python">from kamodo import gridify
+import numpy as np
+points = np.arange(12*3).reshape((-1,3))
 </code></pre>
 
-<pre><code>0.005562467034906149
-</code></pre>
-<pre><code class="python">kameleon.rho(-30,0,0)
+<pre><code class="python">kameleon.rho(points)
 </code></pre>
 
-<pre><code>0.3747256398200989
+<pre><code>array([ 1.75048208e+00,  4.82881117e+00,  5.63864784e+01,  1.87258148e+01,
+        1.88226109e+01,  1.85908566e+01,  1.87104950e+01,  1.86995926e+01,
+        1.86710930e+01,  1.86786823e+01, -1.09951163e+12, -1.09951163e+12])
 </code></pre>
-<pre><code class="python">kameleon.bx(-30, 0, 0)
-</code></pre>
-
-<pre><code>-14.527422904968262
-</code></pre>
-<pre><code class="python">%load_ext autoreload
-
-%autoreload 2
+<pre><code class="python">kameleon.bx([[-30, 0, 0], [-20, 0, 0]])
 </code></pre>
 
-<pre><code class="python">
+<pre><code>[-14.527422904968262, -11.133100509643555]
 </code></pre>
+<pre><code class="python">kameleon
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\rho{\left(\vec{x} \right)} [amu/cm^3] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}p{\left(\vec{x} \right)} [nPa] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{bx}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{by}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{bz}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+</p>
+<pre><code class="python">kameleon['bz_ijk'] = gridify(kameleon.bz, 
+                             x = np.linspace(-25, -10, 30),
+                             y = np.linspace(-10, 10, 40), z = 0)
+kameleon
+</code></pre>
+
+<p>
+<script type="math/tex; mode=display">\begin{equation}\rho{\left(\vec{x} \right)} [amu/cm^3] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}p{\left(\vec{x} \right)} [nPa] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{bx}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{by}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{bz}{\left(\vec{x} \right)} [nT] = \lambda{\left(\vec{x} \right)}\end{equation}</script>
+<script type="math/tex; mode=display">\begin{equation}\operatorname{bz_{ijk}}{\left(x,y,z \right)} = \lambda{\left(x,y,z \right)}\end{equation}</script>
+</p>
+<pre><code class="python">fig = kameleon.plot('bz_ijk')
+fig.layout.scene.aspectmode = 'data'
+</code></pre>
+
+<pre><code class="python">import plotly.io as pio
+
+pio.write_image(fig, 'images/kameleon_sample_out.svg')
+</code></pre>
+
+<p><img alt="kameleon_sample" src="../images/kameleon_sample_out.svg?1" /></p>
               
             </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../TIEGCM/" class="btn btn-neutral float-right" title="TIEGCM">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../FieldIntegration/" class="btn btn-neutral" title="Field Integration"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -278,6 +245,10 @@ kameleon = Kameleon(fname, python_path, 'rho', 'p', 'bx','by','bz')
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
+        <span><a href="../FieldIntegration/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../TIEGCM/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
