@@ -268,12 +268,16 @@ class cdf_Kamodo(Kamodo):
                 else:
                     if len(ydata.shape) == 1:
                         self.data[variable_name] = pd.Series(ydata, index = index)
-                    elif len(ydata.shape) > 1:
+                    elif len(ydata.shape) == 2:
+                        self.data[variable_name] = pd.DataFrame(ydata, index = index)
+                    elif len(ydata.shape) >2:
                         self.data[variable_name] = convert_ndimensional(ydata, index = index)
                     else:
                         raise NotImplementedError('Cannot handle {} with shape {}'.format(variable_name, ydata.shape))
             except:
                 self.data[variable_name] = {'ydata':ydata, 'index':index}
+                if self._raise_errors:
+                    raise
 
             self.meta[variable_name] = var_atts
             
@@ -311,6 +315,9 @@ class cdf_Kamodo(Kamodo):
                 # print('not registering {}: no dependencies'.format(variable_name))
                 continue
 
+            if not hasattr(df, 'index'):
+                print('{} has no index, skipping..'.format(variable_name))
+                continue
 
             regname = self._regnames.get(variable_name, variable_name)
             docstring = self.meta[variable_name]['CATDESC']
@@ -331,7 +338,8 @@ class cdf_Kamodo(Kamodo):
                 grid_args = {d: self.get_dependency(d) for d in dependencies}
                 interpolator = gridify(grid_interpolator, **grid_args)
 
-            elif (len(dependencies) == 1) & (dependencies[0].lower() in ['epoch']):
+            # catch time dependencies such as Epoch_state and Epoch
+            elif (len(dependencies) == 1) & ('epoch' in dependencies[0].lower()):
                 interpolator = get_interpolator(time_interpolator, 
                                                 regname,
                                                 df,
