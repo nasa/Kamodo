@@ -1,4 +1,9 @@
+
+# 2019-11-27 12:06:51.013991: clock-in
+
 # 2019-11-22 09:57:46.571462: clock-out
+
+* regex matching https://stackoverflow.com/questions/1687620/regex-match-everything-but-specific-pattern
 
 # 2019-11-22 09:09:13.743347: clock-in
 
