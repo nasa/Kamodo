@@ -1,3 +1,5 @@
+# 2019-12-05 21:55:15.506661: clock-out
+* looking at Y-combinator for recursive anonymous functions
 
 # 2019-12-05 21:54:44.630995: clock-in: T-90m
 
