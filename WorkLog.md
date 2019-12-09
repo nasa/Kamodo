@@ -1,3 +1,5 @@
+# 2019-12-09 13:53:18.142633: clock-out
+* forgot to include cli notebook
 
 # 2019-12-09 13:52:30.292970: clock-in
 

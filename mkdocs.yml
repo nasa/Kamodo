@@ -10,6 +10,7 @@ nav:
 - Field Integration: notebooks/FieldIntegration.ipynb
 - Kameleon: notebooks/kameleon-kamodo.ipynb
 - TIEGCM: notebooks/TIEGCM.ipynb
+- CommandLine: notebooks/CommandLineInterface.ipynb
 
 theme: readthedocs
 plugins:
