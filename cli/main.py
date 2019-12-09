@@ -5,6 +5,7 @@ import plotly.graph_objs as go
 
 
 def eval_config(params):
+    """generate arrays dict from configuration"""
     args = {}
     for k,v in params.items():
         try:
@@ -16,9 +17,21 @@ def eval_config(params):
 
 @hydra.main(config_path='conf/config.yaml', strict = False)
 def main(cfg):
+    """A low-coding command line interface for Kamodo
+
+    This application allows users to work with kamodo-compatible models and data
+    directly from the command line. 
+
+    Custom models, data, and expressions may be composed by editing config files
+    without needing to write python.
+    """
+
     model = hydra.utils.instantiate(cfg.model)
-    print(model.detail())
-    print()
+
+    if cfg.verbose:
+        print(model.detail())   
+        print(model.to_latex())
+
     if cfg.model.evaluate is not None:
         for varname, params in cfg.model.evaluate.items():
             units = model[varname].meta['units']
@@ -32,28 +45,30 @@ def main(cfg):
     plot_conf = cfg.model.plot_conf
     fig_layout = cfg.model.fig_layout
     plot_params = cfg.model.plot
-    if hasattr(plot_params, 'items'):
-        pass
-    elif type(plot_params) is str:
-        plot_params = {plot_params: {}}
-    else:
-        try:
-            plot_params = {k : {} for k in plot_params}
-        except:
-            raise IOError("cannot handle plot parameters of type {}".format(type(plot_params)))
+    if plot_params is not None:
+        if hasattr(plot_params, 'items'):
+            pass
+        elif type(plot_params) is str:
+            plot_params = {plot_params: {}}
+        else:
+            try:
+                plot_params = {k : {} for k in plot_params}
+            except:
+                raise IOError("cannot handle plot parameters of type {}".format(type(plot_params)))
 
-    for varname, params in plot_params.items():
-        plot_args = {varname: eval_config(params)}
-        try:
-            fig = go.Figure(model.plot(**plot_args))
-            if fig_layout is not None:
-                fig.update_layout(**fig_layout)
-            plot(fig, **plot_conf)
-        except:
-            print('could not plot {} with params:'.format(varname))
-            print(plot_args)
+        for varname, params in plot_params.items():
+            plot_args = {varname: eval_config(params)}
+            try:
+                fig = go.Figure(model.plot(**plot_args))
+                if fig_layout is not None:
+                    fig.update_layout(**fig_layout)
+                plot(fig, **plot_conf)
+            except:
+                print('could not plot {} with params:'.format(varname))
+                print(plot_args)
 
 
+# entrypoint for package installer
 def entry():
     main()
 
