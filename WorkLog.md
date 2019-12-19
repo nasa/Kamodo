@@ -1,3 +1,9 @@
+# 2019-12-19 12:17:51.613183: clock-out
+* adding config file description to docs
+* Looking at `Config search path`. 
+* hydra plugin configs are found automatically once they are installed
+* how do we use the cwd to configure? https://github.com/facebookresearch/hydra/issues/274
+* docusaurus looks interesting
 
 # 2019-12-19 11:26:13.027723: clock-in
 
