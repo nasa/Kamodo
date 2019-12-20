@@ -1,3 +1,6 @@
+
+# 2019-12-20 11:18:35.468801: clock-in
+
 # 2019-12-19 12:17:51.613183: clock-out
 * adding config file description to docs
 * Looking at `Config search path`. 
