@@ -4,6 +4,8 @@ defaults:
 
 verbose: true
 
+search_path: config.yaml
+
 hydra:
   help:
     # App name, override to match the name your app is known by
