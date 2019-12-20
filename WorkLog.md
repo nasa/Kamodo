@@ -1,3 +1,8 @@
+# 2019-12-20 13:50:20.467183: clock-out
+* working on cli
+* added ability to call kamodo from any work directory containing config.yaml
+* added embedable plots: `model.plot_conf.output_type=div` saves the div to the file
+* have markdown-include point to the div, so you can embed in your own docs!
 
 # 2019-12-20 11:18:35.468801: clock-in
 
