@@ -1,3 +1,4 @@
+* addressing issue from Lutz
 
 # 2020-01-15 11:45:55.727665: clock-in
 
