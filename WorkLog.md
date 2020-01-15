@@ -1,3 +1,6 @@
+
+# 2020-01-15 11:45:55.727665: clock-in
+
 # 2019-12-20 13:50:20.467183: clock-out
 * working on cli
 * added ability to call kamodo from any work directory containing config.yaml
