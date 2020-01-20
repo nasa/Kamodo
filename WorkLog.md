@@ -1,3 +1,5 @@
+* setting up kamodo.yaml overrides
+* Answered Lutz's issue
 
 # 2020-01-20 11:21:44.788233: clock-in
 

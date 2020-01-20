@@ -3,6 +3,7 @@ import numpy as np
 from plotly.offline import plot
 import plotly.graph_objs as go
 from omegaconf import OmegaConf
+from os import path
 
 
 def eval_config(params):
@@ -23,7 +24,22 @@ def write_plot_div(plot_result, plot_conf):
             f.write(plot_result)
             f.write('') # needs a newline or else embedding breaks
 
-@hydra.main(config_path='conf/config.yaml', strict = False)
+def config_override(cfg):
+    """Overrides with user-supplied configuration
+
+    kamodo will override its configuration using
+    kamodo.yaml if it is in the current working directory
+    or users can set an override config:
+        config_override=path/to/myconfig.yaml
+    """
+    override_path = hydra.utils.to_absolute_path(cfg.config_override)
+    if path.exists(override_path):
+        override_conf = OmegaConf.load(override_path)
+        # merge overrides first input with second
+        cfg = OmegaConf.merge(cfg, override_conf)
+    return cfg
+
+@hydra.main(config_path='conf/config.yaml', strict = True)
 def main(cfg):
     """A low-coding command line interface for Kamodo
 
@@ -33,12 +49,7 @@ def main(cfg):
     Custom models, data, and expressions may be composed by editing config files
     without needing to write python.
     """
-
-    if cfg.search_path is not None:
-        override_path = hydra.utils.to_absolute_path(cfg.search_path)
-        override_conf = OmegaConf.load(override_path)
-        cfg = OmegaConf.merge(cfg, override_conf)
-
+    cfg = config_override(cfg)
 
     model = hydra.utils.instantiate(cfg.model)
 

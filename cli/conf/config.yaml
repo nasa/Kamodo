@@ -1,10 +1,9 @@
 defaults:
-  - model:
-      test
+  - kamodo
 
 verbose: true
 
-search_path: config.yaml
+config_override: kamodo.yaml
 
 hydra:
   help:
