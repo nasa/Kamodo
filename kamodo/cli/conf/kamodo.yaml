@@ -1,9 +1,10 @@
-model:
-  class: kamodo.Kamodo
-  params: {}
-  evaluate: {}
-  plot: {}
-  fig_layout: {}
+models:
+  mymodel:
+    class: kamodo.Kamodo
+    params: {}
+    evaluate: {}
+    plot: {}
+    fig_layout: {}
 
 
 plot_conf:
@@ -22,3 +23,8 @@ plot_conf:
   include_mathjax: 'cdn'
   auto_play: True
   animation_opts: Null
+
+
+gui: false
+
+verbose: true

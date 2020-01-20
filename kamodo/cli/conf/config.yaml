@@ -1,7 +1,6 @@
 defaults:
   - kamodo
 
-verbose: true
 
 config_override: kamodo.yaml
 

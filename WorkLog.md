@@ -1,3 +1,4 @@
+* adding multiple models to cli
 * setting up kamodo.yaml overrides
 * Answered Lutz's issue
 
