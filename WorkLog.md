@@ -1,3 +1,5 @@
+# 2020-01-20 15:23:39.237942: clock-out
+
 * adding multiple models to cli
 * setting up kamodo.yaml overrides
 * Answered Lutz's issue
