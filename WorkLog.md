@@ -1,3 +1,5 @@
+# 2020-01-21 13:37:38.575443: clock-out
+
 * added composition to cli
 * made compose use keyword arguments
 * added compose function for multiple kamodo objects
