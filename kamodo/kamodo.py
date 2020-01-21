@@ -703,6 +703,24 @@ class Kamodo(collections.OrderedDict):
 			return go.Figure(data = traces, layout = layouts[-1])
 
 
+
+def compose(*kamodos):
+    kamodo = Kamodo()
+    for k in kamodos:
+        for name, symbol in k.symbol_registry.items():
+            signature = k.signatures[str(symbol)] 
+            meta = k[symbol].meta
+            data = getattr(k[symbol], 'data', None)
+            
+            rhs = signature['rhs']
+    
+            if (rhs is None) | hasattr(rhs, '__call__'):
+                kamodo[symbol] = kamodofy(k[symbol], data = data, **meta)
+            else:
+                kamodo[symbol] = str(rhs)
+        
+    return kamodo
+
 ##------------ Tests Below --------------------
 
 def test_Kamodo_expr():
