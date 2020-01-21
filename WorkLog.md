@@ -1,3 +1,6 @@
+
+# 2020-01-21 15:28:20.175086: clock-in
+
 # 2020-01-21 13:37:38.575443: clock-out
 
 * added composition to cli
