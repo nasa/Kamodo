@@ -1,3 +1,6 @@
+
+# 2020-01-21 11:10:26.570097: clock-in
+
 # 2020-01-20 15:23:39.237942: clock-out
 
 * adding multiple models to cli
