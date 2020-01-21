@@ -1,0 +1,16 @@
+models: #independent models go here
+  model1:
+    class: kamodo.Kamodo
+    params:
+      f: x-1
+    evaluate: {}
+    plot: {}
+    fig_layout: {}
+
+  model2:
+    class: kamodo.Kamodo
+    params:
+      g: f_model1**2
+    evaluate: {}
+    plot: {}
+    fig_layout: {}

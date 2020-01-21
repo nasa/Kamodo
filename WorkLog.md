@@ -1,3 +1,4 @@
+* added composition to cli
 * made compose use keyword arguments
 * added compose function for multiple kamodo objects
 

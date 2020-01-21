@@ -4,7 +4,7 @@ from plotly.offline import plot
 import plotly.graph_objs as go
 from omegaconf import OmegaConf
 from os import path
-from kamodo import Kamodo
+from kamodo import Kamodo, compose
 
 
 def eval_config(params):
@@ -57,20 +57,17 @@ def main(cfg):
     if cfg.verbose > 1:
         print(cfg.pretty())
 
+    models = dict()
     for model_name, model_conf in cfg.models.items():
         print(model_name)
         # model_conf['symbol_dict'] = locals()
-        for k,v  in locals().items():
-            if isinstance(v, Kamodo):
-                print("{} is a kamodo object!".format(k))
-                print(v)
-
 
         model = hydra.utils.instantiate(model_conf)
-        locals()[model_name] = model
+        models[model_name] = model
 
-        if cfg.verbose:
-            print(model.detail())   
+        if cfg.verbose > 0:
+            print(model.detail())
+        if cfg.verbose > 1:   
             print(model.to_latex())
 
         if model_conf.evaluate is not None:
@@ -110,6 +107,12 @@ def main(cfg):
                     print('could not plot {} with params:'.format(varname))
                     print(plot_args)
                     raise
+
+    kamodo = compose(**models)
+    if cfg.verbose > 0:
+        print(kamodo.detail())
+    if cfg.verbose > 1:   
+        print(kamodo.to_latex())
 
     if cfg.gui:
         from kamodo.cli.gui import get_gui
