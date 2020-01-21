@@ -704,20 +704,20 @@ class Kamodo(collections.OrderedDict):
 
 
 
-def compose(*kamodos):
+def compose(**kamodos):
     kamodo = Kamodo()
-    for k in kamodos:
+    for kname, k in kamodos.items():
         for name, symbol in k.symbol_registry.items():
             signature = k.signatures[str(symbol)] 
             meta = k[symbol].meta
             data = getattr(k[symbol], 'data', None)
             
             rhs = signature['rhs']
-    
+            registry_name = '{}_{}'.format(name, kname)
             if (rhs is None) | hasattr(rhs, '__call__'):
-                kamodo[symbol] = kamodofy(k[symbol], data = data, **meta)
+                kamodo[registry_name] = kamodofy(k[symbol], data = data, **meta)
             else:
-                kamodo[symbol] = str(rhs)
+                kamodo[registry_name] = str(rhs)
         
     return kamodo
 

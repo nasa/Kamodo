@@ -1,3 +1,4 @@
+* made compose use keyword arguments
 * added compose function for multiple kamodo objects
 
 # 2020-01-21 11:10:26.570097: clock-in
