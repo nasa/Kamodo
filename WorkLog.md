@@ -1,3 +1,6 @@
+
+# 2020-01-22 12:13:09.639567: clock-in
+
 # 2020-01-21 17:53:12.595685: clock-out
 
 * added dynamic line plots to gui
