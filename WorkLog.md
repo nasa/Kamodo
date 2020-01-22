@@ -1,3 +1,6 @@
+
+# 2020-01-22 15:09:36.423725: clock-in: T-40m 
+
 * adding separate tabs for each model
 # 2020-01-22 14:19:44.506406: clock-out
 
