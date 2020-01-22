@@ -1,3 +1,5 @@
+# 2020-01-22 14:19:44.506406: clock-out
+
 * working on gui layout
 
 # 2020-01-22 12:13:09.639567: clock-in
