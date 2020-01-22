@@ -1,3 +1,4 @@
+* adding separate tabs for each model
 # 2020-01-22 14:19:44.506406: clock-out
 
 * working on gui layout

@@ -6,6 +6,7 @@ models:
     plot: {}
     fig_layout: {}
 
+config_override: kamodo.yaml
 
 plot_conf:
   show_link: False

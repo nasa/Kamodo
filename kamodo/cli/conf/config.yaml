@@ -1,7 +1,6 @@
 defaults:
   - kamodo
 
-
 config_override: kamodo.yaml
 
 hydra:
