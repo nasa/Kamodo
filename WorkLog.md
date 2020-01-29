@@ -1,3 +1,6 @@
+
+# 2020-01-29 09:50:29.055214: clock-in: T-20m 
+
 # 2020-01-28 13:39:50.454679: clock-out
 
 * answering support email
