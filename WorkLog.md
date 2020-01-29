@@ -1,3 +1,4 @@
+* cleaning up docs
 
 # 2020-01-29 09:50:29.055214: clock-in: T-20m 
 
