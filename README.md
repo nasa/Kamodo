@@ -3,6 +3,14 @@
 Kamodo is a new CCMC tool for access, interpolation, and visualization of space weather models and data in python. Kamodo allows model developers to represent simulation results as mathematical functions which may be manipulated directly by end users. Kamodo handles unit conversion transparently and supports interactive science discovery through jupyter notebooks with minimal coding and is accessible through python.
 
 
+The project page is located at the Community Coordinated Modeling Center, located at NASA Goddard Space Flight Center.
+
+* Official site page [https://ccmc.gsfc.nasa.gov/Kamodo/](https://ccmc.gsfc.nasa.gov/Kamodo/)
+
+Kamodo's source code is hosted on github under a permissive NASA open source license:
+
+* [https://github.com/nasa/Kamodo](https://github.com/nasa/Kamodo)
+
 ## Usage
 Suppose we have a vector field defined by a function of positions in the x-y plane:
 
