@@ -1,3 +1,6 @@
+
+# 2020-01-29 11:59:08.216757: clock-in
+
 * merging hourly.yaml
 # 2020-01-29 11:19:29.007340: clock-out
 
