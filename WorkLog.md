@@ -1,3 +1,6 @@
+# 2020-01-29 13:18:25.114169: clock-out
+
+* meeting with Kamodo team for iSWAT-COSPAR prep
 
 # 2020-01-29 11:59:08.216757: clock-in
 
