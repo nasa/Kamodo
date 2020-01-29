@@ -1,3 +1,12 @@
 commit:
   identity:
   - email
+
+compensation:
+  - name: Asher Pembroke
+    email: apembroke@gmail.com
+    wage:
+      pi: 1.0
+
+report:
+  timesheet: true
