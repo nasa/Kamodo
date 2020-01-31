@@ -1,3 +1,5 @@
+# 2020-01-31 13:27:55.782459: clock-out
+
 * packaging pysatKamodo
 
 # 2020-01-31 12:37:50.196753: clock-in
