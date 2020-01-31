@@ -12,7 +12,10 @@ from os import path
 import os
 import numpy as np
 
-hydra.experimental.initialize(strict=False)
+try:
+    hydra.experimental.initialize(strict=False)
+except:
+    pass
 
 
 def get_gui(cfg):
@@ -30,11 +33,12 @@ def get_gui(cfg):
         html.H1(children='Kamodo'),
 
         html.Div(children='''
-            Kamodo: A low-coding interface for models and data?
+            Kamodo: A low-coding interface for models and data
         '''),
     ])
 
     tabs_children = []
+    graphs = {}
 
     for model_name, model_conf in cfg.models.items():
         print(model_name)
@@ -48,7 +52,7 @@ def get_gui(cfg):
 
      
         tab_children = []
-
+        
         for varname, params in model_conf.plot.items():
             plot_args = {varname: eval_config(params)}
             try:
@@ -67,27 +71,33 @@ def get_gui(cfg):
                     # width = '100%', height='100%',
                     )
 
+                graph_id = "graph-{}-{}".format(model_name, varname)
+                
+                print('storing graph')
+                graphs[graph_id] = [
+                    chart_type,
+                    varname,
+                    plot_args[varname],
+                    model,
+                    dcc.Graph(
+                        id = graph_id,
+                        figure = figure,
+                        style = dict(height = 'inherit', width = '800px'))]
+
+                print("len(graphs) {}".format(len(graphs)))
+
                 # print(getattr(fig,'chart_type', 'no chart type'))
                 tab_children.append(
                     html.Div(
                         html.Div(
-                            dcc.Graph(
-                                id = "graph-{}-{}".format(model_name, varname),
-                                figure = figure,
-                                style = dict(height = 'inherit', width = '800px'),
-                                ),
+                            graphs[graph_id][-1],
                             className = 'twelve columns'),
                         className = 'row'))
 
                 if chart_type == 'line':
                     tab_children.extend(get_range_slider(
-                        model_name, varname, **plot_args[varname]))
-                    # generate_range_slider_callback(
-                    #     app,
-                    #     model,
-                    #     model_name,
-                    #     varname,
-                    #     **plot_args[varname])
+                        graph_id, **plot_args[varname]))
+
 
             except Exception as m:
                 print('could not plot {} with params:'.format(varname))
@@ -100,16 +110,32 @@ def get_gui(cfg):
 
     tabs = dcc.Tabs(children = tabs_children)
     app.layout.children.append(tabs)
+
+    generate_callbacks(app, graphs)
     
     return app
 
-def generate_range_slider_callback(app, model, model_name, varname, **kwargs):
-    output = Output("graph-{}-{}".format(model_name, varname), "figure")
+def generate_callbacks(app, graphs):
+    print("generating callbacks for {} graphs".format(len(graphs)))
+    for graph_id, (chart_type, varname, plot_args, model, graph) in graphs.items():
+        if chart_type == 'line':
+            generate_range_slider_callback(
+                app,
+                graph_id,
+                varname,
+                model,
+                **plot_args)
+        else:
+            print("cannot generate callback for chart_type {}".format(chart_type))
+
+def generate_range_slider_callback(app, graph_id, varname, model, **plot_kwargs):
+    print("generating calback for {}: {}".format(graph_id, varname))
+    output = Output(graph_id, "figure")
     input_dict = dict()
-    for k,v in kwargs.items():
+    for k,v in plot_kwargs.items():
         input_dict[k] = [
-            Input("rangeslider-{}-{}-{}".format(model_name, varname, k), "value"),
-            Input("input-{}-{}-{}".format(model_name, varname, k), "value")]
+            Input("rangeslider-{}-{}".format(graph_id, k), "value"),
+            Input("input-{}-{}".format(graph_id, k), "value")]
 
     inputs  = []
     for inputs_ in input_dict.values():
@@ -129,7 +155,7 @@ def generate_range_slider_callback(app, model, model_name, varname, **kwargs):
         return go.Figure(fig)
 
 
-def get_range_slider(model_name, varname, **kwargs):
+def get_range_slider(graph_id, **kwargs):
     divs = []
     for k,v in kwargs.items():
         marks = {i: "{0:0.2f}".format(i) for i in v[::int(len(v)/31)]}
@@ -140,20 +166,20 @@ def get_range_slider(model_name, varname, **kwargs):
             html.Div(
                 className = "eight columns",
                 children = [
-                        dcc.RangeSlider(
-                            id = "rangeslider-{}-{}-{}".format(model_name, varname, k),
-                            marks=marks,
-                            min=min(v),
-                            max=max(v),
-                            step = (max(v) - min(v))/len(v),
-                            value=[min(v), max(v)],
-                            updatemode='drag',
+                    dcc.RangeSlider(
+                        id = "rangeslider-{}-{}".format(graph_id, k),
+                        marks=marks,
+                        min=min(v),
+                        max=max(v),
+                        step = (max(v) - min(v))/len(v),
+                        value=[min(v), max(v)],
+                        updatemode='drag',
                         )]),
             html.Div(
                 className = "four columns",
                 children = [
                     dcc.Input(
-                        id = "input-{}-{}-{}".format(model_name, varname, k),
+                        id = "input-{}-{}".format(graph_id, k),
                         placeholder='number of points in {}'.format(k),
                         type='number',
                         value = len(v),
@@ -186,9 +212,6 @@ def config_override(cfg):
     return cfg
 
 def main():
-
-
-
 
     cfg = compose('conf/kamodo.yaml')
     

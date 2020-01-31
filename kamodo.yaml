@@ -2,10 +2,16 @@ models: #independent models go here
   model1:
     class: kamodo.Kamodo
     params:
-      f: x-1
+      f: x**2 - 1
     evaluate: {}
-    plot: {}
-    fig_layout: {}
+    plot:
+      f:
+        x:
+          min: -1
+          max: 1
+          n: 31
+    fig_layout:
+      autosize: true
 
   model2:
     class: kamodo.Kamodo
@@ -13,4 +19,5 @@ models: #independent models go here
       g: f_model1**2
     evaluate: {}
     plot: {}
-    fig_layout: {}
+    fig_layout:
+      autosize: true

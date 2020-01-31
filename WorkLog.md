@@ -1,3 +1,4 @@
+* gui generating callbacks after layout is set
 
 # 2020-01-31 10:35:50.687658: clock-in
 
