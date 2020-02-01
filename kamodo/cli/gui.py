@@ -5,12 +5,15 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from kamodo.cli.main import eval_config
+from kamodo import get_defaults
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output
 import numpy as np
 from os import path
 import os
 import numpy as np
+from sympy.core.function import UndefinedFunction 
+import pandas as pd
 
 try:
     hydra.experimental.initialize(strict=False)
@@ -42,7 +45,6 @@ def get_gui(cfg):
 
     for model_name, model_conf in cfg.models.items():
         print(model_name)
-        
 
         try:
             model = hydra.utils.instantiate(model_conf)
@@ -50,11 +52,26 @@ def get_gui(cfg):
             print('could not instantiate {}'.format(model_name))
             print(m)
 
+        model_params = {}
+        if model_conf.plot is None:
+            for var_symbol, func in model.items():
+                if type(var_symbol) == UndefinedFunction:
+                    model_params[str(var_symbol)] = get_defaults(func)
+        else:
+            for var_name, var_args in model_conf.plot.items():
+                if var_args is None:
+                    model_params[var_name] = get_defaults(model[var_name])
+                else:
+                    model_params[var_name] = eval_config(var_args)
+
+
+        print(model_params)
      
         tab_children = []
         
-        for varname, params in model_conf.plot.items():
-            plot_args = {varname: eval_config(params)}
+        for varname, params in model_params.items():
+            # plot_args = {varname: eval_config(params)}
+            plot_args = {varname: params}
             try:
                 fig = model.figure(
                     varname,
@@ -62,9 +79,22 @@ def get_gui(cfg):
                     return_type = True, 
                     **plot_args[varname])
                 
-                # fig = go.Figure(model.plot(**plot_args))
                 chart_type = fig.get('chart_type', None)
                 figure = go.Figure(fig)
+                if chart_type == 'line':
+                    axis_type = type(list(plot_args[varname].values())[0])
+                    if axis_type == pd.DatetimeIndex:
+                        print('found datetime!')
+                        figure.update_layout(
+                            xaxis=go.layout.XAxis(
+                                rangeslider=dict(
+                                    visible=True
+                                ),
+                                type="date"
+                            )
+                        )
+                    else:
+                        print("asix type:", axis_type, plot_args)
                 figure.layout['width'] = None
                 figure.layout['height'] = None
                 figure.update_layout(autosize = False,
@@ -86,7 +116,6 @@ def get_gui(cfg):
 
                 print("len(graphs) {}".format(len(graphs)))
 
-                # print(getattr(fig,'chart_type', 'no chart type'))
                 tab_children.append(
                     html.Div(
                         html.Div(
@@ -94,15 +123,17 @@ def get_gui(cfg):
                             className = 'twelve columns'),
                         className = 'row'))
 
-                if chart_type == 'line':
-                    tab_children.extend(get_range_slider(
-                        graph_id, **plot_args[varname]))
+                # if chart_type == 'line':
+                #     tab_children.extend(get_range_slider(
+                #         graph_id, **plot_args[varname]))
 
 
             except Exception as m:
                 print('could not plot {} with params:'.format(varname))
                 print(plot_args)
-                print(m)
+                raise
+                # print(m)
+
 
         tab = dcc.Tab(label = model_name, children = tab_children)
         
@@ -111,7 +142,7 @@ def get_gui(cfg):
     tabs = dcc.Tabs(children = tabs_children)
     app.layout.children.append(tabs)
 
-    generate_callbacks(app, graphs)
+    # generate_callbacks(app, graphs)
     
     return app
 
@@ -141,7 +172,7 @@ def generate_range_slider_callback(app, graph_id, varname, model, **plot_kwargs)
     for inputs_ in input_dict.values():
         inputs.extend(inputs_)
 
-    @app.callback( output, inputs)
+    @app.callback(output, inputs)
     def update_figure(*inputs):
         plot_args = dict()
         for i,k in enumerate(input_dict):
@@ -158,7 +189,12 @@ def generate_range_slider_callback(app, graph_id, varname, model, **plot_kwargs)
 def get_range_slider(graph_id, **kwargs):
     divs = []
     for k,v in kwargs.items():
-        marks = {i: "{0:0.2f}".format(i) for i in v[::int(len(v)/31)]}
+        try:
+            print('type is: {}'.format(type(v[0])))
+            marks = {i: "{0:0.2f}".format(i) for i in v[::int(len(v)/31)]}
+        except:
+            marks = {i: str(i) for i in v[::int(len(v)/31)]}
+
         # print(len(marks))
         # print(marks)
 
