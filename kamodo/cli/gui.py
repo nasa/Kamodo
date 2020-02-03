@@ -14,22 +14,27 @@ import os
 import numpy as np
 from sympy.core.function import UndefinedFunction 
 import pandas as pd
+import sys 
+from dash_katex import DashKatex
 
 try:
     hydra.experimental.initialize(strict=False)
 except:
     pass
 
+from ast import literal_eval
 
 def get_gui(cfg):
-    external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
+    # moved into assets
+    external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
     external_scripts = ['https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML']
 
 
     app = dash.Dash(__name__, 
         external_stylesheets = external_stylesheets,
-        external_scripts = external_scripts)
+        external_scripts = external_scripts,
+        )
 
 
     app.layout = html.Div(children=[
@@ -52,6 +57,9 @@ def get_gui(cfg):
             print('could not instantiate {}'.format(model_name))
             print(m)
 
+        if len(model) == 0:
+            continue
+
         model_params = {}
         if model_conf.plot is None:
             for var_symbol, func in model.items():
@@ -60,14 +68,31 @@ def get_gui(cfg):
         else:
             for var_name, var_args in model_conf.plot.items():
                 if var_args is None:
-                    model_params[var_name] = get_defaults(model[var_name])
+                    try:
+                        model_params[var_name] = get_defaults(model[var_name])
+                    except Exception as m:
+                        print(model.detail)
+                        print(m)
+                        sys.exit()
                 else:
                     model_params[var_name] = eval_config(var_args)
 
 
         print(model_params)
      
+
         tab_children = []
+        for var_symbol, func in model.items():
+            if type(var_symbol) != UndefinedFunction:
+                tab_children.append(
+                    DashKatex(
+                        id = "{}-{}-expression".format(model_name, str(var_symbol)),
+                        expression = "{}".format(model.to_latex(
+                            keys = [str(var_symbol)],
+                            mode = "plain"))
+                        )
+                    )
+
         
         for varname, params in model_params.items():
             # plot_args = {varname: eval_config(params)}
