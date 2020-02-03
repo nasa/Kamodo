@@ -1,3 +1,6 @@
+
+# 2020-02-03 10:22:19.591903: clock-in
+
 # 2020-01-31 19:35:30.915089: clock-out
 
 * got range slider to work
