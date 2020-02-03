@@ -24,6 +24,54 @@ except:
 
 from ast import literal_eval
 
+
+def get_equation_divs(model, model_name, model_params):
+
+    equations = []
+
+    dcc.Checklist(
+            options=[
+                {'label': "NYC", 'value': 'NYC'},
+                {'label': 'Montréal', 'value': 'MTL'},
+                {'label': 'San Francisco', 'value': 'SF'}
+            ],
+            value=['MTL', 'SF']
+        )
+    options = []
+    selected = []
+    for var_symbol, func in model.items():
+        if type(var_symbol) != UndefinedFunction:
+            var_label = str(type(var_symbol))
+
+            # make sure user-specified params get a check mark
+            if str(type(var_symbol)) in model_params:
+                selected.append(var_label)
+
+            options.append({'label': var_label, 'value': var_label})
+            equations.append(
+                DashKatex(
+                    id = "{}-{}-expression".format(model_name, str(var_symbol)),
+                    expression = "{}".format(model.to_latex(
+                        keys = [str(var_symbol)],
+                        mode = "plain")),
+                    )
+                )
+
+    equation_divs = html.Div([
+            dcc.Checklist(
+                options = options,
+                value = selected,
+                className = "six columns"
+                ),
+            html.Div(
+                children = equations,
+                className = "six columns"
+                ),],
+        className = 'row',
+        )
+
+    return equation_divs
+
 def get_gui(cfg):
 
     # moved into assets
@@ -82,16 +130,8 @@ def get_gui(cfg):
      
 
         tab_children = []
-        for var_symbol, func in model.items():
-            if type(var_symbol) != UndefinedFunction:
-                tab_children.append(
-                    DashKatex(
-                        id = "{}-{}-expression".format(model_name, str(var_symbol)),
-                        expression = "{}".format(model.to_latex(
-                            keys = [str(var_symbol)],
-                            mode = "plain"))
-                        )
-                    )
+
+        tab_children.append(get_equation_divs(model, model_name, model_params))
 
         
         for varname, params in model_params.items():
