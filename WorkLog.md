@@ -1,3 +1,5 @@
+# 2020-02-03 12:36:08.959116: clock-out
+
 * rendering equations through katex
 
 # 2020-02-03 10:22:19.591903: clock-in
