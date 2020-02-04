@@ -16,6 +16,11 @@ from sympy.core.function import UndefinedFunction
 import pandas as pd
 import sys 
 from dash_katex import DashKatex
+from plotly.subplots import make_subplots
+from dash.exceptions import PreventUpdate
+
+
+
 
 try:
     hydra.experimental.initialize(strict=False)
@@ -29,14 +34,6 @@ def get_equation_divs(model, model_name, model_params):
 
     equations = []
 
-    dcc.Checklist(
-            options=[
-                {'label': "NYC", 'value': 'NYC'},
-                {'label': 'Montréal', 'value': 'MTL'},
-                {'label': 'San Francisco', 'value': 'SF'}
-            ],
-            value=['MTL', 'SF']
-        )
     options = []
     selected = []
     for var_symbol, func in model.items():
@@ -47,7 +44,7 @@ def get_equation_divs(model, model_name, model_params):
             if str(type(var_symbol)) in model_params:
                 selected.append(var_label)
 
-            options.append({'label': var_label, 'value': var_label})
+            options.append({'label': '', 'value': var_label})
             equations.append(
                 DashKatex(
                     id = "{}-{}-expression".format(model_name, str(var_symbol)),
@@ -59,13 +56,15 @@ def get_equation_divs(model, model_name, model_params):
 
     equation_divs = html.Div([
             dcc.Checklist(
+                id = 'checklist-{}'.format(model_name),
                 options = options,
                 value = selected,
-                className = "six columns"
+                className = "one columns",
+                style = {'text-align': 'right'},
                 ),
             html.Div(
                 children = equations,
-                className = "six columns"
+                className = "eleven columns"
                 ),],
         className = 'row',
         )
@@ -124,81 +123,23 @@ def get_gui(cfg):
                         sys.exit()
                 else:
                     model_params[var_name] = eval_config(var_args)
-
-
-        print(model_params)
      
-
         tab_children = []
 
         tab_children.append(get_equation_divs(model, model_name, model_params))
 
-        
-        for varname, params in model_params.items():
-            # plot_args = {varname: eval_config(params)}
-            plot_args = {varname: params}
-            try:
-                fig = model.figure(
-                    varname,
-                    indexing = 'ij',
-                    return_type = True, 
-                    **plot_args[varname])
-                
-                chart_type = fig.get('chart_type', None)
-                figure = go.Figure(fig)
-                if chart_type == 'line':
-                    axis_type = type(list(plot_args[varname].values())[0])
-                    if axis_type == pd.DatetimeIndex:
-                        print('found datetime!')
-                        figure.update_layout(
-                            xaxis=go.layout.XAxis(
-                                rangeslider=dict(
-                                    visible=True
-                                ),
-                                type="date"
-                            )
-                        )
-                    else:
-                        print("asix type:", axis_type, plot_args)
-                figure.layout['width'] = None
-                figure.layout['height'] = None
-                figure.update_layout(autosize = False,
-                    # width = '100%', height='100%',
-                    )
+        graph_id = "graph-{}".format(model_name)
 
-                graph_id = "graph-{}-{}".format(model_name, varname)
-                
-                print('storing graph')
-                graphs[graph_id] = [
-                    chart_type,
-                    varname,
-                    plot_args[varname],
-                    model,
-                    dcc.Graph(
-                        id = graph_id,
-                        figure = figure,
-                        style = dict(height = 'inherit', width = '800px'))]
+        fig_subplots = make_kamodo_subplots(model, model_params.keys(), model_params)
+ 
+        tab_children.append(
+            dcc.Graph(id = graph_id,
+                figure = fig_subplots,
+                style = dict(height = '1000px', width = '1200px')))
 
-                print("len(graphs) {}".format(len(graphs)))
+        # dcc.Store(id = 'store-{}'.format(model_name))
 
-                tab_children.append(
-                    html.Div(
-                        html.Div(
-                            graphs[graph_id][-1],
-                            className = 'twelve columns'),
-                        className = 'row'))
-
-                # if chart_type == 'line':
-                #     tab_children.extend(get_range_slider(
-                #         graph_id, **plot_args[varname]))
-
-
-            except Exception as m:
-                print('could not plot {} with params:'.format(varname))
-                print(plot_args)
-                raise
-                # print(m)
-
+        graphs[graph_id] = model, model_params, model_name
 
         tab = dcc.Tab(label = model_name, children = tab_children)
         
@@ -208,8 +149,40 @@ def get_gui(cfg):
     app.layout.children.append(tabs)
 
     # generate_callbacks(app, graphs)
+
+    for graph_id, (model, model_params, model_name) in graphs.items():
+        generate_subplot_callback(app, graph_id, model, model_name, model_params)
     
     return app
+
+def make_kamodo_subplots(model, var_names, model_params):
+    fig_subplots = make_subplots(rows=len(var_names), cols=1)
+    for plot_count, varname in enumerate(var_names):
+        try:
+            fig = model.figure(
+                varname,
+                indexing = 'ij',
+                return_type = True, 
+                **model_params.get(varname, {}))
+            fig_subplots.add_trace(fig['data'][0], row = plot_count+1, col = 1)
+        except:
+            print("could not plot {} with model_params:".format(varname))
+            print(model_params)
+            raise PreventUpdate
+    return fig_subplots
+
+
+def generate_subplot_callback(app, graph_id, model, model_name, model_params):
+    @app.callback(
+        Output(graph_id, 'figure'),
+        [Input('checklist-{}'.format(model_name), 'value')])
+    def update_subplot(var_names):
+        if len(var_names) > 0:
+            return make_kamodo_subplots(model, var_names, model_params)
+        else:
+            raise PreventUpdate
+
+    
 
 def generate_callbacks(app, graphs):
     print("generating callbacks for {} graphs".format(len(graphs)))
