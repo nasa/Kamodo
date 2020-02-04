@@ -1,3 +1,6 @@
+
+# 2020-02-04 10:39:40.567881: clock-in
+
 # 2020-02-03 16:29:29.417205: clock-out
 
 * added parameter checkboxes
