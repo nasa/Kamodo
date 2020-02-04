@@ -1,3 +1,4 @@
+* reading up on dcc.store and clientside_callback
 
 # 2020-02-04 10:39:40.567881: clock-in
 
