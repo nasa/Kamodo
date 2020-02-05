@@ -1,4 +1,9 @@
+* got clientside subplots to render
 * meeting for iSWAT-COSPAR
+* pushed code into NASA master
+* need to update pypi version
+* think about kamodo api
+* docker container!
 
 # 2020-02-05 11:23:08.377881: clock-in
 

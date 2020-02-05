@@ -2,10 +2,10 @@ models: #independent models go here
   cnofs:
     class: pysat_kamodo.Pysat_Kamodo
     params:
-      date: 2009, 1, 1
-      platform: cnofs
-      name: vefi
-      tag: dc_b
+      date: 2009, 1, 1 # Pysat_Kamodo keyword
+      platform: cnofs # pysat keyword
+      name: vefi # pysat
+      tag: dc_b # pysat
     plot:
       B_up: null
       B_west: null

@@ -7,7 +7,7 @@ import dash_html_components as html
 from kamodo.cli.main import eval_config
 from kamodo import get_defaults
 import plotly.graph_objs as go
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, ClientsideFunction
 import numpy as np
 from os import path
 import os
@@ -130,14 +130,19 @@ def get_gui(cfg):
 
         graph_id = "graph-{}".format(model_name)
 
-        fig_subplots = make_kamodo_subplots(model, model_params.keys(), model_params)
+        plots = get_kamodo_plots(model, model_params.keys(), model_params)
+
+        # fig_subplots = make_kamodo_subplots(model, model_params.keys(), model_params)
  
         tab_children.append(
             dcc.Graph(id = graph_id,
-                figure = fig_subplots,
+                # figure = fig_subplots,
                 style = dict(height = '1000px', width = '1200px')))
+        tab_children.append(
+            dcc.Store(id = graph_id + '-store',
+                data = plots),
+            )
 
-        # dcc.Store(id = 'store-{}'.format(model_name))
 
         graphs[graph_id] = model, model_params, model_name
 
@@ -152,8 +157,27 @@ def get_gui(cfg):
 
     for graph_id, (model, model_params, model_name) in graphs.items():
         generate_subplot_callback(app, graph_id, model, model_name, model_params)
+        pass
     
     return app
+
+
+def get_kamodo_plots(model, var_names, model_params):
+    plots = {}
+    for plot_count, varname in enumerate(var_names):
+        try:
+            fig = model.figure(
+                varname,
+                indexing = 'ij',
+                return_type = True, 
+                **model_params.get(varname, {}))
+            plots[varname] = fig['data'][0]
+        except:
+            print("could not plot {} with model_params:".format(varname))
+            print(model_params)
+            raise PreventUpdate
+    return plots
+
 
 def make_kamodo_subplots(model, var_names, model_params):
     fig_subplots = make_subplots(rows=len(var_names), cols=1)
@@ -173,14 +197,12 @@ def make_kamodo_subplots(model, var_names, model_params):
 
 
 def generate_subplot_callback(app, graph_id, model, model_name, model_params):
-    @app.callback(
-        Output(graph_id, 'figure'),
-        [Input('checklist-{}'.format(model_name), 'value')])
-    def update_subplot(var_names):
-        if len(var_names) > 0:
-            return make_kamodo_subplots(model, var_names, model_params)
-        else:
-            raise PreventUpdate
+    app.clientside_callback(
+        ClientsideFunction("clientside", "subplots"),
+        Output(component_id=graph_id, component_property="figure"),
+        [Input(graph_id + '-store', "data"), Input('checklist-{}'.format(model_name), 'value')],
+    )
+
 
     
 
