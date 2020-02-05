@@ -7,16 +7,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   
-  <link rel="shortcut icon" href="/img/favicon.ico">
-  <title>Kamodo Analysis Suite</title>
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Additional Resources - Kamodo Analysis Suite</title>
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
-  <link rel="stylesheet" href="/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="/css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
   <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
   
-  <script src="/js/jquery-2.1.1.min.js" defer></script>
-  <script src="/js/modernizr-2.8.3.min.js" defer></script>
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Additional Resources";
+    var mkdocs_page_input_path = "additional_resources.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
   <script>hljs.initHighlightingOnLoad();</script> 
   
@@ -29,7 +36,7 @@
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
       <div class="wy-side-nav-search">
-        <a href="/." class="icon icon-home"> Kamodo Analysis Suite</a>
+        <a href=".." class="icon icon-home"> Kamodo Analysis Suite</a>
         
       </div>
 
@@ -39,57 +46,63 @@
           
             <li class="toctree-l1">
 		
-    <a class="" href="/.">Home</a>
+    <a class="" href="..">Home</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/about/">About</a>
+    <a class="" href="../about/">About</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/Kamodo/">Introduction</a>
+    <a class="" href="../notebooks/Kamodo/">Introduction</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/Visualization/">Visualization</a>
+    <a class="" href="../notebooks/Visualization/">Visualization</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/Syntax/">Syntax</a>
+    <a class="" href="../notebooks/Syntax/">Syntax</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/Kamodofying_Models/">Kamodofying Models</a>
+    <a class="" href="../notebooks/Kamodofying_Models/">Kamodofying Models</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/FieldIntegration/">Field Integration</a>
+    <a class="" href="../notebooks/FieldIntegration/">Field Integration</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/kameleon-kamodo/">Kameleon</a>
+    <a class="" href="../notebooks/kameleon-kamodo/">Kameleon</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/TIEGCM/">TIEGCM</a>
+    <a class="" href="../notebooks/TIEGCM/">TIEGCM</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="/notebooks/CommandLineInterface/">CommandLine</a>
+    <a class="" href="../notebooks/CommandLineInterface/">CommandLine</a>
 	    </li>
           
-            <li class="toctree-l1">
+            <li class="toctree-l1 current">
 		
-    <a class="" href="/additional_resources/">Additional Resources</a>
+    <a class="current" href="./">Additional Resources</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#additional-resources">Additional Resources</a></li>
+    
+
+    </ul>
 	    </li>
           
         </ul>
@@ -102,7 +115,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="/.">Kamodo Analysis Suite</a>
+        <a href="..">Kamodo Analysis Suite</a>
       </nav>
 
       
@@ -110,9 +123,11 @@
         <div class="rst-content">
           <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="/.">Docs</a> &raquo;</li>
+    <li><a href="..">Docs</a> &raquo;</li>
     
+      
     
+    <li>Additional Resources</li>
     <li class="wy-breadcrumbs-aside">
       
     </li>
@@ -122,15 +137,29 @@
           <div role="main">
             <div class="section">
               
-
-  <h1 id="404-page-not-found">404</h1>
-
-  <p><strong>Page not found</strong></p>
-
-
+                <h2 id="additional-resources">Additional Resources<a class="headerlink" href="#additional-resources" title="Permanent link">&para;</a></h2>
+<p>Examples of using Numpy <code>f2py</code> to compile Fortran code into importable Python modules:</p>
+<pre><code>https://www.scivision.dev/f2py-running-fortran-code-in-python-on-windows/
+https://github.com/scivision/f2py-examples
+</code></pre>
+<p>Tutorial: Using Fortran from Python</p>
+<pre><code>http://arogozhnikov.github.io/2015/11/29/using-fortran-from-python.html
+</code></pre>
+<p>See <code>Prototypes/Fortran2Python_example.ipynb</code> for details</p>
+<p>Numpy documentation for f2py</p>
+<pre><code>https://docs.scipy.org/doc/numpy/f2py/python-usage.html
+</code></pre>
+              
             </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../notebooks/CommandLineInterface/" class="btn btn-neutral" title="CommandLine"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -154,11 +183,13 @@
     <span class="rst-current-version" data-toggle="rst-current-version">
       
       
+        <span><a href="../notebooks/CommandLineInterface/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
       
     </span>
 </div>
-    <script>var base_url = '/';</script>
-    <script src="/js/theme.js" defer></script>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
 
 </body>

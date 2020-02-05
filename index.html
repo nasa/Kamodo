@@ -49,13 +49,15 @@
     <a class="current" href=".">Home</a>
     <ul class="subnav">
             
-    <li class="toctree-l2"><a href="#kamodo-project-page">Kamodo Project Page</a></li>
+    <li class="toctree-l2"><a href="#kamodo">Kamodo</a></li>
     
         <ul>
         
             <li><a class="toctree-l3" href="#usage">Usage</a></li>
         
             <li><a class="toctree-l3" href="#getting-started">Getting started</a></li>
+        
+            <li><a class="toctree-l3" href="#generating-docs">Generating Docs</a></li>
         
         </ul>
     
@@ -103,6 +105,16 @@
     <a class="" href="notebooks/TIEGCM/">TIEGCM</a>
 	    </li>
           
+            <li class="toctree-l1">
+		
+    <a class="" href="notebooks/CommandLineInterface/">CommandLine</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="additional_resources/">Additional Resources</a>
+	    </li>
+          
         </ul>
       </div>
       &nbsp;
@@ -135,8 +147,16 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="kamodo-project-page">Kamodo Project Page<a class="headerlink" href="#kamodo-project-page" title="Permanent link">&para;</a></h1>
+                <h1 id="kamodo">Kamodo<a class="headerlink" href="#kamodo" title="Permanent link">&para;</a></h1>
 <p>Kamodo is a new CCMC tool for access, interpolation, and visualization of space weather models and data in python. Kamodo allows model developers to represent simulation results as mathematical functions which may be manipulated directly by end users. Kamodo handles unit conversion transparently and supports interactive science discovery through jupyter notebooks with minimal coding and is accessible through python.</p>
+<p>The project page is located at the Community Coordinated Modeling Center, located at NASA Goddard Space Flight Center.</p>
+<ul>
+<li>Official site page <a href="https://ccmc.gsfc.nasa.gov/Kamodo/">https://ccmc.gsfc.nasa.gov/Kamodo/</a></li>
+</ul>
+<p>Kamodo's source code is hosted on github under a permissive NASA open source license:</p>
+<ul>
+<li><a href="https://github.com/nasa/Kamodo">https://github.com/nasa/Kamodo</a></li>
+</ul>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>Suppose we have a vector field defined by a function of positions in the x-y plane:</p>
 <pre><code class="python">from kamodo import kamodofy
@@ -195,30 +215,44 @@ pio.write_image(fig, 'images/fig2d-usage.svg')
 <p><img alt="usage" src="notebooks/images/fig2d-usage.svg" /></p>
 <p>Head over to the <a href="notebooks/Kamodo/">Introduction</a> page for more details.</p>
 <h2 id="getting-started">Getting started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h2>
-<p>Kamodo is now available through pip</p>
+<p>Kamodo may be installed from pip</p>
 <pre><code class="console">pip install kamodo
 </code></pre>
 
-<h3 id="where-to-download">Where to download<a class="headerlink" href="#where-to-download" title="Permanent link">&para;</a></h3>
-<p>If you have a nasa.developer.gov account, you may access the kamodo repository with <a href="https://git-scm.com/">git</a>:</p>
-<pre><code>git pull https://developer.nasa.gov/CCMC/Kameleon2.0
+<p>To get the latest version, install from Asher's fork:</p>
+<pre><code class="console">pip install git+https://github.com/asherp/Kamodo.git
 </code></pre>
+
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Kamodo is currently only available to users with NASA credentials. We are in the process of making Kamodo open to the public as an open-source project. </p>
+<p>Asher's fork is periodically merged into the CCMC's official NASA version.</p>
 </div>
-<h4 id="download-miniconda">Download (mini)conda<a class="headerlink" href="#download-miniconda" title="Permanent link">&para;</a></h4>
+<h3 id="kamodo-environment">Kamodo Environment<a class="headerlink" href="#kamodo-environment" title="Permanent link">&para;</a></h3>
 <p>We strongly recommend using the conda environment system to avoid library conflicts with your host machine's python.</p>
-<p>Download and install miniconda from <a href="https://conda.io/miniconda.html">here</a>.</p>
+<p>Download and install miniconda from <a href="https://conda.io/miniconda.html">here</a>. The advantage to using miniconda is that each new environment includes the bare-minimum for a project. This allows you to keep many different projects on a single work station.</p>
 <h4 id="create-kamodo-environment">Create Kamodo environment<a class="headerlink" href="#create-kamodo-environment" title="Permanent link">&para;</a></h4>
 <p>Create a new environment for kamodo</p>
-<pre><code>conda create -n kamodo-user jupyter
+<pre><code class="console">conda create -n kamodo python==3.7
+conda activate kamodo
+(kamodo) pip install kamodo
 </code></pre>
-<h4 id="activate-new-environment">Activate new environment<a class="headerlink" href="#activate-new-environment" title="Permanent link">&para;</a></h4>
-<p>From a bash shell:</p>
-<pre><code>source activate kamodo
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The leading (kamodo) in your prompt indicates that you have activated the <code>kamodo</code> environment.
+From here on, anything you install will be isolated to the <code>kamodo</code> environment.</p>
+</div>
+<h4 id="loading-example-notebooks">Loading example notebooks<a class="headerlink" href="#loading-example-notebooks" title="Permanent link">&para;</a></h4>
+<p>If you want to run any of the notebooks in docs, you will need to install <code>jupyter</code>:</p>
+<pre><code class="console">(kamodo) conda install jupyter
 </code></pre>
-<p>Requirements</p>
+
+<p>Navigate to the top-level of the kamodo repo, then point jupyter to <code>docs/notebooks</code>:</p>
+<pre><code>(kamodo) jupyter notebook docs/notebooks
+</code></pre>
+<p>This should open a browser window that will allow you to load any of the example notebooks.</p>
+<h4 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h4>
+<p>The following requirements are obtained by running <code>pip install kamodo</code></p>
 <ul>
 <li>numpy</li>
 <li>scipy</li>
@@ -234,18 +268,24 @@ pio.write_image(fig, 'images/fig2d-usage.svg')
 <p class="admonition-title">Note</p>
 <p>plotly version in flux</p>
 </div>
-<h4 id="loading-a-notebook">Loading a notebook<a class="headerlink" href="#loading-a-notebook" title="Permanent link">&para;</a></h4>
-<p>Start the notebook server in the <code>Prototypes</code> subdirectory</p>
-<pre><code>jupyter notebook Prototypes
+<h2 id="generating-docs">Generating Docs<a class="headerlink" href="#generating-docs" title="Permanent link">&para;</a></h2>
+<p>Kamodo's documentation site is a good example of how to embed your own plots in your own website.
+The documentation site is generated by the <code>mkdocs</code> package with some addons</p>
+<ul>
+<li>mkdocs - handles site generation and deployment (configured by top-level <code>mkdocs.yaml</code>)</li>
+<li>markdown-include - allows for embedding of markdown files (and graph divs) outside the docs folder</li>
+<li>python-markdown-math - enables LaTeX rendering</li>
+<li>mknotebooks - allows for the embedding of jupyter notebooks</li>
+</ul>
+<p>All of the above requirements can be installed with this line:</p>
+<pre><code class="console">pip install mkdocs python-markdown-math markdown-include mknotebooks
 </code></pre>
-<h4 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h4>
-<p>To generate this documentation site, you will need to install a few extra packages:</p>
-<pre><code>pip install mkdocs mknotebooks
-pip install python-markdown-math
-</code></pre>
-<p>To start the documentation server, navigate to the root of the repository, then:</p>
-<pre><code>mkdocs serve
-</code></pre>
+
+<p>You can then generate the docs and serve locally with</p>
+<p><code>mkdocs serve</code></p>
+<p>To deploy your own documentation on github-pages:</p>
+<p><code>mkdocs gh-deploy</code></p>
+<p>This generates a gh-pages branch with the static site files and pushes it to github. Github automatically creates a website url based on that branch.</p>
               
             </div>
           </div>
@@ -294,5 +334,5 @@ pip install python-markdown-math
 
 <!--
 MkDocs version : 1.0.4
-Build Date UTC : 2019-12-05 18:15:30
+Build Date UTC : 2020-02-05 22:10:09
 -->
