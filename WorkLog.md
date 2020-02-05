@@ -1,3 +1,6 @@
+
+# 2020-02-05 16:22:00.871936: clock-in
+
 # 2020-02-05 14:14:54.356827: clock-out
 
 * got clientside subplots to render
