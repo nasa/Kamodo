@@ -1,3 +1,6 @@
+
+# 2020-02-05 11:23:08.377881: clock-in
+
 # 2020-02-04 14:59:50.123294: clock-out
 
 * got gui to load separate models and parameters
