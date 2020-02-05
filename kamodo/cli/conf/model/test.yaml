@@ -1,0 +1,7 @@
+model:
+  class: kamodo.Kamodo
+  params: {}
+  evaluate: {}
+  plot: {}
+  fig_layout: {}
+

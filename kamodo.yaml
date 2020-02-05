@@ -1,0 +1,41 @@
+models: #independent models go here
+  cnofs:
+    class: pysat_kamodo.Pysat_Kamodo
+    params:
+      date: 2009, 1, 1
+      platform: cnofs
+      name: vefi
+      tag: dc_b
+    plot:
+      B_up: null
+      B_west: null
+
+  mymodel:
+    class: kamodo.Kamodo
+    params:
+      f: x**2 - 1
+      y: f**3
+    evaluate: {}
+    plot:
+      f:
+        x:
+          min: -1
+          max: 1
+          n: 31
+      y:
+        x:
+          min: -1
+          max: 1
+          n: 31
+
+    fig_layout:
+      autosize: true
+
+  # model2:
+  #   class: kamodo.Kamodo
+  #   params:
+  #     g: f_model1**2
+  #   evaluate: {}
+  #   plot: {}
+  #   fig_layout:
+  #     autosize: true

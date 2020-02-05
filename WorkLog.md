@@ -1,4 +1,168 @@
+# 2020-02-04 14:59:50.123294: clock-out
+
+* got gui to load separate models and parameters
+
+# 2020-02-04 13:22:32.543080: clock-in
+
+# 2020-02-04 11:59:54.684191: clock-out
+
+* reading up on dcc.store and clientside_callback
+
+# 2020-02-04 10:39:40.567881: clock-in
+
+# 2020-02-03 16:29:29.417205: clock-out
+
+* added parameter checkboxes
+
+# 2020-02-03 15:49:51.793947: clock-in
+
+# 2020-02-03 12:36:08.959116: clock-out
+
+* rendering equations through katex
+
+# 2020-02-03 10:22:19.591903: clock-in
+
+# 2020-01-31 19:35:30.915089: clock-out
+
+* got range slider to work
+
+# 2020-01-31 18:37:19.539544: clock-in
+
+# 2020-01-31 17:56:33.727653: clock-out
+
+
+# 2020-01-31 17:34:13.290486: clock-in
+
+# 2020-01-31 17:19:16.956235: clock-out
+
+
+# 2020-01-31 17:02:15.856951: clock-in
+
+# 2020-01-31 16:52:07.773236: clock-out
+
+
+# 2020-01-31 16:06:35.834953: clock-in
+
+# 2020-01-31 15:11:15.638982: clock-out
+
+
+# 2020-01-31 14:49:48.788349: clock-in
+
+# 2020-01-31 13:27:55.782459: clock-out
+
+* packaging pysatKamodo
+
+# 2020-01-31 12:37:50.196753: clock-in
+
+# 2020-01-31 11:19:55.778624: clock-out
+
+* gui generating callbacks after layout is set
+
+# 2020-01-31 10:35:50.687658: clock-in
+
+# 2020-01-29 13:18:25.114169: clock-out
+
+* meeting with Kamodo team for iSWAT-COSPAR prep
+
+# 2020-01-29 11:59:08.216757: clock-in
+
+* merging hourly.yaml
+# 2020-01-29 11:19:29.007340: clock-out
+
+* added link to NASA CCMC site
+* cleaned up documentation site
+* cleaning up docs
+
+# 2020-01-29 09:50:29.055214: clock-in: T-20m 
+
+# 2020-01-28 13:39:50.454679: clock-out
+
+* answering support email
+
+# 2020-01-28 13:30:23.612051: clock-in
+
+# 2020-01-22 15:09:42.523706: clock-out
+
+
+# 2020-01-22 15:09:36.423725: clock-in: T-40m 
+
+* adding separate tabs for each model
+# 2020-01-22 14:19:44.506406: clock-out
+
+* working on gui layout
+
+# 2020-01-22 12:13:09.639567: clock-in
+
+# 2020-01-21 17:53:12.595685: clock-out
+
+* added dynamic line plots to gui
+
+# 2020-01-21 15:28:20.175086: clock-in
+
+# 2020-01-21 13:37:38.575443: clock-out
+
+* added composition to cli
+* made compose use keyword arguments
+* added compose function for multiple kamodo objects
+
+# 2020-01-21 11:10:26.570097: clock-in
+
+# 2020-01-20 15:23:39.237942: clock-out
+
+* adding multiple models to cli
+* setting up kamodo.yaml overrides
+* Answered Lutz's issue
+
+# 2020-01-20 11:21:44.788233: clock-in
+
+# 2020-01-15 13:11:48.588900: clock-out
+
+* testing hourly commit
+* addressing issue from Lutz
+* send agenda for meeting
+
+# 2020-01-15 11:45:55.727665: clock-in
+
+# 2019-12-20 13:50:20.467183: clock-out
+* working on cli
+* added ability to call kamodo from any work directory containing config.yaml
+* added embedable plots: `model.plot_conf.output_type=div` saves the div to the file
+* have markdown-include point to the div, so you can embed in your own docs!
+
+# 2019-12-20 11:18:35.468801: clock-in
+
+# 2019-12-19 12:17:51.613183: clock-out
+* adding config file description to docs
+* Looking at `Config search path`. 
+* hydra plugin configs are found automatically once they are installed
+* how do we use the cwd to configure? https://github.com/facebookresearch/hydra/issues/274
+* docusaurus looks interesting
+
+# 2019-12-19 11:26:13.027723: clock-in
+
+# 2019-12-09 13:53:18.142633: clock-out
+* forgot to include cli notebook
+
+# 2019-12-09 13:52:30.292970: clock-in
+
+# 2019-12-09 13:50:43.574951: clock-out
+* working on cli
+
+# 2019-12-09 10:05:45.828781: clock-in
+
+# 2019-12-05 21:55:15.506661: clock-out
+* looking at Y-combinator for recursive anonymous functions
+
+# 2019-12-05 21:54:44.630995: clock-in: T-90m
+
+# 2019-11-27 12:42:29.395096: clock-out
+* fixing cdf arrays
+
+# 2019-11-27 12:06:51.013991: clock-in
+
 # 2019-11-22 09:57:46.571462: clock-out
+
+* regex matching https://stackoverflow.com/questions/1687620/regex-match-everything-but-specific-pattern
 
 # 2019-11-22 09:09:13.743347: clock-in
 
