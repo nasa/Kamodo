@@ -1,3 +1,6 @@
+
+# 2020-02-05 16:56:46.743551: clock-in
+
 # 2020-02-05 16:50:08.675833: clock-out
 
 * testing stateful storage update
