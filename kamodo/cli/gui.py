@@ -7,7 +7,7 @@ import dash_html_components as html
 from kamodo.cli.main import eval_config
 from kamodo import get_defaults
 import plotly.graph_objs as go
-from dash.dependencies import Input, Output, ClientsideFunction
+from dash.dependencies import Input, Output, ClientsideFunction, State
 import numpy as np
 from os import path
 import os
@@ -90,19 +90,65 @@ def get_gui(cfg):
         html.Div(children='''
             Kamodo: A low-coding interface for models and data
         '''),
+        html.Div(children = [
+            dcc.Textarea(
+                id = "kamodo-config",
+                title = "Configuration for Kamodo",
+                placeholder = 'Supply a configuration for Kamodo',
+                value = "{}".format(cfg.pretty()),
+                style = {'width': '500px', 'height':'400px'},
+                className = 'three columns'),
+            html.Div(
+                id = 'config-render',
+                className = 'three columns',
+                ),
+            ],
+            className = 'row'
+        ),
+        dcc.Tabs(id = 'kamodo-tabs'),
     ])
+
+    generate_config_render_callback(app)
+
+    generate_kamodo_tabs_callback(app)
+
+
+    
+    return app
+
+
+def generate_config_render_callback(app):
+    @app.callback(
+        Output('config-render', 'children'),
+        [Input('kamodo-config', 'value')])
+    def config_render(conf):
+        try:
+            cfg = OmegaConf.create(conf)
+            return dcc.Markdown(
+                id = 'config-render-markdown',
+                children = "```yaml\n{}\n```".format(cfg.models.pretty()),
+                )
+        except Exception as m:
+            return html.Div(str(m), style = {'color':'red'})
+
+
+
+
+def get_tabs_children(cfg):
 
     tabs_children = []
     graphs = {}
 
     for model_name, model_conf in cfg.models.items():
         print(model_name)
+        tab_children = []
+        tab_children.append(html.Br())
 
         try:
             model = hydra.utils.instantiate(model_conf)
         except Exception as m:
             print('could not instantiate {}'.format(model_name))
-            print(m)
+            raise
 
         if len(model) == 0:
             continue
@@ -124,7 +170,6 @@ def get_gui(cfg):
                 else:
                     model_params[var_name] = eval_config(var_args)
      
-        tab_children = []
 
         tab_children.append(get_equation_divs(model, model_name, model_params))
 
@@ -132,12 +177,24 @@ def get_gui(cfg):
 
         plots = get_kamodo_plots(model, model_params.keys(), model_params)
 
-        # fig_subplots = make_kamodo_subplots(model, model_params.keys(), model_params)
+        fig_subplots = make_kamodo_subplots(model, model_params.keys(), model_params)
  
         tab_children.append(
-            dcc.Graph(id = graph_id,
-                # figure = fig_subplots,
-                style = dict(height = '1000px', width = '1200px')))
+            html.Div(
+                html.Div(
+                    dcc.Graph(
+                        id = graph_id,
+                        figure = fig_subplots,
+                        style = {
+                            'height': '1000px', 
+                            'width':'1200px', 
+                            'text-align': 'center',
+                            'margin': 'auto'}),
+                    className = 'twelve columns'),
+                className = 'row'),
+            )
+                
+                
         tab_children.append(
             dcc.Store(id = graph_id + '-store',
                 data = plots),
@@ -150,32 +207,38 @@ def get_gui(cfg):
         
         tabs_children.append(tab)
 
-    tabs = dcc.Tabs(children = tabs_children)
-    app.layout.children.append(tabs)
+    return tabs_children
 
-    # generate_callbacks(app, graphs)
-
-    for graph_id, (model, model_params, model_name) in graphs.items():
-        generate_subplot_callback(app, graph_id, model, model_name, model_params)
-        pass
-    
-    return app
-
+def generate_kamodo_tabs_callback(app):
+    @app.callback(Output('kamodo-tabs','children'),
+    [Input('kamodo-config', 'value')])
+    def kamodo_content(conf):
+        try:
+            cfg = OmegaConf.create(conf)
+            tabs_children = get_tabs_children(cfg)
+            return tabs_children
+        except Exception as m:
+            print(m)
+            print(conf)
+            return html.Div(str(m), style = {'color':'red'})
+            
 
 def get_kamodo_plots(model, var_names, model_params):
     plots = {}
-    for plot_count, varname in enumerate(var_names):
-        try:
-            fig = model.figure(
-                varname,
-                indexing = 'ij',
-                return_type = True, 
-                **model_params.get(varname, {}))
-            plots[varname] = fig['data'][0]
-        except:
-            print("could not plot {} with model_params:".format(varname))
-            print(model_params)
-            raise PreventUpdate
+    for var_symbol, func in model.items():
+        if type(var_symbol) != UndefinedFunction:
+            var_label = str(type(var_symbol))
+            try:
+                fig = model.figure(
+                    var_label,
+                    indexing = 'ij',
+                    return_type = True, 
+                    **model_params.get(var_label, {}))
+                plots[var_label] = fig['data'][0]
+            except:
+                print("could not plot {} with model_params:".format(var_label))
+                print(model_params)
+                raise PreventUpdate
     return plots
 
 
