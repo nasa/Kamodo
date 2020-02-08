@@ -1,3 +1,6 @@
+
+# 2020-02-08 17:41:35.076690: clock-in
+
 # 2020-02-08 15:54:29.107857: clock-out
 
 * got reload config to work\!
