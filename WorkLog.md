@@ -1,3 +1,6 @@
+
+# 2020-02-08 15:17:25.461178: clock-in
+
 # 2020-02-08 14:26:00.479448: clock-out
 
 * tried getting fully dynamic dash callbacks to work
