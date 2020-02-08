@@ -1,3 +1,6 @@
+
+# 2020-02-08 12:40:38.991214: clock-in
+
 # 2020-02-07 19:58:47.600209: clock-out
 
 * got interactiv configuration
