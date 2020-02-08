@@ -82,6 +82,7 @@ def get_gui(cfg):
         external_stylesheets = external_stylesheets,
         external_scripts = external_scripts,
         )
+    app.config.suppress_callback_exceptions = False
 
 
     app.layout = html.Div(children=[
@@ -102,6 +103,17 @@ def get_gui(cfg):
                 id = 'config-render',
                 className = 'three columns',
                 ),
+            dcc.Input(
+                id = 'save-as',
+                value = "kamodo.yaml",
+                placeholder = "enter filename",
+                className = 'two columns'
+                ),
+            html.Button(
+                'Save',
+                id = 'save-button',
+                n_clicks = 0,
+                )
             ],
             className = 'row'
         ),
@@ -112,9 +124,30 @@ def get_gui(cfg):
 
     generate_kamodo_tabs_callback(app)
 
+    generate_save_button_callback(app)
+
 
     
     return app
+
+def generate_save_button_callback(app):
+    @app.callback(
+        Output('save-button', 'children'),
+        [Input('save-button', 'n_clicks')],
+        [State('save-as', 'value'), State('kamodo-config', 'value')]
+        )
+    def save_button(n_clicks, filename, conf):
+        try:
+            cfg = OmegaConf.create(conf)
+            with open(filename, 'w') as f:
+                f.write(cfg.pretty())
+        except:
+            raise PreventUpdate
+
+        if n_clicks > 0:
+            return 'saved'
+        else:
+            raise PreventUpdate
 
 
 def generate_config_render_callback(app):
@@ -133,8 +166,7 @@ def generate_config_render_callback(app):
 
 
 
-
-def get_tabs_children(cfg):
+def get_tabs_children(cfg, app):
 
     tabs_children = []
     graphs = {}
@@ -215,7 +247,7 @@ def generate_kamodo_tabs_callback(app):
     def kamodo_content(conf):
         try:
             cfg = OmegaConf.create(conf)
-            tabs_children = get_tabs_children(cfg)
+            tabs_children = get_tabs_children(cfg, app)
             return tabs_children
         except Exception as m:
             print(m)
@@ -375,12 +407,14 @@ def main():
     cfg = compose('conf/kamodo.yaml')
     
     config_override = None
+    extra_files = []
     if cfg.config_override is not None:
         override_path = "{}/{}".format(os.getcwd(),cfg.config_override)
         if path.exists(override_path):
             print("found {}".format(override_path))
             config_override = OmegaConf.load(override_path)
             print(config_override.pretty())
+            extra_files.append(override_path)
         else:
             if cfg.verbose > 0:
                 print("could not get override: {}".format(override_path))
@@ -394,7 +428,7 @@ def main():
         print(cfg.pretty())
 
     app = get_gui(cfg)
-    app.run_server(debug = True)
+    app.run_server(debug = True, extra_files = extra_files)
 
 # entrypoint for package installer
 def entry():
