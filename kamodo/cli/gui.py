@@ -84,6 +84,7 @@ def get_gui(cfg):
         )
     app.config.suppress_callback_exceptions = False
 
+    tabs_children, graphs = get_tabs_children(cfg, app)
 
     app.layout = html.Div(children=[
         html.H1(children='Kamodo'),
@@ -102,6 +103,7 @@ def get_gui(cfg):
             html.Div(
                 id = 'config-render',
                 className = 'three columns',
+                style = {'height': '400px'}
                 ),
             dcc.Input(
                 id = 'save-as',
@@ -115,16 +117,22 @@ def get_gui(cfg):
                 n_clicks = 0,
                 )
             ],
-            className = 'row'
+            className = 'row',
+            style = {'overflow': 'auto'}
         ),
-        dcc.Tabs(id = 'kamodo-tabs'),
+        dcc.Tabs(id = 'kamodo-tabs',
+            children = tabs_children),
     ])
+
 
     generate_config_render_callback(app)
 
     generate_kamodo_tabs_callback(app)
 
     generate_save_button_callback(app)
+
+    for graph_id, (model, model_params, model_name) in graphs.items():
+        generate_subplot_callback(app, graph_id, model, model_name, model_params)
 
 
     
@@ -207,16 +215,12 @@ def get_tabs_children(cfg, app):
 
         graph_id = "graph-{}".format(model_name)
 
-        plots = get_kamodo_plots(model, model_params.keys(), model_params)
-
-        fig_subplots = make_kamodo_subplots(model, model_params.keys(), model_params)
- 
         tab_children.append(
             html.Div(
                 html.Div(
                     dcc.Graph(
                         id = graph_id,
-                        figure = fig_subplots,
+                        # figure = fig_subplots,
                         style = {
                             'height': '1000px', 
                             'width':'1200px', 
@@ -225,12 +229,24 @@ def get_tabs_children(cfg, app):
                     className = 'twelve columns'),
                 className = 'row'),
             )
-                
-                
+
+        try:
+            plots = get_kamodo_plots(model, model_params.keys(), model_params)
+        except Exception as m:
+
+            tab_children.append(html.Div(str(m), style = {'color': 'red'}))
+            plots = {}
+                    
         tab_children.append(
             dcc.Store(id = graph_id + '-store',
                 data = plots),
             )
+
+
+
+        # fig_subplots = make_kamodo_subplots(model, model_params.keys(), model_params)
+ 
+
 
 
         graphs[graph_id] = model, model_params, model_name
@@ -239,7 +255,7 @@ def get_tabs_children(cfg, app):
         
         tabs_children.append(tab)
 
-    return tabs_children
+    return tabs_children, graphs
 
 def generate_kamodo_tabs_callback(app):
     @app.callback(Output('kamodo-tabs','children'),
@@ -247,12 +263,13 @@ def generate_kamodo_tabs_callback(app):
     def kamodo_content(conf):
         try:
             cfg = OmegaConf.create(conf)
-            tabs_children = get_tabs_children(cfg, app)
+            tabs_children, graphs = get_tabs_children(cfg, app)
             return tabs_children
         except Exception as m:
+            print("could not get tabs children")
             print(m)
             print(conf)
-            return html.Div(str(m), style = {'color':'red'})
+            return html.Pre(str(m).split('\n'), style = {'color':'red'})
             
 
 def get_kamodo_plots(model, var_names, model_params):
@@ -260,42 +277,40 @@ def get_kamodo_plots(model, var_names, model_params):
     for var_symbol, func in model.items():
         if type(var_symbol) != UndefinedFunction:
             var_label = str(type(var_symbol))
-            try:
-                fig = model.figure(
-                    var_label,
-                    indexing = 'ij',
-                    return_type = True, 
-                    **model_params.get(var_label, {}))
-                plots[var_label] = fig['data'][0]
-            except:
-                print("could not plot {} with model_params:".format(var_label))
-                print(model_params)
-                raise PreventUpdate
+
+            fig = model.figure(
+                var_label,
+                indexing = 'ij',
+                return_type = True, 
+                **model_params.get(var_label, {}))
+            plots[var_label] = fig['data'][0]
+
     return plots
 
 
-def make_kamodo_subplots(model, var_names, model_params):
-    fig_subplots = make_subplots(rows=len(var_names), cols=1)
-    for plot_count, varname in enumerate(var_names):
-        try:
-            fig = model.figure(
-                varname,
-                indexing = 'ij',
-                return_type = True, 
-                **model_params.get(varname, {}))
-            fig_subplots.add_trace(fig['data'][0], row = plot_count+1, col = 1)
-        except:
-            print("could not plot {} with model_params:".format(varname))
-            print(model_params)
-            raise PreventUpdate
-    return fig_subplots
+# def make_kamodo_subplots(model, var_names, model_params):
+#     fig_subplots = make_subplots(rows=len(var_names), cols=1)
+#     for plot_count, varname in enumerate(var_names):
+#         try:
+#             fig = model.figure(
+#                 varname,
+#                 indexing = 'ij',
+#                 return_type = True, 
+#                 **model_params.get(varname, {}))
+#             fig_subplots.add_trace(fig['data'][0], row = plot_count+1, col = 1)
+#         except:
+#             print("could not plot {} with model_params:".format(varname))
+#             print(model_params)
+#             raise PreventUpdate
+#     return fig_subplots
 
 
 def generate_subplot_callback(app, graph_id, model, model_name, model_params):
     app.clientside_callback(
         ClientsideFunction("clientside", "subplots"),
         Output(component_id=graph_id, component_property="figure"),
-        [Input(graph_id + '-store', "data"), Input('checklist-{}'.format(model_name), 'value')],
+        [Input(graph_id + '-store', "data"),
+        Input('checklist-{}'.format(model_name), 'value')],
     )
 
 
@@ -413,7 +428,7 @@ def main():
         if path.exists(override_path):
             print("found {}".format(override_path))
             config_override = OmegaConf.load(override_path)
-            print(config_override.pretty())
+            # print(config_override.pretty())
             extra_files.append(override_path)
         else:
             if cfg.verbose > 0:
