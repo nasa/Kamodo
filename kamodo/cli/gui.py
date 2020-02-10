@@ -125,7 +125,7 @@ def get_gui(cfg):
                 ),
             dcc.Input(
                 id = 'save-as',
-                value = "kamodo.yaml",
+                value = cfg.config_override,
                 placeholder = "enter filename",
                 className = 'two columns'
                 ),
@@ -147,7 +147,7 @@ def get_gui(cfg):
 
     generate_kamodo_tabs_callback(app)
 
-    generate_save_button_callback(app)
+    generate_save_button_callbacks(app)
 
     for graph_id, (model, model_params, model_name) in graphs.items():
         generate_subplot_callback(app, graph_id, model, model_name, model_params)
@@ -156,13 +156,13 @@ def get_gui(cfg):
     
     return app
 
-def generate_save_button_callback(app):
+def generate_save_button_callbacks(app):
     @app.callback(
         Output('save-button', 'children'),
-        [Input('save-button', 'n_clicks')],
+        [Input('save-button', 'n_clicks'), ],
         [State('save-as', 'value'), State('kamodo-config', 'value')]
         )
-    def save_button(n_clicks, filename, conf):
+    def save_config(n_clicks, filename, conf):
         if n_clicks > 0:
             try:
                 cfg = OmegaConf.create(conf)
@@ -173,6 +173,29 @@ def generate_save_button_callback(app):
                 return html.Div('error', style = {'color':'red'})
         else:
             raise PreventUpdate
+            return 'save'
+
+    @app.callback(
+        Output('save-as','value'),
+        [Input('kamodo-config', 'value')])
+    def update_save_value(conf):
+        try:
+            cfg = OmegaConf.create(conf)
+            filename = cfg.config_override
+            return filename
+        except:
+            raise PreventUpdate
+
+    @app.callback(
+        Output('save-button', 'n_clicks'),
+        [Input('kamodo-config', 'value')])
+    def update_save_button(conf):
+        try:
+            OmegaConf.create(conf)
+            return 0
+        except:
+            raise PreventUpdate
+
 
 
 def generate_config_render_callback(app):
@@ -184,7 +207,7 @@ def generate_config_render_callback(app):
             cfg = OmegaConf.create(conf)
             return dcc.Markdown(
                 id = 'config-render-markdown',
-                children = "```yaml\n{}\n```".format(cfg.models.pretty()),
+                children = "```yaml\n{}\n```".format(cfg.pretty()),
                 )
         except Exception as m:
             return html.Div(str(m), style = {'color':'red'})
@@ -437,7 +460,11 @@ def config_override(cfg):
 def main():
 
     cfg = compose('conf/kamodo.yaml')
+
+    cli_conf = OmegaConf.from_cli()
     
+    cfg = OmegaConf.merge(cfg, cli_conf)
+        
     config_override = None
     extra_files = []
     if cfg.config_override is not None:

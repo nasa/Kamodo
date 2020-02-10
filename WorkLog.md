@@ -1,3 +1,4 @@
+* gui and cli release
 * fixed continuous reload bug
 
 # 2020-02-09 20:13:13.525126: clock-in
