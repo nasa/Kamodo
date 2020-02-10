@@ -44,13 +44,30 @@ def get_equation_divs(model, model_name, model_params):
             if str(type(var_symbol)) in model_params:
                 selected.append(var_label)
 
+            var_docs = model[var_symbol].__doc__.split('\n')
+            doc_summary = var_docs[0]
+            doc_complete = ''
+            if len(var_docs) > 1:
+                doc_complete = [html.Pre(doc_) for doc_ in var_docs[1:]]
             options.append({'label': '', 'value': var_label})
             equations.append(
-                DashKatex(
-                    id = "{}-{}-expression".format(model_name, str(var_symbol)),
-                    expression = "{}".format(model.to_latex(
-                        keys = [str(var_symbol)],
-                        mode = "plain")),
+                html.Div([
+                    html.Div(
+                        DashKatex(
+                            id = "{}-{}-expression".format(model_name, str(var_symbol)),
+                            expression = "{}".format(model.to_latex(
+                                keys = [str(var_symbol)],
+                                mode = "plain")),
+                            ),
+                        className = 'four columns'),
+                    
+                    html.Details([
+                        html.Summary(doc_summary),
+                        html.Div(children=doc_complete)],
+                        className = 'eight columns',
+                        style = {'text-align': 'left'})
+                    ],
+                    className = 'row'
                     )
                 )
 
@@ -65,7 +82,8 @@ def get_equation_divs(model, model_name, model_params):
             html.Div(
                 children = equations,
                 className = "eleven columns"
-                ),],
+                ),
+            ],
         className = 'row',
         )
 
@@ -145,15 +163,14 @@ def generate_save_button_callback(app):
         [State('save-as', 'value'), State('kamodo-config', 'value')]
         )
     def save_button(n_clicks, filename, conf):
-        try:
-            cfg = OmegaConf.create(conf)
-            with open(filename, 'w') as f:
-                f.write(cfg.pretty())
-        except:
-            raise PreventUpdate
-
         if n_clicks > 0:
-            return 'saved'
+            try:
+                cfg = OmegaConf.create(conf)
+                with open(filename, 'w') as f:
+                    f.write(cfg.pretty())
+                    return 'saved'
+            except:
+                return html.Div('error', style = {'color':'red'})
         else:
             raise PreventUpdate
 
