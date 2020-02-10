@@ -1,3 +1,6 @@
+
+# 2020-02-10 12:03:49.344691: clock-in: T-1h 
+
 # 2020-02-09 22:22:51.749709: clock-out
 
 * gui and cli release

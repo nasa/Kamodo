@@ -20,10 +20,9 @@ def eval_config(params):
                 args[k] = np.linspace(v['min'], v['max'], v['n'])
     return args
 
-def write_plot_div(plot_result, plot_conf):
+def write_plot_div(plot_result, plot_filename):
     """writes plot div to file"""
     if plot_result is not None:
-        plot_filename = plot_conf['filename']
         with open(plot_filename, 'w') as f:
             f.write(plot_result)
             f.write('') # needs a newline or else embedding breaks
@@ -71,6 +70,8 @@ def main(cfg):
         print(cfg.pretty())
 
     plot_conf = cfg.plot_conf
+    plot_out_prefix = plot_conf.filename.split('.html')[0]
+    plot_conf.pop('filename')
 
     models = dict()
     for model_name, model_conf in cfg.models.items():
@@ -117,9 +118,10 @@ def main(cfg):
                     fig = go.Figure(model.plot(**plot_args))
                     if fig_layout is not None:
                         fig.update_layout(**fig_layout)
-                    plot_result = plot(fig, **plot_conf)
+                    out_filename = '{}_{}'.format(plot_out_prefix, varname)
+                    plot_result = plot(fig, filename = out_filename, **plot_conf)
                     if plot_result is not None:
-                        write_plot_div(plot_result, plot_conf)
+                        write_plot_div(plot_result, out_filename)
                 except:
                     print('could not plot {} with params:'.format(varname))
                     print(plot_args)

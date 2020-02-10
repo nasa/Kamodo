@@ -100,15 +100,38 @@ def get_gui(cfg):
         external_stylesheets = external_stylesheets,
         external_scripts = external_scripts,
         )
+    app.title = "kamodo"
     app.config.suppress_callback_exceptions = False
 
     tabs_children, graphs = get_tabs_children(cfg, app)
 
     app.layout = html.Div(children=[
-        html.H1(children='Kamodo'),
+        html.Div(
+            [
+            html.Div(
+                html.Img(
+                src="assets/Kamodo-black.png",
+                alt="Kamodo Software Suite",
+                style={'height':'80px'},
+                ),
+                className = 'six columns'
+                ),
+            html.Div(
+                html.Img(
+                src="assets/ccmc_logo.svg",
+                alt="Kamodo Software Suite",
+                style={'height':'80px'},
+                ),
+                className = 'six columns',
+                style = {'text-align': 'right'}, 
+                ),
+            ],
+            className = 'row'
+            ),
+        
 
         html.Div(children='''
-            Kamodo: A low-coding interface for models and data
+            A low-coding interface for models and data
         '''),
         html.Div(children = [
             dcc.Textarea(
