@@ -160,7 +160,7 @@ class T89(Kamodo):
 # x,y,z have to be scalar
 
 # we need to call recalc since common block is shared between instances
-# of geopack_2008 and T89,T96,T01,T04 
+# of geopack_2008 and T89,T96,T01,T04T04
         self.ps = geopack.recalc(self.dt_seconds)
 
         parmod=self.iopt
@@ -456,36 +456,71 @@ class T04(Kamodo):
         dt=datetime.datetime(year,month,day,hour,minute)-datetime.datetime(1970,1,1)
 # seconds from 1970/1/1 00:00 UT
         self.dt_seconds=dt.total_seconds()
+        self.use_igrf=use_igrf
+        qin_denton_url_message="only files for 2019 are available"
         qin_denton_url='https://rbsp-ect.newmexicoconsortium.org/data_pub/QinDenton/%d/' % (year)
-        qin_denton_file='QinDenton_%d%d%d_1min.txt' % (year,month,day)
+# datafeed inpreparation at ISWA
+#       qin_denton_url='https://iswa.ccmc.gsfc.nasa.gov/data_pub/QinDenton/%d/' % (year)
+        qin_denton_file='QinDenton_%d%.02d%.02d_1min.txt' % (year,month,day)
+        qin_denton_local_path='/Users/lrastaet/Kamodo_data/QinDenton_daily/%d/' %(year)
 # fetch file
-        qin_denton_local_file='./data/QinDenton/%d/%s' % (year,qin_denton_file)
-
+        qin_denton_local_file=qin_denton_local_path+'%s' % (qin_denton_file)
+        qin_denton_file_url=qin_denton_url+'/'+qin_denton_file
 #        import requests
 #        response=requests.get(qin_denton_url+qin-denton_file
         import pandas as pd
-        qindenton_frame=pd.read_json(qin_denton_local_file)
+        import requests
+# create local data directory and file if necessaruy
+        if (not os.path.isdir(qin_denton_local_path)):
+            os.mkdir(qin_denton_local_path)
 
-        self.ps = geopack.recalc(self.dt_seconds)
-        self.use_igrf=use_igrf
+        if (not os.path.isfile(qin_denton_local_file)):
+            # download file
+            print('Obtaining Qin Denton file from %s' % qin_denton_file_url)
+            r=requests.get(qin_denton_file_url)
+            myfiledata=r.text
+            if len(myfiledata) > 1:
+                f = open(qin_denton_local_file, "w")
+                f.write(myfiledata)
+                f.close()
+            else:
+                raise ValueError("no data found - the model cannot run for this day")
+                    
+# read daily file into frame
+        print('reading Qin Denton file %s' % qin_denton_local_file)
+        qindenton_frame=pd.read_table(qin_denton_local_file,skiprows=192,sep='\s+',names=['date','year','month','day','hour','minute','second','ByIMF','BzIMF','Vsw','Den_P','Pdyn','G1','G2','G3','ByIMF_status','BzIMF_status','Vsw_status','Den_P_status','Pdyn_status','G1_ststus','G2_status','G3_status','Kp','akp3','Dst','Bz','W1','W2','W3','W4','W5','W6','W1_status', 'W2_status', 'W3_status', 'W4_status', 'W5_status', 'W6_status'])
 
-        from geospacepy import omnireader
+
+#        from geospacepy import omnireader
         sTimeIMF = datetime.datetime(year,month,day,hour,minute)
         eTimeIMF = datetime.datetime(year,month,day,hour,minute)+datetime.timedelta(0,0,0,0,1,0)
-        omniInt = omnireader.omni_interval(sTimeIMF,eTimeIMF,'1min')
-        t = omniInt['Epoch'] #datetime timestamps
-        By = omniInt['BY_GSM']
-        Bz = omniInt['BZ_GSM']
-        Pdyn = omniInt['Pressure']
-        SYM_H = omniInt['SYM_H']
+#        omniInt = omnireader.omni_interval(sTimeIMF,eTimeIMF,'1min')
+        time_day = qindenton_frame['date'] #datetime timestamps
+        By_day = qindenton_frame['ByIMF']
+        Bz_day = qindenton_frame['BzIMF']
+        Pdyn_day = qindenton_frame['Pdyn']
+        Dst_day = qindenton_frame['Dst']
+        w1_day=qindenton_frame['W1']
+        w2_day=qindenton_frame['W2']
+        w3_day=qindenton_frame['W3']
+        w4_day=qindenton_frame['W4']
+        w5_day=qindenton_frame['W5']
+        w6_day=qindenton_frame['W6']
+        time_index=hour*60+minute
 # need Qin-Denton parameters
-        w1,w2,w3,w4,w5,w6=np.zeros(6,dtype=float)
-
-#        import pandas as pd
-#        pd.read_json(qin_denton_path
+        w1=w1_day[time_index]
+        w2=w2_day[time_index]
+        w3=w3_day[time_index]
+        w4=w4_day[time_index]
+        w5=w5_day[time_index]
+        w6=w6_day[time_index]
+        Pdyn=Pdyn_day[time_index]
+        Dst=Dst_day[time_index]
+        By=By_day[time_index]
+        Bz=Bz_day[time_index]
 # end Qin-Dention acquisition        
 
-        self.parmod=np.array([Pdyn,SYM_H,By,Bz,w1,w2,w3,w4,w5,w6],dtype=float)
+        self.parmod=np.array([Pdyn,Dst,By,Bz,w1,w2,w3,w4,w5,w6],dtype=float)
 
         super(T04, self).__init__(*args, **kwargs)
 #        parmod=np.zeros(10,dtype=float)
@@ -512,6 +547,35 @@ class T04(Kamodo):
                
                      
     def register_variable(self,varname,units):
+        if varname == 'b_x':
+            interpolator=self.bx
+        if varname == 'b_y':
+            interpolator=self.by
+        if varname == 'b_z':
+            interpolator=self.bz
+        if varname == 'bvec':
+            interpolator=self.b
+            
+        self.variables[varname]['interpolator']= interpolator
+
+        def interpolate(xvec):
+            return self[varname]['interpolator'](xvec)
+
+        interpolate.__doc__ = "A function that returns {} in [{}].".format(varname,units)
+
+        self[varname] = kamodofy(interpolate, 
+                                 units = units, 
+                                 citation = self.citation,
+                                 data = None)
+        self[varname + '_ijk'] = kamodofy(gridify(self[varname], 
+                                                  x_i = self.x, 
+                                                  y_j = self.y, 
+                                                  z_k = self.z),
+                                          units = units,
+                                          citation = self.citation,
+                                          data = None) 
+
+    def register_variable_2(self,varname,units):
         interpolator=None;
         if varname == 'b_x':
             interpolator=self.bx
@@ -527,6 +591,7 @@ class T04(Kamodo):
         def interpolate(xvec):
             return self[varname]['interpolator'](xvec)
 
+        
         interpolate.__doc__ = "A function that returns {} in [{}].".format(varname,units)
 
         self[varname] = kamodofy(interpolate, 
