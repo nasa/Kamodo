@@ -1,3 +1,6 @@
+
+# 2020-02-12 09:37:08.349586: clock-in: T-30m 
+
 # 2020-02-10 12:05:07.684918: clock-out
 
 * fixed cli bug that prevented multiple plots from being saved
