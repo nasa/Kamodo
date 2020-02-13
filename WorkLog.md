@@ -1,4 +1,10 @@
+# 2020-02-13 10:39:58.363603: clock-out
+
 * iSWAT-COSPAR sessions
+* end-to-end solutions
+* community involvement
+* visibility
+* understanding interpolators
 
 # 2020-02-13 09:09:49.084779: clock-in
 
