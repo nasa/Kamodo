@@ -1,3 +1,6 @@
+
+# 2020-02-14 09:56:13.530302: clock-in
+
 # 2020-02-13 10:39:58.363603: clock-out
 
 * iSWAT-COSPAR sessions
