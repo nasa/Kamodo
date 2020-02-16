@@ -1,3 +1,4 @@
+* submitted several feature issues
 
 # 2020-02-14 09:56:13.530302: clock-in
 
