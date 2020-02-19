@@ -1,3 +1,6 @@
+
+# 2020-02-19 12:22:27.823834: clock-in
+
 # 2020-02-16 17:09:14.266657: clock-out: T-56h 
 
 * submitted several feature issues
