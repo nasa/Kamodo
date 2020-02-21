@@ -1,3 +1,4 @@
+* check out partial functions
 # 2020-02-19 13:03:32.424355: clock-out
 
 * developer meeting
