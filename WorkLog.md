@@ -1,3 +1,4 @@
+* fixed deprecation warning from sympy>=1.5
 
 # 2020-02-25 14:37:23.285614: clock-in
 

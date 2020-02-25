@@ -31,8 +31,16 @@ def get_unit_quantity(name, base, scale_factor, abbrev = None, unit_system = 'SI
 	'''Define a unit in terms of a base unit'''
 	u = units.Quantity(name, abbrev = abbrev)
 	base_unit = getattr(sympy_units, base)
-	u.set_dimension(base_unit.dimension)
-	u.set_scale_factor(scale_factor*base_unit, unit_system = unit_system)
+
+	try:
+		# sympy >= 1.5 raises the following warning:
+		# 	Use unit_system.set_quantity_dimension or
+		# <unit>.set_global_relative_scale_factor
+		u.set_global_relative_scale_factor(scale_factor, base_unit)
+	except AttributeError:
+		u.set_dimension(base_unit.dimension)
+		u.set_scale_factor(scale_factor*base_unit, unit_system = unit_system)
+
 	return u
 
 unit_subs = dict(nT = get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
