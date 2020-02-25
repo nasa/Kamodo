@@ -1,3 +1,5 @@
+# 2020-02-25 15:49:05.616947: clock-out
+
 * addressing Liang's suggestions
 * fixed deprecation warning from sympy>=1.5
 
