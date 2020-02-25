@@ -1,3 +1,6 @@
+
+# 2020-02-25 14:37:23.285614: clock-in
+
 * check out partial functions
 # 2020-02-19 13:03:32.424355: clock-out
 
