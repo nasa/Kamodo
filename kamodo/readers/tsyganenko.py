@@ -476,6 +476,7 @@ class T04(Kamodo):
 # check local Qin-Denton file and download as needed
         import pandas as pd
         import requests
+        import dateutil.parser
 # create local data directory and file if necessaruy
         if (not os.path.isdir(kamodo_data_local_path)):
             os.mkdir(kamodo_data_local_path)
@@ -491,6 +492,16 @@ class T04(Kamodo):
         else:
             if (os.path.getsize(qin_denton_local_file) < 347621):
                 download_qd_file=True
+            else:
+                local_file_modified=(os.stat(qin_denton_local_file))[8]
+# check last modified time of remote file against local file
+                response=requests.head(qin_denton_file_url)
+                last_modified=response.headers.get('Last-Modified')
+                if last_modified:
+                    last_modified = dateutil.parser.parse(last_modified).timestamp()
+                    if last_modified > local_file_modified:
+                        download_qd_file=True
+                        
         if (download_qd_file):
             # download file
             print('Obtaining Qin Denton file from %s' % qin_denton_file_url)
