@@ -2,7 +2,7 @@
 import numpy as np
 from geopack import  geopack
 from geopack import t89,t96,t01,t04
-import os.path
+import os
 import datetime
 from kamodo import Kamodo, kamodofy,gridify,get_defaults
 import scipy
@@ -13,7 +13,7 @@ import scipy
 #  T98: Kp value from hourly OMNI
 #  T96: Dst (SYM_H), Solar wind Pdyn, IMF By, IMF Bz from 1-minite MNI
 #  T01: Dst (SYM_H), Solar wind Pdyn, IMF By, IMF Bz from 1-minute OMNI
-#  T04: Dst (SYM_H), Solar wind Pdyn, IMF By, IMF Bz, G1,...,G6 from OMNI, Qin-Denton
+#  T04: Dst (SYM_H), Solar wind Pdyn, IMF By, IMF Bz, G1,G2,G3, W1-W6 from OMNI, Qin-Denton (daily files since 1995 prepared at CCMC, avilable via iSWA)
 # 
 #
 class T89(Kamodo):
@@ -457,26 +457,44 @@ class T04(Kamodo):
 # seconds from 1970/1/1 00:00 UT
         self.dt_seconds=dt.total_seconds()
         self.use_igrf=use_igrf
-        qin_denton_url_message="only files for 2019 are available"
-        qin_denton_url='https://rbsp-ect.newmexicoconsortium.org/data_pub/QinDenton/%d/' % (year)
-# datafeed inpreparation at ISWA
-#       qin_denton_url='https://iswa.ccmc.gsfc.nasa.gov/data_pub/QinDenton/%d/' % (year)
+        qin_denton_url_message="files for years starting with 1995 are available - CCMC are truing to update files monthly as OMNI 1-minute, 5-minute and hourly data bcome available"
+# now powered by iSWA at CCMC
+        qin_denton_url='https://iswa.gsfc.nasa.gov/iswa_data_tree/composite/magnetosphere/Qin-Denton/1min/%d/%.02d/' %(year,month)
+#        qin_denton_url='https://rbsp-ect.newmexicoconsortium.org/data_pub/QinDenton/%d/' % (year)
         qin_denton_file='QinDenton_%d%.02d%.02d_1min.txt' % (year,month,day)
-        qin_denton_local_path='/Users/lrastaet/Kamodo_data/QinDenton_daily/%d/' %(year)
-# fetch file
+
+# set up local directories to hold files
+        HOME=os.environ['HOME']
+        kamodo_data_local_path='%s/Kamodo_data/' %(HOME)
+        qin_denton_local_path_root='%s/Kamodo_data/QinDenton_daily/' %(HOME)
+        qin_denton_local_path='%s/Kamodo_data/QinDenton_daily/%d/' % (HOME,year)
+
+# Qin-Denton file name 
         qin_denton_local_file=qin_denton_local_path+'%s' % (qin_denton_file)
         qin_denton_file_url=qin_denton_url+'/'+qin_denton_file
-#        import requests
-#        response=requests.get(qin_denton_url+qin-denton_file
+        print(qin_denton_local_file)
+# check local Qin-Denton file and download as needed
         import pandas as pd
         import requests
 # create local data directory and file if necessaruy
+        if (not os.path.isdir(kamodo_data_local_path)):
+            os.mkdir(kamodo_data_local_path)
+        if (not os.path.isdir(qin_denton_local_path_root)):
+            os.mkdir(qin_denton_local_path_root)
         if (not os.path.isdir(qin_denton_local_path)):
             os.mkdir(qin_denton_local_path)
-
+# were are not only testing for the presence of a file but also its size when the file does exist
+# a download may have failed before and may leave an incomplete file or a file containing a HTML META tag with a redirect pointing to the iSWA splash page (https://ccmc.gsfc.nasa.gov/iswa/)
+        download_qd_file=False
         if (not os.path.isfile(qin_denton_local_file)):
+            download_qd_file=True
+        else:
+            if (os.path.getsize(qin_denton_local_file) < 347621):
+                download_qd_file=True
+        if (download_qd_file):
             # download file
             print('Obtaining Qin Denton file from %s' % qin_denton_file_url)
+
             r=requests.get(qin_denton_file_url)
             myfiledata=r.text
             if len(myfiledata) > 1:
