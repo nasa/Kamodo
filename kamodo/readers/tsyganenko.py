@@ -449,7 +449,7 @@ class T04(Kamodo):
 #
 # using Sheng Tian's geopack module (https://github.com/tsssss/geopack)
 #
-    def __init__(self,year,month,day,hour,minute,use_igrf,*args,**kwargs):
+    def __init__(self,year,month,day,hour,minute,use_igrf,QD_data_path='%s/Kamodo_data/Qin-Denton/' % os.environ['HOME'],*args,**kwargs):
         from geopack import t04
 # epoch time since Jan. 1 1970 00:00 UT
 # datetime.timedelta
@@ -461,29 +461,23 @@ class T04(Kamodo):
 # now powered by iSWA at CCMC
         qin_denton_url='https://iswa.gsfc.nasa.gov/iswa_data_tree/composite/magnetosphere/Qin-Denton/1min/%d/%.02d/' %(year,month)
 #        qin_denton_url='https://rbsp-ect.newmexicoconsortium.org/data_pub/QinDenton/%d/' % (year)
-        qin_denton_file='QinDenton_%d%.02d%.02d_1min.txt' % (year,month,day)
 
-# set up local directories to hold files
-        HOME=os.environ['HOME']
-        kamodo_data_local_path='%s/Kamodo_data/' %(HOME)
-        qin_denton_local_path_root='%s/Kamodo_data/QinDenton_daily/' %(HOME)
-        qin_denton_local_path='%s/Kamodo_data/QinDenton_daily/%d/' % (HOME,year)
+        qin_denton_file='QinDenton_%d%.02d%.02d_1min.txt' % (year,month,day)
+        if (QD_data_path):
+            qin_denton_local_path='%s/Qin_denton_daily/%d/' % (QD_data_path,year)
 
 # Qin-Denton file name 
         qin_denton_local_file=qin_denton_local_path+'%s' % (qin_denton_file)
         qin_denton_file_url=qin_denton_url+'/'+qin_denton_file
-        print(qin_denton_local_file)
+#        print(qin_denton_local_file)
 # check local Qin-Denton file and download as needed
         import pandas as pd
         import requests
         import dateutil.parser
-# create local data directory and file if necessaruy
-        if (not os.path.isdir(kamodo_data_local_path)):
-            os.mkdir(kamodo_data_local_path)
-        if (not os.path.isdir(qin_denton_local_path_root)):
-            os.mkdir(qin_denton_local_path_root)
+# create local data directory and file if necessary
         if (not os.path.isdir(qin_denton_local_path)):
-            os.mkdir(qin_denton_local_path)
+            os.makedirs(qin_denton_local_path,exist_ok=True)
+
 # were are not only testing for the presence of a file but also its size when the file does exist
 # a download may have failed before and may leave an incomplete file or a file containing a HTML META tag with a redirect pointing to the iSWA splash page (https://ccmc.gsfc.nasa.gov/iswa/)
         download_qd_file=False
