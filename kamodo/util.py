@@ -36,7 +36,7 @@ def get_unit_quantity(name, base, scale_factor, abbrev = None, unit_system = 'SI
 	return u
 
 unit_subs = dict(nT = get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
-				R_E = get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
+				R_E = get_unit_quantity('earth radii', 'm', 6.371e6, 'R_E', 'SI'),
 				erg = get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
 				nPa = get_unit_quantity('nanopascals', 'pascal', .000000001, 'nPa', 'SI'),
 				)
