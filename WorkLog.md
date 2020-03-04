@@ -1,4 +1,10 @@
-* developer meeting
+# 2020-03-04 13:12:38.209902: clock-out
+
+## developer meeting
+* put website url in github description
+* pyHC standards grading
+
+https://github.com/heliophysicsPy/heliophysicsPy.github.io/blob/master/_pyhc_projects/pyhc_project_grading_guidelines.md
 
 # 2020-03-04 11:52:51.855025: clock-in
 
