@@ -1,3 +1,6 @@
+
+# 2020-03-04 11:52:51.855025: clock-in
+
 # 2020-02-25 15:49:05.616947: clock-out
 
 * addressing Liang's suggestions
