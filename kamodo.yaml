@@ -1,0 +1,36 @@
+config_override: kamodo.yaml
+models:
+  mymodel:
+    class: kamodo.Kamodo
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      f: x**2 - 1
+      y: f**3
+    plot:
+      f:
+        x:
+          max: 1
+          min: -1
+          n: 31
+      y:
+        x:
+          max: 1
+          min: -1
+          n: 31
+plot_conf:
+  animation_opts: null
+  auto_open: true
+  auto_play: true
+  config: null
+  filename: temp-plot.html
+  image: null
+  image_filename: plot_image
+  include_mathjax: cdn
+  include_plotlyjs: cdn
+  link_text: Export to plot.ly
+  output_type: file
+  show_link: false
+  validate: true
+verbose: true

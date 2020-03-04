@@ -19,7 +19,7 @@ from sympy import lambdify
 from sympy.parsing.latex import parse_latex
 from sympy import latex
 from sympy.core.function import UndefinedFunction
-from inspect import getargspec
+from inspect import getfullargspec
 from sympy import Eq
 import pandas as pd
 # from IPython.display import Latex
@@ -189,7 +189,7 @@ def parse_function(function, local_dict = None):
 
 def get_function_args(func, hidden_args = []):
 	"""converts function arguments to list of symbols"""
-	return symbols([a for a in getargspec(func).args if a not in hidden_args])
+	return symbols([a for a in getfullargspec(func).args if a not in hidden_args])
 
 def wildcard(expr):
 	result = expr
@@ -702,6 +702,24 @@ class Kamodo(collections.OrderedDict):
 				layouts.append(fig['layout'])
 			return go.Figure(data = traces, layout = layouts[-1])
 
+
+
+def compose(**kamodos):
+    kamodo = Kamodo()
+    for kname, k in kamodos.items():
+        for name, symbol in k.symbol_registry.items():
+            signature = k.signatures[str(symbol)] 
+            meta = k[symbol].meta
+            data = getattr(k[symbol], 'data', None)
+            
+            rhs = signature['rhs']
+            registry_name = '{}_{}'.format(name, kname)
+            if (rhs is None) | hasattr(rhs, '__call__'):
+                kamodo[registry_name] = kamodofy(k[symbol], data = data, **meta)
+            else:
+                kamodo[registry_name] = str(rhs)
+        
+    return kamodo
 
 ##------------ Tests Below --------------------
 

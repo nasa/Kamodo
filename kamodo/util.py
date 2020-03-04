@@ -16,7 +16,8 @@ import functools
 from decorator import decorator, decorate
 from sympy import symbols, Symbol
 from sympy.core.function import UndefinedFunction
-from inspect import getargspec
+from inspect import getargspec, getfullargspec
+import inspect
 from sympy.physics import units
 from sympy.physics import units as sympy_units
 import numpy as np
@@ -30,8 +31,16 @@ def get_unit_quantity(name, base, scale_factor, abbrev = None, unit_system = 'SI
 	'''Define a unit in terms of a base unit'''
 	u = units.Quantity(name, abbrev = abbrev)
 	base_unit = getattr(sympy_units, base)
-	u.set_dimension(base_unit.dimension)
-	u.set_scale_factor(scale_factor*base_unit, unit_system = unit_system)
+
+	try:
+		# sympy >= 1.5 raises the following warning:
+		# 	Use unit_system.set_quantity_dimension or
+		# <unit>.set_global_relative_scale_factor
+		u.set_global_relative_scale_factor(scale_factor, base_unit)
+	except AttributeError:
+		u.set_dimension(base_unit.dimension)
+		u.set_scale_factor(scale_factor*base_unit, unit_system = unit_system)
+
 	return u
 
 unit_subs = dict(nT = get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
@@ -216,7 +225,7 @@ def kamodofy(_func = None, units = '', data = None, update = None, equation = No
 			# f._repr_latex_ = lambda : "${}$".format(latex(parse_latex(latex_str)))
 		else:
 			f_ = symbols(f.__name__, cls = UndefinedFunction)
-			lhs = f_.__call__(*symbols(getargspec(f).args))
+			lhs = f_.__call__(*symbols(getfullargspec(f).args))
 			lambda_ = symbols('lambda', cls = UndefinedFunction)
 			latex_eq = latex(Eq(lhs, lambda_(*lhs.args)))
 			f._repr_latex_ = lambda : "${}$".format(latex(latex_eq))
@@ -255,7 +264,7 @@ def valid_args(f, kwargs):
 				valid[a] = kwargs[a]
 		return valid
 	else:		
-		for a in getargspec(f).args:
+		for a in getfullargspec(f).args:
 			if a in kwargs:
 				valid[a] = kwargs[a]
 		return valid
@@ -268,6 +277,14 @@ def eval_func(func, kwargs):
 		raise TypeError(str(m) + str(list(valid_args(func, kwargs).keys())))
 
 def get_defaults(func):
+	sig = inspect.signature(func)
+	defaults = {}
+	for k,v in sig.parameters.items():
+		if v.default is not inspect._empty:
+			defaults[k] = v.default
+
+	return defaults
+
 	spec = getargspec(func)
 	args = spec.args
 	defaults = spec.defaults
@@ -275,6 +292,25 @@ def get_defaults(func):
 		return OrderedDict(list(zip(args[-len(defaults):], spec.defaults)))
 	else:
 		return None
+
+def extract_kwargs(func, kwargs):
+    """extracts keyword arguments from function params
+	
+	parameters
+	----------
+	func - function to base kwargs on
+	kwargs - keyword dictionary to pop from
+
+	Returns
+	-------
+	dict - k,v pairs appropriate for function
+    """ 
+    kwarg_names = get_defaults(func).keys()
+    func_kwargs = {}
+    for k in kwarg_names:
+        if k in kwargs:
+            func_kwargs[k] = kwargs.pop(k)
+    return func_kwargs
 
 
 def to_arrays(d):

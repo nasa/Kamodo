@@ -1,0 +1,32 @@
+model:
+  class: kamodo.readers.tiegcm.TIEGCM_Kamodo
+  params:
+    filename: /Users/apembrok/Work/TIEGCM/sample_data/jasoon_shim_040118_IT_1/s001.nc
+    variables:
+      - EFLUX
+
+  fig_layout:
+    height: 600
+    width: 1200
+
+  plot: 
+    EFLUX:
+      lon: [0]
+
+  evaluate: null
+
+  plot_conf:
+    animation_opts: null
+    auto_open: true
+    auto_play: true
+    config: null
+    filename: temp-plot.html
+    image: null
+    image_filename: plot_image
+    include_mathjax: cdn
+    include_plotlyjs: true
+    link_text: Export to plot.ly
+    output_type: file
+    show_link: false
+    validate: true
+

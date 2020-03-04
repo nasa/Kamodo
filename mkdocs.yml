@@ -8,6 +8,10 @@ nav:
 - Syntax: notebooks/Syntax.ipynb
 - Kamodofying Models: notebooks/Kamodofying_Models.ipynb
 - Field Integration: notebooks/FieldIntegration.ipynb
+- Kameleon: notebooks/kameleon-kamodo.ipynb
+- TIEGCM: notebooks/TIEGCM.ipynb
+- CommandLine: notebooks/CommandLineInterface.ipynb
+- Additional Resources: additional_resources.md
 
 theme: readthedocs
 plugins:
@@ -20,6 +24,8 @@ markdown_extensions:
       enable_dollar_delimiter: True 
   - toc:
       permalink: true
+  - markdown_include.include:
+      base_path: docs
 
 extra_javascript: 
     - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML

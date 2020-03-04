@@ -1,0 +1,31 @@
+models:
+  mymodel:
+    class: kamodo.Kamodo
+    params: {}
+    evaluate: {}
+    plot: {}
+    fig_layout: {}
+
+config_override: kamodo.yaml
+
+plot_conf:
+  show_link: False
+  link_text: 'Export to plot.ly'
+  validate: True
+  output_type: file
+  include_plotlyjs: 'cdn'
+  filename: temp-plot.html
+  auto_open: True
+  image: Null
+  image_filename: plot_image
+  # image_width: 800
+  # image_height: 600
+  config: Null
+  include_mathjax: 'cdn'
+  auto_play: True
+  animation_opts: Null
+
+
+gui: false
+
+verbose: true

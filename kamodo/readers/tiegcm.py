@@ -4,9 +4,11 @@ from kamodo import Kamodo, kamodofy, gridify
 
 from scipy.interpolate import RegularGridInterpolator, interp1d
 
+# pip install pytiegcm
 from tiegcm.tiegcm import TIEGCM
 
 def parse_units(varname, variable):
+    """Parses units based on variable input"""
     try:
         units = variable.units
         units = units.replace('-','**-')
