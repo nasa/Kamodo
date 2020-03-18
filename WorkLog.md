@@ -1,3 +1,6 @@
+
+# 2020-03-18 16:26:22.789889: clock-in
+
 # 2020-03-18 13:03:13.421786: clock-out
 
 * looking at flask rest api https://flask-restful.readthedocs.io/en/latest/quickstart.html#full-example
