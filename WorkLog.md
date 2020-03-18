@@ -1,3 +1,10 @@
+# 2020-03-18 13:03:13.421786: clock-out
+
+* looking at flask rest api https://flask-restful.readthedocs.io/en/latest/quickstart.html#full-example
+
+## developer meeting
+* sscweb is positions also extrapolated into the future
+* cdaweb is positions and data
 
 # 2020-03-18 11:31:13.223644: clock-in
 
