@@ -312,7 +312,7 @@ class cdf_Kamodo(Kamodo):
                 if dependency_name is not None:
                     dependencies.append(dependency_name)
             if len(dependencies) == 0:
-                # print('not registering {}: no dependencies'.format(variable_name))
+                print('not registering {}: no dependencies'.format(variable_name))
                 continue
 
             if not hasattr(df, 'index'):
