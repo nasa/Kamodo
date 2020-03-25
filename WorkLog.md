@@ -1,3 +1,10 @@
+# 2020-03-25 14:02:55.608031: clock-out
+
+## kamodo meeting
+* set deadlines for gui, april->may
+* need a function that converts rho(x,y,z) -> rho(xvec)
+* [dash-flask app tutorial](https://hackersandslackers.com/plotly-dash-with-flask/)
+* tried running flask_restful with Dash, got `'Dash' object has no attribute 'handle_exception'`
 
 # 2020-03-25 12:30:23.986927: clock-in
 
