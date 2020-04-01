@@ -1,3 +1,28 @@
+# 2020-04-01 13:52:05.021374: clock-out
+
+* read through [flask app tutorial](https://github.com/toddbirchard/plotlydash-flask-tutorial)
+* ran with `python wsgi.py `
+
+## Kamodo meeting
+
+pandas time interpolation:
+
+```python
+def time_interpolation(df, t):
+	# combine original time index with new times
+	df_ = df.reindex(df.index.union(t))
+	# apply pandas' interpolation method to fill in new data
+	df_interpolated = df_.interpolate(method='time')
+	# return only values at selected times
+	result = df_interpolated.reindex(t)
+	return result
+```
+
+plans for May:
+* gui working for summer schools
+* include field line tracing
+* include services
+* choose a name for kamodo network
 
 # 2020-04-01 12:08:40.151618: clock-in
 
