@@ -1,3 +1,6 @@
+
+# 2020-04-08 12:18:16.752330: clock-in
+
 # 2020-04-01 13:52:05.021374: clock-out
 
 * read through [flask app tutorial](https://github.com/toddbirchard/plotlydash-flask-tutorial)
