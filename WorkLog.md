@@ -1,3 +1,5 @@
+# 2020-04-08 13:01:50.501409: clock-out
+
 * meeting with developers
 
 # 2020-04-08 12:18:16.752330: clock-in
