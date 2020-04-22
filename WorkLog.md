@@ -1,3 +1,7 @@
+# 2020-04-22 14:16:35.278555: clock-out: T-1h16m 
+
+* More on flask integration from [plotly](https://dash.plotly.com/integrating-dash)
+
 
 # 2020-04-22 11:56:00.335536: clock-in
 
