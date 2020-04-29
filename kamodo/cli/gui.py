@@ -18,6 +18,8 @@ import sys
 from dash_katex import DashKatex
 from plotly.subplots import make_subplots
 from dash.exceptions import PreventUpdate
+from flask_restful import reqparse, abort, Api, Resource
+import flask
 
 
 
@@ -89,16 +91,13 @@ def get_equation_divs(model, model_name, model_params):
 
     return equation_divs
 
-def get_gui(cfg):
+def get_gui(cfg, server):
 
-    # moved into assets
-    external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-    external_scripts = ['https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_CHTML']
-
-
-    app = dash.Dash(__name__, 
-        external_stylesheets = external_stylesheets,
-        external_scripts = external_scripts,
+    app = dash.Dash(__name__,
+        server=server,
+        routes_pathname_prefix = cfg.gui.routes_pathname_prefix,
+        external_stylesheets = cfg.gui.external_stylesheets,
+        external_scripts = cfg.gui.external_scripts,
         )
     app.title = "kamodo"
     app.config.suppress_callback_exceptions = False
@@ -480,6 +479,11 @@ def config_override(cfg):
             cfg = OmegaConf.merge(cfg, override_conf)
     return cfg
 
+def get_api(app):
+    api = Api(app)
+    return api
+
+
 def main():
 
     cfg = compose('conf/kamodo.yaml')
@@ -509,8 +513,27 @@ def main():
     if cfg.verbose > 0:
         print(cfg.pretty())
 
-    app = get_gui(cfg)
+    server = flask.Flask(__name__)
+
+    # app = Flask(__name__)
+    api = Api(server)
+
+    class HelloWorld(Resource):
+        def get(self):
+            return {'hello': 'world'}
+
+    api.add_resource(HelloWorld, '/kamodo/')
+
+
+    @server.route('/')
+    def index():
+        return 'Hello Flask app'
+
+    app = get_gui(cfg, server)
     app.run_server(debug = True, extra_files = extra_files)
+
+
+
 
 # entrypoint for package installer
 def entry():

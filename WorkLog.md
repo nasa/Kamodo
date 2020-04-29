@@ -1,3 +1,5 @@
+* flask server integration, api test working
+* PYHC meeting
 
 # 2020-04-29 12:14:17.372197: clock-in
 

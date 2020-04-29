@@ -26,6 +26,8 @@ plot_conf:
   animation_opts: Null
 
 
-gui: false
+gui:
+  routes_pathname_prefix: /kamodo/
+  external_stylesheets: []
 
 verbose: true
