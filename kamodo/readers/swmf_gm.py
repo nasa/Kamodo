@@ -451,6 +451,17 @@ class SWMF_GM(Kamodo):
                 return result2
             plotXYZ = Kamodo(plot_XYZ = plot_XYZ)
             fig = plotXYZ.plot(plot_XYZ = dict())
+            fig.update_layout(
+                scene_aspectmode='data',
+                title_text=txttop,
+                scene=dict(xaxis=dict(title="X [RE]"),yaxis=dict(title="Y [RE]"),zaxis=dict(title="Z [RE]")),
+                annotations=[
+                    dict(text=txtbot,
+                         font=dict(size=16, family="sans serif", color="#000000"),
+                         x=-0.08, y=-0.06, ax=0, ay=0, xanchor="left", xref="paper", yref="paper"
+                    )
+                ],
+                )
             return fig
         
         print("ERROR, unknown plottype =",plottype,", exiting without definition of figure.")
