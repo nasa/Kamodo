@@ -287,8 +287,11 @@ class SWMF_GM(Kamodo):
         print(f"Time resetting plot and precomputing interpolations: {toc - tic:0.4f} seconds")
         return
     
-    def get_plot(self, var):
-        '''Return a plotly figure for the available plot types.'''
+    def get_plot(self, var, colorscale="Viridis"):
+        '''
+        Return a plotly figure object for the available plot types set in set_plot()..
+        colorscale = Viridis [default], Cividis, or Rainbow
+        '''
         #Set some text strings
         txtbot="Model: BATSRUS,  Run: " + str(self.runname) + ",  " + str(self.gridSize) + " cells,  minimum dx=" + str(self.gridMinDx)
         txtbar=var + " [" + self.variables[var]['units'] + "]"
@@ -296,8 +299,8 @@ class SWMF_GM(Kamodo):
         # Get values from interpolation already computed
         result=self.variables[var]['interpolator']
         r = np.sqrt(np.square(self.newgrid[:,0]) + np.square(self.newgrid[:,1]) + np.square(self.newgrid[:,2]))
-        zmin=np.amin(result[(r[:] > 2.999)])
-        zmax=np.amax(result[(r[:] > 2.999)])
+        cmin=np.amin(result[(r[:] > 2.999)])
+        cmax=np.amax(result[(r[:] > 2.999)])
         
         if self.plottype == "XY":
             txttop="Z=" + str(self.newz) + " slice,  Time = " + self.filetime
@@ -311,17 +314,22 @@ class SWMF_GM(Kamodo):
             fig = plotXY.plot(plot_XY = dict())
             fig.update_xaxes(title_text="",scaleanchor='y')
             fig.update_yaxes(title_text="Y [RE]")
+            # Choose colorscale
+            if colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            elif colorscale == "Cividis":
+                fig.update_traces(colorscale="Cividis")
+            else:
+                fig.update_traces(colorscale="Viridis")
             fig.update_traces(
-                zmin=zmin,
-                zmax=zmax,
+                zmin=cmin, zmax=cmax,
                 ncontours=201,
-                colorscale=[[0.00, 'rgb(0,0,255)'], 
-                [0.25, 'rgb(0,255,255)'], 
-                [0.50, 'rgb(0,255,0)'], 
-                [0.75, 'rgb(255,255,0)'], 
-                [1.00, 'rgb(255,0,0)']],
-                #colorscale="Viridis",
-                #colorscale="Cividis",
                 colorbar=dict(title=txtbar),
                 hovertemplate="X: %{x:.2f}<br>Y: %{y:.2f}<br><b> %{z:.4f}</b><extra></extra>",
                 contours=dict(coloring="fill", showlines=False)
@@ -343,7 +351,7 @@ class SWMF_GM(Kamodo):
                         dict(type="circle", xref="x", yref="y", x0=-1, y0=-1, x1=1, y1=1, fillcolor="black", line_color="white"),
                         dict(type="path", path= self.ellipse_arc(N=30), fillcolor="white", line_color="white")
                     ]
-            )
+                )
             return fig
         
         if self.plottype == "XZ":
@@ -358,17 +366,22 @@ class SWMF_GM(Kamodo):
             fig = plotXZ.plot(plot_XZ = dict())
             fig.update_xaxes(title_text="",scaleanchor='y')
             fig.update_yaxes(title_text="z [RE]")
+            # Choose colorscale
+            if colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            elif colorscale == "Cividis":
+                fig.update_traces(colorscale="Cividis")
+            else:
+                fig.update_traces(colorscale="Viridis")
             fig.update_traces(
-                zmin=zmin,
-                zmax=zmax,
+                zmin=cmin, zmax=cmax,
                 ncontours=201,
-                colorscale=[[0.00, 'rgb(0,0,255)'], 
-                [0.25, 'rgb(0,255,255)'], 
-                [0.50, 'rgb(0,255,0)'], 
-                [0.75, 'rgb(255,255,0)'], 
-                [1.00, 'rgb(255,0,0)']],
-                #colorscale="Viridis",
-                #colorscale="Cividis",
                 colorbar=dict(title=txtbar),
                 hovertemplate="X: %{x:.2f}<br>Z: %{y:.2f}<br><b> %{z:.4f}</b><extra></extra>",
                 contours=dict(coloring="fill", showlines=False)
@@ -405,17 +418,22 @@ class SWMF_GM(Kamodo):
             fig = plotYZ.plot(plot_YZ = dict())
             fig.update_xaxes(title_text="",scaleanchor='y')
             fig.update_yaxes(title_text="Z [RE]")
+            # Choose colorscale
+            if colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            elif colorscale == "Cividis":
+                fig.update_traces(colorscale="Cividis")
+            else:
+                fig.update_traces(colorscale="Viridis")
             fig.update_traces(
-                zmin=zmin,
-                zmax=zmax,
+                zmin=cmin, zmax=cmax,
                 ncontours=201,
-                colorscale=[[0.00, 'rgb(0,0,255)'], 
-                [0.25, 'rgb(0,255,255)'], 
-                [0.50, 'rgb(0,255,0)'], 
-                [0.75, 'rgb(255,255,0)'], 
-                [1.00, 'rgb(255,0,0)']],
-                #colorscale="Viridis",
-                #colorscale="Cividis",
                 colorbar=dict(title=txtbar),
                 hovertemplate="Y: %{x:.2f}<br>Z: %{y:.2f}<br><b> %{z:.4f}</b><extra></extra>",
                 contours=dict(coloring="fill", showlines=False)
@@ -451,6 +469,25 @@ class SWMF_GM(Kamodo):
                 return result2
             plotXYZ = Kamodo(plot_XYZ = plot_XYZ)
             fig = plotXYZ.plot(plot_XYZ = dict())
+            # Choose colorscale
+            if colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            elif colorscale == "RdBu":
+                fig.update_traces(colorscale="RdBu")
+            elif colorscale == "Cividis":
+                fig.update_traces(colorscale="Cividis")
+            else:
+                fig.update_traces(colorscale="Viridis")
+            fig.update_traces(
+                colorbar=dict(title=txtbar),
+                cmin=cmin, cmax=cmax
+            )
             fig.update_layout(
                 scene_aspectmode='data',
                 title_text=txttop,
@@ -461,7 +498,8 @@ class SWMF_GM(Kamodo):
                          x=-0.08, y=-0.06, ax=0, ay=0, xanchor="left", xref="paper", yref="paper"
                     )
                 ],
-                )
+                margin=dict(l=0, b=30, t=30)
+            )
             return fig
         
         print("ERROR, unknown plottype =",plottype,", exiting without definition of figure.")
