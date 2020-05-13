@@ -1,3 +1,5 @@
+# 2020-05-13 15:02:23.437971: clock-out
+
 * got basic api working
 * developer meeting
 * making `get_defaults` return None for args without defaults
