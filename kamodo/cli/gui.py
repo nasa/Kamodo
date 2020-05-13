@@ -20,8 +20,11 @@ from plotly.subplots import make_subplots
 from dash.exceptions import PreventUpdate
 from flask_restful import reqparse, abort, Api, Resource
 import flask
-
-
+import json
+from kamodo import getfullargspec
+from flask.json import jsonify
+from flask import request
+from io import StringIO
 
 
 try:
@@ -518,11 +521,46 @@ def main():
     # app = Flask(__name__)
     api = Api(server)
 
-    class HelloWorld(Resource):
+    models = dict()
+    for model_name, model_conf in cfg.models.items():
+        try:
+            # this might fail
+            model_ = hydra.utils.instantiate(model_conf)
+            models[model_name] = model_
+        except:
+            pass
+    
+    class Models(Resource):
         def get(self):
-            return {'hello': 'world'}
+            details = dict()
+            for model_name, model_ in models.items():
+                detail = model_.detail().astype(str)
+                print(detail)
+                details[model_name] = detail.to_dict(
+                    # default_handler=str, 
+                    # indent =4, 
+                    orient = 'index',
+                    )
+            return details
 
-    api.add_resource(HelloWorld, '/kamodo/')
+    api.add_resource(Models, '/api', '/api/')
+
+
+    for model_name, model_ in models.items():
+        api.add_resource(
+            get_model_resource(model_name, model_),
+            '/api/{}'.format(model_name),
+            '/api/{}/'.format(model_name),
+            endpoint = model_name)
+
+        for var_symbol in model_:
+            if type(var_symbol) != UndefinedFunction:
+                var_label = str(type(var_symbol))
+                api.add_resource(
+                    get_func_resource(model_name, model_, var_symbol),
+                    '/api/{}/{}'.format(model_name, var_label),
+                    endpoint =  '/'.join([model_name, var_label]))
+
 
 
     @server.route('/')
@@ -533,7 +571,37 @@ def main():
     app.run_server(debug = True, extra_files = extra_files)
 
 
+def get_model_resource(model_name, model):
+    class modelResource(Resource):
+        def get(self):
+            return model.detail().astype(str).to_dict(orient='index')
 
+    return modelResource
+
+def get_func_resource(model_name, model, var_symbol):
+    parser = reqparse.RequestParser()
+    func = model[var_symbol]
+    defaults = get_defaults(func)
+    for arg in getfullargspec(func).args:
+        if arg in defaults:
+            parser.add_argument(arg, type = str)
+        else:
+            parser.add_argument(arg, type = str, required = True)
+
+    class funcResource(Resource):
+        def get(self):
+            
+            args_ = parser.parse_args(strict = True)
+            args = dict()
+
+            for argname, val_ in args_.items():
+                args[argname] = pd.read_json(StringIO(val_), typ = 'series')
+
+            return func(**args).tolist()
+      
+            
+
+    return funcResource
 
 # entrypoint for package installer
 def entry():

@@ -1,3 +1,18 @@
+* got basic api working
+* developer meeting
+* making `get_defaults` return None for args without defaults
+* argument parsing https://flask-restful.readthedocs.io/en/latest/reqparse.html
+* got api to return model description 
+
+* to specify curl `-d` options as url query, use `-G` flag
+
+So this:
+
+	curl http://127.0.0.1:8050/api/mymodel -d greeting=goodbye -G
+
+is equivalent to
+
+	http://127.0.0.1:8050/api/mymodel?greeting=goodbye
 
 # 2020-05-13 09:06:37.493882: clock-in
 
