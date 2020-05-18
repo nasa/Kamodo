@@ -7,6 +7,7 @@ from plotly.offline import init_notebook_mode, iplot, plot
 init_notebook_mode(connected = True)
 
 import numpy as np
+import pandas as pd
 
 import scipy.interpolate as spint
 import scipy.spatial.qhull as qhull
@@ -15,16 +16,16 @@ from kamodo import Kamodo, kamodofy, gridify
 import time
 import glob
 
+import os
 from os import path
 from datetime import datetime, timedelta
-
 
 class SWMF_GM(Kamodo): 
     def __init__(self, 
                  filename, 
                  runpath = "./", 
                  runname = "noname", 
-                 start_time = "1900/01/01 00:00", 
+                 start_time = "1000/01/01 00:00", 
                  **kwargs):
         # Start timer
         tic = time.perf_counter()
@@ -55,9 +56,6 @@ class SWMF_GM(Kamodo):
             self.variables[var] = dict(units = units[vars.index(var)], data = np.array(mhd[var], dtype=np.float32) )
         
         # Pull start_time from the DatabaseInfo file (if it exists), then add simulated time from file metadata
-        import os
-        from os import path
-        from datetime import datetime, timedelta
         if path.isfile(runpath+runname+'/DatabaseInfo'):
             for line in open(runpath+runname+'/DatabaseInfo'):
                 if "start_time" in line:
@@ -85,7 +83,9 @@ class SWMF_GM(Kamodo):
         super(SWMF_GM, self).__init__(**kwargs) 
         
         # Interpolation values
+        self.plots = dict()
         self.plottype = "XY"
+        self.cut = 'Z'
         self.cutV = 0.
         self.nX = 141
         self.nY = 81
@@ -94,13 +94,17 @@ class SWMF_GM(Kamodo):
         self.newy = np.linspace(-20., 20., self.nY)
         self.newz = self.cutV
         self.tol = 1.1
+        self.plots[self.plottype] = dict(cut=self.cut, cutV=self.cutV, tol=self.tol,
+                                         nX=self.nX, nY=self.nY, nZ=self.nZ,
+                                         newx=self.newx, newy=self.newy, newz=self.newz)  
         
         # Get grids ready to use
         self.setup_interpolating_grids()
-        
+
         for varname in self.variables:
             units = self.variables[varname]['units']
             self.register_variable(varname, units)
+            self.plots[self.plottype][varname]=self.variables[varname]['interpolator']
 
         # end timer
         toc = time.perf_counter()
@@ -114,6 +118,7 @@ class SWMF_GM(Kamodo):
         self.newgrid[:,0] = np.reshape(xx,-1)
         self.newgrid[:,1] = np.reshape(yy,-1)
         self.newgrid[:,2] = np.reshape(zz,-1)
+        self.plots[self.plottype]['newgrid'] = self.newgrid
         
         # Reduce size of read data block to speed up the interpolation
         self.grid2 = self.grid[(self.grid[:,0] > (np.amin(self.newx)-self.tol)) & 
@@ -222,6 +227,7 @@ class SWMF_GM(Kamodo):
         '''Check current values of plotting variables and print them out.'''
         print('Values set for plotting:')
         print(' plottype = ',self.plottype)
+        print(' cut = ',self.cut)
         print(' cutV = ',self.cutV)
         print(' nX',self.nX)
         print(' nY',self.nY)
@@ -240,11 +246,12 @@ class SWMF_GM(Kamodo):
         tic = time.perf_counter()
         if plottype == self.plottype:
             if cutV == self.cutV:
-                print('Plottype is unchanged, returning. ',plottype)
+                print('Plottype (',plottype,') and cut value (',cutV,') are unchanged, returning.')
                 return
         
         if plottype == "XY":
             self.plottype = plottype
+            self.cut = 'Z'
             self.cutV = cutV
             self.nX = 141
             self.nY = 81
@@ -252,9 +259,9 @@ class SWMF_GM(Kamodo):
             self.newx = np.linspace(-50., 20., self.nX)
             self.newy = np.linspace(-20., 20., self.nY)
             self.newz = cutV
-            self.tol = 1.1
         elif plottype == "XZ":
             self.plottype = plottype
+            self.cut = 'Y'
             self.cutV = cutV
             self.nX = 141
             self.nY = 1
@@ -262,9 +269,9 @@ class SWMF_GM(Kamodo):
             self.newx = np.linspace(-50., 20., self.nX)
             self.newy = cutV
             self.newz = np.linspace(-20., 20., self.nZ)
-            self.tol = 1.1
         elif plottype == "YZ":
             self.plottype = plottype
+            self.cut = 'X'
             self.cutV = cutV
             self.nX = 1
             self.nY = 141
@@ -272,7 +279,6 @@ class SWMF_GM(Kamodo):
             self.newx = cutV
             self.newy = np.linspace(-35., 35., self.nY)
             self.newz = np.linspace(-20., 20., self.nZ)
-            self.tol = 1.1
         elif plottype == "XYZ":
             self.plottype = plottype
             return
@@ -280,8 +286,14 @@ class SWMF_GM(Kamodo):
             print('Error, unknown plottype. ',plottype)
             return
 
+        self.plots[plottype] = dict(cut=self.cut, cutV=self.cutV, tol=self.tol,
+                                    nX=self.nX, nY=self.nY, nZ=self.nZ,
+                                    newx=self.newx, newy=self.newy, newz=self.newz)
         self.setup_interpolating_grids()
         self.reinterpolate_values()
+
+        for varname in self.variables:
+            self.plots[plottype][varname]=self.variables[varname]['interpolator']
 
         toc = time.perf_counter()
         print(f"Time resetting plot and precomputing interpolations: {toc - tic:0.4f} seconds")
@@ -303,7 +315,7 @@ class SWMF_GM(Kamodo):
         cmax=np.amax(result[(r[:] > 2.999)])
         
         if self.plottype == "XY":
-            txttop="Z=" + str(self.newz) + " slice,  Time = " + self.filetime
+            txttop="Z=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
             xint = self.newx
             yint = self.newy
             # Reshape interpolated values into 2D
@@ -344,7 +356,7 @@ class SWMF_GM(Kamodo):
                     )
                 ]
             )
-            if self.newz == 0.:
+            if self.plots[self.plottype]['cutV'] == 0.:
                 fig.update_layout(
                     shapes=[
                         dict(type="circle", xref="x", yref="y", x0=-3, y0=-3, x1=3, y1=3, fillcolor="black", line_color="black"),
@@ -355,7 +367,7 @@ class SWMF_GM(Kamodo):
             return fig
         
         if self.plottype == "XZ":
-            txttop="Y=" + str(self.newy) + " slice,  Time = " + self.filetime
+            txttop="Y=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
             xint = self.newx
             zint = self.newz
             # Reshape interpolated values into 2D
@@ -396,7 +408,7 @@ class SWMF_GM(Kamodo):
                     )
                 ]
             )
-            if self.newy == 0.:
+            if self.plots[self.plottype]['cutV'] == 0.:
                 fig.update_layout(
                     shapes=[
                         dict(type="circle", xref="x", yref="y", x0=-3, y0=-3, x1=3, y1=3, fillcolor="black", line_color="black"),
@@ -407,7 +419,7 @@ class SWMF_GM(Kamodo):
             return fig
         
         if self.plottype == "YZ":
-            txttop="X=" + str(self.newx) + " slice,  Time = " + self.filetime
+            txttop="X=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
             yint = self.newy
             zint = self.newz
             # Reshape interpolated values into 2D
@@ -448,7 +460,7 @@ class SWMF_GM(Kamodo):
                     )
                 ]
             )
-            if self.newx == 0.:
+            if self.plots[self.plottype]['cutV'] == 0.:
                 fig.update_layout(
                     shapes=[
                         dict(type="circle", xref="x", yref="y", x0=-3, y0=-3, x1=3, y1=3, fillcolor="black", line_color="black"),
@@ -459,16 +471,76 @@ class SWMF_GM(Kamodo):
             return fig
         
         if self.plottype == "XYZ":
+            Nplot = 0
             txttop="3D Plot,  Time = " + self.filetime
-            xint = self.newx
-            yint = self.newy
-            zint = self.newz
+
+            # Plot 'XY' is assumed to be part of the 3D plot
+            pt = 'XY'
+            # Get values from interpolation already computed
+            result=self.plots[pt][var]
+            newgrid = self.plots[pt]['newgrid']
+            r = np.sqrt(np.square(newgrid[:,0]) + np.square(newgrid[:,1]) + np.square(newgrid[:,2]))
+            cmin=np.amin(result[(r[:] > 2.999)])
+            cmax=np.amax(result[(r[:] > 2.999)])
+            xint = self.plots[pt]['newx']
+            yint = self.plots[pt]['newy']
+            zint = self.plots[pt]['newz']
             # Reshape interpolated values into 3D
-            result2=np.reshape(result,(self.nY,self.nX,self.nZ))
-            def plot_XYZ(xint = xint, yint = yint, zint = zint):
+            result2=np.reshape(result,(self.plots[pt]['nY'],self.plots[pt]['nX'],self.plots[pt]['nZ']))
+            def plot_XY(xint = xint, yint = yint, zint = zint):
                 return result2
-            plotXYZ = Kamodo(plot_XYZ = plot_XYZ)
-            fig = plotXYZ.plot(plot_XYZ = dict())
+            plotXY = Kamodo(plot_XY = plot_XY)
+            fig = plotXY.plot(plot_XY = dict())
+            Nplot = Nplot +1
+
+            if('XZ' in self.plots):
+                pt = 'XZ'
+                # Get values from interpolation already computed
+                result=self.plots[pt][var]
+                newgrid = self.plots[pt]['newgrid']
+                r = np.sqrt(np.square(newgrid[:,0]) + np.square(newgrid[:,1]) + np.square(newgrid[:,2]))
+                cmin=min(cmin,np.amin(result[(r[:] > 2.999)]))
+                cmax=max(cmax,np.amax(result[(r[:] > 2.999)]))
+                xint = self.plots[pt]['newx']
+                yint = self.plots[pt]['newy']
+                zint = self.plots[pt]['newz']
+                # Reshape interpolated values into 3D
+                result2=np.reshape(result,(self.plots[pt]['nY'],self.plots[pt]['nX'],self.plots[pt]['nZ']))
+                def plot_XZ(xint = xint, yint = yint, zint = zint):
+                    return result2
+                plotXZ = Kamodo(plot_XZ = plot_XZ)
+                figXZ = plotXZ.plot(plot_XZ = dict())
+                fig.add_surface(showscale=False)
+                fig.data[Nplot].surfacecolor = figXZ.data[0].surfacecolor
+                fig.data[Nplot].x = figXZ.data[0].x
+                fig.data[Nplot].y = figXZ.data[0].y
+                fig.data[Nplot].z = figXZ.data[0].z
+                Nplot = Nplot +1
+
+            if('YZ' in self.plots):
+                pt = 'YZ'
+                # Get values from interpolation already computed
+                result=self.plots[pt][var]
+                newgrid = self.plots[pt]['newgrid']
+                r = np.sqrt(np.square(newgrid[:,0]) + np.square(newgrid[:,1]) + np.square(newgrid[:,2]))
+                cmin=min(cmin,np.amin(result[(r[:] > 2.999)]))
+                cmax=max(cmax,np.amax(result[(r[:] > 2.999)]))
+                xint = self.plots[pt]['newx']
+                yint = self.plots[pt]['newy']
+                zint = self.plots[pt]['newz']
+                # Reshape interpolated values into 3D
+                result2=np.reshape(result,(self.plots[pt]['nY'],self.plots[pt]['nX'],self.plots[pt]['nZ']))
+                def plot_YZ(xint = xint, yint = yint, zint = zint):
+                    return result2
+                plotYZ = Kamodo(plot_YZ = plot_YZ)
+                figYZ = plotYZ.plot(plot_YZ = dict())
+                fig.add_surface(showscale=False)
+                fig.data[Nplot].surfacecolor = figYZ.data[0].surfacecolor
+                fig.data[Nplot].x = figYZ.data[0].x
+                fig.data[Nplot].y = figYZ.data[0].y
+                fig.data[Nplot].z = figYZ.data[0].z
+                Nplot = Nplot +1
+
             # Choose colorscale
             if colorscale == "Rainbow":
                 fig.update_traces(
@@ -486,7 +558,8 @@ class SWMF_GM(Kamodo):
                 fig.update_traces(colorscale="Viridis")
             fig.update_traces(
                 colorbar=dict(title=txtbar),
-                cmin=cmin, cmax=cmax
+                cmin=cmin, cmax=cmax,
+                hovertemplate="X: %{x:.2f}<br>Y: %{y:.2f}<br>Z: %{z:.2f}<extra></extra>"
             )
             fig.update_layout(
                 scene_aspectmode='data',
@@ -500,6 +573,34 @@ class SWMF_GM(Kamodo):
                 ],
                 margin=dict(l=0, b=30, t=30)
             )
+
+            # Add in plot axis for reference
+            #fig.add_scatter3d()
+            #fig.data[Nplot].x = [-20., 0., 20., 0.,   0., 0.,  0., 0.,   0., 0.,  0.]
+            #fig.data[Nplot].y = [  0., 0., 0.,  0., -20., 0., 20., 0.,   0., 0.,  0.]
+            #fig.data[Nplot].z = [  0., 0., 0.,  0.,   0., 0.,  0., 0., -20., 0., 20.]
+            #fig.data[Nplot].name = 'Axis'
+            #fig.data[Nplot].marker = dict(size=3, color='white', opacity=0.8)
+            #fig.data[Nplot].line = dict(color='white', width=4)
+            #fig.data[Nplot].hoverinfo='skip'
+            #Nplot = Nplot +1
+
+            # Add in R=3 sphere
+            dataXYZ = pd.read_csv('http://vmr.engin.umich.edu/dbg/sphereXYZ.csv')
+            dataIJK = pd.read_csv('http://vmr.engin.umich.edu/dbg/sphereIJK.csv')
+            fig.add_mesh3d()
+            fig.data[Nplot].x = dataXYZ['x']*3.
+            fig.data[Nplot].y = dataXYZ['y']*3.
+            fig.data[Nplot].z = dataXYZ['z']*3.
+            fig.data[Nplot].i = dataIJK['i']
+            fig.data[Nplot].j = dataIJK['j']
+            fig.data[Nplot].k = dataIJK['k']
+            fig.data[Nplot].facecolor = dataIJK['c']
+            fig.data[Nplot].flatshading = True
+            fig.data[Nplot].name = 'R=3 sphere'
+            fig.data[Nplot].hovertemplate="R=3 sphere<extra></extra>"
+            Nplot = Nplot +1
+
             return fig
         
         print("ERROR, unknown plottype =",plottype,", exiting without definition of figure.")
