@@ -1,3 +1,4 @@
+* cleaning up skew contour carpet plots
 * squeezing gridify output, added rvert lvert
 # 2020-05-13 15:02:23.437971: clock-out
 

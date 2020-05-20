@@ -294,6 +294,28 @@ def carpet_plot(results, title, xaxis, yaxis, indexing = 'xy', **kwargs):
 		b = bb.ravel(),
 		x = val0.ravel(),
 		y = val1.ravel(),
+		aaxis = dict(
+		    tickprefix = ''.format(arg0),
+		    smoothing = 0,
+		    minorgridcount = 0,
+		    type = 'linear',
+		    showgrid = False,
+		    nticks = 5,
+		    dtick=0,
+		    tickmode='linear',
+		    showticklabels='none',
+		),
+		baxis = dict(
+		    tickprefix = ''.format(arg1),
+		    smoothing = 0,
+		    minorgridcount = 0,
+		    type = 'linear',
+		    showgrid = False,
+		    nticks = 5,
+		    dtick=0,
+		    tickmode='linear',
+		    showticklabels='none',
+		)
 	)
 	traces = [trace1, trace2]
 	layout = go.Layout(
