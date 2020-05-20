@@ -112,6 +112,8 @@ def beautify_latex(s):
 		('LEFT', '\\left ('),
 		('RIGHT', '\\right )'),
 		('integral', '\\int'),
+		('rvert', '\\rvert'),
+		('lvert', '\\lvert'),
 		])
 	
 
@@ -516,7 +518,7 @@ def test_bibtex():
 grid_wrapper_def =r"""def wrapped({signature}):
 	coordinates = np.meshgrid({arg_str}, indexing = 'xy')
 	points = np.column_stack([c.ravel() for c in coordinates])
-	return {fname}(points).reshape(coordinates[0].shape, order = 'A')
+	return np.squeeze({fname}(points).reshape(coordinates[0].shape, order = 'A'))
 	"""
 
 
