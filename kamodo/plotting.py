@@ -133,14 +133,14 @@ def line_plot(result, titles, verbose = False, **kwargs):
 			y = val1, 
 			z = val2, 
 			text = text,
-			marker = dict(
-				color = result[titles['variable']], 
-				colorscale = 'Viridis',
-				colorbar = dict(title = titles['title_short'])),
+			# marker = dict(
+			# 	color = result[titles['variable']], 
+			# 	colorscale = 'Viridis',
+			# 	colorbar = dict(title = titles['title_short'])),
 			line = dict(
 				color = result[titles['variable']],
 				colorscale='Viridis'), 
-			mode = 'markers+lines')
+			mode = 'lines')
 		layout = go.Layout(
 			title = titles['title'],
 			scene = dict(

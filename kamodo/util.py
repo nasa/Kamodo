@@ -355,9 +355,11 @@ def simulate(state_funcs, **kwargs):
 
 def pad_nan(array):
 	if len(array.shape) == 1:
+		# print('padding array {}'.format(array.shape))
 		return np.pad(array.astype(float), (0,1), 
-					  mode = 'constant', constant_values = np.nan)
+					  mode = 'constant', constant_values = np.nan).T
 	elif len(array.shape) == 2:
+		# print('padding array {}'.format(array.shape))
 		return np.pad(array.astype(float), ((0,1),(0,0)), 
 					  mode = 'constant', constant_values = np.nan)
 	else:
@@ -367,12 +369,15 @@ def concat_solution(gen, variable):
 	result = []
 	params = defaultdict(list)
 	for f in gen:
-		params[variable].append(pad_nan(f.data))
 		for k,v in list(get_defaults(f).items()):
 			params[k].append(pad_nan(v))
+		params[variable].append(pad_nan(f.data))
 		
 	for k,v in list(params.items()):
-		params[k] = np.vstack(v)
+		if len(v[0].shape) == 1:
+			params[k] = np.hstack(v)
+		else:
+			params[k] = np.vstack(v)
 	return params
 
 	
