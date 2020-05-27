@@ -1,3 +1,4 @@
+* developer meeting
 
 # 2020-05-27 11:38:16.287492: clock-in
 
@@ -9,6 +10,7 @@
 
 * cleaning up skew contour carpet plots
 * squeezing gridify output, added rvert lvert
+
 # 2020-05-13 15:02:23.437971: clock-out
 
 * got basic api working
