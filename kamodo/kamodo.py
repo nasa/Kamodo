@@ -549,7 +549,11 @@ class Kamodo(collections.OrderedDict):
 				# latex_eq = latex(Eq(lhs, parse_latex(rhs)), mode = mode)
 			else:
 				if rhs is not None:
-					latex_eq = latex(Eq(lhs, rhs), mode = mode)
+					try:
+						latex_eq = latex(Eq(lhs, rhs), mode = mode)
+					except:
+						lambda_ = symbols('lambda', cls = UndefinedFunction)
+						latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode = mode)
 				else:
 					lambda_ = symbols('lambda', cls = UndefinedFunction)
 					latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode = mode)
@@ -664,7 +668,7 @@ class Kamodo(collections.OrderedDict):
 		except KeyError:
 			print('not supported: out_dim {}, arg_dims {}'.format(out_dim, arg_dims))
 			raise
-		traces, chart_type, layout = plot_func(result, titles,indexing = indexing, verbose = self.verbose)
+		traces, chart_type, layout = plot_func(result, titles,indexing = indexing, verbose = self.verbose, **kwargs)
 
 		layout.update(
 			dict(autosize=False,

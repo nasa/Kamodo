@@ -1,3 +1,22 @@
+* forwarding plot args to plot funcs, works for quiver plots
+* found forge tool to generate custom function signatures!
+
+```console
+pip install python-forge
+```
+```python
+@forge.sign(
+    forge.arg('x'),
+    forge.arg('y'),
+    forge.arg('opt', default=None),
+)
+def func(*args, **kwargs):
+    # signature becomes: func(x, y, opt=None)
+    return (args, kwargs)
+
+assert func(1, 2) == ((), {'x': 1, 'y': 2, 'opt': None})
+```
+
 # 2020-05-27 14:38:38.650053: clock-out
 
 

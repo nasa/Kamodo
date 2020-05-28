@@ -4,7 +4,7 @@ No Copyright is claimed in the United States under Title 17, U.S. Code.  All Oth
 """
 import plotly.graph_objs as go
 import numpy as np
-from util import arg_to_latex, beautify_latex, cast_0_dim
+from util import arg_to_latex, beautify_latex, cast_0_dim, get_defaults
 from plotly import figure_factory as ff
 import pandas as pd
 from collections import defaultdict
@@ -119,6 +119,39 @@ def line_plot(result, titles, verbose = False, **kwargs):
 			trace = go.Scatter3d(x = x, y = y, z = z, text = text, mode = 'lines')
 			chart_type = '3d-line'
 
+	elif len(result) == 3:
+		arg0, val0 = t_name, t
+		arg1, val1 = list(result.items())[1]
+
+		assert(f.shape == t.shape)
+
+		text = ["{}:{}".format(titles['variable'], v) for v in f]
+
+		trace = go.Scatter(
+			x = val0, 
+			y = val1, 
+			text = text,
+			# marker = dict(
+			# 	color = result[titles['variable']], 
+			# 	colorscale = 'Viridis',
+			# 	colorbar = dict(title = titles['title_short'])),
+			#  since plotly doesn't support autocolor for 2d lines yet
+			line = dict(
+				# color = result[titles['variable']],
+				color = 'black', # need to map this to a colorscale
+				# colorscale='Viridis',
+				), 
+			mode = 'lines')
+		layout = dict(
+			title = titles['title'],
+			xaxis_title = arg0,
+			yaxis_title = arg1,
+			scene = dict(
+				xaxis = dict(title = arg0),
+				yaxis = dict(title = arg1),
+				))
+		chart_type = '2d-line'
+
 	elif len(result) == 4:
 		arg0, val0 = t_name, t
 		arg1, val1 = list(result.items())[1]
@@ -166,12 +199,23 @@ def vector_plot(result, titles, verbose = False, **kwargs):
 		x = val0[:,0]
 		y = val0[:,1]
 
-		trace = ff.create_quiver(
-			x, y, u, v,
-			# scale=.25,
-			# arrow_scale=.4,
-			name='quiver',
-			line=dict(width=1))['data'][0] # extracts quiver trace
+		quiver_defaults = get_defaults(ff.create_quiver)
+		for k, v_ in kwargs.items():
+			if k in quiver_defaults:
+				quiver_defaults[k] = v_
+		if verbose:
+			print(quiver_defaults)
+		try:
+			trace = ff.create_quiver(
+				x, y, u, v,
+				name='quiver',
+				line=dict(width=1),
+				**quiver_defaults)['data'][0] # extracts quiver trace
+		except:
+			print('problem with quiver, u,v,x,y shapes:')
+			for v_ in [u, v, x, y]:
+				print(v_.shape)
+			raise
 
 		layout = go.Layout(title = titles['title'], 
 							  xaxis = dict(title = 'x'),
@@ -440,6 +484,7 @@ plot_dict = {
 	(1,)	:	{(('N','M'), ('N','M'), ('N','M')): {'name': '3d-parametric', 'func': surface}},
 	('N',)	:	{
 		(('N',),) : {'name': '1d-line', 'func': line_plot},
+		(('N',),('N',)): {'name': '2d-line-scalar', 'func': line_plot},
 		(('N',),('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},
 		(('N',3),): {'name': '3d scatter', 'func': scatter_plot},},
 	('N',2) :	{
