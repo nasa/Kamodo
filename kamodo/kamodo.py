@@ -413,8 +413,12 @@ class Kamodo(collections.OrderedDict):
 			else:
 				units = func.meta['units']
 			rhs = func.meta.get('equation', func)
+			if self.verbose:
+				print('rhs from meta: {}'.format(rhs))
 		else:
 			rhs = func
+			if self.verbose:
+				print('rhs from input func {}'.format(rhs))
 			try:
 				setattr(func, 'meta', dict(units = lhs_units))
 			except: # will not work on methods
@@ -544,9 +548,9 @@ class Kamodo(collections.OrderedDict):
 				latex_eq = rhs
 				# latex_eq = latex(Eq(lhs, parse_latex(rhs)), mode = mode)
 			else:
-				try:
+				if rhs is not None:
 					latex_eq = latex(Eq(lhs, rhs), mode = mode)
-				except:
+				else:
 					lambda_ = symbols('lambda', cls = UndefinedFunction)
 					latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode = mode)
 			if len(units) > 0:
