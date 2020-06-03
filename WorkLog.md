@@ -1,3 +1,6 @@
+
+# 2020-06-03 13:01:28.636263: clock-in: T-50m 
+
 * forwarding plot args to plot funcs, works for quiver plots
 * found forge tool to generate custom function signatures!
 
