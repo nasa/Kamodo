@@ -1,3 +1,5 @@
+# 2020-06-03 13:01:51.004408: clock-out
+
 * kamodo team meeting
 
 # 2020-06-03 13:01:28.636263: clock-in: T-50m 
