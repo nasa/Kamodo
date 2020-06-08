@@ -48,6 +48,7 @@ class SWMF_IE(Kamodo):
             
     def read_swmf_ie(self,filename):
         import re
+        import datetime
         arrays = []
         orig_units=[]
         units=[]
@@ -61,24 +62,39 @@ class SWMF_IE(Kamodo):
                 D = re.match(r'(\s*)ZONE (.*$)', line, re.M | re.I)
                 E = re.match(r'(\s*)I=(.*$)', line, re.M | re.I)
                 if A or B or C or D or E:
+                    if A:
+                        (title,date,tilt)=line.split(',')
+                        date.replace(" ","")
+                        (year,month,day,hour,minute,second,ms)=date.split('-')
+                        self.Date=datetime.datetime(int(year),int(month),int(day),hour=int(hour),minute=int(minute),second=int(second),microsecond=int(ms)*1000,tzinfo=datetime.timezone.utc)
                     if B or C:
                         for s in (line.split('"'))[1:]:
                             if s != "," and s != '':
-                                if len(s) >=3:
-                                    (var,unit) = s.split()
-# cannot have "-" sign in veriable names
+# any strings containing variable name and unit
+                                if s != "\n":
+                                    if s.find('[') > 0:
+                                        (var,unit) = s.split("[")
+                                        unit="["+unit
+                                    else:
+                                        var=s
+                                        unit="[]"
+# cannot have " " or "-" sign in variable names
+                                    if var.find('conjugate') == 0:
+                                        var=var[10:]+'_conj'
+                                    var=var.replace(" ","")
+                                    var=var.replace("/","over")
                                     var=var.replace("-","")
                                     variables.append(var)
                             # map unit names to something SymPy may understand
-                                    unit=unit[1:-1]
-                                    orig_unit=unit
+                                    if len(unit) >= 2:
+# strip off "[" and "]"
+                                        unit=unit[1:-1]
+                                        orig_unit=unit
+# special rules: R -> R_E `m -> mu /(...) -> 1/(...), m2 or m^2 -> m**2
                                     if unit == 'R':
-#                                        unit='6371200 m'
                                         unit='R_E'
-                                    if unit[0:2] == '`m':
-                                        unit="mu%s" % unit[2:]
-                                    if unit[0] == '/':
-                                        unit="1%s" % unit
+                                    unit=re.sub(r"^`m","mu",unit)
+                                    unit=re.sub(r"^/","1/",unit)
                                     unit=unit.replace('m2','m**2')
                                     unit=unit.replace('m^2','m**2')
                                     orig_units.append(orig_unit)
@@ -92,7 +108,9 @@ class SWMF_IE(Kamodo):
                 else:
                     for s in line.split():
                         arrays.append(float(s))
-
+        print(variables)
+        print(units)
+                        
         nvar=len(variables)
         nelements=len(arrays)
         npos=int(nelements/nvar)           
