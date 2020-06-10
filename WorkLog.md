@@ -1,3 +1,6 @@
+
+# 2020-06-10 12:16:22.661881: clock-in
+
 # 2020-06-03 13:01:51.004408: clock-out
 
 * kamodo team meeting
