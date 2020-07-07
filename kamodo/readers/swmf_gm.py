@@ -352,7 +352,7 @@ class SWMF_GM(Kamodo):
                     dict(text="X [RE]", x=0.5, y=-0.10, showarrow=False, xref="paper", yref="paper", font=dict(size=14)),
                     dict(text=txtbot,
                          font=dict(size=16, family="sans serif", color="#000000"),
-                         x=0.0, y=0.0, ax=0, ay=0, xanchor="left", xshift=-65, yshift=-45, xref="paper", yref="paper"
+                         x=0.0, y=0.0, ax=0, ay=0, xanchor="left", xshift=-65, yshift=-42, xref="paper", yref="paper"
                     )
                 ]
             )
@@ -377,7 +377,7 @@ class SWMF_GM(Kamodo):
             plotXZ = Kamodo(plot_XZ = plot_XZ)
             fig = plotXZ.plot(plot_XZ = dict())
             fig.update_xaxes(title_text="",scaleanchor='y')
-            fig.update_yaxes(title_text="z [RE]")
+            fig.update_yaxes(title_text="Z [RE]")
             # Choose colorscale
             if colorscale == "Rainbow":
                 fig.update_traces(
@@ -404,7 +404,7 @@ class SWMF_GM(Kamodo):
                     dict(text="X [RE]", x=0.5, y=-0.10, showarrow=False, xref="paper", yref="paper", font=dict(size=14)),
                     dict(text=txtbot,
                          font=dict(size=16, family="sans serif", color="#000000"),
-                         x=0.0, y=0.0, ax=0, ay=0, xanchor="left", xshift=-65, yshift=-45, xref="paper", yref="paper"
+                         x=0.0, y=0.0, ax=0, ay=0, xanchor="left", xshift=-65, yshift=-42, xref="paper", yref="paper"
                     )
                 ]
             )
@@ -456,7 +456,7 @@ class SWMF_GM(Kamodo):
                     dict(text="Y [RE]", x=0.5, y=-0.10, showarrow=False, xref="paper", yref="paper", font=dict(size=14)),
                     dict(text=txtbot,
                          font=dict(size=16, family="sans serif", color="#000000"),
-                         x=0.0, y=0.0, ax=0, ay=0, xanchor="left", xshift=-65, yshift=-45, xref="paper", yref="paper"
+                         x=0.0, y=0.0, ax=0, ay=0, xanchor="left", xshift=-65, yshift=-42, xref="paper", yref="paper"
                     )
                 ]
             )
@@ -568,7 +568,7 @@ class SWMF_GM(Kamodo):
                 annotations=[
                     dict(text=txtbot,
                          font=dict(size=16, family="sans serif", color="#000000"),
-                         x=-0.08, y=-0.06, ax=0, ay=0, xanchor="left", xref="paper", yref="paper"
+                         x=-0.08, y=-0.05, ax=0, ay=0, xanchor="left", xref="paper", yref="paper"
                     )
                 ],
                 margin=dict(l=0, b=30, t=30)
