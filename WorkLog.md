@@ -1,3 +1,5 @@
+* developer meeting
+* attend GEM/AGU?
 
 # 2020-07-08 11:59:12.669083: clock-in
 
