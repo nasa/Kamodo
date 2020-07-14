@@ -170,7 +170,13 @@ class SWMF_IE(Kamodo):
                                           data = self.variables[varname]['data'])
         return
 
-    def get_plot(self, var, plottype, runname):
+    def get_plot(self, var, plottype, runname, colorscale="BlueRed", sym="T"):
+        '''
+        Return a plotly figure object for the plottype requested)..
+        var, plottype, and runname are required variables. 
+        colorscale = BlueRed [default], Viridis, Cividis, or Rainbow
+        sym = T [default] for symetric colorscale around 0
+        '''
 
         if plottype.count('2D-') > 0:
             x = np.linspace(-.65, .65, 130)
@@ -190,9 +196,15 @@ class SWMF_IE(Kamodo):
             units=self.variables[var]['units']
             test = self.variables[var]['interpolator'](grid)
             result = np.reshape(test,(y.shape[0],x.shape[0]))
-            cmax = np.max(np.absolute(self.variables[var]['data']))
-            #cmax = np.max(np.absolute(result))
-            cmin = -cmax
+            if sym == "T":
+                cmax = np.max(np.absolute(self.variables[var]['data']))
+                #cmax = np.max(np.absolute(result))
+                cmin = -cmax
+            else:
+                cmax = np.max(self.variables[var]['data'])
+                #cmax = np.max(result)
+                cmin = np.min(self.variables[var]['data'])
+            
             time=self.Date.strftime("%Y/%m/%d %H:%M:%S UT")
             
             def plot_var(y = y, x = x):
@@ -204,9 +216,22 @@ class SWMF_IE(Kamodo):
             fig.update_yaxes(nticks=7,title_text="")
             txtbar = var + " [" + units + "]"
             txtbot = "Model: SWMF-IE,  Run: " + runname
+            if colorscale == "BlueRed":
+                fig.update_traces(
+                    colorscale="RdBu",
+                    reversescale=True,
+                )
+            elif colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            else:
+                fig.update_traces(colorscale=colorscale)
             fig.update_traces(
-                colorscale="RdBu",
-                reversescale=True,
                 zmin=cmin, zmax=cmax,
                 ncontours=201,
                 colorbar=dict(title=txtbar),
@@ -279,5 +304,8 @@ class SWMF_IE(Kamodo):
         return
 
     def list_variables(self):
+        '''
+        Return an array of the variables that can be interpolated/plotted.
+        '''
         vars=[k for k in self.variables.keys()]
         return vars
