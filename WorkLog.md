@@ -1,4 +1,7 @@
+# 2020-07-15 13:00:19.299408: clock-out
+
 * dev meeting
+* send blurb on cli to darren for gem
 
 # 2020-07-15 12:31:56.828729: clock-in: T-15m 
 
