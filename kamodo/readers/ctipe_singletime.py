@@ -6,7 +6,6 @@ from scipy.interpolate import RegularGridInterpolator, interp1d
 from netCDF4 import Dataset
 import time
 from datetime import datetime,timedelta,timezone
-
 import numpy.ma as ma
 
 # constants and dictionaries
@@ -674,37 +673,38 @@ class CTIPe(Kamodo):
         level = interp1d(z_levels, self._ilev_neutral, bounds_error=False)
         return level(z)
 
-    def vert_interp(self,varname,z,lat,lon, interp4=False,log_height=True):
+    @np.vectorize
+    def vert_interp(self,z,lat,lon, varname='H', interp4=False,log_height=True):
 # interp4 scheme - generate four 1D height interpolations in lon, lat and combine results to returned value
 # interp4=False - generate one 1D height interpolations using regular grid interpoator
-        data=self[varname].data
+        data=self.variables[varname]['data']
         lons=self._lon_density
         lats=self._lat_density
         if log_height:
             # use log scaling in altitude
-            H=np.log(self['H'].data)
+            H=np.log(self.variables['H']['data'])
             zlog=np.log(z)
         else:
             # use linear scaling in altitude
-            H=self['H'].data
+            H=self.variables['H']['data']
             zlog=z
             
         ilon=np.array(np.where(lons[0:-1] <= lon)).max()
         if ilon == len(lons):
             ilon=ilon-1
         w0_lon=(lons[ilon+1]-lon)/(lons[ilon+1]-lons[ilon])
-        print('ILON=%d W0=%f' %( ilon, w0_lon))
+#        print('ILON=%d W0=%f' %( ilon, w0_lon))
             
         ilat=np.array(np.where(lats[0:-1] <= lat)).max()
         if ilat == len(lats):
             ilat=ilat-1
         w0_lat=(lats[ilat+1]-lat)/(lats[ilat+1]-lats[ilat])
-        print('ILAT=%d W0=%f' %( ilat, w0_lat) )
+#        print('ILAT=%d W0=%f' %( ilat, w0_lat) )
 
-        print('Lons: ',lons.shape)
-        print('Lats: ',lats.shape)
-        print('Height: ',H.shape)
-        print('Data:' ,data.shape)
+#        print('Lons: ',lons.shape)
+#        print('Lats: ',lats.shape)
+#        print('Height: ',H.shape)
+#        print('Data:' ,data.shape)
 
         if interp4:
             ilon1=ilon+1
@@ -749,7 +749,7 @@ class CTIPe(Kamodo):
             d_0=np.squeeze(rgiD(xvec))
             int0=interp1d(h_0,d_0,bounds_error=False)
             
-            return(int0(zlog)*w0_time)
+            return(int0(zlog))
 
 #
 # add a layer for lon=360 (copy of lon=0) to each 3D and 4D variable
@@ -881,10 +881,21 @@ class CTIPe(Kamodo):
             self.newx = cutV
             self.newy = np.linspace(latrange['min'],latrange['max'],latrange['n'])
             self.newz = np.linspace(lonrange['min'],lonrange['max'],lonrange['n'])
-            self.scene_aspectratio=dict(x=1,y=(latrange['max']-latrange['min'])/(lonrange['max']-lonrange['min']))
 #            self.newy = np.linspace(-35., 35., self.nY)
 #            self.newz = np.linspace(-20., 20., self.nZ)
-        elif plottype == "LonIP":
+        elif plottype == "LonLatH":
+            self.plottype = plottype
+            self.cut = 'H'
+            self.cutV = cutV
+            self.nX = 1
+            self.nY = latrange['n']
+            self.nZ = lonrange['n']
+            self.newx = cutV
+            self.newy = np.linspace(latrange['min'],latrange['max'],latrange['n'])
+            self.newz = np.linspace(lonrange['min'],lonrange['max'],lonrange['n'])
+#            self.newy = np.linspace(-35., 35., self.nY)
+#            self.newz = np.linspace(-20., 20., self.nZ)
+        elif plottype == "LonIP" or plottype == "LonH":
             self.plottype = plottype
             self.cut = 'Lat'
             self.cutV = cutV
@@ -898,8 +909,7 @@ class CTIPe(Kamodo):
             self.newy = cutV
             self.newz=np.linspace(lonrange['min'],lonrange['max'],lonrange['n'])
 #            self.newz = np.linspace(-20., 20., self.nZ)
-            self.scene_aspectratio=dict(x=1,y=(hrange['max']-hrange['min'])/(lonrange['max']-lonrange['min']))
-        elif plottype == "LatIP":
+        elif plottype == "LatIP" or plottype == "LatH":
             self.plottype = plottype
             self.cut = 'Lon'
             self.cutV = cutV
@@ -909,7 +919,6 @@ class CTIPe(Kamodo):
             self.newx = np.linspace(hrange['min'],hrange['max'],hrange['n'])
             self.newy = np.linspace(latrange['min'],latrange['max'],latrange['n'])
             self.newz = cutV
-            self.scene_aspectratio=dict(x=1,y=(hrange['max']-hrange['min'])/(lonrange['max']-lonrange['min']))
         elif plottype == "XYZ":
             self.plottype = plottype
             return
@@ -930,22 +939,29 @@ class CTIPe(Kamodo):
         print(f"Time resetting plot and precomputing interpolations: {toc - tic:0.4f} seconds")
         return
     
-    def get_plot(self, var, colorscale="Viridis"):
+    def get_plot(self, var, colorscale="Viridis",style="linear"):
         '''
         Return a plotly figure object for the available plot types set in set_plot()..
-        colorscale = Viridis [default], Cividis, or Rainbow
+        colorscale = Viridis [default], Cividis, BlueRed or Rainbow
         '''
         #Set some text strings
         txtbot="Model: CTIPe,  Run: " + str(self.runname) + ",  " + str(self.gridSize) + " cells,  minimum dx=" + str(self.gridMinDx)
-        txtbar=var + " [" + self.variables[var]['units'] + "]"
+        if style == "linear":
+            txtbar=var + " [" + self.variables[var]['units'] + "]"
+        if style == "log":
+            txtbar="log("+var + ") [" + self.variables[var]['units'] + "]"
         
         # Get values from interpolation already computed
-        result=self.variables[var]['interpolator'](self.newgrid)
+        if (self.newgrid[:,0]).max() < 50:
+            result=self.variables[var]['interpolator'](self.newgrid)
+        else:
+            result=self.vert_interp(self,self.newgrid[:,0].ravel(),self.newgrid[:,1].ravel(),self.newgrid[:,2].ravel(),varname=var)
+            
 #        r = np.sqrt(np.square(self.newgrid[:,0]) + np.square(self.newgrid[:,1]) + np.square(self.newgrid[:,2]))
 #        cmin=np.amin(result[(r[:] > 2.999)])
 #        cmax=np.amax(result[(r[:] > 2.999)])
         
-        if self.plottype == "LonLat":
+        if self.plottype == "LonLat" or self.plottype=="LonLatH":
             txttop=self.cut+"=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
             xint = self.newz
             yint = self.newy
@@ -955,10 +971,14 @@ class CTIPe(Kamodo):
             yrange=dict(min=yint.min(),max=yint.max(),n=len(yint))
             # Reshape interpolated values into 2D
             result2=np.reshape(result,(self.nY,self.nZ))
-            def plot_XY(xint = xint, yint = yint):
-                return result2
+            if style == "linear":
+                def plot_XY(xint = xint, yint = yint):
+                    return result2
+            if style == "log":
+                def plot_XY(xint = xint, yint = yint):
+                    return np.log(result2)
             plotXY = Kamodo(plot_XY = plot_XY)
-            fig = plotXY.plot(plot_XY = dict( xsize=600,ysize=300))
+            fig = plotXY.plot(plot_XY = dict())
             fig.update_xaxes(title_text="",scaleanchor='y')
             fig.update_yaxes(title_text="Lat [deg]")
             # Choose colorscale
@@ -969,6 +989,10 @@ class CTIPe(Kamodo):
                                 [0.50, 'rgb(0,255,0)'],
                                 [0.75, 'rgb(255,255,0)'],
                                 [1.00, 'rgb(255,0,0)']]
+                )
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu",
+                                  reversescale=True,
                 )
             elif colorscale == "Cividis":
                 fig.update_traces(colorscale="Cividis")
@@ -987,16 +1011,18 @@ class CTIPe(Kamodo):
                     aspectratio=dict(x=np.asarray([4.,(xrange['max']-xrange['min'])/np.asarray([1.e-5,(yrange['max']-yrange['min'])]).max()]).min(),y=1)
                 else:
                     aspectratio=dict(x=1,y=np.asarray([4,(yrange['max']-yrange['min'])/np.asarray([1.e-5,(xrange['max']-xrange['min'])]).max()]).min())
+                aspectmode='manual'
             else:
-                aspectratio=dict(x=1,y=0.25)
-#            print("aspect ratio: x=",aspectratio['x'],' y=',aspectratio['y'])
+                aspectratio=dict(x=1.25,y=1)
+                aspectmode='cube'
             
-            width=180+400*aspectratio['x']
-            height=90+400*aspectratio['y']
+            width=180+300*aspectratio['x']
+            height=90+300*aspectratio['y']
             fig.update_layout(
                 autosize=False,
                 height=height,
                 width=width,
+                scene=dict(aspectmode=aspectmode),
                 margin=dict(t=45,b=45,l=40,r=140),
                 title=dict(text=txttop),
                 annotations=[
@@ -1028,7 +1054,7 @@ class CTIPe(Kamodo):
             return fig
 
 
-        if self.plottype == "LonIP":
+        if self.plottype == "LonIP" or self.plottype == "LonH":
             txttop=self.cut+"=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
             xint = self.newz
             yint = self.newx
@@ -1039,12 +1065,28 @@ class CTIPe(Kamodo):
 
             # Reshape interpolated values into 2D
             result2=np.reshape(result,(self.nX,self.nZ))
-            def plot_XZ(xint = xint, yint = yint):
-                return result2
+#            def plot_XZ(xint = xint, yint = yint):
+#                return result2
+            print(style)
+            if style=="linear":
+                def plot_XZ(xint = xint, yint = yint):
+                    return result2
+            if style=="log":
+                def plot_XZ(xint = xint, yint = yint):
+                    return np.log(result2)
             plotXZ = Kamodo(plot_XZ = plot_XZ)
             fig = plotXZ.plot(plot_XZ = dict())
-            fig.update_xaxes(title_text="",scaleanchor='y')
-            fig.update_yaxes(title_text="IP []")
+#            fig.update_xaxes(title_text="",scaleanchor='y')
+            fig.update_xaxes(title_text="")
+            vert_coord="IP"
+            vert_unit="[]"
+            vert_format=".2f"
+            if self.plottype == "LonH":
+                vert_coord="H"
+                vert_unit="[m]"
+                vert_format=".4g"
+
+            fig.update_yaxes(title_text=vert_coord+" "+vert_unit,tickformat=".4g")
             # Choose colorscale
             if colorscale == "Rainbow":
                 fig.update_traces(
@@ -1054,6 +1096,10 @@ class CTIPe(Kamodo):
                                 [0.75, 'rgb(255,255,0)'],
                                 [1.00, 'rgb(255,0,0)']]
                 )
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu",
+                                  reversescale=True,
+                )
             elif colorscale == "Cividis":
                 fig.update_traces(colorscale="Cividis")
             else:
@@ -1062,7 +1108,8 @@ class CTIPe(Kamodo):
 #                zmin=cmin, zmax=cmax,
                 ncontours=201,
                 colorbar=dict(title=txtbar,tickformat='.4g'),
-                hovertemplate="Lon: %{x:.2f}<br>IP: %{y:.2f}<br><b> %{z:.4g}</b><extra></extra>",
+                hovertemplate="Lon: %{x:.2f}<br>"+vert_coord+": %{y:"+vert_format+"}<br><b> %{z:.4g}</b><extra></extra>",
+#                hovertemplate="Lon: %{x:.2f}<br>"+vert_coord+": %{y:.2f}<br><b> %{z:.4g}</b><extra></extra>",
                 contours=dict(coloring="fill", showlines=False)
             )
             if xunit == yunit:
@@ -1072,11 +1119,10 @@ class CTIPe(Kamodo):
                 else:
                     aspectratio=dict(x=1,y=np.asarray([4,(yrange['max']-yrange['min'])/np.asarray([1.e-5,(xrange['max']-xrange['min'])]).max()]).min())
             else:
-                aspectratio=dict(x=1,y=0.25)
-#            print("aspect ratio: x=",aspectratio['x'],' y=',aspectratio['y'])
+                aspectratio=dict(x=1.25,y=1)
             
-            width=180+400*aspectratio['x']
-            height=90+400*aspectratio['y']
+            width=180+300*aspectratio['x']
+            height=90+300*aspectratio['y']
             fig.update_layout(
                 autosize=False,
                 height=height,
@@ -1093,7 +1139,7 @@ class CTIPe(Kamodo):
             )
             return fig;
             
-        if self.plottype == "LatIP":
+        if self.plottype == "LatIP" or self.plottype == "LatH":
             txttop=self.cut+"=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
             xint = self.newy
             yint = self.newx
@@ -1103,12 +1149,25 @@ class CTIPe(Kamodo):
             yrange=dict(min=yint.min(),max=yint.max(),n=len(yint))
             # Reshape interpolated values into 2D
             result2=np.transpose(np.reshape(result,(self.nY,self.nX)))
-            def plot_XY(xint = xint, yint = yint):
-                return result2
+            if style=="linear":
+                def plot_XY(xint = xint, yint = yint):
+                    return result2
+            if style=="log":
+                def plot_XY(xint = xint, yint = yint):
+                    return np.log(result2)
             plotXY = Kamodo(plot_XY = plot_XY)
             fig = plotXY.plot(plot_XY = dict())
-            fig.update_xaxes(title_text="",scaleanchor='y')
-            fig.update_yaxes(title_text="IP []")
+#            fig.update_xaxes(title_text="",scaleanchor='y')
+            fig.update_xaxes(title_text="")
+            vert_coord="IP"
+            vert_unit="[]"
+            vert_format=".2f"
+            if self.plottype == "LatH":
+                vert_coord="H"
+                vert_unit="[m]"
+                vert_format=".4g"
+
+            fig.update_yaxes(title_text=vert_coord+" "+vert_unit,tickformat=".4g")
             # Choose colorscale
             if colorscale == "Rainbow":
                 fig.update_traces(
@@ -1120,16 +1179,21 @@ class CTIPe(Kamodo):
                 )
             elif colorscale == "Cividis":
                 fig.update_traces(colorscale="Cividis")
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu",
+                                  reversescale=True,
+                )
             else:
                 fig.update_traces(colorscale="Viridis")
             fig.update_traces(
 #                zmin=cmin, zmax=cmax,
                 ncontours=201,
                 colorbar=dict(title=txtbar,tickformat='.4g'),
-                hovertemplate="Lat: %{x:.2f}<br>IP: %{y:.2f}<br><b> %{z:.4g}</b><extra></extra>",
+                hovertemplate="Lat: %{x:.2f}<br>"+vert_coord+": %{y:"+vert_format+"}<br><b> %{z:.4g}</b><extra></extra>",
+#                hovertemplate="Lat: %{x:.2f}<br>"+vert_coord+": %{y:.2f}<br><b> %{z:.4g}</b><extra></extra>",
                 contours=dict(coloring="fill", showlines=False)
             )
-            if xunit == yunit or yunit == '':
+            if xunit == yunit:
             # real aspect ratio
                 if xrange['max']-xrange['min'] > yrange['max']-yrange['min']:
                     aspectratio=dict(x=np.asarray([4.,(xrange['max']-xrange['min'])/np.asarray([1.e-5,(yrange['max']-yrange['min'])]).max()]).min(),y=1)
@@ -1139,17 +1203,100 @@ class CTIPe(Kamodo):
                 else:
                     aspectratio=dict(x=1,y=np.asarray([4,(yrange['max']-yrange['min'])/np.asarray([1.e-5,(xrange['max']-xrange['min'])]).max()]).min())
             else:
-                aspectratio=dict(x=1,y=0.25)
-            print('xrange: ',xrange)
-            print('yrange: ',yrange)
-            print("aspect ratio: x=",aspectratio['x'],' y=',aspectratio['y'])
+                aspectratio=dict(x=1,y=1)
 
-            width=180+400*aspectratio['x']
-            height=90+400*aspectratio['y']
+            width=180+300*aspectratio['x']
+            height=90+300*aspectratio['y']
             fig.update_layout(
                 autosize=False,
                 height=height,
                 width=width,
+                margin=dict(t=45,b=45,l=40,r=140),
+                title_text=txttop,
+                annotations=[
+                    dict(text="Lat [deg]", x=0.5, y=0.0, showarrow=False, xref="paper", yref="paper", yshift=-32,font=dict(size=14)),
+                    dict(text=txtbot,
+                         font=dict(size=16, family="sans serif", color="#000000"),
+                         x=0.0, y=0.0, ax=0, ay=0, xanchor="left", xshift=-45, yshift=-42, xref="paper", yref="paper"
+                    )
+                ]
+            )
+            return fig
+
+        if self.plottype == "LatH":
+            txttop=self.cut+"=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
+            xint = self.newy
+            yint = self.newx
+            xunit=self.yunit
+            yunit=self.xunit
+            xrange=dict(min=xint.min(),max=xint.max(),n=len(xint))
+            yrange=dict(min=yint.min(),max=yint.max(),n=len(yint))
+            # Reshape interpolated values into 2D
+            result2=np.transpose(np.reshape(result,(self.nY,self.nX)))
+#            def plot_XY(xint = xint, yint = yint):
+#                return result2
+            if style=="linear":
+                def plot_XY(xint = xint, yint = yint):
+                    return result2
+            if style=="log":
+                def plot_XY(xint = xint, yint = yint):
+                    return np.log(result2)
+            plotXY = Kamodo(plot_XY = plot_XY)
+            fig = plotXY.plot(plot_XY = dict())
+#            fig.update_xaxes(title_text="",scaleanchor='y')
+            fig.update_xaxes(title_text="")
+            fig.update_yaxes(title_text="IP []")
+            # Choose colorscale
+            if colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu",
+                                  reversescale=True,
+                )
+            elif colorscale == "Cividis":
+                fig.update_traces(colorscale="Cividis")
+            else:
+                fig.update_traces(colorscale="Viridis")
+            fig.update_traces(
+#                zmin=cmin, zmax=cmax,
+                ncontours=201,
+                colorbar=dict(title=txtbar,tickformat='.4g'),
+                hovertemplate="Lat: %{x:.2f}<br>H: %{y:.2f}<br><b> %{z:.4g}</b><extra></extra>",
+                contours=dict(coloring="fill", showlines=False)
+            )
+            if xunit == yunit:
+            # real aspect ratio
+                if xrange['max']-xrange['min'] > yrange['max']-yrange['min']:
+                    aspectratio=dict(x=np.asarray([4.,(xrange['max']-xrange['min'])/np.asarray([1.e-5,(yrange['max']-yrange['min'])]).max()]).min(),y=1)
+                    if aspectratio['x'] > 2:
+                        aspectratio_x=aspectratio['x']
+                        aspectratio=dict(x=2., y=aspectratio['y']*2./aspectratio_x)
+                else:
+                    aspectratio=dict(x=1,y=np.asarray([4,(yrange['max']-yrange['min'])/np.asarray([1.e-5,(xrange['max']-xrange['min'])]).max()]).min())
+                aspectmode='manual'
+            else:
+                aspectratio=dict(x=1.25,y=1)
+                aspectmode='cube'
+            print('xrange: ',xrange)
+            print('yrange: ',yrange)
+            print("aspect ratio: x=",aspectratio['x'],' y=',aspectratio['y'])
+
+            width=180+300*aspectratio['x']
+            height=90+300*aspectratio['y']
+            fig.update_layout(
+#                autosize=False,
+#                height=height,
+#                width=width,
+#                scene=dict(aspectmode=aspectmode),
+#                margin=dict(t=45,b=45,l=40,r=140),
+                width=480,
+                height=390,
                 margin=dict(t=45,b=45,l=40,r=140),
                 title_text=txttop,
                 annotations=[
