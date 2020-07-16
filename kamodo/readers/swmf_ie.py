@@ -235,7 +235,7 @@ class SWMF_IE(Kamodo):
                 zmin=cmin, zmax=cmax,
                 ncontours=201,
                 colorbar=dict(title=txtbar),
-                hovertemplate=loctxt + " Hemisphere<br>X: %{y:.2f}<br>Y: %{x:.2f}<br><b>"+var+": %{z:.6f}</b><extra></extra>",
+                hovertemplate=loctxt + " Hemisphere<br>X: %{y:.2f}<br>Y: %{x:.2f}<br><b>"+var+": %{z:.4g}</b><extra></extra>",
                 contours=dict(coloring="fill", showlines=False)
             )
             c80=np.sin(((90.-80.)/90.)*np.pi/2.)
@@ -246,6 +246,7 @@ class SWMF_IE(Kamodo):
             fig.update_layout(
                 title=dict(text=loctxt + " Hemisphere,  Time = " + time,
                            yref="container", yanchor="top", y=0.95),
+                title_font_size=16,
                 shapes=[
                     dict(type="circle",
                          xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80,
@@ -273,9 +274,9 @@ class SWMF_IE(Kamodo):
                          line=dict(color="black", width=1))
                 ],
                 annotations=[
-                    dict(text="Y [RE]", x=0.5, y=-0.09, showarrow=False, 
+                    dict(text="Y [RE]", x=0.5, y=-0.11, showarrow=False, 
                          xref="paper", yref="paper", font=dict(size=12)),
-                    dict(text="X [RE]", x=-0.18, y=0.5, showarrow=False, 
+                    dict(text="X [RE]", x=-0.19, y=0.5, showarrow=False, 
                          xref="paper", yref="paper", font=dict(size=12), textangle=-90),
                     dict(text="midnight", x=0.5, y=0.0, showarrow=False, 
                          xref="paper", yref="paper", font=dict(size=10)),
@@ -287,11 +288,11 @@ class SWMF_IE(Kamodo):
                          xref="paper", yref="paper", font=dict(size=10)),
                     dict(text=txtbot, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                          xshift=-65, yshift=-42, xref="paper", yref="paper",
-                         font=dict(size=18, family="sans serif", color="#000000")
+                         font=dict(size=16, family="sans serif", color="#000000")
                     )
                 ],
-                height=430,
-                width=550,
+                height=375,
+                width=500,
                 margin=dict(t=45,r=140)
             )
             return fig
