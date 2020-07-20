@@ -175,7 +175,7 @@ class GitmBin(PbData):
                 # Reshape arrays, note that ordering in file is Fortran-like.
                 self[v]=self[v].reshape( 
                     (self.attrs['nLon'],self.attrs['nLat'],self.attrs['nAlt']),
-                    order='fortran')
+                    order='F')
                 
             f.read(4)
 
