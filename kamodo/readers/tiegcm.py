@@ -8,6 +8,20 @@ from datetime import datetime,timedelta
 # pip install pytiegcm
 from tiegcm.tiegcm import TIEGCM
 
+# 'UN', 'VN', 'O1', 'NO', 'N4S', 'HE', 'NE', 'TE', 'TI', 'TEC', 'O2', 'O2P_ELD', 'OMEGA', 'POTEN', 'UI_ExB', 'VI_ExB', 'WI_ExB', 'OP', 'N2P_ELD', 'NPLUS', 'NOP_ELD', 'SIGMA_PED', 'SIGMA_HAL', 'DEN', 'QJOULE', 'Z', 'ZG', 'O_N2', 'QJOULE_INTEG', 'EFLUX', 'HMF2', 'NMF2', 'N2D_ELD', 'O2N', 'N2N', 'ZMAG', 'TLBC', 'ULBC', 'VLBC', 'TLBC_NM', 'ULBC_NM', 'VLBC_NM', 'LBC', 'latitude', 'longitude'
+# constants and dictionaries
+
+@np.vectorize
+def totalseconds_to_datetime(seconds):
+    date0=datetime(1970,1,1,0,0,0)
+    date1=date0+timedelta(seconds=seconds)
+    return(date1)
+
+def seconds_from_1970(_datetime):
+    datetime0=datetime(1970,1,1,0,0,0)
+    _timedelta=_datetime-datetime0
+    return(_timedelta.total_seconds())
+
 def parse_units(varname, variable):
     """Parses units based on variable input"""
     try:
@@ -51,7 +65,15 @@ class TIEGCM_Kamodo(Kamodo):
         self._time = np.array(self._tiegcm.rootgrp.variables['time'])
         self._year=np.array(self._tiegcm.rootgrp.variables['year'])
         self._day=np.array(self._tiegcm.rootgrp.variables['day'])
-        
+        self._mtime=np.array(self._tiegcm.rootgrp.variables['mtime'])
+        _seconds=[]
+        for i in range(0,len(self._year)):
+            year=self._year[i]
+            day,hour,minute=self._mtime[i]
+            _datetime=datetime(year,1,1,int(hour),int(minute),0)+timedelta(days=int(day)-1)
+            _seconds.append(seconds_from_1970(_datetime))
+        self._time=np.array(_seconds)
+            
         self._lat = self._tiegcm.lat
         self._lon = self._tiegcm.lon
         self._registered = 0
@@ -78,7 +100,7 @@ class TIEGCM_Kamodo(Kamodo):
         self.newt = 1440.
         self.newx = self.cutV
         self.newy = np.linspace(-90., 90., self.nY)
-        self.newz = np.linspace(0., 360., self.nZ)
+        self.newz = np.linspace(-180., 180., self.nZ)
         self.xname="IP"
         self.xunit=''
         self.yname="Lat"
@@ -204,10 +226,10 @@ class TIEGCM_Kamodo(Kamodo):
 
     def set_plot(self,
                  plottype = "XY",
-                 time_of_day="12:00:00",
+                 time_in_day="12:00:00",
                  date=None,
                  cutV = 10,
-                 lonrange=dict(min=0,max=360,n=73), # reference to self._lon_density not possible?
+                 lonrange=dict(min=-180,max=180,n=73), # reference to self._lon_density not possible?
                  latrange=dict(min=-90,max=90,n=37),
                  hrange=dict(min=1,max=15,n=15) ):
         '''Set plotting variables for available preset plot types: XY, YZ, YZ, XYZ'''
@@ -247,25 +269,22 @@ class TIEGCM_Kamodo(Kamodo):
         h_km_max=7000
         h_m_max=7e6
                            
-        if date is None or time_of_day is None:
-            datetime0=datetime(int(self._year[0]),1,1)
-            datetime1=datetime0+timedelta(days=int(self._day[0]))
-            self.datetime=datetime1+timedelta(minutes=int(self._time[0]))
-            self.time_of_day=(datetime1-datetime0).total_seconds()/60.
+        if date is None or time_in_day is None:
+            self.time_of_day=self._time[0]
         else:
             self.plotdate=date
-            self.plottime=time_of_day            
+            self.plottime=time          
             datetime0=datetime.strptime(date,"%Y/%m/%d")
-            datetime1=datetime.strptime(date+" "+time_of_day,"%Y/%m/%d %H:%M:%S")
+            datetime1=datetime.strptime(date+" "+time_in_day,"%Y/%m/%d %H:%M:%S")
             self.datetime=datetime1
-            self.time_of_day=(datetime1-datetime0).total_seconds()/60.
-
+#            self.time_of_day=(datetime1-datetime0).total_seconds()/60.
+            self.time_of_day=seconds_from_1970(datetime1)
 
         self.filetime=self.datetime.strftime("%Y/%m/%d %H:%M:%S")
         self.date=self.datetime.strftime("%Y/%m/%d")
         self.plottime=self.datetime.strftime("%H:%M:%S")
             
-        self.filetime=self.datetime.strftime("%Y/%m/%d %H:%M:%S")
+        self.filetime= self.datetime.strftime("%Y/%m/%d %H:%M:%S")
 # time selection
         self.nT = 1
 #        self.newt = self.plottime
