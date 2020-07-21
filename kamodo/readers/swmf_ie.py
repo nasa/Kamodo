@@ -172,7 +172,7 @@ class SWMF_IE(Kamodo):
 
     def get_plot(self, var, plottype, runname, colorscale="BlueRed", sym="T"):
         '''
-        Return a plotly figure object for the plottype requested)..
+        Return a plotly figure object for the plottype requested.
         var, plottype, and runname are required variables. 
         colorscale = BlueRed [default], Viridis, Cividis, or Rainbow
         sym = T [default] for symetric colorscale around 0
