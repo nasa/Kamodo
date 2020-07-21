@@ -378,6 +378,105 @@ class GITM(Kamodo):
             )
             return fig
 
+        if plottype == "3D-alt":
+            # Check if altitude entered is valid
+            if value < self.altmin or value > self.altmax:
+                print('Altitude is out of range: alt=',value,\
+                      ' min/max=',self.altmin,'/',self.altmax)
+                return
+
+            # Set grid for plot
+            altkm=value/1000.
+            ilon = np.linspace(0, 360, 361)
+            ilat = np.linspace(-90, 90, 181)
+            ialt = np.array([value])
+            xx, yy = np.meshgrid(np.array(ilon), np.array(ilat))
+            grid = np.ndarray(shape=(np.size(np.reshape(xx,-1)),3), dtype=np.float32)
+            grid[:,0] = np.reshape(xx,-1)
+            grid[:,1] = np.reshape(yy,-1)
+            grid[:,2] = value
+            units=self.variables[var]['units']
+            test = self.variables[var]['interpolator'](grid)
+            result = np.reshape(test,(ilat.shape[0],ilon.shape[0]))
+            if log == "T":
+                result = np.log10(result)
+            r = value + 6.3781E6
+            x=(r*np.cos(yy*np.pi/180.)*np.cos(xx*np.pi/180.))/6.3781E6
+            y=(r*np.cos(yy*np.pi/180.)*np.sin(xx*np.pi/180.))/6.3781E6
+            z=(r*np.sin(yy*np.pi/180.))/6.3781E6
+            if sym == "T":
+                cmax = np.max(np.absolute(result))
+                cmin = -cmax
+            else:
+                cmax = np.max(result)
+                cmin = np.min(result)
+
+            time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
+
+            def plot_var(x = x, y = y, z = z):
+                return result
+            plotvar = Kamodo(plot_var = plot_var)
+
+            fig = plotvar.plot(plot_var = dict())
+            fig.update_scenes(xaxis=dict(title=dict(text="X [Re]")),
+                              yaxis=dict(title=dict(text="Y [Re]")),
+                              zaxis=dict(title=dict(text="Z [Re]")))
+            txtbar = var + " [" + units + "]"
+            if log == "T":
+                txtbar = "log<br>"+txtbar
+            txtbot = "Model: GITM,  Run: " + self.runname
+            if colorscale == "BlueRed":
+                fig.update_traces(
+                    colorscale="RdBu",
+                    reversescale=True,
+                )
+            elif colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            else:
+                fig.update_traces(colorscale=colorscale)
+            fig.update_traces(
+                cmin=cmin, cmax=cmax,
+                colorbar=dict(title=txtbar, tickformat=".3g")
+            )
+            fig.update_traces(
+                hovertemplate="X [Re]: %{x:.3f}<br>Y [Re]: %{y:.3f}<br>Z [Re]: %{z:.3f}<extra></extra>"
+            )
+            fig.update_layout(
+                title=dict(text="Altitude="+"{:.0f}".format(altkm)+" km,  Time = " + time,
+                           yref="container", yanchor="top", x=0.01, y=0.95),
+                title_font_size=16,
+                annotations=[
+                    dict(text=txtbot, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                         xshift=0, yshift=-20, xref="paper", yref="paper",
+                         font=dict(size=16, family="sans serif", color="#000000"))
+                ],
+                margin=dict(l=0),
+                width=600
+            )
+            x1=[0., 0.]
+            y1=[0., 0.]
+            z1=[-1.2, 1.2]
+            fig.add_scatter3d(mode='lines',x=x1,y=y1,z=z1,line=dict(width=4,color='black'),
+                              showlegend=False,hovertemplate='Polar Axis<extra></extra>')
+            r = value + 10000. + 6.3781E6
+            x2=(r*np.cos(ilon*np.pi/180.))/6.3781E6
+            y2=(r*np.sin(ilon*np.pi/180.))/6.3781E6
+            z2=0.*ilon
+            fig.add_scatter3d(mode='lines',x=x2,y=y2,z=z2,line=dict(width=2,color='black'),
+                              showlegend=False,hovertemplate='Equator<extra></extra>')
+            x3=(r*np.cos(ilat*np.pi/180.))/6.3781E6
+            y3=0.*ilat
+            z3=(r*np.sin(ilat*np.pi/180.))/6.3781E6
+            fig.add_scatter3d(mode='lines',x=x3,y=y3,z=z3,line=dict(width=2,color='black'),
+                              showlegend=False,hovertemplate='Midnight<extra></extra>')
+            return fig
+
         print('Unknown plottype (',plottype,') returning.')
         return
     
