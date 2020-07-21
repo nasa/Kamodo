@@ -57,8 +57,23 @@ class GITM(Kamodo):
         
         # Just one variable for now
         self.variables['rho'] = dict(units = 'kg/m^3', data = gData['Rho (kg/m3)'], dtype=np.float32)
-        
-        
+        self.variables['N_O3P'] = dict(units = '1/m^3', data = gData['O(!U3!NP)            (/m3)'], dtype=np.float32)
+        self.variables['N_O2'] = dict(units = '1/m^3', data = gData['O!D2!N               (/m3)'], dtype=np.float32)
+        self.variables['N_N2'] = dict(units = '1/m^3', data = gData['N!D2!N               (/m3)'], dtype=np.float32)
+        self.variables['N_NO'] = dict(units = '1/m^3', data = gData['NO                   (/m3)'], dtype=np.float32)
+        self.variables['Vn_east'] = dict(units = 'm/s', data = gData['Vn (east) (m/s)'], dtype=np.float32)
+        self.variables['Vn_north'] = dict(units = 'm/s', data = gData['Vn (north) (m/s)'], dtype=np.float32)
+        self.variables['Vn_up'] = dict(units = 'm/s', data = gData['Vn (up) (m/s)'], dtype=np.float32)
+        self.variables['N_O4SPplus'] = dict(units = '1/m^3', data = gData['O_4SP_!U+!N          (/m3)'], dtype=np.float32)
+        self.variables['N_O2plus'] = dict(units = '1/m^3', data = gData['O!D2!U+!N            (/m3)'], dtype=np.float32)
+        self.variables['N_N2plus'] = dict(units = '1/m^3', data = gData['N!D2!U+!N            (/m3)'], dtype=np.float32)
+        self.variables['N_NOplus'] = dict(units = '1/m^3', data = gData['NO!U+!N              (/m3)'], dtype=np.float32)
+        self.variables['N_eminus'] = dict(units = '1/m^3', data = gData['e-                   (/m3)'], dtype=np.float32)
+        self.variables['Vi_east'] = dict(units = 'm/s', data = gData['Vi (east) (m/s)'], dtype=np.float32)
+        self.variables['Vi_north'] = dict(units = 'm/s', data = gData['Vi (north) (m/s)'], dtype=np.float32)
+        self.variables['Vi_up'] = dict(units = 'm/s', data = gData['Vi (up) (m/s)'], dtype=np.float32)
+        self.variables['Tn'] = dict(units = 'K', data = gData['Neutral Temperature (K)'], dtype=np.float32)
+
         for varname in self.variables:
             units = self.variables[varname]['units']
             self.register_variable(varname, units)
