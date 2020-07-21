@@ -11,7 +11,7 @@ from tiegcm.tiegcm import TIEGCM
 # 'UN', 'VN', 'O1', 'NO', 'N4S', 'HE', 'NE', 'TE', 'TI', 'TEC', 'O2', 'O2P_ELD', 'OMEGA', 'POTEN', 'UI_ExB', 'VI_ExB', 'WI_ExB', 'OP', 'N2P_ELD', 'NPLUS', 'NOP_ELD', 'SIGMA_PED', 'SIGMA_HAL', 'DEN', 'QJOULE', 'Z', 'ZG', 'O_N2', 'QJOULE_INTEG', 'EFLUX', 'HMF2', 'NMF2', 'N2D_ELD', 'O2N', 'N2N', 'ZMAG', 'TLBC', 'ULBC', 'VLBC', 'TLBC_NM', 'ULBC_NM', 'VLBC_NM', 'LBC', 'latitude', 'longitude'
 # constants and dictionaries
 
-@np.vectorize
+#@np.vectorize
 def totalseconds_to_datetime(seconds):
     date0=datetime(1970,1,1,0,0,0)
     date1=date0+timedelta(seconds=seconds)
@@ -77,7 +77,9 @@ class TIEGCM_Kamodo(Kamodo):
         self._lat = self._tiegcm.lat
         self._lon = self._tiegcm.lon
         self._registered = 0
-        
+        self.time_of_day=self._time[0]
+        self.datetime=totalseconds_to_datetime(self.time_of_day)
+
         super(TIEGCM_Kamodo, self).__init__() 
         print('opening {}'.format(filename))
 
@@ -92,6 +94,7 @@ class TIEGCM_Kamodo(Kamodo):
         self.plots = dict()
         self.plottype = "LonLat" 
         self.cut = 'IP'
+        self.cutunit = '[]'
         self.cutV = 0. # within all the coordinate ranges
         self.nT = 1
         self.nX = 1
@@ -228,7 +231,7 @@ class TIEGCM_Kamodo(Kamodo):
                  plottype = "XY",
                  time_in_day="12:00:00",
                  date=None,
-                 cutV = 10,
+                 cutV = 0,
                  lonrange=dict(min=-180,max=180,n=73), # reference to self._lon_density not possible?
                  latrange=dict(min=-90,max=90,n=37),
                  hrange=dict(min=1,max=15,n=15) ):
@@ -271,20 +274,21 @@ class TIEGCM_Kamodo(Kamodo):
                            
         if date is None or time_in_day is None:
             self.time_of_day=self._time[0]
+            self.datetime=totalseconds_to_datetime(self.time_of_day)
         else:
             self.plotdate=date
-            self.plottime=time          
+            self.plottime=time_in_day         
             datetime0=datetime.strptime(date,"%Y/%m/%d")
             datetime1=datetime.strptime(date+" "+time_in_day,"%Y/%m/%d %H:%M:%S")
             self.datetime=datetime1
 #            self.time_of_day=(datetime1-datetime0).total_seconds()/60.
             self.time_of_day=seconds_from_1970(datetime1)
 
+        print("datetime: ",self.datetime)  
         self.filetime=self.datetime.strftime("%Y/%m/%d %H:%M:%S")
         self.date=self.datetime.strftime("%Y/%m/%d")
         self.plottime=self.datetime.strftime("%H:%M:%S")
             
-        self.filetime= self.datetime.strftime("%Y/%m/%d %H:%M:%S")
 # time selection
         self.nT = 1
 #        self.newt = self.plottime
