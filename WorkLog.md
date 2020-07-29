@@ -1,4 +1,9 @@
+# 2020-07-29 12:58:25.948624: clock-out
+
 * dev meeting
+* modularity
+	- make sure readers are independent
+	- allow matplotlib without installing plotly
 
 # 2020-07-29 12:02:08.702440: clock-in
 
