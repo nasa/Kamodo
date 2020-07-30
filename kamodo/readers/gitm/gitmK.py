@@ -416,9 +416,9 @@ class GITM(Kamodo):
             if log == "T":
                 result = np.log10(result)
             r = value + 6.3781E6
-            x=(r*np.cos(yy*np.pi/180.)*np.cos(xx*np.pi/180.))/6.3781E6
-            y=(r*np.cos(yy*np.pi/180.)*np.sin(xx*np.pi/180.))/6.3781E6
-            z=(r*np.sin(yy*np.pi/180.))/6.3781E6
+            x=-(r*np.cos(yy*np.pi/180.)*np.cos(xx*np.pi/180.))/6.3781E6
+            y=-(r*np.cos(yy*np.pi/180.)*np.sin(xx*np.pi/180.))/6.3781E6
+            z= (r*np.sin(yy*np.pi/180.))/6.3781E6
             if sym == "T":
                 cmax = np.max(np.absolute(result))
                 cmin = -cmax
@@ -480,12 +480,12 @@ class GITM(Kamodo):
             fig.add_scatter3d(mode='lines',x=x1,y=y1,z=z1,line=dict(width=4,color='black'),
                               showlegend=False,hovertemplate='Polar Axis<extra></extra>')
             r = value + 10000. + 6.3781E6
-            x2=(r*np.cos(ilon*np.pi/180.))/6.3781E6
-            y2=(r*np.sin(ilon*np.pi/180.))/6.3781E6
+            x2=-(r*np.cos(ilon*np.pi/180.))/6.3781E6
+            y2=-(r*np.sin(ilon*np.pi/180.))/6.3781E6
             z2=0.*ilon
             fig.add_scatter3d(mode='lines',x=x2,y=y2,z=z2,line=dict(width=2,color='black'),
                               showlegend=False,hovertemplate='Equator<extra></extra>')
-            x3=(r*np.cos(ilat*np.pi/180.))/6.3781E6
+            x3=-(r*np.cos(ilat*np.pi/180.))/6.3781E6
             y3=0.*ilat
             z3=(r*np.sin(ilat*np.pi/180.))/6.3781E6
             fig.add_scatter3d(mode='lines',x=x3,y=y3,z=z3,line=dict(width=2,color='black'),
