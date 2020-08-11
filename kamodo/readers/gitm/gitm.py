@@ -436,6 +436,7 @@ class GitmBin(PbData):
                      "V!Dn!N (up,NO                  )":"m s^{-1}",
                      "V!Dn!N (up,O!D2!N              )":"m s^{-1}",
                      "V!Dn!N (up,O(!U3!NP)           )":"m s^{-1}",
+                     "V!Dn!N (up,He                  )":"m s^{-1}",
                      "e-":"m^{-3}", 
                      "Electron_Average_Energy":"J",
                      "eTemperature":"K", "iTemperature":"K", "LT":"h",
@@ -508,6 +509,7 @@ class GitmBin(PbData):
                       "V!Dn!N (up,NO                  )":"linear",
                       "V!Dn!N (up,O!D2!N              )":"linear",
                       "V!Dn!N (up,O(!U3!NP)           )":"linear",
+                      "V!Dn!N (up,He                  )":"linear",
                       "e-":"linear", 
                       # "e-                   (/m3)":"linear",
                       "Electron_Average_Energy":"linear",
@@ -583,6 +585,7 @@ class GitmBin(PbData):
                      "V!Dn!N (up,NO                  )":"u$_{Up, NO}$",
                      "V!Dn!N (up,O!D2!N              )":"u$_{Up, O_2}$",
                      "V!Dn!N (up,O(!U3!NP)           )":"u$_{Up, O(^3P)}$",
+                     "V!Dn!N (up,He                  )":"u$_{Up, He}$",
                      "e-":"[e-]",
                      "Electron_Average_Energy":"Electron Average Energy",
                      "eTemperature":"T$_e$", "iTemperature":"T$_i$",
@@ -640,7 +643,7 @@ class GitmBin(PbData):
                     nk = "V!Di!N (east)"
 
                 try:
-                    # print 'registering', k
+                    #print ('registering',k)
                     self.register_name(k, nk, unit_dict, scale_dict, name_dict)
                 except:
                     if k.split()[0] in name_dict:

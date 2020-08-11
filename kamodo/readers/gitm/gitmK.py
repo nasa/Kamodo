@@ -15,11 +15,18 @@ from kamodo.readers.gitm import gitm as gold
 from kamodo.readers.gitm import gitm_alt_plots as gap
 from kamodo.readers.gitm import gitm_plot_rout as gpr
 
+def kamodofy_names(name, name_maps):
+    """replaces all substrings in name with those given by name_maps"""
+    for old, new in name_maps:
+        name = name.replace(old, new)
+    return name
+
 class GITM(Kamodo): 
     def __init__(self, 
                  filename, 
                  runpath = "./", 
-                 runname = "noname", 
+                 runname = "noname",
+                 verbose = False, 
                  **kwargs):
         # Start timer
         tic = time.perf_counter()
@@ -55,25 +62,73 @@ class GITM(Kamodo):
         self.altmax = np.max(self.alt)
         print('... range of altitudes is ',self.altmin,' to ',self.altmax,' meters.')
         
-        # Just one variable for now
-        self.variables['rho'] = dict(units = 'kg/m^3', data = gData['Rho (kg/m3)'], dtype=np.float32)
-        self.variables['N_O3P'] = dict(units = '1/m^3', data = gData['O(!U3!NP)            (/m3)'], dtype=np.float32)
-        self.variables['N_O2'] = dict(units = '1/m^3', data = gData['O!D2!N               (/m3)'], dtype=np.float32)
-        self.variables['N_N2'] = dict(units = '1/m^3', data = gData['N!D2!N               (/m3)'], dtype=np.float32)
-        self.variables['N_NO'] = dict(units = '1/m^3', data = gData['NO                   (/m3)'], dtype=np.float32)
-        self.variables['Vn_east'] = dict(units = 'm/s', data = gData['Vn (east) (m/s)'], dtype=np.float32)
-        self.variables['Vn_north'] = dict(units = 'm/s', data = gData['Vn (north) (m/s)'], dtype=np.float32)
-        self.variables['Vn_up'] = dict(units = 'm/s', data = gData['Vn (up) (m/s)'], dtype=np.float32)
-        self.variables['N_O4SPplus'] = dict(units = '1/m^3', data = gData['O_4SP_!U+!N          (/m3)'], dtype=np.float32)
-        self.variables['N_O2plus'] = dict(units = '1/m^3', data = gData['O!D2!U+!N            (/m3)'], dtype=np.float32)
-        self.variables['N_N2plus'] = dict(units = '1/m^3', data = gData['N!D2!U+!N            (/m3)'], dtype=np.float32)
-        self.variables['N_NOplus'] = dict(units = '1/m^3', data = gData['NO!U+!N              (/m3)'], dtype=np.float32)
-        self.variables['N_eminus'] = dict(units = '1/m^3', data = gData['e-                   (/m3)'], dtype=np.float32)
-        self.variables['Vi_east'] = dict(units = 'm/s', data = gData['Vi (east) (m/s)'], dtype=np.float32)
-        self.variables['Vi_north'] = dict(units = 'm/s', data = gData['Vi (north) (m/s)'], dtype=np.float32)
-        self.variables['Vi_up'] = dict(units = 'm/s', data = gData['Vi (up) (m/s)'], dtype=np.float32)
-        self.variables['Tn'] = dict(units = 'K', data = gData['Neutral Temperature (K)'], dtype=np.float32)
-
+        self.codeversion = gData.attrs['version']
+        print('... GITM code version ',self.codeversion)
+        
+        # Find variables, fix names, fix units, and register variable.
+        skipped_vars=('time','Longitude','Latitude','Altitude','dLat','dLon','LT')
+        for k in gData:
+            if k not in skipped_vars:
+                if verbose:
+                    print(k,'  -> ',gData[k].attrs['name'],'  <=>  ',gData[k].attrs['units'])
+                var_name = kamodofy_names(k,[
+                    ('                ', ''),
+                    ('        ', ''),
+                    ('    ', ''),
+                    ('  ', ''),
+                    (' ', ''),
+                    ('Rho', 'rho'),
+                    ('eTemperature', 'Te'),
+                    ('iTemperature', 'Ti'),
+                    ('NeutralTemperature', 'Tn'),
+                    ('Temperature', 'Tn'),
+                    ('!U', ''),
+                    ('!D', ''),
+                    ('!N',''),
+                    ('+', 'plus'),
+                    ('-', 'minus'),
+                    ('_', ''),
+                    ('(','['),
+                    (')',']'),
+                    ('[1D]', '1D'),
+                    ('[2D]', '2D'),
+                    ('[2P]', '2P'),
+                    ('[3P]', '3P'),
+                    ('[4S]', '4S'),
+                    ('[east]', '_east'),
+                    ('[north]', '_north'),
+                    ('[up]', '_up'),
+                    ('[up,N2]', '_upN2'),
+                    ('[up,N4S]', '_upN4S'),
+                    ('[up,NO]', '_upNO'),
+                    ('[up,O2]', '_upO2'),
+                    ('[up,O3P]', '_upO3P'),
+                    ('[up,He]', '_upHe'),
+                    ('[kg/m3]', ''),
+                    ('[/m3]', ''),
+                    ('[m/s]', ''),
+                    ('[K]', ''),
+                    ('[kg/m3]', ''),
+                    ('[kg/m3]', '')
+                ])
+                var_unit = kamodofy_names(gData[k].attrs['units'],[
+                    ('kg \, m^{-3}', 'kg/m^3'),
+                    ('m^{-3}', '1/m^3'),
+                    ('m s^{-1}', 'm/s'),
+                    ('J m^{-2}', 'J/m^2'),
+                    ('S m^{-1}', 'S/m'),
+                    ('A m^{-2}', 'A/m^2'),
+                    ('V m^{-1}', 'V/m'),
+                    ('m s^{-2}', 'm/s^2'),
+                    ('Pa m^{-1}', 'Pa/m'),
+                    ('W m^{-1} K^{-1}', 'W/m K')
+                ])
+                if verbose:
+                    print(' -=-> ',var_name,' <-=-> ',var_unit)
+                self.variables[var_name] = dict(units = var_unit, 
+                                                data = gData[k], 
+                                                dtype=np.float32)
+        
         for varname in self.variables:
             units = self.variables[varname]['units']
             self.register_variable(varname, units)
@@ -82,6 +137,16 @@ class GITM(Kamodo):
         toc = time.perf_counter()
         print(f"Time loading file and kamodifying results: {toc - tic:0.4f} seconds")
         
+    def write_variables(self):
+        file="kamodo_info"
+        filedata="variables:\n"
+        for varname in self.variables:
+            filedata = filedata + varname + ' '
+        f = open(file, "w")
+        f.write(filedata)
+        f.close()
+        return
+    
     def register_variable(self, varname, units):
         """register variables into Kamodo for this model, GITM"""
 
@@ -104,12 +169,6 @@ class GITM(Kamodo):
                                  citation = "De Zeeuw 2020",
                                  data = self.variables[varname]['data'])
         
-    def kamodofy_names(name, name_maps):
-        """replaces all substrings in name with those given by name_maps"""
-        for old, new in name_maps:
-            name = name.replace(old, new)
-        return name
-    
     def get_grid_interpolator(self, lon, lat, alt, varname):
         """create a regular grid interpolator for this variable"""
         data =  self.variables[varname]['data']
@@ -127,6 +186,9 @@ class GITM(Kamodo):
         sym = F [default] for symetric colorscale around 0
         log = F [default] for log10() of plot value
         '''
+
+        # Common code blocks for all plots
+        txtbot = "Model: GITM v" + str(self.codeversion) + ",  Run: " + self.runname
 
         if plottype == "2D-alt":
             # Check if altitude entered is valid
@@ -170,7 +232,6 @@ class GITM(Kamodo):
             txtbar = var + " [" + units + "]"
             if log == "T":
                 txtbar = "log<br>"+txtbar
-            txtbot = "Model: GITM,  Run: " + self.runname
             if colorscale == "BlueRed":
                 fig.update_traces(
                     colorscale="RdBu",
@@ -226,7 +287,7 @@ class GITM(Kamodo):
             # Set grid for plot
             ilon = np.linspace(0, 360, 361)
             ilat = np.array([value])
-            ialt = np.linspace(98000, 736000, 320)
+            ialt = np.linspace(self.altmin, self.altmax, 300)
             xx, yy = np.meshgrid(np.array(ilon), np.array(ialt))
             grid = np.ndarray(shape=(np.size(np.reshape(xx,-1)),3), dtype=np.float32)
             grid[:,0] = np.reshape(xx,-1)
@@ -258,7 +319,6 @@ class GITM(Kamodo):
             txtbar = var + " [" + units + "]"
             if log == "T":
                 txtbar = "log<br>"+txtbar
-            txtbot = "Model: GITM,  Run: " + self.runname
             if colorscale == "BlueRed":
                 fig.update_traces(
                     colorscale="RdBu",
@@ -314,7 +374,7 @@ class GITM(Kamodo):
             # Set grid for plot
             ilon = np.array([value])
             ilat = np.linspace(-90, 90, 181)
-            ialt = np.linspace(98000, 736000, 320)
+            ialt = np.linspace(self.altmin, self.altmax, 300)
             xx, yy = np.meshgrid(np.array(ilat), np.array(ialt))
             grid = np.ndarray(shape=(np.size(np.reshape(xx,-1)),3), dtype=np.float32)
             grid[:,0] = value
@@ -346,7 +406,6 @@ class GITM(Kamodo):
             txtbar = var + " [" + units + "]"
             if log == "T":
                 txtbar = "log<br>"+txtbar
-            txtbot = "Model: GITM,  Run: " + self.runname
             if colorscale == "BlueRed":
                 fig.update_traces(
                     colorscale="RdBu",
@@ -439,7 +498,6 @@ class GITM(Kamodo):
             txtbar = var + " [" + units + "]"
             if log == "T":
                 txtbar = "log<br>"+txtbar
-            txtbot = "Model: GITM,  Run: " + self.runname
             if colorscale == "BlueRed":
                 fig.update_traces(
                     colorscale="RdBu",
