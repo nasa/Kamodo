@@ -225,9 +225,9 @@ class GITM(Kamodo):
                 cmax = np.max(result)
                 cmin = np.min(result)
                 if vmax != "":
-                    cmax = vmax
+                    cmax = float(vmax)
                 if vmin != "":
-                    cmin = vmin
+                    cmin = float(vmin)
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
@@ -315,9 +315,9 @@ class GITM(Kamodo):
                 cmax = np.max(result)
                 cmin = np.min(result)
                 if vmax != "":
-                    cmax = vmax
+                    cmax = float(vmax)
                 if vmin != "":
-                    cmin = vmin
+                    cmin = float(vmin)
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
@@ -406,9 +406,9 @@ class GITM(Kamodo):
                 cmax = np.max(result)
                 cmin = np.min(result)
                 if vmax != "":
-                    cmax = vmax
+                    cmax = float(vmax)
                 if vmin != "":
-                    cmin = vmin
+                    cmin = float(vmin)
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
@@ -503,9 +503,9 @@ class GITM(Kamodo):
                 cmax = np.max(result)
                 cmin = np.min(result)
                 if vmax != "":
-                    cmax = vmax
+                    cmax = float(vmax)
                 if vmin != "":
-                    cmin = vmin
+                    cmin = float(vmin)
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
