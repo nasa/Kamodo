@@ -26,7 +26,7 @@ class GITM(Kamodo):
                  filename, 
                  runpath = "./", 
                  runname = "noname",
-                 verbose = False, 
+                 debug = 1,
                  **kwargs):
         # Start timer
         tic = time.perf_counter()
@@ -41,6 +41,7 @@ class GITM(Kamodo):
         self.filename = filename
         self.runpath = runpath
         self.runname = runname
+        self.debug = int(debug)
         self.missing_value = np.NAN
         self.variables=dict()
         gData = gold.GitmBin(filename)
@@ -48,8 +49,9 @@ class GITM(Kamodo):
         
         # Get time
         self.time = gData['time']
-        print('... simulation time = ',self.time)
-        print('... raw data array size = ',gData['Altitude'].shape)
+        if self.debug > 0:
+            print('... simulation time = ',self.time)
+            print('... raw data array size = ',gData['Altitude'].shape)
         
         # Pull from 3D arrays into 1D array of unique values
         self.lonkey = "dLon"
@@ -60,16 +62,18 @@ class GITM(Kamodo):
         self.alt = np.unique(gData[self.altkey])
         self.altmin = np.min(self.alt)
         self.altmax = np.max(self.alt)
-        print('... range of altitudes is ',self.altmin,' to ',self.altmax,' meters.')
+        if self.debug > 0:
+            print('... range of altitudes is ',self.altmin,' to ',self.altmax,' meters.')
         
         self.codeversion = gData.attrs['version']
-        print('... GITM code version ',self.codeversion)
+        if self.debug > 0:
+            print('... GITM code version ',self.codeversion)
         
         # Find variables, fix names, fix units, and register variable.
         skipped_vars=('time','Longitude','Latitude','Altitude','dLat','dLon','LT')
         for k in gData:
             if k not in skipped_vars:
-                if verbose:
+                if self.debug > 1:
                     print(k,'  -> ',gData[k].attrs['name'],'  <=>  ',gData[k].attrs['units'])
                 var_name = kamodofy_names(k,[
                     ('                ', ''),
@@ -123,7 +127,7 @@ class GITM(Kamodo):
                     ('Pa m^{-1}', 'Pa/m'),
                     ('W m^{-1} K^{-1}', 'W/m K')
                 ])
-                if verbose:
+                if self.debug > 1:
                     print(' -=-> ',var_name,' <-=-> ',var_unit)
                 self.variables[var_name] = dict(units = var_unit, 
                                                 data = gData[k], 
@@ -135,7 +139,8 @@ class GITM(Kamodo):
         
         # end timer
         toc = time.perf_counter()
-        print(f"Time loading file and kamodifying results: {toc - tic:0.4f} seconds")
+        if self.debug > 0:
+            print(f"Time loading file and kamodifying results: {toc - tic:0.4f} seconds")
         
     def write_variables(self):
         file="kamodo_info"
@@ -178,13 +183,14 @@ class GITM(Kamodo):
                                                fill_value = self.missing_value)
         return interpolator
 
-    def get_plot(self, var, value, plottype, colorscale="BlueRed", sym="F", log="F"):
+    def get_plot(self, var, value, plottype, colorscale="BlueRed", sym="F", log="F", vmin="", vmax=""):
         '''
         Return a plotly figure object for the plottype requested.
         var, value, and plottype are required variables. value is position of slice
         colorscale = Viridis, Cividis, Rainbow, or BlueRed
         sym = F [default] for symetric colorscale around 0
         log = F [default] for log10() of plot value
+        vmin, vmax: set minimum and maximum value for contour values, empty is actual min/max
         '''
 
         # Common code blocks for all plots
@@ -212,12 +218,16 @@ class GITM(Kamodo):
             result = np.reshape(test,(ilat.shape[0],ilon.shape[0]))
             if log == "T":
                 result = np.log10(result)
-            if sym == "T":
+            if sym == "T" and vmin == "" and vmax == "":
                 cmax = np.max(np.absolute(result))
                 cmin = -cmax
             else:
                 cmax = np.max(result)
                 cmin = np.min(result)
+                if vmax != "":
+                    cmax = vmax
+                if vmin != "":
+                    cmin = vmin
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
@@ -298,12 +308,16 @@ class GITM(Kamodo):
             result = np.reshape(test,(ialt.shape[0],ilon.shape[0]))
             if log == "T":
                 result = np.log10(result)
-            if sym == "T":
+            if sym == "T" and vmin == "" and vmax == "":
                 cmax = np.max(np.absolute(result))
                 cmin = -cmax
             else:
                 cmax = np.max(result)
                 cmin = np.min(result)
+                if vmax != "":
+                    cmax = vmax
+                if vmin != "":
+                    cmin = vmin
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
@@ -385,12 +399,16 @@ class GITM(Kamodo):
             result = np.reshape(test,(ialt.shape[0],ilat.shape[0]))
             if log == "T":
                 result = np.log10(result)
-            if sym == "T":
+            if sym == "T" and vmin == "" and vmax == "":
                 cmax = np.max(np.absolute(result))
                 cmin = -cmax
             else:
                 cmax = np.max(result)
                 cmin = np.min(result)
+                if vmax != "":
+                    cmax = vmax
+                if vmin != "":
+                    cmin = vmin
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
@@ -478,12 +496,16 @@ class GITM(Kamodo):
             x=-(r*np.cos(yy*np.pi/180.)*np.cos(xx*np.pi/180.))/6.3781E6
             y=-(r*np.cos(yy*np.pi/180.)*np.sin(xx*np.pi/180.))/6.3781E6
             z= (r*np.sin(yy*np.pi/180.))/6.3781E6
-            if sym == "T":
+            if sym == "T" and vmin == "" and vmax == "":
                 cmax = np.max(np.absolute(result))
                 cmin = -cmax
             else:
                 cmax = np.max(result)
                 cmin = np.min(result)
+                if vmax != "":
+                    cmax = vmax
+                if vmin != "":
+                    cmin = vmin
 
             time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
@@ -547,7 +569,7 @@ class GITM(Kamodo):
             y3=0.*ilat
             z3=(r*np.sin(ilat*np.pi/180.))/6.3781E6
             fig.add_scatter3d(mode='lines',x=x3,y=y3,z=z3,line=dict(width=2,color='black'),
-                              showlegend=False,hovertemplate='Midnight<extra></extra>')
+                              showlegend=False,hovertemplate='prime meridian<extra></extra>')
             return fig
 
         print('Unknown plottype (',plottype,') returning.')
