@@ -641,6 +641,9 @@ class GitmBin(PbData):
                     nk = 'V!Dn!N (up)'
                 elif nk.find("Vi (east) (m/s)") >= 0:
                     nk = "V!Di!N (east)"
+                # DDZ added 2020-08-31
+                if nk == "Magnetic latitude":
+                    nk = "Magnetic Latitude"
 
                 try:
                     #print ('registering',k)

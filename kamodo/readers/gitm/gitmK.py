@@ -86,6 +86,7 @@ class GITM(Kamodo):
                     ('iTemperature', 'Ti'),
                     ('NeutralTemperature', 'Tn'),
                     ('Temperature', 'Tn'),
+                    ('Magneticlatitude', 'MagneticLatitude'),
                     ('!U', ''),
                     ('!D', ''),
                     ('!N',''),
