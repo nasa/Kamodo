@@ -1,3 +1,10 @@
+# 2020-09-02 16:03:51.164640: clock-out
+
+* how to keep NASA readers and core from conflicting:
+	- currently these are separate files so merges should be straight-forward
+	- readers are all subclasses of Kamodo, so breaking changes should only be downstream
+* modifications to core should be made with hourly to comply with NASA license
+* could also rewrite kamodo core as a separate package with its own repo
 
 # 2020-09-02 14:59:41.540200: clock-in
 
