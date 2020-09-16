@@ -1,3 +1,5 @@
+kamodo_output: kamodo_output # parent output directory for all kamodo runs
+
 models:
   mymodel:
     class: kamodo.Kamodo

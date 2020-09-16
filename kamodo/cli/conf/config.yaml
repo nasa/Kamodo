@@ -4,6 +4,12 @@ defaults:
 config_override: kamodo.yaml
 
 hydra:
+  run:
+    dir: ${kamodo_output}/${now:%Y-%m-%d}/${now:%H-%M-%S}/
+  sweep:
+    dir: ${hydra.run.dir}
+    subdir: '' # ${hydra.job.num}
+
   help:
     # App name, override to match the name your app is known by
     app_name: kamodo

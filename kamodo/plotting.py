@@ -339,26 +339,26 @@ def carpet_plot(results, title, xaxis, yaxis, indexing = 'xy', **kwargs):
 		x = val0.ravel(),
 		y = val1.ravel(),
 		aaxis = dict(
-		    tickprefix = ''.format(arg0),
-		    smoothing = 0,
-		    minorgridcount = 0,
-		    type = 'linear',
-		    showgrid = False,
-		    nticks = 5,
-		    dtick=0,
-		    tickmode='linear',
-		    showticklabels='none',
+			tickprefix = ''.format(arg0),
+			smoothing = 0,
+			minorgridcount = 0,
+			type = 'linear',
+			showgrid = False,
+			nticks = 5,
+			dtick=0,
+			tickmode='linear',
+			showticklabels='none',
 		),
 		baxis = dict(
-		    tickprefix = ''.format(arg1),
-		    smoothing = 0,
-		    minorgridcount = 0,
-		    type = 'linear',
-		    showgrid = False,
-		    nticks = 5,
-		    dtick=0,
-		    tickmode='linear',
-		    showticklabels='none',
+			tickprefix = ''.format(arg1),
+			smoothing = 0,
+			minorgridcount = 0,
+			type = 'linear',
+			showgrid = False,
+			nticks = 5,
+			dtick=0,
+			tickmode='linear',
+			showticklabels='none',
 		)
 	)
 	traces = [trace1, trace2]
@@ -478,6 +478,38 @@ def surface(result, titles, verbose = False, **kwargs):
 
 	return traces, chart_type, layout
 
+def tri_surface_plot(result, titles, verbose = False, **kwargs):
+	# triangulated surface 
+	variable = titles['variable']
+	results = list(result.items())
+	arg0, val0 = results[0]
+	arg1, val1 = results[1]
+	arg2, val2 = results[2]
+	
+	trace = go.Mesh3d(
+		x=val0,
+		y=val1,
+		z=val2,
+		colorbar_title = variable,
+		colorscale=[[0, 'gold'],
+					[0.5, 'mediumturquoise'],
+					[1, 'magenta']],
+		# Intensity of each vertex, which will be interpolated and color-coded
+		intensity = val2,
+		# i, j and k give the vertices of triangles
+		i=result[variable][:,0],
+		j=result[variable][:,1],
+		k=result[variable][:,2],
+		name=variable,
+		showscale=True)
+	
+	layout = go.Layout(
+		title = titles['title'],
+		scene = dict(
+			xaxis = dict(title = arg0),
+			yaxis = dict(title = arg1),
+			zaxis = dict(title = arg2),))
+	return [trace], '3d-surface', layout
 
 
 plot_dict = {
@@ -494,6 +526,7 @@ plot_dict = {
 	('N',3) : 	{
 		(('N',),) :{'name': '3d-line', 'func': line_plot},
 		(('N',3),):{'name': '3d-vector', 'func': vector_plot},
+		(('M',),('M',),('M',)):{'name': '3d-tri-surface', 'func': tri_surface_plot},
 	},
 	('N','M'):	{
 		(('N',),('M',)) :{'name': '2d-contour', 'func': contour_plot},
@@ -542,12 +575,16 @@ def get_plot_key(out_shape, *arg_shapes):
 			else:
 				out_dim = 'N',
 		elif len(out_shape) == 2:
-			out_dim = 'N','M'
+			if out_shape[-1] == 3:
+				out_dim = 'N', 3
+			else:
+				out_dim = 'N','M'
 		elif len(out_shape) == 3:
 			if 1 in out_shape:
 				out_dim = 'N', 'M', 1
 			else:
 				out_dim = 'N','M','L'
+
 	
 	out_dim = tuple(out_dim)
 	if shapes_match:
@@ -593,6 +630,11 @@ def get_plot_key(out_shape, *arg_shapes):
 					arg_dims = (('N',),(1,),('M',))
 				elif arg_shapes[2] == (1,):
 					arg_dims = (('N',),('M',),(1,))
+			elif out_dim == ('N', 3):
+				if len(set(arg_shapes)) == 1:
+					if len(arg_shapes[0]) == 1:
+						arg_dims = tuple(3*[('M',)])
+					
 	if arg_dims == '':
 		raise NotImplementedError('No way to handle out_shape {}, with arg shapes:{}'.format(out_shape, arg_shapes))
 	return out_dim, arg_dims
@@ -601,7 +643,7 @@ def get_plot_key(out_shape, *arg_shapes):
 plot_types = dict()
 for out_shape, v in list(plot_dict.items()):
 	for arg_shapes, v_ in list(v.items()):
-		plot_key = get_plot_key(out_shape,*arg_shapes)
+		plot_key = get_plot_key(out_shape, *arg_shapes)
 		if plot_key in plot_types:
 			raise KeyError('plot_key already present {}'.format(plot_key))
 		plot_types[plot_key] = [v_['name'], v_['func']]
