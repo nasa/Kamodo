@@ -299,10 +299,11 @@ class SWMF_GM(Kamodo):
         print(f"Time resetting plot and precomputing interpolations: {toc - tic:0.4f} seconds")
         return
     
-    def get_plot(self, var, colorscale="Viridis"):
+    def get_plot(self, var, colorscale="Viridis", sym="F"):
         '''
         Return a plotly figure object for the available plot types set in set_plot()..
-        colorscale = Viridis [default], Cividis, or Rainbow
+        colorscale = Viridis [default], Cividis, Rainbow, or BlueRed
+        sym = F [default] for symetric colorscale around 0
         '''
         #Set some text strings
         txtbot="Model: BATSRUS,  Run: " + str(self.runname) + ",  " + str(self.gridSize) + " cells,  minimum dx=" + str(self.gridMinDx)
@@ -311,8 +312,14 @@ class SWMF_GM(Kamodo):
         # Get values from interpolation already computed
         result=self.variables[var]['interpolator']
         r = np.sqrt(np.square(self.newgrid[:,0]) + np.square(self.newgrid[:,1]) + np.square(self.newgrid[:,2]))
-        cmin=np.amin(result[(r[:] > 2.999)])
-        cmax=np.amax(result[(r[:] > 2.999)])
+        if sym == "T":
+            cmin=np.amin(result[(r[:] > 2.999)])
+            cmax=np.amax(result[(r[:] > 2.999)])
+            cmax=max(cmax,-1.*cmin)
+            cmin = -cmax
+        else:
+            cmin=np.amin(result[(r[:] > 2.999)])
+            cmax=np.amax(result[(r[:] > 2.999)])
         
         if self.plottype == "XY":
             txttop="Z=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
@@ -337,6 +344,8 @@ class SWMF_GM(Kamodo):
                 )
             elif colorscale == "Cividis":
                 fig.update_traces(colorscale="Cividis")
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             else:
                 fig.update_traces(colorscale="Viridis")
             fig.update_traces(
@@ -389,6 +398,8 @@ class SWMF_GM(Kamodo):
                 )
             elif colorscale == "Cividis":
                 fig.update_traces(colorscale="Cividis")
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             else:
                 fig.update_traces(colorscale="Viridis")
             fig.update_traces(
@@ -441,6 +452,8 @@ class SWMF_GM(Kamodo):
                 )
             elif colorscale == "Cividis":
                 fig.update_traces(colorscale="Cividis")
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             else:
                 fig.update_traces(colorscale="Viridis")
             fig.update_traces(
@@ -554,6 +567,8 @@ class SWMF_GM(Kamodo):
                 fig.update_traces(colorscale="RdBu")
             elif colorscale == "Cividis":
                 fig.update_traces(colorscale="Cividis")
+            elif colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             else:
                 fig.update_traces(colorscale="Viridis")
             fig.update_traces(
@@ -631,8 +646,8 @@ def show_GM_files(runpath = "./",
     The resulting files will be read from: runpath + runname + filepath (ie. ./noname/IO2/3d*.out)
     '''
     
-    print('Routine prints simulation data/time for each simulation output and returns last file.',
-         ' If year is \n1000, then no start_time for the run was found and arguement should be added to call.')
+    print('Routine prints simulation data/time for each simulation output and returns last file.\n',
+         ' If year is 1000, then no start_time for the run was found\n and arguement should be added to call.')
     
     # Pull start_time from the DatabaseInfo file (if it exists), then add simulated time from filenames
     if path.isfile(runpath+runname+'/DatabaseInfo'):
