@@ -1,3 +1,4 @@
+* cleaning up unit conversion code
 
 # 2020-10-13 12:10:24.428950: clock-in
 
