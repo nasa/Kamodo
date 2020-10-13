@@ -1,3 +1,6 @@
+
+# 2020-10-13 12:10:24.428950: clock-in
+
 # 2020-09-02 16:03:51.164640: clock-out
 
 * how to keep NASA readers and core from conflicting:
