@@ -1,3 +1,5 @@
+# 2020-10-14 12:31:50.544849: clock-out
+
 * going through util.py
 
 # 2020-10-14 11:29:55.853990: clock-in
