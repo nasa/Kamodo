@@ -1,3 +1,6 @@
+
+# 2020-10-14 11:29:55.853990: clock-in
+
 # 2020-10-13 15:52:04.229990: clock-out
 
 * cleaning up unit conversion code
