@@ -37,7 +37,7 @@ from .util import sort_symbols
 from .util import simulate
 from .util import unit_subs
 from .util import get_defaults, valid_args, eval_func
-from .util import to_arrays, cast_0_dim
+# from .util import to_arrays, cast_0_dim
 from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
 
@@ -342,11 +342,11 @@ class Kamodo(collections.OrderedDict):
         if type(rhs_expr) is str:
             is_latex = '$' in rhs_expr
             rhs_expr = rhs_expr.strip('$').strip()
-            rhs_expr = parse_rhs(rhs_expr, is_latex, local_dict = local_dict)
+            rhs_expr = parse_rhs(rhs_expr, is_latex, local_dict=local_dict)
         return rhs_expr
 
 
-    def check_or_replace_symbol(self, symbol, free_symbols, rhs_expr = None):
+    def check_or_replace_symbol(self, symbol, free_symbols, rhs_expr=None):
         """Rules of replacement:
 
         """
@@ -364,7 +364,8 @@ class Kamodo(collections.OrderedDict):
                     if type(free_symbols) == set:
                         free_symbols_ = sort_symbols(free_symbols)
                     if self.verbose:
-                        print('replacing {} with {}'.format(symbol, str(type(symbol)) + str(free_symbols_)))
+                        print('replacing {} with {}'.format(
+                            symbol, str(type(symbol)) + str(free_symbols_)))
                     symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
 
         return symbol
@@ -599,7 +600,8 @@ class Kamodo(collections.OrderedDict):
         return simulate(OrderedDict(state_funcs), **kwargs)
 
     def evaluate(self, variable, *args, **kwargs):
-        if type(self[variable]) is np.vectorize:
+        """evaluates the variable """
+        if isinstance(self[variable], np.vectorize):
             params = get_defaults(self[variable].pyfunc)
         else:
             params = get_defaults(self[variable])
