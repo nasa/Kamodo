@@ -443,7 +443,7 @@ def gridify(_func = None, **defaults):
         wrapped = scope['wrapped']
         wrapped.__name__ = f.__name__
         wrapped.__doc__ = f.__doc__
-        
+
         return decorate(wrapped, decorator_wrapper)
 
     if _func is None:
@@ -489,7 +489,7 @@ def event(func, terminal = True, direction = 0):
     wrapped.terminal = terminal
     wrapped.direction = direction
     return wrapped
-    
+
 # `@solve` may be used to generate field lines. We are moving away from this style in favor of function generators.
 def solve(fprime = None, seeds = None, varname = None, interval = None, 
           dense_output = True, # generate a callable solution
@@ -500,7 +500,7 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
           verbose = False,
          ):
     """Decorator that solves initial value problem for a given function
-    
+
     Can be used to generate streamlines, streaklines, fieldlines, etc
     """
 
@@ -511,7 +511,7 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
 
     t_eval = np.linspace(*interval, npoints)
     nseeds = len(seeds)
-    
+
     def decorator_solve(f):
         solutions = []
         t = []
@@ -519,12 +519,12 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
         fprime_ = {}
         for d in directions:
             fprime_[d] = lambda s, y: d*f(y.T)
-        
+
         for i, seed in enumerate(seeds):
             for d in directions:
-                result = solve_ivp(fprime_[d], interval, seed, 
-                                    dense_output = dense_output, 
-                                    events = events, 
+                result = solve_ivp(fprime_[d], interval, seed,
+                                    dense_output = dense_output,
+                                    events = events,
                                     vectorized = vectorized,
                                     t_eval = t_eval)
                 solutions.append(result['sol'])
@@ -536,16 +536,16 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
                 else:
                     t.extend(list(seed_numbers + integrals)[1:])
 
-        
+
         t = np.hstack(t)
-            
+
 
         def solution(s = t):
             s = np.array(s)
             if len(s.shape) == 0:
                 s = np.expand_dims(s, axis=0)
-            
-            isolution = np.floor(s.real).astype(int)*len(directions) + (s.imag > 0) 
+
+            isolution = np.floor(s.real).astype(int)*len(directions) + (s.imag > 0)
 
             results = []
             seed_number = []
@@ -560,7 +560,7 @@ def solve(fprime = None, seeds = None, varname = None, interval = None,
                         results.append(solutions[soln](np.abs(imag_)))
                 except:
                     results.append(np.ones(isolution.shape[-1])*np.nan)
-            index_ = pd.MultiIndex.from_arrays([seed_number, integral], 
+            index_ = pd.MultiIndex.from_arrays([seed_number, integral],
                                                names = ['seed', 'integral'])
             return pd.DataFrame(np.vstack(results), index = index_).drop_duplicates()
 
@@ -602,7 +602,7 @@ def test_simulate():
             ('x', update_x),
             ('t', lambda t, dt: t + dt)
           ])
-            
+
     simulation = simulate(state_funcs,
                           x = 3, #initial conditions
                           t = 0,
