@@ -1,4 +1,11 @@
+* all util.py unit tests pass
 * spacing
+
+* trying to fix collections warning
+
+```bash
+DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
+```
 
 # 2020-10-19 17:32:57.246898: clock-in
 
