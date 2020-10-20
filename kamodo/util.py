@@ -98,8 +98,6 @@ def arg_to_latex(arg):
     return beautify_latex(latex(Symbol(arg)))
 
 
-
-
 def decorator_wrapper(f, *args, **kwargs):
     """Wrapper needed by decorator.decorate to pass through args, kwargs"""
     return f(*args, **kwargs)

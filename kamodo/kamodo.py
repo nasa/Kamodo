@@ -7,13 +7,18 @@ try:
 except ImportError:
     pass
 
-from collections import OrderedDict
-import collections
+
 
 import numpy as np
 from sympy import Integral, Symbol, symbols, Function
 
-from sympy.parsing.sympy_parser import parse_expr
+try:
+    from sympy.parsing.sympy_parser import parse_expr
+except ImportError: # occurs in python3
+    from sympy import sympy as parse_expr
+
+from collections import OrderedDict
+import collections
 
 from sympy import lambdify
 from sympy.parsing.latex import parse_latex
@@ -29,7 +34,6 @@ from sympy.physics import units as sympy_units
 from sympy.physics.units import Quantity
 from sympy.physics.units import Dimension
 from sympy import Expr
-from sympy import sympify
 
 import functools
 from .util import kamodofy
@@ -47,7 +51,7 @@ import sympy.physics.units as u
 import plotly.graph_objs as go
 from plotly import figure_factory as ff
 
-from plotting import *
+from plotting import plot_dict, get_arg_shapes, get_plot_key
 from .util import existing_plot_types
 
 from sympy import Wild
@@ -681,7 +685,13 @@ class Kamodo(collections.OrderedDict):
         except KeyError:
             print('not supported: out_dim {}, arg_dims {}'.format(out_dim, arg_dims))
             raise
-        traces, chart_type, layout = plot_func(result, titles,indexing = indexing, verbose = self.verbose, **kwargs)
+
+        traces, chart_type, layout = plot_func(
+            result,
+            titles,
+            indexing=indexing,
+            verbose=self.verbose,
+            **kwargs)
 
         layout.update(
             dict(autosize=False,
@@ -707,13 +717,13 @@ class Kamodo(collections.OrderedDict):
             figures[k] = {}
         if len(figures) == 1:
             variable, kwargs = list(figures.items())[0]
-            fig = self.figure(variable, return_type = True, **kwargs)
+            fig = self.figure(variable, return_type=True, **kwargs)
             if fig['chart_type'] is None:
                 raise AttributeError("No chart_type for this trace")
             else:
                 if self.verbose:
                     print('chart type:', fig['chart_type'])
-                return go.Figure(data = fig['data'], layout = fig['layout'])
+                return go.Figure(data=fig['data'], layout=fig['layout'])
         else:
             traces = []
             layouts = []
@@ -721,7 +731,8 @@ class Kamodo(collections.OrderedDict):
                 fig = self.figure(variable, **kwargs)
                 traces.extend(fig['data'])
                 layouts.append(fig['layout'])
-            return go.Figure(data = traces, layout = layouts[-1])
+            # Todo: merge the layouts instead of selecting the last one
+            return go.Figure(data=traces, layout=layouts[-1])
 
 
 
