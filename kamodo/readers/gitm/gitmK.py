@@ -219,8 +219,12 @@ class GITM(Kamodo):
             result = np.reshape(test,(ilat.shape[0],ilon.shape[0]))
             if log == "T":
                 result = np.log10(result)
-            if sym == "T" and vmin == "" and vmax == "":
+            if sym == "T":
                 cmax = np.max(np.absolute(result))
+                if vmax != "":
+                    cmax = abs(float(vmax))
+                if vmin != "":
+                    cmax = max(cmax,abs(float(vmin)))
                 cmin = -cmax
             else:
                 cmax = np.max(result)
