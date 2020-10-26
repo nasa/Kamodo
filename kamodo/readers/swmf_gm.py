@@ -299,11 +299,12 @@ class SWMF_GM(Kamodo):
         print(f"Time resetting plot and precomputing interpolations: {toc - tic:0.4f} seconds")
         return
     
-    def get_plot(self, var, colorscale="Viridis", sym="F"):
+    def get_plot(self, var, colorscale="Viridis", sym="F", vmin="", vmax=""):
         '''
         Return a plotly figure object for the available plot types set in set_plot()..
         colorscale = Viridis [default], Cividis, Rainbow, or BlueRed
         sym = F [default] for symetric colorscale around 0
+        vmin, vmax: set minimum and maximum value for contour values, empty is actual min/max
         '''
         #Set some text strings
         txtbot="Model: BATSRUS,  Run: " + str(self.runname) + ",  " + str(self.gridSize) + " cells,  minimum dx=" + str(self.gridMinDx)
@@ -313,13 +314,19 @@ class SWMF_GM(Kamodo):
         result=self.variables[var]['interpolator']
         r = np.sqrt(np.square(self.newgrid[:,0]) + np.square(self.newgrid[:,1]) + np.square(self.newgrid[:,2]))
         if sym == "T":
-            cmin=np.amin(result[(r[:] > 2.999)])
-            cmax=np.amax(result[(r[:] > 2.999)])
-            cmax=max(cmax,-1.*cmin)
+            cmax = np.max(np.absolute(result[(r[:] > 2.999)]))
+            if vmax != "":
+                cmax = abs(float(vmax))
+            if vmin != "":
+                cmax = max(cmax,abs(float(vmin)))
             cmin = -cmax
         else:
             cmin=np.amin(result[(r[:] > 2.999)])
             cmax=np.amax(result[(r[:] > 2.999)])
+            if vmax != "":
+                cmax = float(vmax)
+            if vmin != "":
+                cmin = float(vmin)
         
         if self.plottype == "XY":
             txttop="Z=" + str(self.plots[self.plottype]['cutV']) + " slice,  Time = " + self.filetime
@@ -493,8 +500,20 @@ class SWMF_GM(Kamodo):
             result=self.plots[pt][var]
             newgrid = self.plots[pt]['newgrid']
             r = np.sqrt(np.square(newgrid[:,0]) + np.square(newgrid[:,1]) + np.square(newgrid[:,2]))
-            cmin=np.amin(result[(r[:] > 2.999)])
-            cmax=np.amax(result[(r[:] > 2.999)])
+            if sym == "T":
+                cmax = np.max(np.absolute(result[(r[:] > 2.999)]))
+                if vmax != "":
+                    cmax = abs(float(vmax))
+                if vmin != "":
+                    cmax = max(cmax,abs(float(vmin)))
+                    cmin = -cmax
+            else:
+                cmin=np.amin(result[(r[:] > 2.999)])
+                cmax=np.amax(result[(r[:] > 2.999)])
+                if vmax != "":
+                    cmax = float(vmax)
+                if vmin != "":
+                    cmin = float(vmin)
             xint = self.plots[pt]['newx']
             yint = self.plots[pt]['newy']
             zint = self.plots[pt]['newz']
@@ -512,8 +531,22 @@ class SWMF_GM(Kamodo):
                 result=self.plots[pt][var]
                 newgrid = self.plots[pt]['newgrid']
                 r = np.sqrt(np.square(newgrid[:,0]) + np.square(newgrid[:,1]) + np.square(newgrid[:,2]))
-                cmin=min(cmin,np.amin(result[(r[:] > 2.999)]))
-                cmax=max(cmax,np.amax(result[(r[:] > 2.999)]))
+                if sym == "T":
+                    tcmax = np.max(np.absolute(result[(r[:] > 2.999)]))
+                    if vmax != "":
+                        tcmax = abs(float(vmax))
+                    if vmin != "":
+                        tcmax = max(tcmax,abs(float(vmin)))
+                    cmin = -tcmax
+                else:
+                    tcmin=np.amin(result[(r[:] > 2.999)])
+                    tcmax=np.amax(result[(r[:] > 2.999)])
+                    if vmax != "":
+                        tcmax = float(vmax)
+                    if vmin != "":
+                        tcmin = float(vmin)
+                cmin=min(cmin,tcmin)
+                cmax=max(cmax,tcmax)
                 xint = self.plots[pt]['newx']
                 yint = self.plots[pt]['newy']
                 zint = self.plots[pt]['newz']
@@ -536,8 +569,22 @@ class SWMF_GM(Kamodo):
                 result=self.plots[pt][var]
                 newgrid = self.plots[pt]['newgrid']
                 r = np.sqrt(np.square(newgrid[:,0]) + np.square(newgrid[:,1]) + np.square(newgrid[:,2]))
-                cmin=min(cmin,np.amin(result[(r[:] > 2.999)]))
-                cmax=max(cmax,np.amax(result[(r[:] > 2.999)]))
+                if sym == "T":
+                    tcmax = np.max(np.absolute(result[(r[:] > 2.999)]))
+                    if vmax != "":
+                        tcmax = abs(float(vmax))
+                    if vmin != "":
+                        tcmax = max(tcmax,abs(float(vmin)))
+                    cmin = -tcmax
+                else:
+                    tcmin=np.amin(result[(r[:] > 2.999)])
+                    tcmax=np.amax(result[(r[:] > 2.999)])
+                    if vmax != "":
+                        tcmax = float(vmax)
+                    if vmin != "":
+                        tcmin = float(vmin)
+                cmin=min(cmin,tcmin)
+                cmax=max(cmax,tcmax)
                 xint = self.plots[pt]['newx']
                 yint = self.plots[pt]['newy']
                 zint = self.plots[pt]['newz']
