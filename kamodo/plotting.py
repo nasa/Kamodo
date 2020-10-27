@@ -240,14 +240,16 @@ def vector_plot(result, titles, verbose = False, **kwargs):
     variable = titles['variable']
     val0 = list(result.values())[0]
 
+    # check if this is a 2d vector plot: input and output should have shape 2d
     if (result[variable].shape == val0.shape) & (val0.shape[1] == 2):
         if verbose:
             print('\t 2-d output', result[variable].shape)
-        u = result[variable][:,0]
-        v = result[variable][:,1]
-        x = val0[:,0]
-        y = val0[:,1]
+        u = result[variable][:, 0]
+        v = result[variable][:, 1]
+        x = val0[:, 0]
+        y = val0[:, 1]
 
+        # plotly's quiver plot has its own defaults
         quiver_defaults = get_defaults(ff.create_quiver)
         for k, v_ in kwargs.items():
             if k in quiver_defaults:
@@ -266,43 +268,48 @@ def vector_plot(result, titles, verbose = False, **kwargs):
                 print(v_.shape)
             raise
 
-        layout = go.Layout(title = titles['title'], 
-                              xaxis = dict(title = 'x'),
-                              yaxis = dict(title = 'y'))
+        layout = go.Layout(title=titles['title'],
+                           xaxis=dict(title='x'),
+                           yaxis=dict(title='y'))
         chart_type = '2d-vector'
 
+    # check if this is a 3d vector plot: input and output should have shape 3d
     elif (result[variable].shape == val0.shape) & (val0.shape[1] == 3):
         if verbose:
             print('\t 3-d output', result[variable].shape, val0.shape)
             print('\t 3d vector plot')
         if type(result[variable]) == pd.DataFrame:
-            u = result[variable].values[:,0].tolist()
-            v = result[variable].values[:,1].tolist()
-            w = result[variable].values[:,2].tolist()
+            u = result[variable].values[:, 0].tolist()
+            v = result[variable].values[:, 1].tolist()
+            w = result[variable].values[:, 2].tolist()
         else:
-            u = result[variable][:,0].tolist()
-            v = result[variable][:,1].tolist()
-            w = result[variable][:,2].tolist()
+            u = result[variable][:, 0].tolist()
+            v = result[variable][:, 1].tolist()
+            w = result[variable][:, 2].tolist()
         if type(val0) == pd.DataFrame:
-            x = val0.values[:,0].tolist()
-            y = val0.values[:,1].tolist()
-            z = val0.values[:,2].tolist()
+            x = val0.values[:, 0].tolist()
+            y = val0.values[:, 1].tolist()
+            z = val0.values[:, 2].tolist()
         else:
-            x = val0[:,0].tolist()
-            y = val0[:,1].tolist()
-            z = val0[:,2].tolist()
-        norms = np.linalg.norm(result[variable], axis = 1)
-        trace = go.Cone(x = x, y = y, z = z, u = u, v = v, w = w,
-            hoverinfo = 'x+y+z+u+v+w+norm', colorscale = 'Reds',
-            cmin = 0, cmax = norms.max(),
+            x = val0[:, 0].tolist()
+            y = val0[:, 1].tolist()
+            z = val0[:, 2].tolist()
+
+        # normalize each vector to get the length
+        norms = np.linalg.norm(result[variable], axis=1)
+        trace = go.Cone(
+            x=x, y=y, z=z, u=u, v=v, w=w,
+            hoverinfo='x+y+z+u+v+w+norm',
+            colorscale='Reds',
+            cmin=0, cmax=norms.max(),
             )
 
         layout = go.Layout(
-            title = titles['title'],
-            scene = dict(
-                xaxis = dict(title = 'x'),
-                yaxis = dict(title = 'y'),
-                zaxis = dict(title = 'z'),
+            title=titles['title'],
+            scene=dict(
+                xaxis=dict(title='x'),
+                yaxis=dict(title='y'),
+                zaxis=dict(title='z'),
                 ))
         chart_type = '3d-vector'
     else:
@@ -609,6 +616,7 @@ def get_arg_shapes(*args):
 
 
 def get_plot_key(out_shape, *arg_shapes):
+    """Generates a plot key from array shapes"""
     shapes_match = all([(a == out_shape) for a in list(arg_shapes)])
     nargs = len(arg_shapes)
     arg_dims = ''
