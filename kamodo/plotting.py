@@ -701,11 +701,4 @@ plot_types = pd.DataFrame(plot_types).T
 plot_types.index.set_names(['out_shape', 'arg_shapes'], inplace = True)
 plot_types.columns = ['plot_type', 'function']
 
-def test_plot_keys():
-    for k in plot_types.to_dict(orient = 'index'):
-        try:
-            plot_dict[k[0]][k[1]]['name']
-        except KeyError:
-            print('could not find', k[0], k[1])
-            raise
 

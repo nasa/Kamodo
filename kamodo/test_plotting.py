@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from .plotting import scatter_plot, line_plot, vector_plot, contour_plot, surface, plane, tri_surface_plot, \
-    get_arg_shapes
+    get_arg_shapes, plot_types, plot_dict
 
 
 def test_scatter_plot():
@@ -16,7 +16,7 @@ def test_scatter_plot():
 
     assert trace['mode'] == 'markers'
     assert layout['title']['text'] == title
-    assert plot_type == '3d-vector'
+    assert plot_type == '3d-scatter'
 
 
 def test_line_plot_line():
@@ -451,7 +451,7 @@ def test_scatter_plot_pd():
     [trace], plot_type, layout = scatter_plot(results, titles, True)
 
     assert trace['mode'] == 'markers'
-    assert plot_type == '3d-vector'
+    assert plot_type == '3d-scatter'
     assert layout['title']['text'] == title
 
 
@@ -479,5 +479,10 @@ def test_line_plot_3d_line():
     assert layout['title']['text'] == title
 
 
-if __name__ == '__main__':
-    test_arg_shape_pd()
+def test_plot_keys():
+    for k in plot_types.to_dict(orient = 'index'):
+        try:
+            plot_dict[k[0]][k[1]]['name']
+        except KeyError:
+            print('could not find', k[0], k[1])
+            raise
