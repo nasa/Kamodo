@@ -1,4 +1,8 @@
+
+# 2020-10-27 13:31:24.216328: clock-in
+
 * code cleanup
+
 # 2020-10-19 18:22:01.985135: clock-out
 
 * all util.py unit tests pass
