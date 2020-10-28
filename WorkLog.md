@@ -1,3 +1,9 @@
+* developing evaluate endpoint
+
+
+`http://127.0.0.1:5000/api/mymodel/evaluate?variable=%27g=(f%2B1)**.5%27&x=[3,4,5]`
+
+plus sign: `%2B`
 
 # 2020-10-27 21:16:42.216480: clock-in
 
