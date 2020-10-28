@@ -1,3 +1,6 @@
+
+# 2020-10-27 21:16:42.216480: clock-in
+
 # 2020-10-27 15:30:20.449578: clock-out
 
 * merging tests from Dhruv
