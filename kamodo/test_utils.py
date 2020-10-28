@@ -5,8 +5,10 @@ import pytest
 from sympy import sympify as parse_expr, Symbol
 from sympy.core.function import UndefinedFunction
 
+from kamodo import Kamodo
 from kamodo.util import kamodofy, gridify, sort_symbols, valid_args, eval_func, get_defaults, cast_0_dim, \
-    concat_solution, get_unit_quantity, substr_replace, beautify_latex, arg_to_latex, simulate, symbolic, pad_nan
+    concat_solution, get_unit_quantity, substr_replace, beautify_latex, arg_to_latex, simulate, symbolic, pad_nan, \
+    pointlike, solve, event
 
 
 @kamodofy
@@ -39,6 +41,36 @@ def grid_fun(xvec):
 
     xvec should have shape (N,3)"""
     return xvec[:, 0]
+
+
+@pointlike(squeeze='0')
+def squeeze_error_point(x=np.linspace(0, 8 * np.pi, 100)):
+    return np.sin(x)
+
+
+@pointlike(squeeze=0)
+def squeeze_point(x=np.linspace(0, 8 * np.pi, 100)):
+    return np.sin(x)
+
+
+@pointlike()
+def points(x=np.linspace(0, 8 * np.pi, 100)):
+    return np.sin(x)
+
+
+def fprime(x):
+    return x * x
+
+
+@event
+def boundry(x, s=np.array([1, 2])):
+    r = np.linalg.norm(s)
+
+    if np.isnan(r):
+        result = 0
+    else:
+        result = r - 1
+    return result
 
 
 def test_kamodofy():
@@ -274,8 +306,21 @@ def test_pad_nan():
     assert comparison.all()
 
     with pytest.raises(NotImplementedError) as error:
-        array = np.array([[[1], [2], [3]],[[1], [2], [3]]])
+        array = np.array([[[1], [2], [3]], [[1], [2], [3]]])
         pad_nan(array)
 
     assert f"cannot pad shape {array.shape}" in str(error)
 
+
+def test_pointlike():
+    assert Kamodo(points=squeeze_point).points().shape == (100,)
+    assert Kamodo(points=points).points().shape == (1, 100)
+    assert Kamodo(points=squeeze_error_point).points().shape == (1, 100)
+
+
+def test_solve():
+    kamodo = Kamodo()
+    seeds = np.array([1, 2])
+    kamodo['fprime'] = solve(fprime, seeds, 'x', (0, 30), events=boundry)
+
+    assert kamodo.fprime().shape == (2, 2)
