@@ -604,7 +604,24 @@ class Kamodo(collections.OrderedDict):
         return simulate(OrderedDict(state_funcs), **kwargs)
 
     def evaluate(self, variable, *args, **kwargs):
-        """evaluates the variable """
+        """evaluates the variable
+
+        if the variable is not present, try to parse it as a semicolon-delimited list
+        """
+        if not hasattr(self, variable):
+            var_dict = {}
+            for variable_ in variable.split(';'):
+                if len(variable_.split('=')) == 2:
+                    variable_name, variable_expr = variable_.strip("'").split('=')
+                    var_dict[variable_name] = variable_expr
+                else:
+                    raise SyntaxError('cannot parse {}'.format(variable_))
+            knew = from_kamodo(self, **var_dict)
+            # evaluate the last variable
+            result = knew.evaluate(variable=variable_name, *args, **kwargs)
+            return result
+
+
         if isinstance(self[variable], np.vectorize):
             params = get_defaults(self[variable].pyfunc)
         else:
@@ -749,3 +766,12 @@ def compose(**kamodos):
 
     return kamodo
 
+def from_kamodo(kobj, **funcs):
+    """copies a kamodo object, inserting additional functions"""
+    knew = Kamodo()
+    for var_symbol, func in kobj.items():
+        if not isinstance(var_symbol, UndefinedFunction):
+            knew[var_symbol] = func
+    for var_symbol, func in funcs.items():
+        knew[var_symbol] = func
+    return knew

@@ -620,6 +620,7 @@ def get_plot_key(out_shape, *arg_shapes):
     shapes_match = all([(a == out_shape) for a in list(arg_shapes)])
     nargs = len(arg_shapes)
     arg_dims = ''
+    out_dim = None
     if nargs == 1:
         if len(out_shape) == 1:
             out_dim = 'N'
@@ -642,8 +643,10 @@ def get_plot_key(out_shape, *arg_shapes):
             else:
                 out_dim = 'N','M','L'
 
-    
-    out_dim = tuple(out_dim)
+    if out_dim is not None:
+        out_dim = tuple(out_dim)
+    else:
+        raise(NotImplementedError('arg shapes {} not yet supported'.format(arg_shapes)))
     if shapes_match:
         arg_dims = tuple(nargs*[out_dim])
     else:

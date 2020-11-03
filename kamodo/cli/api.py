@@ -53,14 +53,6 @@ def get_api(app):
     api = Api(app)
     return api
 
-def from_kamodo(kobj, **kwargs):
-    knew = Kamodo()
-    for k_,v_ in kobj.items():
-        if not isinstance(k_, UndefinedFunction):
-            knew[k_] = v_
-    for key, val in kwargs.items():
-        knew[key] = val
-    return knew
 
 def main():
     """main entrypoint"""
@@ -218,13 +210,8 @@ def get_evaluate_resource(model_name, model):
 
             try:
                 result = model.evaluate(variable=variable_name, **args)
-            except KeyError:
-                if len(variable_name.split('=')) == 2:
-                    variable_name, variable_expr = variable_name.strip("'").split('=')
-                    knew = from_kamodo(model, **{variable_name: variable_expr})
-                    result = knew.evaluate(variable=variable_name, **args)
-                else:
-                    return {'message': 'cannot evaluate {}'.format(variable_name)}
+            except SyntaxError as m:
+                return {'message': '{}'.format(m)}
 
             return {k_: v_.tolist() for k_, v_ in result.items()}
 

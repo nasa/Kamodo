@@ -1,3 +1,4 @@
+* added dynamic function evaluation
 
 # 2020-11-03 09:18:36.269712: clock-in
 
