@@ -1,3 +1,4 @@
+* fixing unit conversion bugs
 # 2020-11-03 11:17:20.736909: clock-out
 
 * added dynamic function evaluation

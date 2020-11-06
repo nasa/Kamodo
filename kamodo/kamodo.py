@@ -87,10 +87,11 @@ def get_unit(unit_str, unit_subs=unit_subs):
         unit = parse_expr(unit_str.replace('^', '**')).subs(units)
     except:
         raise NameError('something wrong with unit str [{}], type {}'.format(unit_str, type(unit_str)))
-    try:
-        assert len(unit.free_symbols) == 0
-    except:
-        raise ValueError("Unsupported unit: {} {}".format(unit_str, type(unit_str)))
+    # try:
+    #     assert len(unit.free_symbols) == 0
+    # except:
+    #     raise ValueError("Unsupported unit: {} {} {}".format(
+    #         unit_str, type(unit_str), unit.free_symbols))
     return unit
 
 
@@ -222,12 +223,23 @@ def validate_units(expr, units):
     if len(result.free_symbols) != 0:
         return Dimension(1)
     else:
-        for s, unit in list(units.items()):
-            try:
-                result = result.replace(wildcard(s), unit)
-            except:
-                pass
-        return result
+        bases = set()
+        for symbol_ in result.free_symbols:
+            if str(symbol_) not in units:
+                raise KeyError('invalid expr {}, cannot find {} in units: {}'.format(expr, symbol_, units))
+            unit = units[str(symbol_)]
+            bases.add(units[str(symbol_)].dimension)
+        if len(bases) == 1:
+            return result
+        if (len(bases) > 1):
+            raise ValueError('Dimension mismatch: {}, bases: {}'.format(result, bases))
+        if len(result.args) > 0:
+            # for arg_ in result.args:
+            #     if hasattr(arg_, 'dimension'):
+            #         bases.add(arg_.dimension)
+            if len(result.as_terms()[0]) > 1:
+                raise ValueError('Dimension mismatch for {}, {}, {}'.format(expr, result.args, bases))
+            return expr
 
 
 def match_dimensionless_units(lhs_units, rhs_units):

@@ -48,11 +48,27 @@ def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     return u
 
 
-unit_subs = dict(nT=get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
-                 R_E=get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
+unit_subs = dict(R_E=get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
                  erg=get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
-                 nPa=get_unit_quantity('nanopascals', 'pascal', .000000001, 'nPa', 'SI'),
                  )
+
+sympy_units.erg = unit_subs['erg']
+
+prefix_dict = sympy_units.prefixes.PREFIXES  #built-in dictionary of Prefix instances
+#test_unit_subs={}  #dictionary to replace subs in kamodo.get_unit_quantities()
+unit_list = ['m', 's', 'g', 'A', 'K', 'radian', 'sr', 'cd', 'mole', 'eV', 'Pa', 'F', 'N',
+             'V', 'Hz', 'C', 'W', 'Wb', 'H', 'S', 'Bq', 'Gy', 'erg', 'T']
+
+#list of SI units included in sympy (likely not complete)
+
+for item in unit_list:
+    for key in prefix_dict.keys():
+        #print(item, key)
+        unit_item = getattr(sympy_units, item)
+        unit_subs[key+item] = get_unit_quantity(str(prefix_dict[key].name)+
+                                                str(unit_item.name), str(unit_item.name),
+                                                float(prefix_dict[key].scale_factor),
+                                                abbrev=key+item)
 
 # global_ureg = UnitRegistry()
 # global_ureg.define('m^3 = m * m * m = m3')

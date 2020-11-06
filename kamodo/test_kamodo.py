@@ -8,9 +8,9 @@ from sympy import symbols, Symbol
 import pytest
 from sympy.core.function import UndefinedFunction
 import pandas as pd
-from kamodo import Kamodo, get_unit, kamodofy, validate_units
+from kamodo import Kamodo, get_unit, kamodofy, validate_units, Eq
 import functools
-from sympy import lambdify
+from sympy import lambdify, sympify
 
 
 def test_Kamodo_expr():
@@ -202,7 +202,7 @@ def test_validate_units():
         validate_units(Eq(f, x), dict(f=get_unit('kg'), x=get_unit('m')))
     validate_units(Eq(f, x), dict(f=get_unit('kg'), x=get_unit('g')))
 
-    lhs_units = validate_units(f(x), dict(f=get_unit('kg'), x=get_unit('m')))
+    lhs_units = validate_units(sympify('f(x)'), dict(f=get_unit('kg'), x=get_unit('m')))
     print(lhs_units)
 
 
