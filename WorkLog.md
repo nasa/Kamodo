@@ -1,3 +1,6 @@
+
+# 2020-11-09 10:00:15.420963: clock-in
+
 * fixing unit conversion bugs
 # 2020-11-03 11:17:20.736909: clock-out
 
