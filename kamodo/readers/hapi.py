@@ -28,7 +28,7 @@ class HAPI(Kamodo):
         self.verbose=False
         self.symbol_registry=dict()
         self.signatures=dict()
-
+        self.RE=6.3781E3
         self.server = server
         self.dataset = dataset
         print(' -server: ',server)
@@ -36,7 +36,13 @@ class HAPI(Kamodo):
         opts       = {'logging': False, 'usecache': False}
         if start is None or stop is None:
             start, stop = hapi_get_date_range(server, dataset)
-            ts = datetime.datetime.strptime(stop, '%Y-%m-%dT%H:%M:%S.%fZ').timestamp()
+            # Some HAPI stop strings have fractional seconds and some don't, look for decimal.
+            if "." in stop:
+                ts = datetime.datetime.strptime(stop, '%Y-%m-%dT%H:%M:%S.%fZ').timestamp()
+            else:
+                ts = datetime.datetime.strptime(stop, '%Y-%m-%dT%H:%M:%SZ').timestamp()
+            # Make sure stop format same as start
+            stop  = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             ts = ts - 3600.
             start = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             print(" -dates not selected, using last hour available.")
@@ -57,27 +63,61 @@ class HAPI(Kamodo):
         self.dtarray = hapitime2datetime(data['Time'])
         self.tsarray = np.array([d.timestamp() for d in self.dtarray])
         self.variables=dict()
-        for d in self.meta['parameters']:
-            var = d['name']
-            if var != "Time":
-                self.variables[var] = dict(units=d['units'], data=self.data[var])
-
+        for metaparam in self.meta['parameters']:
+            varname = metaparam['name']
+            if varname != "Time":
+                # Check for dimentionality of variable (scalar=1, vector = 3, others?)
+                asize = 1
+                if "size" in metaparam:
+                    asize = metaparam['size'][0]
+                self.variables[varname] = dict(units=metaparam['units'],
+                                               data=self.data[varname],
+                                               size=asize,
+                                               fill=metaparam['fill'])
         for varname in self.variables:
             units = self.variables[varname]['units']
             print('... registering ',varname,units)
             self.register_variable(varname, units)
         
+        # classification of position into coordinates to assist visualizion
         self.possible_coords=('TOD','J2K','GEO','GM','GSM','GSE','SM')
+        self.possible_directions=('x','y','z')
         self.coords=dict()
         for varname in self.variables:
-            tmp = varname.split("_")
-            dir = tmp[0].lower()
-            key = tmp[1]
-            if key in self.possible_coords:
-                if key not in self.coords:
-                    self.coords[key] = dict(coord=key)
-                self.coords[key][dir] = varname
- 
+            size = self.variables[varname]['size']
+            if size == 1:
+                # Look for position values from SSCWeb, ie. X_GSE, Y_GSE, Z_GSE
+                tmp = varname.split("_")
+                direction = tmp[0].lower()
+                key = tmp[1]
+                if key in self.possible_coords and direction in self.possible_directions:
+                    if key not in self.coords:
+                        self.coords[key] = dict(coord=key)
+                    self.coords[key]['size'] = size
+                    self.coords[key][direction] = varname
+            elif size ==3:
+                # Look for position or vector values, ie. SC_pos_se
+                tmp = varname.split("_")
+                if tmp[0].lower() != "sc":
+                    continue
+                key = "none"
+                if tmp[2].lower() == "se":
+                    key = "GSE"
+                elif tmp[2].lower() == "sm":
+                    key = "GSM"
+                elif tmp[2].lower() == "eo":
+                    key = "GEO"
+                if key in self.possible_coords:
+                    if key not in self.coords:
+                        self.coords[key] = dict(coord=key)
+                    self.coords[key]['size'] = size
+                    self.coords[key]['x'] = varname
+                    self.coords[key]['y'] = varname
+                    self.coords[key]['z'] = varname
+
+        # Change 'fill' values in data to NaNs
+        self.fill2nan()
+        
     def register_variable(self, varname, units):
         """register variables into Kamodo for this service, HAPI"""
 
@@ -96,53 +136,92 @@ class HAPI(Kamodo):
                                  citation = "De Zeeuw 2020",
                                  data = None)
 
-    def get_plot(self, coord, type="3D", alt="R_E"):
+    def fill2nan(self):
         '''
-        Return a plotly figure object for selected coordinate system.
-        type = 3D, time
-        color = km, R_E
+        Replaces fill value in data with NaN.
+        Not Yet called by default. Call as needed.
         '''
-        txttop="HAPI data for " + self.dataset + " in "+ coord + " coordinates.<br>"\
+        for varname in self.variables:
+            data = self.variables[varname]['data']
+            fill = self.variables[varname]['fill']
+            if fill is not None:
+                mask = data==float(fill)
+                nbad = np.count_nonzero(mask)
+                if nbad > 0:
+                    print("Found",nbad,"fill values, replacing with NaN for variable",varname,
+                          "of size",data.size)
+                data[mask]=np.nan
+                self.variables[varname]['data'] = data
+        
+    def get_plot(self, coord="", type="1Dpos", scale="R_E", var=""):
+        '''
+        Return a plotly figure object in a selected coordinate system.
+        coord = coordinate system for position plots
+        type = 1Dvar => 1D plot of variable value vs Time
+               1Dpos (default) => 1D location x,y,z vs Time
+               3Dpos => 3D location colored by altitude
+        scale = km, R_E (default)
+        var = variable name for variable value plots
+        '''
+
+        # Set plot title for first plots
+        txttop=self.dataset + " data from " + self.server + "<br>"\
             + self.start + " to " + self.stop
+
+        if type == '1Dvar':
+            if var == "":
+                print("No plot variable passed in.")
+                return
+            fig=go.Figure()
+            if self.variables[var]['size'] == 1:
+                x=self.variables[var]['data']
+                fig.add_trace(go.Scatter(x=self.dtarray, y=x, mode='lines+markers', name=var))
+            elif self.variables[var]['size'] == 3:
+                x=self.variables[var]['data'][:,0]
+                y=self.variables[var]['data'][:,1]
+                z=self.variables[var]['data'][:,2]
+                fig.add_trace(go.Scatter(x=self.dtarray, y=x, mode='lines+markers', name=var))
+                fig.add_trace(go.Scatter(x=self.dtarray, y=y, mode='lines+markers', name=var))
+                fig.add_trace(go.Scatter(x=self.dtarray, y=z, mode='lines+markers', name=var))
+            ytitle=var+" ["+self.variables[var]['units']+"]"
+            fig.update_xaxes(title_text="Time")
+            fig.update_yaxes(title_text=ytitle)
+            fig.update_layout(hovermode="x")
+            fig.update_layout(title_text=txttop)
+ 
+            return fig
+        
+        # Set plot title for next plots
+        txttop=self.dataset + " data from " + self.server + "<br>"\
+            + self.start + " to " + self.stop + "<br>" + coord
         
         if coord not in self.coords:
             print('ERROR, sent in coords not in dataset.')
             return
         
-        if type == "3D":
-            x=self.variables[self.coords[coord]['x']]['data']
-            y=self.variables[self.coords[coord]['y']]['data']
-            z=self.variables[self.coords[coord]['z']]['data']
-            r=(np.sqrt(x**2 + y**2 + z**2))-1.
-            if alt == "km":
-                x=x*6.3781E3
-                y=y*6.3781E3
-                z=z*6.3781E3
-                r=(np.sqrt(x**2 + y**2 + z**2))-6.3781E3
-            fig=px.scatter_3d(
-                x=x,
-                y=y,
-                z=z,
-                color=r)
-            bartitle = "Altitude [" + alt + "]"
-            fig.update_layout(coloraxis=dict(colorbar=dict(title=bartitle)))
-            fig.update_layout(scene=dict(xaxis=dict(title=dict(text="X ["+alt+"]")),
-                                         yaxis=dict(title=dict(text="Y ["+alt+"]")),
-                                         zaxis=dict(title=dict(text="Z ["+alt+"]"))))
-            fig.update_layout(title_text=txttop)
-            return fig
-        
-        if type == 'time':
-            x=self.variables[self.coords[coord]['x']]['data']
-            y=self.variables[self.coords[coord]['y']]['data']
-            z=self.variables[self.coords[coord]['z']]['data']
-            ytitle="Position [R_E]"
-            if alt == "km":
-                x=x*6.3781E3
-                y=y*6.3781E3
-                z=z*6.3781E3
-                ytitle="Position [km]"
+        if type == '1Dpos':
             fig=go.Figure()
+            xvarname = self.coords[coord]['x']
+            if self.coords[coord]['size'] == 1:
+                x=self.variables[self.coords[coord]['x']]['data']
+                y=self.variables[self.coords[coord]['y']]['data']
+                z=self.variables[self.coords[coord]['z']]['data']
+            elif self.coords[coord]['size'] == 3:
+                x=self.variables[self.coords[coord]['x']]['data'][:,0]
+                y=self.variables[self.coords[coord]['y']]['data'][:,1]
+                z=self.variables[self.coords[coord]['z']]['data'][:,2]
+            if scale == "km":
+                if self.variables[xvarname]['units'] == "R_E":
+                    x=x*self.RE
+                    y=y*self.RE
+                    z=z*self.RE
+                ytitle="Position [km]"
+            else:
+                if self.variables[xvarname]['units'] == "km":
+                    x=x/self.RE
+                    y=y/self.RE
+                    z=z/self.RE
+                ytitle="Position [R_E]"
             fig.add_trace(go.Scatter(x=self.dtarray, y=x,
                                      mode='lines+markers', name=self.coords[coord]['x']))
             fig.add_trace(go.Scatter(x=self.dtarray, y=y,
@@ -154,6 +233,43 @@ class HAPI(Kamodo):
             fig.update_layout(hovermode="x")
             fig.update_layout(title_text=txttop)
  
+            return fig
+        
+        if type == "3Dpos":
+            xvarname = self.coords[coord]['x']
+            if self.coords[coord]['size'] == 1:
+                x=self.variables[self.coords[coord]['x']]['data']
+                y=self.variables[self.coords[coord]['y']]['data']
+                z=self.variables[self.coords[coord]['z']]['data']
+            elif self.coords[coord]['size'] == 3:
+                x=self.variables[self.coords[coord]['x']]['data'][:,0]
+                y=self.variables[self.coords[coord]['y']]['data'][:,1]
+                z=self.variables[self.coords[coord]['z']]['data'][:,2]
+            if scale == "km":
+                if self.variables[xvarname]['units'] == "R_E":
+                    x=x*self.RE
+                    y=y*self.RE
+                    z=z*self.RE
+                r=(np.sqrt(x**2 + y**2 + z**2))-self.RE
+                ytitle="Position [km]"
+            else:
+                if self.variables[xvarname]['units'] == "km":
+                    x=x/self.RE
+                    y=y/self.RE
+                    z=z/self.RE
+                r=(np.sqrt(x**2 + y**2 + z**2))-1.
+                ytitle="Position [R_E]"
+            fig=px.scatter_3d(
+                x=x,
+                y=y,
+                z=z,
+                color=r)
+            bartitle = "Altitude [" + scale + "]"
+            fig.update_layout(coloraxis=dict(colorbar=dict(title=bartitle)))
+            fig.update_layout(scene=dict(xaxis=dict(title=dict(text="X ["+scale+"]")),
+                                         yaxis=dict(title=dict(text="Y ["+scale+"]")),
+                                         zaxis=dict(title=dict(text="Z ["+scale+"]"))))
+            fig.update_layout(title_text=txttop)
             return fig
         
 
