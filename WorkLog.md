@@ -1,3 +1,4 @@
+* updated convert_to to raise errors
 
 # 2020-11-11 16:46:46.677731: clock-in
 
