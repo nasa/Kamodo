@@ -1,3 +1,6 @@
+
+# 2020-11-12 11:22:56.545479: clock-in
+
 # 2020-11-11 17:42:08.055155: clock-out
 
 * updated convert_to to raise errors
