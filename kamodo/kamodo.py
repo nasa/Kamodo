@@ -13,7 +13,7 @@ from sympy import Integral, Symbol, symbols, Function
 try:
     from sympy.parsing.sympy_parser import parse_expr
 except ImportError:  # occurs in python3
-    from sympy import sympy as parse_expr
+    from sympy import sympify as parse_expr
 
 from collections import OrderedDict
 import collections
@@ -42,6 +42,8 @@ from .util import get_defaults, valid_args, eval_func
 # from .util import to_arrays, cast_0_dim
 from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
+from .util import convert_to
+from .util import unify
 
 import sympy.physics.units as u
 
@@ -107,9 +109,12 @@ def get_expr_with_units(expr, units_map):
     return new_expr
 
 
-def get_expr_without_units(expr, to, units_map):
-    """Converts an expression with units to one without, applying conversion factors where necessary"""
-    expr = sympy_units.convert_to(expr, to)
+def get_expr_without_units(expr, to, units_map, dimensionless=False):
+    """Converts an expression with units to one without
+
+    apply conversion factors where necessary"""
+    if not dimensionless:
+        expr = sympy_units.convert_to(expr, to)
     subs = []
     for s in units_map:
         if type(s) == str:
@@ -138,7 +143,6 @@ def args_from_dict(expr, local_dict):
 
 def extract_units(lhs):
     """separate the units from the left-hand-side of an expression assuming bracket notation
-    
     mass[gm] = ...
 
     mass, 'gm'
@@ -146,7 +150,10 @@ def extract_units(lhs):
 
     if '[' in lhs:
         lhs, units = lhs.split('[')
-        return lhs, units.split(']')[0]
+        units = units.split(']')[0]
+        if '=' in units:
+            units = units.split('=')[-1]
+        return lhs, units
     else:
         return lhs, ''
 
@@ -206,8 +213,63 @@ def wildcard(expr):
         result = result.replace(s, Wild(str(s)))
     return result
 
+def is_dimensionless(units):
+    return not hasattr(units, 'dimension')
 
-def validate_units(expr, units):
+
+# def validate_units(expr, units, verbose=False):
+#     """Check that the right-hand-side units are consistent
+
+#     First replace the expression units mapping.
+
+#     IF there are free symbols remaining, assume the expression
+#     is dimensionless.
+
+#     If there are no free symbols remaining,
+#     assume all symbols were replaced with their respective units
+#     """
+
+#     if hasattr(expr, 'rhs'):
+#         expr_zero = expr.rhs - expr.lhs
+#         result = expr_zero.subs(units, simultaneous=True)
+#     else:
+#         result = expr.subs(units, simultaneous=True)
+
+#     if len(result.free_symbols) != 0:
+#         return Dimension(1)
+
+#     bases = set()
+#     for symbol_ in result.free_symbols:
+#         if str(symbol_) not in units:
+#             raise KeyError('invalid expr {}, cannot find {} in units: {}'.format(
+#                 expr, symbol_, units))
+#         unit = units[str(symbol_)]
+#         bases.add(unit.dimension)
+#     if verbose:
+#         print('bases: {}'.format(bases))
+#     if len(bases) == 1:
+#         print('case 1: {}'.format(expr))
+#         return result
+#     if len(bases) > 1:
+#         print('case 2 {}'.format(expr))
+#         raise ValueError('Dimension mismatch: {}, bases: {}'.format(result, bases))
+#     if len(result.args) > 0:
+#         print('case 3 {}'.format(expr))
+#         terms = result.as_terms()[1]
+#         if len(terms) > 1:
+#             print('case 4 {} \n\targs: {}\n\tterms: {}'.format(expr, result.args, terms))
+#             for arg_ in terms:
+#                 if hasattr(arg_, 'dimension'):
+#                     bases.add(arg_.dimension)
+#             if len(bases) > 1:
+#                 print('case 5 {}'.format(expr))
+#                 raise ValueError('Dimension mismatch for {}\n\t{}\n\t{}'.format(expr, result.args, bases))
+#             else:
+#                 print('case 6 {}'.format(expr), bases)
+#                 return expr
+#         return expr
+
+def validate_units(expr, units, verbose=False):
     """Check that the right-hand-side units are consistent
 
     First replace the expression units mapping.
@@ -219,27 +281,28 @@ def validate_units(expr, units):
     assume all symbols were replaced with their respective units
     """
 
-    result = expr.subs(units, simultaneous=True)
+    if hasattr(expr, 'rhs'):
+        expr_zero = expr.rhs - expr.lhs
+        result = expr_zero.subs(units, simultaneous=True)
+    else:
+        result = expr.subs(units, simultaneous=True)
+
     if len(result.free_symbols) != 0:
         return Dimension(1)
-    else:
-        bases = set()
-        for symbol_ in result.free_symbols:
-            if str(symbol_) not in units:
-                raise KeyError('invalid expr {}, cannot find {} in units: {}'.format(expr, symbol_, units))
-            unit = units[str(symbol_)]
-            bases.add(units[str(symbol_)].dimension)
-        if len(bases) == 1:
-            return result
-        if (len(bases) > 1):
-            raise ValueError('Dimension mismatch: {}, bases: {}'.format(result, bases))
-        if len(result.args) > 0:
-            # for arg_ in result.args:
-            #     if hasattr(arg_, 'dimension'):
-            #         bases.add(arg_.dimension)
-            if len(result.as_terms()[0]) > 1:
-                raise ValueError('Dimension mismatch for {}, {}, {}'.format(expr, result.args, bases))
-            return expr
+
+    result = result.expand()
+    terms = result.as_terms()[1]
+    bases = set()
+    for term in terms:
+        if hasattr(term, 'dimension'):
+            bases.add(term)
+    if len(bases) > 0:
+        try:
+            convert_to(result, list(bases)[0])
+        except:
+            raise ValueError('Cannot convert between {}'.format(bases))
+    return result
+
 
 
 def match_dimensionless_units(lhs_units, rhs_units):
@@ -262,6 +325,19 @@ def check_unit_compatibility(rhs_units, lhs_units):
     except:
         raise NameError('incompatible units:{} and {}'.format(lhs_units, rhs_units))
 
+def update_unit_registry(func, unit_registry):
+    """Inserts unit functions into registry"""
+    func_symbol = func.split('[')[0]
+    unit = func.split('[')[1].split(']')[0]
+    rhs = func.split('=')[-1]
+
+    if '=' in unit:
+        unit_lhs, unit_rhs = unit.split('=')
+    unit_lhs = parse_expr(unit_lhs).subs(unit_subs)
+    unit_registry[parse_expr(func_symbol)] = unit_lhs
+    unit_rhs = get_unit(unit_rhs)
+    unit_registry[unit_lhs] = unit_rhs
+    return func_symbol, rhs
 
 class Kamodo(collections.OrderedDict):
     '''Kamodo base class demonstrating common API for space weather models
@@ -287,6 +363,7 @@ class Kamodo(collections.OrderedDict):
 
         super(Kamodo, self).__init__()
         self.symbol_registry = OrderedDict()
+        self.unit_registry = OrderedDict()
 
         symbol_dict = kwargs.pop('symbol_dict', None)
 
@@ -295,8 +372,14 @@ class Kamodo(collections.OrderedDict):
 
         for func in funcs:
             if type(func) is str:
-                lhs, rhs = func.split('=')
-                self[lhs.strip('$')] = rhs
+                components = func.split('=')
+                if len(components) == 2:
+                    lhs, rhs = components
+                    self[lhs.strip('$')] = rhs
+                elif len(components) == 3:
+                    # f(x)[f(cm)=kg]=...
+                    lhs, rhs = update_unit_registry(func.strip('$'), self.unit_registry)
+                    self[lhs] = rhs
 
         for sym_name, expr in list(kwargs.items()):
             self[sym_name] = expr
@@ -361,6 +444,7 @@ class Kamodo(collections.OrderedDict):
         return symbol, args, units, lhs_expr
 
     def parse_value(self, rhs_expr, local_dict=None):
+        """returns an expression from string"""
         if type(rhs_expr) is str:
             is_latex = '$' in rhs_expr
             rhs_expr = rhs_expr.strip('$').strip()
@@ -459,6 +543,49 @@ class Kamodo(collections.OrderedDict):
         super(Kamodo, self).__setitem__(type(lhs_symbol), self[lhs_symbol])  # assign key 'f'
         self.register_symbol(lhs_symbol)
 
+    def check_consistency(self, input_expr, units):
+        # check that rhs units are consistent
+        rhs_expr = self.parse_value(input_expr, self.symbol_registry)
+        units_map = self.get_units_map()
+        lhs_units = get_unit(units)
+        rhs_units = validate_units(rhs_expr, units_map, self.verbose)
+        if self.verbose:
+            print('rhs_units: {}'.format(rhs_units))
+        try:
+            lhs_units, rhs_units = match_dimensionless_units(lhs_units, rhs_units)
+            check_unit_compatibility(rhs_units, lhs_units)
+        except:
+            print(type(rhs_units))
+            print(get_unit(units), validate_units(rhs_expr, units_map, self.verbose))
+            raise
+
+        rhs_expr_with_units = get_expr_with_units(rhs_expr, units_map)
+
+        if self.verbose:
+            print('rhs_expr with units:', rhs_expr_with_units)
+
+        # convert back to expression without units for lambdify
+        if units != '':
+            try:
+                if self.verbose:
+                    print('converting to {}'.format(lhs_units))
+                    for k, v in list(units_map.items()):
+                        print('\t', k, v, type(k))
+                rhs_expr = get_expr_without_units(
+                    rhs_expr_with_units,
+                    lhs_units,
+                    units_map,
+                    dimensionless=is_dimensionless(rhs_units))
+                if self.verbose:
+                    print('rhs_expr without units:', rhs_expr)
+            except:
+                print('error with units? [{}]'.format(units))
+                raise
+        else:
+            if lhs_units != Dimension(1):  # lhs_units were obtained from rhs_units
+                units = str(lhs_units)
+        return units, rhs_expr
+
     def __setitem__(self, sym_name, input_expr):
         """Assigns a function or expression to a new symbol,
         performs unit conversion where appropriate
@@ -467,7 +594,7 @@ class Kamodo(collections.OrderedDict):
         if self.verbose:
             print('')
         try:
-            symbol, args, units, lhs_expr = self.parse_key(sym_name)
+            symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
         except KeyError as error:
             if self.verbose:
                 print(error)
@@ -475,51 +602,19 @@ class Kamodo(collections.OrderedDict):
             if self.verbose:
                 print('replacing {}'.format(found_sym_name))
             self.remove_symbol(found_sym_name)
-            symbol, args, units, lhs_expr = self.parse_key(sym_name)
+            symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
 
         if hasattr(input_expr, '__call__'):
-            self.register_function(input_expr, symbol, lhs_expr, units)
+            self.register_function(input_expr, symbol, lhs_expr, lhs_units)
         else:
-            rhs_expr = self.parse_value(input_expr, self.symbol_registry)
-            units_map = self.get_units_map()
-            lhs_units = get_unit(units)
-            rhs_units = validate_units(rhs_expr, units_map)  # check that rhs units are consistent
-
             try:
-                lhs_units, rhs_units = match_dimensionless_units(lhs_units, rhs_units)
-                check_unit_compatibility(rhs_units, lhs_units)
+                units, rhs_expr = self.check_consistency(input_expr, lhs_units)
             except:
-                print(type(rhs_units))
-                print(get_unit(units), validate_units(rhs_expr, units_map))
-                raise
-
-            rhs_expr_with_units = get_expr_with_units(rhs_expr, units_map)
-
-            if self.verbose:
-                print('rhs_expr with units:', rhs_expr_with_units)
-
-            # convert back to expression without units for lambdify
-            if units != '':
-                try:
-                    if self.verbose:
-                        print('converting to {}'.format(lhs_units))
-                        for k, v in list(units_map.items()):
-                            print('\t', k, v, type(k))
-                    rhs_expr = get_expr_without_units(rhs_expr_with_units, lhs_units, units_map)
-                    if self.verbose:
-                        print('rhs_expr without units:', rhs_expr)
-                except:
-                    print('error with units? [{}]'.format(units))
-                    raise
-            else:
-                if lhs_units != Dimension(1):  # lhs_units were obtained from rhs_units
-                    units = str(lhs_units)
+                rhs_expr = self.parse_value(input_expr, self.symbol_registry)
+                raise NotImplementedError(sym_name, input_expr, lhs_units, rhs_expr)
 
             rhs_args = rhs_expr.free_symbols
 
-            if self.verbose:
-                print('lhs_expr:', lhs_expr, 'units:', lhs_units)
-                print('rhs_expr:', rhs_expr, 'units:', rhs_units)
             try:
                 symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
                 self.validate_function(symbol, rhs_expr)

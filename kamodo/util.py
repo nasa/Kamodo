@@ -31,7 +31,9 @@ import pandas as pd
 from scipy.integrate import solve_ivp
 from sympy.physics.units.util import _get_conversion_matrix_for_expr
 
-
+from sympy.core.compatibility import reduce, Iterable, ordered
+from sympy import Add, Mul, Pow, Tuple, sympify, default_sort_key
+from sympy.physics.units.quantities import Quantity
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
@@ -72,23 +74,6 @@ for item in unit_list:
                                                 float(prefix_dict[key].scale_factor),
                                                 abbrev=key+item)
 
-# global_ureg = UnitRegistry()
-# global_ureg.define('m^3 = m * m * m = m3')
-# global_ureg.define('cc = cm * cm * cm')
-# global_ureg.define('R_s = 6.957e8 m')
-# global_ureg.define('AU = 1.496e+11 m')
-
-
-
-# def compile_fortran(source, module_name, extra_args='', folder='./'):
-#     with tempfile.NamedTemporaryFile('w', suffix='.f90') as f:
-#         f.write(source)
-#         f.flush()
-
-#         args = ' -c -m {} {} {}'.format(module_name, f.name, extra_args)
-#         command = 'cd "{}" && "{}" -c "import numpy.f2py as f2py;f2py.main()" {}'.format(folder, sys.executable, args)
-#         status, output = exec_command(command)
-#         return status, output, command
 
 
 def substr_replace(name, name_maps):
@@ -457,14 +442,11 @@ def solve(fprime=None, seeds=None, varname=None, interval=None,
         return decorator_solve(fprime)
 
 
-from sympy.core.compatibility import reduce, Iterable, ordered
-from sympy import Add, Mul, Pow, Tuple, sympify, default_sort_key
-from sympy.physics.units.quantities import Quantity
 
 def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     """
-    Same as from sympy but raises an error when unit conversion is not possible
-    
+    Same as sympy.convert_to but accepts equations and allows functions of units to pass
+
     Convert ``expr`` to the same expression with all of its units and quantities
     represented as factors of ``target_units``, whenever the dimension is compatible.
 
@@ -508,11 +490,21 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     7.62963085040767e-20*gravitational_constant**(-0.5)*hbar**0.5*speed_of_light**0.5
 
     """
+    
+    
     from sympy.physics.units import UnitSystem
     unit_system = UnitSystem.get_unit_system(unit_system)
 
     if not isinstance(target_units, (Iterable, Tuple)):
         target_units = [target_units]
+
+    
+    if hasattr(expr, 'rhs'):
+        return Eq(convert_to(expr.lhs, target_units, unit_system),
+                 convert_to(expr.rhs, target_units, unit_system))
+    if type(type(expr)) is UndefinedFunction:
+        print('undefined input expr:{}'.format(expr))
+        return expr
 
     if isinstance(expr, Add):
         return Add.fromiter(convert_to(i, target_units, unit_system) for i in expr.args)
@@ -534,12 +526,79 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     depmat = _get_conversion_matrix_for_expr(expr, target_units, unit_system)
     if depmat is None:
         if raise_errors:
-            raise ValueError('cannot convert {} to {} {}'.format(expr, target_units, unit_system))
+            raise IOError('cannot convert {} to {} {}'.format(expr, target_units, unit_system))
         return expr
 
     expr_scale_factor = get_total_scale_factor(expr)
     return expr_scale_factor * Mul.fromiter((1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
 
+def resolve_unit(expr, unit_registry):
+    unit = unit_registry.get(expr, None)
+    if unit is not None:
+        if hasattr(unit, 'dimension'):
+            return unit
+        else:
+            return resolve_unit(unit, unit_registry)
+
+def is_undefined(expr):
+    return type(type(expr)) is UndefinedFunction
+
+
+def symbol_units_map(expr, unit_registry):
+    """for each argument, retrieve the corresponding units from registered function"""
+    if (hasattr(expr, 'args') & (expr in unit_registry)):
+        return {a_: a_unit for a_, a_unit in zip(expr.args, unit_registry[expr].args)}
+    else:
+        return {}
+
+def replace_args(expr, from_map, to_map):
+    func_symbol = type(expr)
+    arg_map = dict()
+    for arg in expr.args:
+        from_unit = from_map[arg]
+        to_unit = to_map[arg]
+        try:
+            arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
+        except:
+            print('cannot convert', arg*to_unit, from_unit)
+            print(arg, type(arg), to_unit, type(to_unit), from_unit, type(from_unit))
+    return expr.subs(arg_map)
+
+def unify(expr, unit_registry, to_symbol=None):
+    """adds unit conversion factors to composed functions"""
+    if hasattr(expr, 'rhs'):
+        lhs_unit = resolve_unit(expr.lhs, unit_registry)
+        if lhs_unit is not None:
+            # print('found lhs_unit:', lhs_unit)
+            return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs))
+        # print('no units for {}'.format(expr.lhs))
+        return Eq(expr.lhs, unify(expr.rhs, unit_registry))
+
+    if isinstance(expr, Add):
+        return Add.fromiter([unify(arg, unit_registry, to_symbol) for arg in expr.args])
+
+    if isinstance(expr, Mul):
+        # print('multiplying')
+        return Mul.fromiter([unify(arg, unit_registry, to_symbol) for arg in expr.args])
+
+
+    expr_unit = resolve_unit(expr, unit_registry)
+
+    if is_undefined(expr):
+        for arg in set(to_symbol.args).intersection(expr.args):
+            print('replacing {} in {}'.format(arg, expr))
+            expr_units = symbol_units_map(expr, unit_registry)
+            to_units = symbol_units_map(to_symbol, unit_registry)
+            expr = replace_args(expr, expr_units, to_units)
+        # print('converted expression:', expr)
+
+    if (to_symbol is not None) & (expr_unit is not None):
+        to_unit = resolve_unit(to_symbol, unit_registry)
+        # print('{} [{}] -> to_symbol: {}[{}]'.format(
+        #     expr, expr_unit, to_symbol, to_unit))
+        expr = convert_to(expr*to_unit, expr_unit)/expr_unit
+
+    return expr
 
 
 @kamodofy

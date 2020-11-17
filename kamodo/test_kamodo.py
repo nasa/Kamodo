@@ -186,9 +186,9 @@ def test_unit_registry():
 
 def test_to_latex():
     kamodo = Kamodo(f='x**2')
-    assert str(kamodo.to_latex()) == '\\begin{equation}f{\left(x \\right)} = x^{2}\end{equation}'
+    assert str(kamodo.to_latex()) == r'\begin{equation}f{\left(x \right)} = x^{2}\end{equation}'
     kamodo = Kamodo(g='x')
-    assert str(kamodo.to_latex()) == '\\begin{equation}g{\left(x \\right)} = x\end{equation}'
+    assert str(kamodo.to_latex()) == r'\begin{equation}g{\left(x \right)} = x\end{equation}'
 
 
 def test_expr_conversion():
@@ -207,10 +207,11 @@ def test_validate_units():
 
 
 def test_unit_conversion():
-    kamodo = Kamodo('$a(x)[km/s] = x$',
-                    '$b(y)[m/s]  = y$', )
-    kamodo['c(x,y)[m/s]'] = '$a + b$'
-    assert kamodo.c(1, 2) == 1002
+    kamodo = Kamodo('$a(x)[a(m)=km/s] = x$',
+                    '$b(y)[b(cm)=m/s] = y$', )
+    # raise NotImplementedError(kamodo.unit_registry)
+    kamodo['c(x,y)[c(m,m)=m/s]'] = '$a + b$'
+    assert kamodo.c(1, 2) == 1000 + 200
 
 
 def test_get_unit():
