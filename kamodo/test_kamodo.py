@@ -192,7 +192,8 @@ def test_to_latex():
 
 
 def test_expr_conversion():
-    kamodo = Kamodo('$a[km] = x$')
+    kamodo = Kamodo('$a[km] = x$', verbose=True)
+    print(kamodo.items())
     kamodo.a
 
 
@@ -209,9 +210,8 @@ def test_validate_units():
 def test_unit_conversion():
     kamodo = Kamodo('$a(x)[a(m)=km/s] = x$',
                     '$b(y)[b(cm)=m/s] = y$', )
-    # raise NotImplementedError(kamodo.unit_registry)
     kamodo['c(x,y)[c(m,m)=m/s]'] = '$a + b$'
-    assert kamodo.c(1, 2) == 1000 + 200
+    assert kamodo.c(1, 2) == .001 + 200
 
 
 def test_get_unit():
@@ -219,7 +219,7 @@ def test_get_unit():
 
 
 def test_unit_conversion_syntax():
-    kamodo = Kamodo('rho[kg/m^3] = x', verbose=False)
+    kamodo = Kamodo('rho[kg/m^3] = x', verbose=True)
     with pytest.raises(NameError):
         kamodo['d[kg]'] = 'rho'
         print(kamodo.detail())

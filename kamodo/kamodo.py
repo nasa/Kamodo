@@ -43,7 +43,7 @@ from .util import get_defaults, valid_args, eval_func
 from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
 from .util import convert_to
-from .util import unify
+from .util import unify, resolve_unit
 
 import sympy.physics.units as u
 
@@ -319,25 +319,11 @@ def match_dimensionless_units(lhs_units, rhs_units):
 
 def check_unit_compatibility(rhs_units, lhs_units):
     """This fails to raise an error when rhs and lhs units are incompatible"""
-
     try:
         assert sympy_units.convert_to(rhs_units + lhs_units, lhs_units)
     except:
         raise NameError('incompatible units:{} and {}'.format(lhs_units, rhs_units))
 
-def update_unit_registry(func, unit_registry):
-    """Inserts unit functions into registry"""
-    func_symbol = func.split('[')[0]
-    unit = func.split('[')[1].split(']')[0]
-    rhs = func.split('=')[-1]
-
-    if '=' in unit:
-        unit_lhs, unit_rhs = unit.split('=')
-    unit_lhs = parse_expr(unit_lhs).subs(unit_subs)
-    unit_registry[parse_expr(func_symbol)] = unit_lhs
-    unit_rhs = get_unit(unit_rhs)
-    unit_registry[unit_lhs] = unit_rhs
-    return func_symbol, rhs
 
 class Kamodo(collections.OrderedDict):
     '''Kamodo base class demonstrating common API for space weather models
@@ -378,7 +364,7 @@ class Kamodo(collections.OrderedDict):
                     self[lhs.strip('$')] = rhs
                 elif len(components) == 3:
                     # f(x)[f(cm)=kg]=...
-                    lhs, rhs = update_unit_registry(func.strip('$'), self.unit_registry)
+                    lhs, rhs = self.update_unit_registry(func.strip('$'))
                     self[lhs] = rhs
 
         for sym_name, expr in list(kwargs.items()):
@@ -459,7 +445,10 @@ class Kamodo(collections.OrderedDict):
         if lhs_args != set(free_symbols):
             free_symbols_ = tuple(free_symbols)
             if len(free_symbols) == 1:
-                symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                try:
+                    symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                except:
+                    raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
             else:
                 if len(lhs_args) > 0:
                     raise NameError("Mismatched symbols {} and {}".format(lhs_args, free_symbols))
@@ -471,7 +460,10 @@ class Kamodo(collections.OrderedDict):
                     if self.verbose:
                         print('replacing {} with {}'.format(
                             symbol, str(type(symbol)) + str(free_symbols_)))
-                    symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                    try:
+                        symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                    except:
+                        raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
 
         return symbol
 
@@ -497,6 +489,21 @@ class Kamodo(collections.OrderedDict):
             if self.verbose:
                 print('lambda {} = {} lambdified with numpy and {}'.format(symbol.args, rhs_expr, composition))
         return func
+
+    def update_unit_registry(self, func):
+        """Inserts unit functions into registry"""
+        func_symbol = func.split('[')[0]
+        unit = func.split('[')[1].split(']')[0]
+        rhs = func.split('=')[-1]
+        if '=' in unit:
+            unit_lhs, unit_rhs = unit.split('=')
+            unit_lhs = parse_expr(unit_lhs).subs(unit_subs)
+            self.unit_registry[parse_expr(func_symbol)] = unit_lhs
+            unit_rhs = get_unit(unit_rhs)
+            self.unit_registry[unit_lhs] = unit_rhs
+        else:
+            self.unit_registry[parse_expr(func_symbol)] = get_unit(unit)
+        return func_symbol, rhs
 
     def register_signature(self, symbol, units, lhs_expr, rhs_expr):
         self.signatures[str(symbol)] = dict(
@@ -609,15 +616,28 @@ class Kamodo(collections.OrderedDict):
         else:
             try:
                 units, rhs_expr = self.check_consistency(input_expr, lhs_units)
+
+                # how do we register dysfunctional units?
+                if self.verbose:
+                    print('after check_consistency, unit registry:', self.unit_registry)
             except:
                 rhs_expr = self.parse_value(input_expr, self.symbol_registry)
-                raise NotImplementedError(sym_name, input_expr, lhs_units, rhs_expr)
+                sym_name, rhs = self.update_unit_registry("{}={}".format(sym_name, rhs_expr))
+                # print('symbol before unify', symbol)
+                expr = unify(Eq(parse_expr(sym_name), parse_expr(rhs)), self.unit_registry)
+                rhs_expr = expr.rhs
+                print('symbol after unify', symbol, expr, self.unit_registry)
+                units = resolve_unit(symbol, self.unit_registry)
+                # raise NotImplementedError(symbol)
+
 
             rhs_args = rhs_expr.free_symbols
 
             try:
                 symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
                 self.validate_function(symbol, rhs_expr)
+                if self.verbose:
+                    print(self.unit_registry)
 
             except:
                 if self.verbose:
@@ -625,6 +645,7 @@ class Kamodo(collections.OrderedDict):
                     print(symbol, lhs_expr, rhs_args)
                     print('symbol registry:', self.symbol_registry)
                     print('signatures:', self.signatures)
+                    print('unit registry:', self.unit_registry)
                 raise
 
             composition = self.get_composition(lhs_expr, rhs_expr)

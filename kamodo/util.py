@@ -66,9 +66,9 @@ unit_list = ['m', 's', 'g', 'A', 'K', 'radian', 'sr', 'cd', 'mole', 'eV', 'Pa', 
 #list of SI units included in sympy (likely not complete)
 
 for item in unit_list:
+    unit_item = getattr(sympy_units, item)
+    unit_subs[item] = unit_item
     for key in prefix_dict.keys():
-        #print(item, key)
-        unit_item = getattr(sympy_units, item)
         unit_subs[key+item] = get_unit_quantity(str(prefix_dict[key].name)+
                                                 str(unit_item.name), str(unit_item.name),
                                                 float(prefix_dict[key].scale_factor),
@@ -490,15 +490,15 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     7.62963085040767e-20*gravitational_constant**(-0.5)*hbar**0.5*speed_of_light**0.5
 
     """
-    
-    
+
+
     from sympy.physics.units import UnitSystem
     unit_system = UnitSystem.get_unit_system(unit_system)
 
     if not isinstance(target_units, (Iterable, Tuple)):
         target_units = [target_units]
 
-    
+
     if hasattr(expr, 'rhs'):
         return Eq(convert_to(expr.lhs, target_units, unit_system),
                  convert_to(expr.rhs, target_units, unit_system))
@@ -533,12 +533,19 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     return expr_scale_factor * Mul.fromiter((1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
 
 def resolve_unit(expr, unit_registry):
+    """get the registered unit for the expression
+
+    unit_registry {f(x): f(cm), f(cm): kg/m^2}
+    """
     unit = unit_registry.get(expr, None)
     if unit is not None:
         if hasattr(unit, 'dimension'):
             return unit
-        else:
-            return resolve_unit(unit, unit_registry)
+        if isinstance(unit, Mul):
+            return unit
+        if isinstance(unit, Pow):
+            return unit
+        return unit_registry[unit]
 
 def is_undefined(expr):
     return type(type(expr)) is UndefinedFunction
@@ -562,6 +569,7 @@ def replace_args(expr, from_map, to_map):
         except:
             print('cannot convert', arg*to_unit, from_unit)
             print(arg, type(arg), to_unit, type(to_unit), from_unit, type(from_unit))
+            raise
     return expr.subs(arg_map)
 
 def unify(expr, unit_registry, to_symbol=None):
@@ -571,7 +579,6 @@ def unify(expr, unit_registry, to_symbol=None):
         if lhs_unit is not None:
             # print('found lhs_unit:', lhs_unit)
             return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs))
-        # print('no units for {}'.format(expr.lhs))
         return Eq(expr.lhs, unify(expr.rhs, unit_registry))
 
     if isinstance(expr, Add):
@@ -585,12 +592,15 @@ def unify(expr, unit_registry, to_symbol=None):
     expr_unit = resolve_unit(expr, unit_registry)
 
     if is_undefined(expr):
-        for arg in set(to_symbol.args).intersection(expr.args):
-            print('replacing {} in {}'.format(arg, expr))
-            expr_units = symbol_units_map(expr, unit_registry)
-            to_units = symbol_units_map(to_symbol, unit_registry)
-            expr = replace_args(expr, expr_units, to_units)
-        # print('converted expression:', expr)
+        try:
+            for arg in set(to_symbol.args).intersection(expr.args):
+                # print('replacing {} in {}'.format(arg, expr))
+                expr_units = symbol_units_map(expr, unit_registry)
+                to_units = symbol_units_map(to_symbol, unit_registry)
+                expr = replace_args(expr, expr_units, to_units)
+            # print('converted expression:', expr)
+        except AttributeError:
+            raise NotImplementedError('cannot iterate with:{} -> {}'.format(expr, to_symbol))
 
     if (to_symbol is not None) & (expr_unit is not None):
         to_unit = resolve_unit(to_symbol, unit_registry)
