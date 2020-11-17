@@ -1,3 +1,6 @@
+
+# 2020-11-17 11:17:10.446484: clock-in
+
 # 2020-11-16 18:34:07.584293: clock-out
 
 * implementing unit functions
