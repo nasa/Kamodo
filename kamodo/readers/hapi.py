@@ -70,10 +70,20 @@ class HAPI(Kamodo):
                 asize = 1
                 if "size" in metaparam:
                     asize = metaparam['size'][0]
-                self.variables[varname] = dict(units=metaparam['units'],
-                                               data=self.data[varname],
+                aunit=metaparam['units']
+                adata=self.data[varname]
+                afill=metaparam['fill']
+                adesc=metaparam['description']
+                if "0.1nT" in aunit:
+                    # Fix wonky geotail data
+                    aunit="nT"
+                    afill=0.1*float(afill)
+                    adata=0.1*adata.astype(np.float)
+                self.variables[varname] = dict(units=aunit,
+                                               data=adata,
                                                size=asize,
-                                               fill=metaparam['fill'])
+                                               fill=afill,
+                                               desc=adesc)
         for varname in self.variables:
             units = self.variables[varname]['units']
             print('... registering ',varname,units)
@@ -85,6 +95,7 @@ class HAPI(Kamodo):
         self.coords=dict()
         for varname in self.variables:
             size = self.variables[varname]['size']
+            desc = self.variables[varname]['desc']
             if size == 1:
                 # Look for position values from SSCWeb, ie. X_GSE, Y_GSE, Z_GSE
                 tmp = varname.split("_")
@@ -93,23 +104,35 @@ class HAPI(Kamodo):
                 if key in self.possible_coords and direction in self.possible_directions:
                     if key not in self.coords:
                         self.coords[key] = dict(coord=key)
+                        print("... position vector registered in",key)
                     self.coords[key]['size'] = size
                     self.coords[key][direction] = varname
             elif size ==3:
-                # Look for position or vector values, ie. SC_pos_se
+                # Look for position or vector values, ie. SC_pos_se, POS
                 tmp = varname.split("_")
-                if tmp[0].lower() != "sc":
-                    continue
+                if tmp[0].lower() != "pos":
+                    if tmp[1].lower() != "pos":
+                        continue
                 key = "none"
-                if tmp[2].lower() == "se":
-                    key = "GSE"
-                elif tmp[2].lower() == "sm":
-                    key = "GSM"
-                elif tmp[2].lower() == "eo":
-                    key = "GEO"
+                if len(tmp) > 2:
+                    if tmp[2].lower() == "se":
+                        key = "GSE"
+                    elif tmp[2].lower() == "sm":
+                        key = "GSM"
+                    elif tmp[2].lower() == "eo":
+                        key = "GEO"
+                if len(tmp) == 1:
+                    if "coordinate" in desc:
+                        if "GSE" in desc:
+                            key = "GSE"
+                        elif "GSM" in desc:
+                            key = "GSM"
+                        elif "GEO" in desc:
+                            key = "GEO"
                 if key in self.possible_coords:
                     if key not in self.coords:
                         self.coords[key] = dict(coord=key)
+                        print("... position vector registered in",key)
                     self.coords[key]['size'] = size
                     self.coords[key]['x'] = varname
                     self.coords[key]['y'] = varname
@@ -144,12 +167,12 @@ class HAPI(Kamodo):
         for varname in self.variables:
             data = self.variables[varname]['data']
             fill = self.variables[varname]['fill']
-            if fill is not None:
+            if fill is not None and fill is not "NaN":
                 mask = data==float(fill)
                 nbad = np.count_nonzero(mask)
                 if nbad > 0:
-                    print("Found",nbad,"fill values, replacing with NaN for variable",varname,
-                          "of size",data.size)
+                    print("Found",nbad,"fill values, replacing with NaN for variable",
+                          varname,"of size",data.size)
                 data[mask]=np.nan
                 self.variables[varname]['data'] = data
         
