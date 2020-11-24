@@ -184,18 +184,24 @@ class GITM(Kamodo):
                                                fill_value = self.missing_value)
         return interpolator
 
-    def get_plot(self, var, value, plottype, colorscale="BlueRed", sym="F", log="F", vmin="", vmax=""):
+    def get_plot(self, var, value, plottype, colorscale="Viridis", sym="F", log="F", vmin="", vmax=""):
         '''
         Return a plotly figure object for the plottype requested.
-        var, value, and plottype are required variables. value is position of slice
-        colorscale = Viridis, Cividis, Rainbow, or BlueRed
-        sym = F [default] for symetric colorscale around 0
-        log = F [default] for log10() of plot value
-        vmin, vmax: set minimum and maximum value for contour values, empty is actual min/max
+        var, value, and plottype are required variables.
+        -var = name of plot variable
+        -value = position of slice or isosurface value
+        -plottype = 2D-alt, 2D-lon, 2D-lat, 3D-alt, iso
+        -colorscale = Viridis [default], Cividis, Rainbow, or BlueRed
+        -sym = F [default] for symetric colorscale around 0
+        -log = F [default] for log10() of plot value
+        -vmin,vmax = minimum and maximum value for contour values, empty is min/max
         '''
 
         # Common code blocks for all plots
         txtbot = "Model: GITM v" + str(self.codeversion) + ",  Run: " + self.runname
+        units=self.variables[var]['units']
+        txtbar = var + " [" + units + "]"
+        time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
 
         if plottype == "2D-alt":
             # Check if altitude entered is valid
@@ -214,10 +220,10 @@ class GITM(Kamodo):
             grid[:,0] = np.reshape(xx,-1)
             grid[:,1] = np.reshape(yy,-1)
             grid[:,2] = value
-            units=self.variables[var]['units']
             test = self.variables[var]['interpolator'](grid)
             result = np.reshape(test,(ilat.shape[0],ilon.shape[0]))
             if log == "T":
+                txtbar = "log<br>"+txtbar
                 result = np.log10(result)
             if sym == "T":
                 cmax = np.max(np.absolute(result))
@@ -234,8 +240,6 @@ class GITM(Kamodo):
                 if vmin != "":
                     cmin = float(vmin)
 
-            time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
-
             def plot_var(lon = ilon, lat = ilat):
                 return result
             plotvar = Kamodo(plot_var = plot_var)
@@ -244,14 +248,8 @@ class GITM(Kamodo):
             #fig.update_xaxes(nticks=7,title_text="",scaleanchor='y')
             fig.update_xaxes(tick0=0.,dtick=45.,title_text="")
             fig.update_yaxes(tick0=0.,dtick=45,title_text="")
-            txtbar = var + " [" + units + "]"
-            if log == "T":
-                txtbar = "log<br>"+txtbar
             if colorscale == "BlueRed":
-                fig.update_traces(
-                    colorscale="RdBu",
-                    reversescale=True,
-                )
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             elif colorscale == "Rainbow":
                 fig.update_traces(
                     colorscale=[[0.00, 'rgb(0,0,255)'],
@@ -265,12 +263,12 @@ class GITM(Kamodo):
             fig.update_traces(
                 zmin=cmin, zmax=cmax,
                 ncontours=201,
-                colorbar=dict(title=txtbar,    tickformat=".3g"),
+                colorbar=dict(title=txtbar, tickformat=".3g"),
                 contours=dict(coloring="fill", showlines=False)
             )
             if log == "T":
                 fig.update_traces(
-                    hovertemplate="Lon: %{x:.0f}<br>Lat: %{y:.0f}<br><b>"+"log("+var+"): %{z:.4g}</b><extra></extra>"
+                    hovertemplate="Lon: %{x:.0f}<br>Lat: %{y:.0f}<br><b>log("+var+"): %{z:.4g}</b><extra></extra>"
                 )
             else:
                 fig.update_traces(
@@ -308,10 +306,10 @@ class GITM(Kamodo):
             grid[:,0] = np.reshape(xx,-1)
             grid[:,1] = value
             grid[:,2] = np.reshape(yy,-1)
-            units=self.variables[var]['units']
             test = self.variables[var]['interpolator'](grid)
             result = np.reshape(test,(ialt.shape[0],ilon.shape[0]))
             if log == "T":
+                txtbar = "log<br>"+txtbar
                 result = np.log10(result)
             if sym == "T" and vmin == "" and vmax == "":
                 cmax = np.max(np.absolute(result))
@@ -324,8 +322,6 @@ class GITM(Kamodo):
                 if vmin != "":
                     cmin = float(vmin)
 
-            time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
-
             ialt = ialt/1000.
             def plot_var(lon = ilon, alt = ialt):
                 return result
@@ -335,14 +331,8 @@ class GITM(Kamodo):
             #fig.update_xaxes(nticks=7,title_text="",scaleanchor='y')
             fig.update_xaxes(tick0=0.,dtick=45.,title_text="")
             fig.update_yaxes(title_text="")
-            txtbar = var + " [" + units + "]"
-            if log == "T":
-                txtbar = "log<br>"+txtbar
             if colorscale == "BlueRed":
-                fig.update_traces(
-                    colorscale="RdBu",
-                    reversescale=True,
-                )
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             elif colorscale == "Rainbow":
                 fig.update_traces(
                     colorscale=[[0.00, 'rgb(0,0,255)'],
@@ -356,12 +346,12 @@ class GITM(Kamodo):
             fig.update_traces(
                 zmin=cmin, zmax=cmax,
                 ncontours=201,
-                colorbar=dict(title=txtbar,    tickformat=".3g"),
+                colorbar=dict(title=txtbar, tickformat=".3g"),
                 contours=dict(coloring="fill", showlines=False)
             )
             if log == "T":
                 fig.update_traces(
-                    hovertemplate="Lon: %{x:.0f}<br>Alt: %{y:.0f}<br><b>"+"log("+var+"): %{z:.4g}</b><extra></extra>"
+                    hovertemplate="Lon: %{x:.0f}<br>Alt: %{y:.0f}<br><b>log("+var+"): %{z:.4g}</b><extra></extra>"
                 )
             else:
                 fig.update_traces(
@@ -399,10 +389,10 @@ class GITM(Kamodo):
             grid[:,0] = value
             grid[:,1] = np.reshape(xx,-1)
             grid[:,2] = np.reshape(yy,-1)
-            units=self.variables[var]['units']
             test = self.variables[var]['interpolator'](grid)
             result = np.reshape(test,(ialt.shape[0],ilat.shape[0]))
             if log == "T":
+                txtbar = "log<br>"+txtbar
                 result = np.log10(result)
             if sym == "T" and vmin == "" and vmax == "":
                 cmax = np.max(np.absolute(result))
@@ -415,8 +405,6 @@ class GITM(Kamodo):
                 if vmin != "":
                     cmin = float(vmin)
 
-            time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
-
             ialt = ialt/1000.
             def plot_var(lat = ilat, alt = ialt):
                 return result
@@ -426,14 +414,8 @@ class GITM(Kamodo):
             #fig.update_xaxes(nticks=7,title_text="",scaleanchor='y')
             fig.update_xaxes(tick0=0.,dtick=30.,title_text="")
             fig.update_yaxes(title_text="")
-            txtbar = var + " [" + units + "]"
-            if log == "T":
-                txtbar = "log<br>"+txtbar
             if colorscale == "BlueRed":
-                fig.update_traces(
-                    colorscale="RdBu",
-                    reversescale=True,
-                )
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             elif colorscale == "Rainbow":
                 fig.update_traces(
                     colorscale=[[0.00, 'rgb(0,0,255)'],
@@ -447,12 +429,12 @@ class GITM(Kamodo):
             fig.update_traces(
                 zmin=cmin, zmax=cmax,
                 ncontours=201,
-                colorbar=dict(title=txtbar,    tickformat=".3g"),
+                colorbar=dict(title=txtbar, tickformat=".3g"),
                 contours=dict(coloring="fill", showlines=False)
             )
             if log == "T":
                 fig.update_traces(
-                    hovertemplate="Lat: %{x:.0f}<br>Alt: %{y:.0f}<br><b>"+"log("+var+"): %{z:.4g}</b><extra></extra>"
+                    hovertemplate="Lat: %{x:.0f}<br>Alt: %{y:.0f}<br><b>log("+var+"): %{z:.4g}</b><extra></extra>"
                 )
             else:
                 fig.update_traces(
@@ -492,10 +474,10 @@ class GITM(Kamodo):
             grid[:,0] = np.reshape(xx,-1)
             grid[:,1] = np.reshape(yy,-1)
             grid[:,2] = value
-            units=self.variables[var]['units']
             test = self.variables[var]['interpolator'](grid)
             result = np.reshape(test,(ilat.shape[0],ilon.shape[0]))
             if log == "T":
+                txtbar = "log<br>"+txtbar
                 result = np.log10(result)
             r = value + 6.3781E6
             x=-(r*np.cos(yy*np.pi/180.)*np.cos(xx*np.pi/180.))/6.3781E6
@@ -512,8 +494,6 @@ class GITM(Kamodo):
                 if vmin != "":
                     cmin = float(vmin)
 
-            time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
-
             def plot_var(x = x, y = y, z = z):
                 return result
             plotvar = Kamodo(plot_var = plot_var)
@@ -522,14 +502,8 @@ class GITM(Kamodo):
             fig.update_scenes(xaxis=dict(title=dict(text="X [Re]")),
                               yaxis=dict(title=dict(text="Y [Re]")),
                               zaxis=dict(title=dict(text="Z [Re]")))
-            txtbar = var + " [" + units + "]"
-            if log == "T":
-                txtbar = "log<br>"+txtbar
             if colorscale == "BlueRed":
-                fig.update_traces(
-                    colorscale="RdBu",
-                    reversescale=True,
-                )
+                fig.update_traces(colorscale="RdBu", reversescale=True)
             elif colorscale == "Rainbow":
                 fig.update_traces(
                     colorscale=[[0.00, 'rgb(0,0,255)'],
@@ -577,6 +551,120 @@ class GITM(Kamodo):
                               showlegend=False,hovertemplate='prime meridian<extra></extra>')
             return fig
 
+        if plottype == "iso":
+            ilon = np.linspace(0, 360, 181) #181
+            ilat = np.linspace(-90, 90, 91) #91
+            step=5000. # 5000.
+            alt1=(step*round(self.alt[2]/step))
+            alt2=self.alt[(self.alt.shape[0]-3)]
+            nalt=round((alt2-alt1)/step)
+            alt2=alt1+step*nalt
+            nalt=1+int(nalt)
+            ialt = np.linspace(alt1, alt2, nalt)
+            xx,yy,zz = np.meshgrid(np.array(ilon),np.array(ilat),np.array(ialt))
+            grid = np.ndarray(shape=(np.size(np.reshape(xx,-1)),3), dtype=np.float32)
+            grid[:,0] = np.reshape(xx,-1)
+            grid[:,1] = np.reshape(yy,-1)
+            grid[:,2] = np.reshape(zz,-1)
+            test = self.variables[var]['interpolator'](grid)
+            result = np.reshape(test,(ilat.shape[0],ilon.shape[0],ialt.shape[0]))
+            isovalue=value
+            if log == "T":
+                isovalue=np.log10(value)
+                txtbar = "log<br>"+txtbar
+                result = np.log10(result)
+            if sym == "T":
+                cmax = np.max(np.absolute(result))
+                if vmax != "":
+                    cmax = abs(float(vmax))
+                if vmin != "":
+                    cmax = max(cmax,abs(float(vmin)))
+                cmin = -cmax
+            else:
+                cmax = np.max(result)
+                cmin = np.min(result)
+                if vmax != "":
+                    cmax = float(vmax)
+                if vmin != "":
+                    cmin = float(vmin)
+
+            # Check if value entered is valid (checking before possible log scale)
+            if value < np.min(test) or value > np.max(test):
+                print('Iso value is out of range: iso=',value,\
+                      ' min/max=',np.min(test),'/',np.max(test))
+                sys.exit("Exiting ...")
+                return
+
+            slicevalue=0.
+            fig1 = go.Figure(data=go.Isosurface(
+                x=xx.flatten(),
+                y=yy.flatten(),
+                z=zz.flatten(),
+                value=result.flatten(),
+                opacity=0.6,
+                isomin=cmin,
+                isomax=cmax,
+                surface=dict(count=2, fill=1., pattern='all'),
+                caps=dict(x_show=False, y_show=False, z_show=False),
+                showscale=True, # show colorbar
+                colorbar=dict(title=txtbar, tickformat=".3g"),
+                slices_y=dict(show=True, locations=[slicevalue]),
+            ))
+            fig1.update_traces(
+                hovertemplate="<b>Slice</b><br>Lon: %{x:.0f}<br>Lat: %{y:.0f}<br>Alt: %{z:.0f}m<br><extra></extra>"
+            )
+            if colorscale == "BlueRed":
+                fig1.update_traces(colorscale="RdBu", reversescale=True)
+            elif colorscale == "Rainbow":
+                fig1.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            else:
+                fig1.update_traces(colorscale=colorscale)
+            fig2 = go.Figure(data=go.Isosurface(
+                x=xx.flatten(),
+                y=yy.flatten(),
+                z=zz.flatten(),
+                value=result.flatten(),
+                opacity=1.,
+                colorscale=[[0.0, '#777777'],[1.0, '#777777']],
+                isomin=isovalue,
+                isomax=isovalue,
+                surface=dict(count=1, fill=1., pattern='all'),
+                caps=dict(x_show=False, y_show=False, z_show=False),
+                showscale=False, # remove colorbar
+                hovertemplate="<b>Isosurface</b><br>Lon: %{x:.0f}<br>Lat: %{y:.0f}<br>Alt: %{z:.0f}m<extra></extra>"
+            ))
+            fig2.update_scenes(
+                xaxis=dict(title=dict(text="Lon [degrees]"),tick0=0.,dtick=45.),
+                yaxis=dict(title=dict(text="Lat [degrees]"),tick0=0.,dtick=45.),
+                zaxis=dict(title=dict(text="Alt [m]"))
+            )
+            fig2.update_layout(
+                scene_camera_eye=dict(x=.1, y=-1.8, z=1.5),
+                scene_aspectmode='manual',
+                scene_aspectratio=dict(x=2, y=1, z=1),
+                title=dict(text="Latitude="+"{:.0f}".format(slicevalue)+
+                           " slice through the data<br>"+
+                           "Isosurface of "+var+"="+"{:.0f}".format(isovalue)+units+"<br>"+
+                           "Time = " + time,
+                           yref="container", yanchor="top", x=0.01, y=0.95),
+                title_font_size=16,
+                annotations=[
+                    dict(text=txtbot, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                         xshift=0, yshift=-20, xref="paper", yref="paper",
+                         font=dict(size=16, family="sans serif", color="#000000"))
+                ],
+                margin=dict(l=10,t=80),
+            )
+            fig2.add_trace(fig1.data[0])
+            
+            return fig2
+        
         print('Unknown plottype (',plottype,') returning.')
         return
     
