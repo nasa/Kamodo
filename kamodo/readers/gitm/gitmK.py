@@ -552,9 +552,9 @@ class GITM(Kamodo):
             return fig
 
         if plottype == "iso":
-            ilon = np.linspace(0, 360, 181) #181
-            ilat = np.linspace(-90, 90, 91) #91
-            step=5000. # 5000.
+            ilon = np.linspace(0, 360, 73) #181
+            ilat = np.linspace(-90, 90, 37) #91
+            step=10000. # 5000.
             alt1=(step*round(self.alt[2]/step))
             alt2=self.alt[(self.alt.shape[0]-3)]
             nalt=round((alt2-alt1)/step)
@@ -599,7 +599,7 @@ class GITM(Kamodo):
             fig1 = go.Figure(data=go.Isosurface(
                 x=xx.flatten(),
                 y=yy.flatten(),
-                z=zz.flatten(),
+                z=zz.flatten()/1000.,
                 value=result.flatten(),
                 opacity=0.6,
                 isomin=cmin,
@@ -611,7 +611,7 @@ class GITM(Kamodo):
                 slices_y=dict(show=True, locations=[slicevalue]),
             ))
             fig1.update_traces(
-                hovertemplate="<b>Slice</b><br>Lon: %{x:.0f}<br>Lat: %{y:.0f}<br>Alt: %{z:.0f}m<br><extra></extra>"
+                hovertemplate="<b>Slice</b><br>Lon: %{x:.0f}<br>Lat: %{y:.0f}<br>Alt: %{z:.0f}km<br><extra></extra>"
             )
             if colorscale == "BlueRed":
                 fig1.update_traces(colorscale="RdBu", reversescale=True)
@@ -628,7 +628,7 @@ class GITM(Kamodo):
             fig2 = go.Figure(data=go.Isosurface(
                 x=xx.flatten(),
                 y=yy.flatten(),
-                z=zz.flatten(),
+                z=zz.flatten()/1000.,
                 value=result.flatten(),
                 opacity=1.,
                 colorscale=[[0.0, '#777777'],[1.0, '#777777']],
@@ -637,12 +637,12 @@ class GITM(Kamodo):
                 surface=dict(count=1, fill=1., pattern='all'),
                 caps=dict(x_show=False, y_show=False, z_show=False),
                 showscale=False, # remove colorbar
-                hovertemplate="<b>Isosurface</b><br>Lon: %{x:.0f}<br>Lat: %{y:.0f}<br>Alt: %{z:.0f}m<extra></extra>"
+                hovertemplate="<b>Isosurface</b><br>Lon: %{x:.0f}<br>Lat: %{y:.0f}<br>Alt: %{z:.0f}km<extra></extra>"
             ))
             fig2.update_scenes(
                 xaxis=dict(title=dict(text="Lon [degrees]"),tick0=0.,dtick=45.),
                 yaxis=dict(title=dict(text="Lat [degrees]"),tick0=0.,dtick=45.),
-                zaxis=dict(title=dict(text="Alt [m]"))
+                zaxis=dict(title=dict(text="Alt [km]"))
             )
             fig2.update_layout(
                 scene_camera_eye=dict(x=.1, y=-1.8, z=1.5),
