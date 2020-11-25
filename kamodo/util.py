@@ -550,7 +550,7 @@ def resolve_unit(expr, unit_registry):
             return unit
         if isinstance(unit, Pow):
             return unit
-        return unit_registry[unit]
+        return unit_registry.get(unit, None)
 
 def get_expr_unit(expr, unit_registry):
     '''Get units from an expression'''
@@ -565,7 +565,7 @@ def get_expr_unit(expr, unit_registry):
         result = expr_unit
 
     if len(result.free_symbols) > 0:
-        raise NameError('{} has free symbols remaining: {}'.format(expr, expr_unit.free_symbols))
+        return None
 
     return result
 

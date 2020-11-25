@@ -1,3 +1,4 @@
+* fixed vectorize composition
 
 # 2020-11-25 13:36:07.998404: clock-in
 

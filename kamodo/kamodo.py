@@ -357,6 +357,8 @@ class Kamodo(collections.OrderedDict):
         self.signatures = OrderedDict()
 
         for func in funcs:
+            if self.verbose:
+                print('registering {}'.format(func))
             if type(func) is str:
                 components = func.split('=')
                 if len(components) == 2:
@@ -369,13 +371,10 @@ class Kamodo(collections.OrderedDict):
                     self[lhs] = rhs
 
         for sym_name, expr in list(kwargs.items()):
+            if self.verbose:
+                print('registering {} with {}'.format(sym_name, expr))
             self[sym_name] = expr
 
-    def __getitem__(self, key):
-        try:
-            return super(Kamodo, self).__getitem__(key)
-        except:
-            return self[self.symbol_registry[key]]
 
     def register_symbol(self, symbol):
         self.symbol_registry[str(type(symbol))] = symbol
@@ -478,6 +477,9 @@ class Kamodo(collections.OrderedDict):
                 if self.verbose:
                     print('composition detected: found {} in {} = {}'.format(k, lhs_expr, rhs_expr))
                 composition[str(k)] = self[k]
+            else:
+                if self.verbose:
+                    print('{} {} not in {} = {}'.format(k, type(k), lhs_expr, rhs_expr))
         return composition
 
     def vectorize_function(self, symbol, rhs_expr, composition):
@@ -488,7 +490,10 @@ class Kamodo(collections.OrderedDict):
         except:
             func = lambdify(symbol.args, rhs_expr, modules=['numpy', composition])
             if self.verbose:
-                print('lambda {} = {} lambdified with numpy and {}'.format(symbol.args, rhs_expr, composition))
+                print('lambda {} = {} lambdified with numpy and composition:'.format(
+                    symbol.args, rhs_expr))
+                for k,v in composition.items():
+                    print('\t',k,v)
         return func
 
     def update_unit_registry(self, func):
@@ -609,6 +614,7 @@ class Kamodo(collections.OrderedDict):
             symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
         except KeyError as error:
             if self.verbose:
+                print('could not use parse_key with {}'.format(sym_name))
                 print(error)
             found_sym_name = str(error).split('found')[0].strip("'").strip(' ')
             if self.verbose:
@@ -626,18 +632,20 @@ class Kamodo(collections.OrderedDict):
             #     if self.verbose:
             #         print('after check_consistency, unit registry:', self.unit_registry)
             # except:
-            print(
-                "\n\nPARSING WITH UNIFY",
-                lhs_expr,
-                symbol,
-                lhs_units,
-                len(lhs_units),
-                type(lhs_units))
-
             if self.verbose:
-                print(self.symbol_registry)
+                print(
+                    "\n\nPARSING WITH UNIFY",
+                    lhs_expr,
+                    symbol,
+                    lhs_units,
+                    len(lhs_units),
+                    type(lhs_units))
+                print('symbol registry:', self.symbol_registry)
 
             rhs_expr = self.parse_value(input_expr, self.symbol_registry)
+
+            if self.verbose:
+                print('parsed rhs_expr', rhs_expr)
 
             if not isinstance(symbol, Symbol):
                 if isinstance(lhs_expr, Symbol):
@@ -647,6 +655,8 @@ class Kamodo(collections.OrderedDict):
                 lhs_str = str(symbol)
                 sym_name = sym_name.replace(str(lhs_expr), lhs_str)
             if '[' in sym_name:
+                if self.verbose:
+                    print('updating unit registry with {} -> {}'.format(sym_name, rhs_expr))
                 sym_name, rhs = self.update_unit_registry("{}={}".format(sym_name, rhs_expr))
             else:
                 if self.verbose:
@@ -662,12 +672,13 @@ class Kamodo(collections.OrderedDict):
                 expr = unify(Eq(parse_expr(sym_name), parse_expr(rhs)), self.unit_registry)
                 rhs_expr = expr.rhs
 
-
-            print('symbol after unify', symbol, type(symbol), rhs_expr, self.unit_registry)
+            if self.verbose:
+                print('symbol after unify', symbol, type(symbol), rhs_expr, self.unit_registry)
             units = resolve_unit(symbol, self.unit_registry)
-            print('units after unify', symbol, units, self.unit_registry)
-            for k, v in self.unit_registry.items():
-                print('\t', k, v)
+            if self.verbose:
+                print('units after unify', symbol, units, self.unit_registry)
+                for k, v in self.unit_registry.items():
+                    print('\t', k, v)
 
             rhs_args = rhs_expr.free_symbols
 
@@ -684,7 +695,8 @@ class Kamodo(collections.OrderedDict):
                     print('unit registry:', self.unit_registry)
                 raise
 
-            composition = self.get_composition(lhs_expr, rhs_expr)
+            # composition = self.get_composition(lhs_expr, rhs_expr)
+            composition = {str(k_): self[k_] for k_ in self}
             func = self.vectorize_function(symbol, rhs_expr, composition)
             self.register_signature(symbol, units, lhs_expr, rhs_expr)
             super(Kamodo, self).__setitem__(symbol, func)
@@ -692,12 +704,23 @@ class Kamodo(collections.OrderedDict):
             self.register_symbol(symbol)
             self[symbol].meta = dict(units=units)
 
+
+    def __getitem__(self, key):
+        try:
+            return super(Kamodo, self).__getitem__(key)
+        except:
+            return self[self.symbol_registry[key]]
+
     def __getattr__(self, name):
-        name_ = symbols(name, cls=Function)
-        if name_ in self:
-            return self[name_]
-        else:
-            raise AttributeError("No such symbol: {}".format(name))
+        try:
+            return self[name]
+        except KeyError:
+            name_ = symbols(name, cls=Function)
+            if name_ in self:
+                return self[name_]
+            if self.verbose:
+                print("No such symbol {} {} in {} or {}".format(name, type(name), self.keys(), self.symbol_registry))
+            raise AttributeError("No such symbol {}".format(name))
 
     def __delattr__(self, name):
         if name in self:

@@ -15,7 +15,7 @@ from sympy import lambdify, sympify
 
 def test_Kamodo_expr():
     a, b, c, x, y, z = symbols('a b c x y z')
-    kamodo = Kamodo(a=x ** 2, verbose=False)
+    kamodo = Kamodo(a=x ** 2, verbose=True)
     try:
         assert kamodo.a(3) == 3 ** 2
     except:
@@ -104,15 +104,19 @@ def test_Kamodo_assign_by_callable():
 
 
 def test_Kamodo_composition():
-    f, g = symbols('f g', cls=UndefinedFunction)
-    x = Symbol('x')
-    kamodo = Kamodo(f="$x^2$")
+    # f, g = symbols('f g', cls=UndefinedFunction)
+    # x = Symbol('x')
+    kamodo = Kamodo(f="$x^2$", verbose=True)
     kamodo['g(x)'] = "$f(x) + x^2$"
-    kamodo['h(x)'] = g(x) ** 2 + x ** 2
-
-    assert kamodo.f(3) == 3 ** 2
-    assert kamodo.g(3) == 3 ** 2 + 3 ** 2
-    assert kamodo.h(3) == (3 ** 2 + 3 ** 2) ** 2 + 3 ** 2
+    kamodo['h(x)'] = 'g**2 + x**2'
+    
+    try:
+        assert kamodo.f(3) == 3 ** 2
+        assert kamodo.g(3) == 3 ** 2 + 3 ** 2
+        assert kamodo.h(3) == (3 ** 2 + 3 ** 2) ** 2 + 3 ** 2
+    except:
+        print(kamodo)
+        raise
 
 
 def test_Kamodo_reassignment():
@@ -125,7 +129,7 @@ def test_Kamodo_reassignment():
 
 
 def test_multivariate_composition():
-    kamodo = Kamodo(f='x**2', g=lambda y: y ** 3)
+    kamodo = Kamodo(f='x**2', g=lambda y: y ** 3, verbose=True)
     kamodo['h(x,y)'] = 'f(x) + g(y)'
     kamodo['i(x,y)'] = 'x + f(h(x,y))'
     assert kamodo.h(3, 4) == 3 ** 2 + 4 ** 3
