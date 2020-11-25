@@ -226,10 +226,14 @@ def test_unit_conversion_syntax():
 
 
 def test_unit_composition():
-    kamodo = Kamodo('m[kg] = x', verbose=False)
+    kamodo = Kamodo('m[kg] = x', verbose=True)
     kamodo['v[km/s]'] = 'y'
-    kamodo['p'] = 'm*v'
-    assert get_unit(kamodo.signatures['p(x, y)']['units']) == get_unit('kg*km/s')
+    kamodo['p(x,y)'] = 'm*v'
+    try:
+        assert get_unit(kamodo.signatures['p(x, y)']['units']) == get_unit('kg*km/s')
+    except:
+        print(kamodo.signatures)
+        raise
 
 
 def test_unit_function_composition():

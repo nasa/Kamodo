@@ -43,7 +43,7 @@ from .util import get_defaults, valid_args, eval_func
 from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
 from .util import convert_to
-from .util import unify, resolve_unit
+from .util import unify, resolve_unit, get_abbrev, get_expr_unit
 
 import sympy.physics.units as u
 
@@ -360,10 +360,11 @@ class Kamodo(collections.OrderedDict):
             if type(func) is str:
                 components = func.split('=')
                 if len(components) == 2:
+                    # function(arg)[unit] = expr
                     lhs, rhs = components
                     self[lhs.strip('$')] = rhs
                 elif len(components) == 3:
-                    # f(x)[f(cm)=kg]=...
+                    # function(arg)[function(arg_unit) = unit] = expr
                     lhs, rhs = self.update_unit_registry(func.strip('$'))
                     self[lhs] = rhs
 
@@ -506,9 +507,13 @@ class Kamodo(collections.OrderedDict):
         return func_symbol, rhs
 
     def register_signature(self, symbol, units, lhs_expr, rhs_expr):
+        if isinstance(units, str):
+            unit_str = units
+        else:
+            unit_str = str(get_abbrev(units))
         self.signatures[str(symbol)] = dict(
             symbol=symbol,
-            units=units,
+            units=unit_str,
             lhs=lhs_expr,
             rhs=rhs_expr,
             # update = getattr(self[lhs_expr],'update', None),
@@ -614,30 +619,61 @@ class Kamodo(collections.OrderedDict):
         if hasattr(input_expr, '__call__'):
             self.register_function(input_expr, symbol, lhs_expr, lhs_units)
         else:
-            try:
-                units, rhs_expr = self.check_consistency(input_expr, lhs_units)
+            # try:
+            #     units, rhs_expr = self.check_consistency(input_expr, lhs_units)
 
-                # how do we register dysfunctional units?
-                if self.verbose:
-                    print('after check_consistency, unit registry:', self.unit_registry)
-            except:
-                rhs_expr = self.parse_value(input_expr, self.symbol_registry)
+            #     # how do we register dysfunctional units?
+            #     if self.verbose:
+            #         print('after check_consistency, unit registry:', self.unit_registry)
+            # except:
+            print(
+                "\n\nPARSING WITH UNIFY",
+                lhs_expr,
+                symbol,
+                lhs_units,
+                len(lhs_units),
+                type(lhs_units))
+
+            if self.verbose:
+                print(self.symbol_registry)
+
+            rhs_expr = self.parse_value(input_expr, self.symbol_registry)
+
+            if not isinstance(symbol, Symbol):
+                if isinstance(lhs_expr, Symbol):
+                    symbol = Function(lhs_expr)(*tuple(rhs_expr.free_symbols))
+                else: #lhs is already a function
+                    symbol = lhs_expr
+                lhs_str = str(symbol)
+                sym_name = sym_name.replace(str(lhs_expr), lhs_str)
+            if '[' in sym_name:
                 sym_name, rhs = self.update_unit_registry("{}={}".format(sym_name, rhs_expr))
-                # print('symbol before unify', symbol)
+            else:
+                if self.verbose:
+                    print(sym_name, 'has no units')
+                    print('unit registry contents:')
+                    for k, v in self.unit_registry.items():
+                        print(k, v)
+                units = get_expr_unit(rhs_expr, self.unit_registry)
+                self.unit_registry[symbol] = units
+                rhs = str(rhs_expr)
+
+            if len(lhs_units) > 0:
                 expr = unify(Eq(parse_expr(sym_name), parse_expr(rhs)), self.unit_registry)
                 rhs_expr = expr.rhs
-                print('symbol after unify', symbol, expr, self.unit_registry)
-                units = resolve_unit(symbol, self.unit_registry)
-                # raise NotImplementedError(symbol)
 
+
+            print('symbol after unify', symbol, type(symbol), rhs_expr, self.unit_registry)
+            units = resolve_unit(symbol, self.unit_registry)
+            print('units after unify', symbol, units, self.unit_registry)
+            for k, v in self.unit_registry.items():
+                print('\t', k, v)
 
             rhs_args = rhs_expr.free_symbols
 
             try:
                 symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
                 self.validate_function(symbol, rhs_expr)
-                if self.verbose:
-                    print(self.unit_registry)
 
             except:
                 if self.verbose:
@@ -702,7 +738,7 @@ class Kamodo(collections.OrderedDict):
                 else:
                     lambda_ = symbols('lambda', cls=UndefinedFunction)
                     latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
-            if len(units) > 0:
+            if len(str(units)) > 0:
                 # latex_eq = latex_eq.replace('=','\\text{' + '[{}]'.format(units) + '} =')
                 latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
             repr_latex += latex_eq

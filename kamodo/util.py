@@ -288,7 +288,7 @@ existing_plot_types.columns = ['Plot Type', 'notes']
 
 # manually generate the appropriate function signature
 grid_wrapper_def = r"""def wrapped({signature}):
-    coordinates = np.meshgrid({arg_str}, indexing = 'xy')
+    coordinates = np.meshgrid({arg_str}, indexing = 'xy', sparse = False, copy = False)
     points = np.column_stack([c.ravel() for c in coordinates])
     return np.squeeze({fname}(points).reshape(coordinates[0].shape, order = 'A'))
     """
@@ -538,6 +538,11 @@ def resolve_unit(expr, unit_registry):
     unit_registry {f(x): f(cm), f(cm): kg/m^2}
     """
     unit = unit_registry.get(expr, None)
+    for k, k_unit in unit_registry.items():
+        if str(expr) == str(k):
+            unit = k_unit
+            continue
+
     if unit is not None:
         if hasattr(unit, 'dimension'):
             return unit
@@ -546,6 +551,23 @@ def resolve_unit(expr, unit_registry):
         if isinstance(unit, Pow):
             return unit
         return unit_registry[unit]
+
+def get_expr_unit(expr, unit_registry):
+    '''Get units from an expression'''
+    expr_unit = expr.subs(unit_registry).subs(unit_registry)
+
+    if isinstance(expr_unit, Add):
+        # use the first term
+        arg_0 = expr_unit.args[0]
+        convert_to(expr_unit, arg_0)
+        result = arg_0
+    else:
+        result = expr_unit
+
+    if len(result.free_symbols) > 0:
+        raise NameError('{} has free symbols remaining: {}'.format(expr, expr_unit.free_symbols))
+
+    return result
 
 def is_undefined(expr):
     return type(type(expr)) is UndefinedFunction
@@ -574,41 +596,51 @@ def replace_args(expr, from_map, to_map):
 
 def unify(expr, unit_registry, to_symbol=None):
     """adds unit conversion factors to composed functions"""
+    print('to_symbol:', to_symbol)
     if hasattr(expr, 'rhs'):
         lhs_unit = resolve_unit(expr.lhs, unit_registry)
         if lhs_unit is not None:
-            # print('found lhs_unit:', lhs_unit)
+            print('found lhs_unit:', lhs_unit)
             return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs))
         return Eq(expr.lhs, unify(expr.rhs, unit_registry))
 
     if isinstance(expr, Add):
+        print('Adding expression: {} -> {}'.format(expr, resolve_unit(to_symbol, unit_registry)))
         return Add.fromiter([unify(arg, unit_registry, to_symbol) for arg in expr.args])
 
     if isinstance(expr, Mul):
-        # print('multiplying')
+        print('Multiplying expression: {} -> {}'.format(expr, resolve_unit(to_symbol, unit_registry)))
         return Mul.fromiter([unify(arg, unit_registry, to_symbol) for arg in expr.args])
 
 
     expr_unit = resolve_unit(expr, unit_registry)
 
     if is_undefined(expr):
-        try:
+        if to_symbol is not None:
             for arg in set(to_symbol.args).intersection(expr.args):
-                # print('replacing {} in {}'.format(arg, expr))
+                print('replacing {} in {}'.format(arg, expr))
                 expr_units = symbol_units_map(expr, unit_registry)
                 to_units = symbol_units_map(to_symbol, unit_registry)
                 expr = replace_args(expr, expr_units, to_units)
-            # print('converted expression:', expr)
-        except AttributeError:
-            raise NotImplementedError('cannot iterate with:{} -> {}'.format(expr, to_symbol))
+            print('converted expression:', expr)
 
     if (to_symbol is not None) & (expr_unit is not None):
         to_unit = resolve_unit(to_symbol, unit_registry)
-        # print('{} [{}] -> to_symbol: {}[{}]'.format(
-        #     expr, expr_unit, to_symbol, to_unit))
+        print('{} [{}] -> to_symbol: {}[{}]'.format(
+            expr, expr_unit, to_symbol, to_unit))
         expr = convert_to(expr*to_unit, expr_unit)/expr_unit
 
     return expr
+
+def get_abbrev(unit):
+    "get the abbreviation for a mixed unit"
+    if hasattr(unit, 'abbrev'):
+        return unit.abbrev
+    if isinstance(unit, Mul):
+        return Mul.fromiter([get_abbrev(arg) for arg in unit.args])
+    if isinstance(unit, Pow):
+        base, exp = unit.as_base_exp()
+        return Pow(get_abbrev(base), exp)
 
 
 @kamodofy
