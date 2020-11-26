@@ -1,3 +1,4 @@
+* raising NameError for bad unit conversion
 
 # 2020-11-26 11:25:57.649820: clock-in
 

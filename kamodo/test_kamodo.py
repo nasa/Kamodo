@@ -189,9 +189,9 @@ def test_unit_registry():
 
 
 def test_to_latex():
-    kamodo = Kamodo(f='x**2')
+    kamodo = Kamodo(f='x**2', verbose=True)
     assert str(kamodo.to_latex()) == r'\begin{equation}f{\left(x \right)} = x^{2}\end{equation}'
-    kamodo = Kamodo(g='x')
+    kamodo = Kamodo(g='x', verbose=True)
     assert str(kamodo.to_latex()) == r'\begin{equation}g{\left(x \right)} = x\end{equation}'
 
 
@@ -263,7 +263,7 @@ def test_method_args():
 
         density.meta = dict(units='1/cm^3')
 
-    test = TestModel(verbose=False)
+    test = TestModel(verbose=True)
     assert str(list(test.keys())[0].args[0]) != 'self'
 
     test['r(alt, lat, lon)[1/m^3]'] = 'rho'

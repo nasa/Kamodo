@@ -516,8 +516,16 @@ class Kamodo(collections.OrderedDict):
     def register_signature(self, symbol, units, lhs_expr, rhs_expr):
         if isinstance(units, str):
             unit_str = units
+            if self.verbose:
+                print('unit str {}'.format(unit_str))
         else:
-            unit_str = str(get_abbrev(units))
+            if self.verbose:
+                print('getting abbreviation for', units)
+            unit_abbrev = get_abbrev(units)
+            if unit_abbrev is not None:
+                unit_str = str(unit_abbrev)
+            else:
+                unit_str = None
         self.signatures[str(symbol)] = dict(
             symbol=symbol,
             units=unit_str,
@@ -704,7 +712,11 @@ class Kamodo(collections.OrderedDict):
             if self.verbose:
                 print('symbol after unify', symbol, type(symbol), rhs_expr, self.unit_registry)
             units = resolve_unit(symbol, self.unit_registry)
-            units = str(get_abbrev(units))
+            units = get_abbrev(units)
+            if units is not None:
+                units = str(units)
+            else:
+                units = ''
             if self.verbose:
                 print('units after unify', symbol, units, self.unit_registry)
                 for k, v in self.unit_registry.items():
@@ -771,6 +783,10 @@ class Kamodo(collections.OrderedDict):
 
     def to_latex(self, keys=None, mode='equation'):
         """Generate list of LaTeX-formated formulas"""
+        if self.verbose:
+            print('signatures')
+            for k,v in self.signatures.items():
+                print(k,v)
         if keys is None:
             keys = list(self.signatures.keys())
         repr_latex = ""
@@ -791,6 +807,8 @@ class Kamodo(collections.OrderedDict):
                 else:
                     lambda_ = symbols('lambda', cls=UndefinedFunction)
                     latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
+            if units is None:
+                units = ''
             if len(str(units)) > 0:
                 # latex_eq = latex_eq.replace('=','\\text{' + '[{}]'.format(units) + '} =')
                 latex_eq = latex_eq.replace('=', '[{}] ='.format(units))

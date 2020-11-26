@@ -526,7 +526,7 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     depmat = _get_conversion_matrix_for_expr(expr, target_units, unit_system)
     if depmat is None:
         if raise_errors:
-            raise IOError('cannot convert {} to {} {}'.format(expr, target_units, unit_system))
+            raise NameError('cannot convert {} to {} {}'.format(expr, target_units, unit_system))
         return expr
 
     expr_scale_factor = get_total_scale_factor(expr)
