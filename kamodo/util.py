@@ -106,7 +106,7 @@ def decorator_wrapper(f, *args, **kwargs):
     return f(*args, **kwargs)
 
 
-def kamodofy(_func=None, units='', data=None, update=None, equation=None, citation=None, hidden_args=[], **kwargs):
+def kamodofy(_func=None, units='', arg_units = None, data=None, update=None, equation=None, citation=None, hidden_args=[], **kwargs):
     """Adds meta and data attributes to functions for compatibility with Komodo
 
     meta: a dictionary containing {units: <str>}
@@ -117,7 +117,7 @@ def kamodofy(_func=None, units='', data=None, update=None, equation=None, citati
     """
 
     def decorator_kamodofy(f):
-        f.meta = dict(units=units, citation=citation, equation=equation, hidden_args=hidden_args)
+        f.meta = dict(units=units, arg_units = arg_units, citation=citation, equation=equation, hidden_args=hidden_args)
         if citation is not None:
             f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
         f.update = update
@@ -554,7 +554,7 @@ def resolve_unit(expr, unit_registry):
 
 def get_expr_unit(expr, unit_registry):
     '''Get units from an expression'''
-    expr_unit = expr.subs(unit_registry).subs(unit_registry)
+    expr_unit = expr.subs(unit_registry, simultaneous=True)
 
     if isinstance(expr_unit, Add):
         # use the first term
@@ -575,10 +575,14 @@ def is_undefined(expr):
 
 def symbol_units_map(expr, unit_registry):
     """for each argument, retrieve the corresponding units from registered function"""
-    if (hasattr(expr, 'args') & (expr in unit_registry)):
-        return {a_: a_unit for a_, a_unit in zip(expr.args, unit_registry[expr].args)}
-    else:
-        return {}
+    arg_units = dict()
+    if hasattr(expr, 'args') & (expr in unit_registry):
+        unit_signature = unit_registry[expr]
+        if unit_signature is not None:
+            for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
+                arg_units[arg_] = arg_unit
+
+    return arg_units
 
 def replace_args(expr, from_map, to_map):
     func_symbol = type(expr)

@@ -367,6 +367,8 @@ class Kamodo(collections.OrderedDict):
                     self[lhs.strip('$')] = rhs
                 elif len(components) == 3:
                     # function(arg)[function(arg_unit) = unit] = expr
+                    if self.verbose:
+                        print('updating unit registry')
                     lhs, rhs = self.update_unit_registry(func.strip('$'))
                     self[lhs] = rhs
 
@@ -539,6 +541,8 @@ class Kamodo(collections.OrderedDict):
         lhs_symbol = self.check_or_replace_symbol(lhs_symbol, rhs_args)
         units = lhs_units
         if hasattr(func, 'meta'):
+            if self.verbose:
+                print('function has metadata', func.meta.keys())
             if len(lhs_units) > 0:
                 if lhs_units != func.meta['units']:
                     raise NameError('Units mismatch:{} != {}'.format(lhs_units, func.meta['units']))
@@ -552,9 +556,18 @@ class Kamodo(collections.OrderedDict):
             if self.verbose:
                 print('rhs from input func {}'.format(rhs))
             try:
-                setattr(func, 'meta', dict(units=lhs_units))
+                setattr(func, 'meta', dict(units=lhs_units, arg_units=None))
             except:  # will not work on methods
                 pass
+
+        arg_units = func.meta.get('arg_units', None)
+        if arg_units is not None:
+            unit_dict = {arg: get_unit(arg_unit) for arg, arg_unit in arg_units.items()}
+            unit_expr = lhs_symbol.subs(unit_dict)
+            self.unit_registry[lhs_symbol] = unit_expr
+            self.unit_registry[unit_expr] = get_unit(units)
+        else:
+            self.unit_registry[lhs_symbol] = get_unit(units)
         super(Kamodo, self).__setitem__(lhs_symbol, func)  # assign key 'f(x)'
         self.register_signature(lhs_symbol, units, lhs_expr, rhs)
         super(Kamodo, self).__setitem__(type(lhs_symbol), self[lhs_symbol])  # assign key 'f'
@@ -608,6 +621,9 @@ class Kamodo(collections.OrderedDict):
         performs unit conversion where appropriate
 
         """
+        if not isinstance(sym_name, str):
+            sym_name = str(sym_name)
+
         if self.verbose:
             print('')
         try:
@@ -624,11 +640,10 @@ class Kamodo(collections.OrderedDict):
 
         if hasattr(input_expr, '__call__'):
             self.register_function(input_expr, symbol, lhs_expr, lhs_units)
+
         else:
             # try:
             #     units, rhs_expr = self.check_consistency(input_expr, lhs_units)
-
-            #     # how do we register dysfunctional units?
             #     if self.verbose:
             #         print('after check_consistency, unit registry:', self.unit_registry)
             # except:
@@ -659,13 +674,27 @@ class Kamodo(collections.OrderedDict):
                     print('updating unit registry with {} -> {}'.format(sym_name, rhs_expr))
                 sym_name, rhs = self.update_unit_registry("{}={}".format(sym_name, rhs_expr))
             else:
-                if self.verbose:
-                    print(sym_name, 'has no units')
-                    print('unit registry contents:')
-                    for k, v in self.unit_registry.items():
-                        print(k, v)
-                units = get_expr_unit(rhs_expr, self.unit_registry)
-                self.unit_registry[symbol] = units
+                if symbol in self.unit_registry:
+                    units = resolve_unit(symbol, self.unit_registry)
+                    if self.verbose:
+                        print('{} has units {}'.format(sym_name, units))
+                else:
+                    if self.verbose:
+                        print(sym_name, symbol, 'has no units')
+                        print('unit registry contents:')
+                        for k, v in self.unit_registry.items():
+                            print('\t', k, type(k), v)
+
+                    expr_unit = get_expr_unit(rhs_expr, self.unit_registry)
+
+                    if self.verbose:
+                        print('registering {} with {}'.format(symbol, expr_unit))
+
+                    self.unit_registry[symbol] = expr_unit
+
+                    if isinstance(expr_unit, UndefinedFunction):
+                        self.unit_registry[expr_unit] = get_expr_unit(expr_unit, self.unit_registry)
+
                 rhs = str(rhs_expr)
 
             if len(lhs_units) > 0:
@@ -675,6 +704,7 @@ class Kamodo(collections.OrderedDict):
             if self.verbose:
                 print('symbol after unify', symbol, type(symbol), rhs_expr, self.unit_registry)
             units = resolve_unit(symbol, self.unit_registry)
+            units = str(get_abbrev(units))
             if self.verbose:
                 print('units after unify', symbol, units, self.unit_registry)
                 for k, v in self.unit_registry.items():

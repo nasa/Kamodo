@@ -153,7 +153,7 @@ def test_symbol_key():
     f = symbols('f', cls=UndefinedFunction)
     x = Symbol('x')
     f_ = f(x)
-    kamodo = Kamodo()
+    kamodo = Kamodo(verbose=True)
     kamodo[f_] = x ** 2
     assert kamodo.f(3) == 9
 
@@ -213,7 +213,7 @@ def test_validate_units():
 
 def test_unit_conversion():
     kamodo = Kamodo('$a(x)[a(m)=km/s] = x$',
-                    '$b(y)[b(cm)=m/s] = y$', )
+                    '$b(y)[b(cm)=m/s] = y$', verbose=True)
     kamodo['c(x,y)[c(m,m)=m/s]'] = '$a + b$'
     assert kamodo.c(1, 2) == .001 + 200
 
@@ -243,13 +243,13 @@ def test_unit_composition():
 def test_unit_function_composition():
     kamodo = Kamodo('X[m] = x', verbose=True)
 
-    @kamodofy(units='km/s')
+    @kamodofy(units='km/s', arg_units=dict(x = 'm'))
     def v(x):
-        return y
+        return x
 
     kamodo['v'] = v
     kamodo['speed'] = 'v(X)'
-    assert kamodo.speed.meta['units'] == 'kilometer/second'
+    assert kamodo.speed.meta['units'] == 'km/s'
 
 
 def test_method_args():
