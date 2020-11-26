@@ -577,67 +577,84 @@ def symbol_units_map(expr, unit_registry):
     """for each argument, retrieve the corresponding units from registered function"""
     arg_units = dict()
     if hasattr(expr, 'args') & (expr in unit_registry):
+        # f(x,y,z) in unit_registry
         unit_signature = unit_registry[expr]
+        # f(cm,cm,cm)
         if unit_signature is not None:
-            for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
-                arg_units[arg_] = arg_unit
-
+            if is_undefined(unit_signature):
+                for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
+                    arg_units[arg_] = arg_unit
     return arg_units
 
 def replace_args(expr, from_map, to_map):
     func_symbol = type(expr)
     arg_map = dict()
     for arg in expr.args:
-        from_unit = from_map[arg]
-        to_unit = to_map[arg]
-        try:
-            arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
-        except:
-            print('cannot convert', arg*to_unit, from_unit)
-            print(arg, type(arg), to_unit, type(to_unit), from_unit, type(from_unit))
-            raise
+        if (arg in from_map) & (arg in to_map):
+            from_unit = from_map[arg]
+            to_unit = to_map[arg]
+            try:
+                arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
+            except:
+                print('cannot convert', arg*to_unit, from_unit)
+                print(arg, type(arg), to_unit, type(to_unit), from_unit, type(from_unit))
+                raise
     return expr.subs(arg_map)
 
-def unify(expr, unit_registry, to_symbol=None):
+def unify(expr, unit_registry, to_symbol=None, verbose=False):
     """adds unit conversion factors to composed functions"""
-    print('to_symbol:', to_symbol)
+    if verbose:
+        print('to_symbol:', to_symbol)
     if hasattr(expr, 'rhs'):
         lhs_unit = resolve_unit(expr.lhs, unit_registry)
         if lhs_unit is not None:
-            print('found lhs_unit:', lhs_unit)
-            return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs))
-        return Eq(expr.lhs, unify(expr.rhs, unit_registry))
+            if verbose:
+                print('found lhs_unit:', lhs_unit)
+            return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs, verbose=verbose))
+        return Eq(expr.lhs, unify(expr.rhs, unit_registry, verbose=verbose))
 
     if isinstance(expr, Add):
-        print('Adding expression: {} -> {}'.format(expr, resolve_unit(to_symbol, unit_registry)))
-        return Add.fromiter([unify(arg, unit_registry, to_symbol) for arg in expr.args])
+        if verbose:
+            print('Adding expression: {} -> {}'.format(
+                expr, resolve_unit(to_symbol, unit_registry)))
+        return Add.fromiter([unify(arg, unit_registry, to_symbol, verbose=verbose) for arg in expr.args])
 
     if isinstance(expr, Mul):
-        print('Multiplying expression: {} -> {}'.format(expr, resolve_unit(to_symbol, unit_registry)))
-        return Mul.fromiter([unify(arg, unit_registry, to_symbol) for arg in expr.args])
-
+        if verbose:
+            print('Multiplying expression: {} -> {}'.format(
+                expr, resolve_unit(to_symbol, unit_registry)))
+        return Mul.fromiter([unify(arg, unit_registry, to_symbol, verbose=verbose) for arg in expr.args])
 
     expr_unit = resolve_unit(expr, unit_registry)
 
     if is_undefined(expr):
         if to_symbol is not None:
             for arg in set(to_symbol.args).intersection(expr.args):
-                print('replacing {} in {}'.format(arg, expr))
+                if verbose:
+                    print('replacing {} in {}'.format(arg, expr))
                 expr_units = symbol_units_map(expr, unit_registry)
                 to_units = symbol_units_map(to_symbol, unit_registry)
+                if verbose:
+                    print('expr_units', expr_units)
+                    print('to_units', to_units)
                 expr = replace_args(expr, expr_units, to_units)
-            print('converted expression:', expr)
+            if verbose:
+                print('converted expression:', expr)
 
     if (to_symbol is not None) & (expr_unit is not None):
         to_unit = resolve_unit(to_symbol, unit_registry)
-        print('{} [{}] -> to_symbol: {}[{}]'.format(
-            expr, expr_unit, to_symbol, to_unit))
-        expr = convert_to(expr*to_unit, expr_unit)/expr_unit
+        if get_dimensions(expr_unit) == get_dimensions(to_unit):
+            if verbose:
+                print('{} [{}] -> to_symbol: {}[{}]'.format(
+                    expr, expr_unit, to_symbol, to_unit))
+            expr = convert_to(expr*to_unit, expr_unit)/expr_unit
+        else:
+            raise NameError('cannot convert {} [{}] to {}[{}]'.format(expr, expr_unit, to_symbol, to_unit))
 
     return expr
 
 def get_abbrev(unit):
-    "get the abbreviation for a mixed unit"
+    """get the abbreviation for a mixed unit"""
     if hasattr(unit, 'abbrev'):
         return unit.abbrev
     if isinstance(unit, Mul):
@@ -645,6 +662,19 @@ def get_abbrev(unit):
     if isinstance(unit, Pow):
         base, exp = unit.as_base_exp()
         return Pow(get_abbrev(base), exp)
+    return unit
+
+
+def get_dimensions(unit):
+    """get the set of basis units"""
+    if hasattr(unit, 'dimension'):
+        return unit.dimension
+    if isinstance(unit, Mul):
+        return Mul.fromiter([get_dimensions(arg) for arg in unit.args])
+    if isinstance(unit, Pow):
+        base, exp = unit.as_base_exp()
+        return Pow(get_dimensions(base), exp)
+    return unit
 
 
 @kamodofy

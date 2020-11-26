@@ -677,6 +677,10 @@ class Kamodo(collections.OrderedDict):
                     symbol = lhs_expr
                 lhs_str = str(symbol)
                 sym_name = sym_name.replace(str(lhs_expr), lhs_str)
+            if self.verbose:
+                print('unit registry contents:')
+                for k, v in self.unit_registry.items():
+                    print('\t', k, type(k), v)
             if '[' in sym_name:
                 if self.verbose:
                     print('updating unit registry with {} -> {}'.format(sym_name, rhs_expr))
@@ -689,9 +693,6 @@ class Kamodo(collections.OrderedDict):
                 else:
                     if self.verbose:
                         print(sym_name, symbol, 'has no units')
-                        print('unit registry contents:')
-                        for k, v in self.unit_registry.items():
-                            print('\t', k, type(k), v)
 
                     expr_unit = get_expr_unit(rhs_expr, self.unit_registry)
 
@@ -705,8 +706,13 @@ class Kamodo(collections.OrderedDict):
 
                 rhs = str(rhs_expr)
 
+
+
             if len(lhs_units) > 0:
-                expr = unify(Eq(parse_expr(sym_name), parse_expr(rhs)), self.unit_registry)
+                expr = unify(
+                    Eq(parse_expr(sym_name), parse_expr(rhs)),
+                    self.unit_registry,
+                    verbose=self.verbose)
                 rhs_expr = expr.rhs
 
             if self.verbose:
