@@ -1,3 +1,6 @@
+
+# 2020-11-26 11:25:57.649820: clock-in
+
 # 2020-11-25 18:57:00.223313: clock-out
 
 * got unit composition to pass tests
