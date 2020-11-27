@@ -1,3 +1,4 @@
+* fixed unit conversion flip
 
 # 2020-11-27 14:57:36.010904: clock-in
 

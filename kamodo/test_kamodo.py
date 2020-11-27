@@ -215,7 +215,7 @@ def test_unit_conversion():
     kamodo = Kamodo('$a(x)[a(m)=km/s] = x$',
                     '$b(y)[b(cm)=m/s] = y$', verbose=True)
     kamodo['c(x,y)[c(m,m)=m/s]'] = '$a + b$'
-    assert kamodo.c(1, 2) == .001 + 200
+    assert kamodo.c(1, 2) == 1000 + 200
 
 
 def test_get_unit():
@@ -421,8 +421,11 @@ def test_redefine_variable():
     kamodo['rho(a,b)'] = 'a*b'
 
 def test_unit_composition_registration():
-    server = Kamodo(**{'M': kamodofy(lambda r=3, theta=2, phi= 2: r*np.sin(theta)*np.sin(phi), units='kg'), 
-                       'V[m^3]': (lambda r, theta: r*np.cos(theta))}, verbose=True)
+    server = Kamodo(**{'M': kamodofy(lambda r=3: r, units='kg'), 
+                       'V[m^3]': (lambda r: r**3)}, verbose=True)
     user = Kamodo(mass=server.M, vol=server.V, 
-              **{'rho(r,theta,phi)[g/cm^3]':'mass/vol'}, verbose=True)
+              **{'rho(r)[g/cm^3]':'mass/vol'}, verbose=True)
+
+    result = (3/3**3)*(1000)*(1/10**6)
+    assert np.isclose(user.rho(3), result)
     

@@ -543,6 +543,9 @@ def resolve_unit(expr, unit_registry):
             unit = k_unit
             continue
 
+    if unit is None:
+        unit = expr.subs(unit_registry)
+
     if unit is not None:
         if hasattr(unit, 'dimension'):
             return unit
@@ -626,6 +629,9 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
 
     expr_unit = resolve_unit(expr, unit_registry)
 
+    if verbose:
+        print('expr unit {}'.format(expr_unit))
+
     if is_undefined(expr):
         if to_symbol is not None:
             for arg in set(to_symbol.args).intersection(expr.args):
@@ -634,8 +640,8 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                 expr_units = symbol_units_map(expr, unit_registry)
                 to_units = symbol_units_map(to_symbol, unit_registry)
                 if verbose:
-                    print('expr_units', expr_units)
-                    print('to_units', to_units)
+                    print('expression arg units', expr_units)
+                    print('to arg units', to_units)
                 expr = replace_args(expr, expr_units, to_units)
             if verbose:
                 print('converted expression:', expr)
@@ -646,7 +652,7 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
             if verbose:
                 print('{} [{}] -> to_symbol: {}[{}]'.format(
                     expr, expr_unit, to_symbol, to_unit))
-            expr = convert_to(expr*to_unit, expr_unit)/expr_unit
+            expr = convert_to(expr*expr_unit, to_unit)/to_unit
         else:
             raise NameError('cannot convert {} [{}] to {}[{}]'.format(expr, expr_unit, to_symbol, to_unit))
 
