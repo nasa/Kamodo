@@ -419,3 +419,10 @@ def test_redefine_variable():
     kamodo = Kamodo(rho='x + y')
     kamodo['rho'] = 'a + b'
     kamodo['rho(a,b)'] = 'a*b'
+
+def test_unit_composition_registration():
+    server = Kamodo(**{'M': kamodofy(lambda r=3, theta=2, phi= 2: r*np.sin(theta)*np.sin(phi), units='kg'), 
+                       'V[m^3]': (lambda r, theta: r*np.cos(theta))}, verbose=True)
+    user = Kamodo(mass=server.M, vol=server.V, 
+              **{'rho(r,theta,phi)[g/cm^3]':'mass/vol'}, verbose=True)
+    

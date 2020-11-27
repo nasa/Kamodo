@@ -623,7 +623,6 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
         if verbose:
             print('Multiplying expression: {} -> {}'.format(
                 expr, resolve_unit(to_symbol, unit_registry)))
-        return Mul.fromiter([unify(arg, unit_registry, to_symbol, verbose=verbose) for arg in expr.args])
 
     expr_unit = resolve_unit(expr, unit_registry)
 

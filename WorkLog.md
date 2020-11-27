@@ -1,3 +1,4 @@
+* fixed composing with multiplied functions
 
 # 2020-11-27 14:02:45.405415: clock-in
 
