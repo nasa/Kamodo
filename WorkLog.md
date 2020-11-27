@@ -1,3 +1,6 @@
+
+# 2020-11-27 14:02:45.405415: clock-in
+
 # 2020-11-26 14:57:57.717229: clock-out
 
 * all kamodo tests passing
