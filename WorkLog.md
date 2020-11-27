@@ -1,3 +1,6 @@
+
+# 2020-11-27 14:57:36.010904: clock-in
+
 # 2020-11-27 14:21:05.568354: clock-out
 
 * fixed composing with multiplied functions
