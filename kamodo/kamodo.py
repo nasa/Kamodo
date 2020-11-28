@@ -57,6 +57,8 @@ from sympy import Wild
 from types import GeneratorType
 import inspect
 
+import re
+
 
 def get_unit_quantities():
     """returns a map of sympy units {symbol: quantity} """
@@ -140,22 +142,89 @@ def args_from_dict(expr, local_dict):
     else:
         return expr.args
 
+def get_str_units(bracketed_str):
+    """finds all bracketed units in a string
 
-def extract_units(lhs):
-    """separate the units from the left-hand-side of an expression assuming bracket notation
-    mass[gm] = ...
-
-    mass, 'gm'
+    supports functions like
+        bracketed_str = 'f(x[m],y[cm**3],z[km^.5],q[(cm*g)^-3])[km/s]'
+        get_str_units(bracketed_str)
+        >>> ['m', 'cm**3', 'km^.5', '(cm*g)^-3', 'km/s']
     """
+    return re.findall(r"\[([A-Za-z0-9_/*^\\(\\)-\.]+)\]", bracketed_str)
 
-    if '[' in lhs:
-        lhs, units = lhs.split('[')
-        units = units.split(']')[0]
-        if '=' in units:
-            units = units.split('=')[-1]
-        return lhs, units
+def str_has_arguments(func_str): 
+    bracket = func_str.find('[')
+    paren = func_str.find('(')
+    if bracket > 0:
+        if paren > 0:
+            # f(x[(cm)^2]) has arguments since paren comes first
+            # f[(cm)^2] has no arguments since bracket comes first
+            return bracket > paren
+        return False # no paren hence no arguments
+    # no bracket
+    if paren > 0:
+        # has argument
+        return True
+    return False
+
+
+def extract_units(func_str):
+    """separate the units from the left-hand-side of an expression assuming bracket notation
+
+    We could return symbol and dictionary mapping symbols to units
+
+    needs to handle the following cases:
+
+        args and output have units
+            extract_units('f(x[cm],y[km])[kg]')
+            ('f(x,y)', {'x': 'cm', 'y': 'km', 'f(x,y)': 'kg'})
+
+        args have parenthesis in units and output has no units
+            extract_units('f(x[(cm )^2])')
+            ('f(x)', {'x': '(cm)^2', 'f(x)': ''})
+
+        output has parenthesis in units
+            extract_units('f[(cm)^2]')
+            ('f', {'f': '(cm)^2'})
+
+        no args named and no units named
+            f -> f, -> {f:''}
+
+    """
+    # remove any spaces
+    func_str = func_str.replace(' ', '')
+    all_units = get_str_units(func_str)
+
+    unit_dict = {}
+    if str_has_arguments(func_str):
+        # f(x[cm],y[km])[kg] -> x[cm],y[km]
+        lhs_args = re.findall(r"\((.+)\)", func_str)[0]
+
+        # 'x[cm],y[km]' -> ['cm', 'km']
+        arg_units = get_str_units(lhs_args)
+        args = lhs_args.split(',')
+
+        for arg, unit in zip(args, arg_units):
+            unit_dict[arg.replace('[{}]'.format(unit), '')] = unit
+
+        if len(all_units) == len(arg_units):
+            output_units = ''
+        else:
+            output_units = all_units[-1]
     else:
-        return lhs, ''
+        if len(all_units) > 0:
+            output_units = all_units[0]
+        else:
+            output_units = ''
+
+
+    # f(x[cm],y[km])[kg]
+    lhs = func_str
+    for unit in all_units:
+        lhs = lhs.replace('[{}]'.format(unit), '')
+
+    unit_dict[lhs] = output_units
+    return lhs, unit_dict
 
 
 def expr_to_symbol(expr, args):
@@ -172,7 +241,7 @@ def parse_lhs(lhs, local_dict):
 
     returns: symbol, arguments, units, parsed_expr
     """
-    lhs, units = extract_units(lhs)
+    lhs, unit_dict = extract_units(lhs)
     parsed = parse_expr(lhs)
     try:
         args = args_from_dict(parsed, local_dict)
@@ -180,7 +249,7 @@ def parse_lhs(lhs, local_dict):
         print(local_dict)
         raise
     symbol = expr_to_symbol(parsed, args)
-    return symbol, args, units, parsed
+    return symbol, args, unit_dict, parsed
 
 
 def parse_rhs(rhs, is_latex, local_dict=None):
@@ -369,7 +438,7 @@ class Kamodo(collections.OrderedDict):
                     # function(arg)[function(arg_unit) = unit] = expr
                     if self.verbose:
                         print('updating unit registry')
-                    lhs, rhs = self.update_unit_registry(func.strip('$'))
+                    lhs = self.update_unit_registry(func.strip('$'))
                     self[lhs] = rhs
 
         for sym_name, expr in list(kwargs.items()):
@@ -404,7 +473,14 @@ class Kamodo(collections.OrderedDict):
             if type(sym_name) is str:
                 sym_name = sym_name.strip('$').strip()
                 if sym_name not in self.symbol_registry:
-                    symbol, args, units, lhs_expr = parse_lhs(sym_name, self.symbol_registry)
+                    symbol, args, unit_dict, lhs_expr = parse_lhs(sym_name, self.symbol_registry)
+                    symbol_str = str(symbol).replace(' ', '')
+                    if symbol_str in unit_dict:
+                        units = unit_dict[symbol_str]
+                    elif str(type(symbol)) in unit_dict:
+                        units = unit_dict[str(type(symbol))]
+                    else:
+                        raise NameError('{} not found in unit_dict {}'.format(symbol_str, unit_dict))
                     if self.verbose:
                         print('newly parsed symbol:', symbol, type(symbol))
                     if str(type(symbol)) in self.symbol_registry:
@@ -418,7 +494,14 @@ class Kamodo(collections.OrderedDict):
                     lhs_expr = symbol
                 else:
                     # cast the lhs into a string and parse it
-                    symbol, args, units, lhs_expr = parse_lhs(str(sym_name), self.symbol_registry)
+                    symbol, args, unit_dict, lhs_expr = parse_lhs(str(sym_name), self.symbol_registry)
+                    symbol_str = str(symbol).replace(' ', '')
+                    if symbol_str in unit_dict:
+                        units = unit_dict[symbol_str]
+                    elif str(type(symbol)) in unit_dict:
+                        units = unit_dict[str(type(symbol))]
+                    else:
+                        raise NameError('{} not found in unit_dict {}'.format(symbol_str, unit_dict))
         else:
             symbol = sym_name
             if self.verbose:
@@ -494,24 +577,37 @@ class Kamodo(collections.OrderedDict):
             if self.verbose:
                 print('lambda {} = {} lambdified with numpy and composition:'.format(
                     symbol.args, rhs_expr))
-                for k,v in composition.items():
-                    print('\t',k,v)
+                for k, v in composition.items():
+                    print('\t', k, v)
         return func
 
     def update_unit_registry(self, func):
         """Inserts unit functions into registry"""
-        func_symbol = func.split('[')[0]
-        unit = func.split('[')[1].split(']')[0]
-        rhs = func.split('=')[-1]
-        if '=' in unit:
-            unit_lhs, unit_rhs = unit.split('=')
-            unit_lhs = parse_expr(unit_lhs).subs(unit_subs)
-            self.unit_registry[parse_expr(func_symbol)] = unit_lhs
-            unit_rhs = get_unit(unit_rhs)
-            self.unit_registry[unit_lhs] = unit_rhs
-        else:
-            self.unit_registry[parse_expr(func_symbol)] = get_unit(unit)
-        return func_symbol, rhs
+        lhs, unit_dict = extract_units(func)
+        units = {}
+        for key, value in unit_dict.items():
+            if key != lhs:
+                units[parse_expr(key)] = get_unit(value)
+
+        lhs_expr = parse_expr(lhs)
+        func_units = lhs_expr.subs(units)
+        self.unit_registry[lhs_expr] = func_units
+        output_units = unit_dict[lhs]
+        self.unit_registry[func_units] = get_unit(output_units)
+        return lhs
+
+        # func_symbol = func.split('[')[0]
+        # unit = func.split('[')[1].split(']')[0]
+        # rhs = func.split('=')[-1]
+        # if '=' in unit:
+        #     unit_lhs, unit_rhs = unit.split('=')
+        #     unit_lhs = parse_expr(unit_lhs).subs(unit_subs)
+        #     self.unit_registry[parse_expr(func_symbol)] = unit_lhs
+        #     unit_rhs = get_unit(unit_rhs)
+        #     self.unit_registry[unit_lhs] = unit_rhs
+        # else:
+        #     self.unit_registry[parse_expr(func_symbol)] = get_unit(unit)
+        # return func_symbol, rhs
 
     def register_signature(self, symbol, units, lhs_expr, rhs_expr):
         if isinstance(units, str):
@@ -684,7 +780,10 @@ class Kamodo(collections.OrderedDict):
             if '[' in sym_name:
                 if self.verbose:
                     print('updating unit registry with {} -> {}'.format(sym_name, rhs_expr))
-                sym_name, rhs = self.update_unit_registry("{}={}".format(sym_name, rhs_expr))
+                sym_name = self.update_unit_registry(sym_name)
+                rhs = rhs_expr
+                if self.verbose:
+                    print('unit registry update returned', sym_name)
             else:
                 if symbol in self.unit_registry:
                     units = resolve_unit(symbol, self.unit_registry)
@@ -709,8 +808,11 @@ class Kamodo(collections.OrderedDict):
 
 
             if len(lhs_units) > 0:
+                if self.verbose:
+                    print('about to unify lhs_units {} {} with {}'.format(lhs_units, type(lhs_units), rhs))
+
                 expr = unify(
-                    Eq(parse_expr(sym_name), parse_expr(rhs)),
+                    Eq(parse_expr(sym_name), rhs),
                     self.unit_registry,
                     verbose=self.verbose)
                 rhs_expr = expr.rhs

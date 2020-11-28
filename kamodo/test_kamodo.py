@@ -212,9 +212,9 @@ def test_validate_units():
 
 
 def test_unit_conversion():
-    kamodo = Kamodo('$a(x)[a(m)=km/s] = x$',
-                    '$b(y)[b(cm)=m/s] = y$', verbose=True)
-    kamodo['c(x,y)[c(m,m)=m/s]'] = '$a + b$'
+    kamodo = Kamodo('$a(x[m])[km/s] = x$',
+                    '$b(y[cm])[m/s] = y$', verbose=True)
+    kamodo['c(x[m],y[m])[m/s]'] = '$a + b$'
     assert kamodo.c(1, 2) == 1000 + 200
 
 
