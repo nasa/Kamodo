@@ -1,3 +1,6 @@
+
+# 2020-11-28 11:09:32.470142: clock-in
+
 # 2020-11-27 15:41:15.004368: clock-out
 
 * fixed unit conversion flip
