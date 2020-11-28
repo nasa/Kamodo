@@ -1,4 +1,11 @@
+* clean up
 * changing signature of unit composition
+
+using a more intuitive signature
+
+```python
+kamodo['f(x[km],y[cm])[kg]'] = ...
+```
 
 # 2020-11-28 11:09:32.470142: clock-in
 

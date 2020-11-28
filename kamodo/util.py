@@ -622,10 +622,10 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                 expr, resolve_unit(to_symbol, unit_registry)))
         return Add.fromiter([unify(arg, unit_registry, to_symbol, verbose=verbose) for arg in expr.args])
 
-    if isinstance(expr, Mul):
-        if verbose:
-            print('Multiplying expression: {} -> {}'.format(
-                expr, resolve_unit(to_symbol, unit_registry)))
+    # if isinstance(expr, Mul):
+    #     if verbose:
+    #         print('Multiplying expression: {} -> {}'.format(
+    #             expr, resolve_unit(to_symbol, unit_registry)))
 
     expr_unit = resolve_unit(expr, unit_registry)
 
