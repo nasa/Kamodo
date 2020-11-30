@@ -1,3 +1,5 @@
+# 2020-11-30 12:10:03.081932: clock-out
+
 * finding bugs in unit composition
 
 # 2020-11-30 10:56:13.021112: clock-in
