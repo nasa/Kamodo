@@ -86,6 +86,7 @@ def substr_replace(name, name_maps):
 # This should be in yaml
 def beautify_latex(s):
     return substr_replace(s, [
+        ('**', '^'),
         ('plus', '+'),
         ('minus', '-'),
         ('comma', ','),
@@ -545,6 +546,9 @@ def resolve_unit(expr, unit_registry):
 
     if unit is None:
         unit = expr.subs(unit_registry)
+
+    if len(unit.free_symbols) > 0:
+        return None
 
     if unit is not None:
         if hasattr(unit, 'dimension'):

@@ -464,6 +464,12 @@ class Kamodo(collections.OrderedDict):
         if self.verbose:
             print('removing {} from signatures'.format(symbol))
         self.signatures.pop(str(symbol))
+        if self.verbose:
+            print('removing {} from unit_registry')
+        if sym_name in self.unit_registry:
+            func_unit = self.unit_registry.pop(sym_name) # rho(x): rho(cm)
+            if func_unit in self.unit_registry:
+                self.unit_registry.pop(func_unit) # rho(cm): kg/m^3
 
     def parse_key(self, sym_name):
         args = tuple()
@@ -847,12 +853,23 @@ class Kamodo(collections.OrderedDict):
 
             # composition = self.get_composition(lhs_expr, rhs_expr)
             composition = {str(k_): self[k_] for k_ in self}
-            func = self.vectorize_function(symbol, rhs_expr, composition)
+            arg_units = {}
+            if symbol in self.unit_registry:
+                unit_args = self.unit_registry[symbol]
+                if unit_args is not None:
+                    if len(unit_args.args) == len(symbol.args):
+                        for arg, unit in zip(symbol.args, unit_args.args):
+                            arg_units[str(arg)] = get_abbrev(unit)
+            func = kamodofy(
+                self.vectorize_function(symbol, rhs_expr, composition),
+                units=units,
+                arg_units=arg_units,
+                )
             self.register_signature(symbol, units, lhs_expr, rhs_expr)
             super(Kamodo, self).__setitem__(symbol, func)
             super(Kamodo, self).__setitem__(type(symbol), self[symbol])
             self.register_symbol(symbol)
-            self[symbol].meta = dict(units=units)
+            # self[symbol].meta = dict(units=units)
 
 
     def __getitem__(self, key):
@@ -893,8 +910,8 @@ class Kamodo(collections.OrderedDict):
         """Generate list of LaTeX-formated formulas"""
         if self.verbose:
             print('signatures')
-            for k,v in self.signatures.items():
-                print(k,v)
+            for k, v in self.signatures.items():
+                print(k, v)
         if keys is None:
             keys = list(self.signatures.keys())
         repr_latex = ""

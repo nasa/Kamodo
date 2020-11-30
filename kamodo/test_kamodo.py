@@ -421,11 +421,16 @@ def test_redefine_variable():
     kamodo['rho(a,b)'] = 'a*b'
 
 def test_unit_composition_registration():
-    server = Kamodo(**{'M': kamodofy(lambda r=3: r, units='kg'), 
+    server = Kamodo(**{'M': kamodofy(lambda r=3: r, units='kg'),
                        'V[m^3]': (lambda r: r**3)}, verbose=True)
-    user = Kamodo(mass=server.M, vol=server.V, 
+    user = Kamodo(mass=server.M, vol=server.V,
               **{'rho(r)[g/cm^3]':'mass/vol'}, verbose=True)
 
     result = (3/3**3)*(1000)*(1/10**6)
     assert np.isclose(user.rho(3), result)
-    
+
+
+def test_unit_expression_registration():
+    kamodo = Kamodo(verbose=True)
+
+    kamodo['f(x[cm])[cm**2]'] = 'x**2'
