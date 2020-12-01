@@ -11,6 +11,7 @@ import pandas as pd
 from kamodo import Kamodo, get_unit, kamodofy, validate_units, Eq
 import functools
 from sympy import lambdify, sympify
+from kamodo import get_abbrev
 
 
 def test_Kamodo_expr():
@@ -432,5 +433,14 @@ def test_unit_composition_registration():
 
 def test_unit_expression_registration():
     kamodo = Kamodo(verbose=True)
-
     kamodo['f(x[cm])[cm**2]'] = 'x**2'
+
+
+def test_multi_unit_composition():
+    kamodo = Kamodo('a(x[s])[km] = x', verbose=True)
+    kamodo['b(x[cm])[g]'] = 'x'
+    kamodo['c'] = 'b(a)'
+    print(kamodo.c.meta)
+    assert kamodo.c.meta['units'] == 'g'
+    assert kamodo.c.meta['arg_units']['x'] == get_abbrev(get_unit('s'))
+

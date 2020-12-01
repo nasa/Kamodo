@@ -561,7 +561,35 @@ def resolve_unit(expr, unit_registry):
 
 def get_expr_unit(expr, unit_registry):
     '''Get units from an expression'''
-    expr_unit = expr.subs(unit_registry, simultaneous=True)
+
+    for func in unit_registry:
+        if type(expr) == type(func):
+            # b(a) = b(x)
+            # print('found matching {}:'.format(func))
+            func_units = resolve_unit(func, unit_registry)
+            arg_units = get_arg_units(func, unit_registry)
+            # print('  matching func units:', func_units)
+            # print('  matching arg units:', arg_units)
+            # print('  expression args:', expr.args)
+            # print('  expression arg units:',
+            #       [resolve_unit(arg, unit_registry) for arg in expr.args])
+            assert len(arg_units) == len(expr.args)
+            arg_swap = dict()
+            for func_arg, expr_arg in zip(func.args, expr.args):
+                # print('  from {}:{} to {}:{}'.format(
+                #     func_arg, arg_units[func_arg],
+                #     expr_arg, convert_to(resolve_unit(expr_arg, unit_registry),
+                #                           arg_units[func_arg])))
+                arg_swap[func_arg] = expr_arg*convert_to(
+                    resolve_unit(expr_arg, unit_registry),
+                    arg_units[func_arg])/arg_units[func_arg]
+            result = func.subs(arg_swap)
+            unit_registry[result] = func_units
+            return result
+        else:
+            print('{} not a match for {}'.format(func, expr))
+
+    expr_unit = expr.subs(unit_registry, simultaneous=False)
 
     if isinstance(expr_unit, Add):
         # use the first term
@@ -580,7 +608,7 @@ def is_undefined(expr):
     return type(type(expr)) is UndefinedFunction
 
 
-def symbol_units_map(expr, unit_registry):
+def get_arg_units(expr, unit_registry):
     """for each argument, retrieve the corresponding units from registered function"""
     arg_units = dict()
     if hasattr(expr, 'args') & (expr in unit_registry):
@@ -637,12 +665,19 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
         print('expr unit {}'.format(expr_unit))
 
     if is_undefined(expr):
+        if verbose:
+            print('undefined expression: {}'.format(expr))
         if to_symbol is not None:
-            for arg in set(to_symbol.args).intersection(expr.args):
+            if verbose:
+                print('to_symbol args: {}'.format(to_symbol.args))
+                print('to_symbol free symbols: {}'.format(to_symbol.free_symbols))
+                print('expr args: {}'.format(expr.args))
+                print('expr free symbols: {}'.format(expr.free_symbols))
+            for arg in set(to_symbol.free_symbols).intersection(expr.free_symbols):
                 if verbose:
                     print('replacing {} in {}'.format(arg, expr))
-                expr_units = symbol_units_map(expr, unit_registry)
-                to_units = symbol_units_map(to_symbol, unit_registry)
+                expr_units = get_arg_units(expr, unit_registry)
+                to_units = get_arg_units(to_symbol, unit_registry)
                 if verbose:
                     print('expression arg units', expr_units)
                     print('to arg units', to_units)
