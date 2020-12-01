@@ -801,7 +801,7 @@ class Kamodo(collections.OrderedDict):
                               symbol,
                               'had no units. Getting units from {}'.format(rhs_expr))
 
-                    expr_unit = get_expr_unit(rhs_expr, self.unit_registry)
+                    expr_unit = get_expr_unit(rhs_expr, self.unit_registry, self.verbose)
 
                     if self.verbose:
                         print('registering {} with {}'.format(symbol, expr_unit))
@@ -810,9 +810,14 @@ class Kamodo(collections.OrderedDict):
                         self.unit_registry[symbol] = expr_unit
 
                     if isinstance(expr_unit, UndefinedFunction):
-                        self.unit_registry[expr_unit] = get_expr_unit(expr_unit, self.unit_registry)
+                        self.unit_registry[expr_unit] = get_expr_unit(
+                            expr_unit,
+                            self.unit_registry,
+                            self.verbose)
 
-                    lhs_units = str(get_abbrev(resolve_unit(expr_unit, self.unit_registry)))
+                    if expr_unit is not None:
+                        lhs_units = str(get_abbrev(resolve_unit(expr_unit, self.unit_registry, self.verbose)))
+
                     if self.verbose:
                         print('registered lhs_units', lhs_units)
 
@@ -829,6 +834,7 @@ class Kamodo(collections.OrderedDict):
                 expr = unify(
                     Eq(parse_expr(sym_name), rhs),
                     self.unit_registry,
+                    # to_symbol = symbol,
                     verbose=self.verbose)
                 rhs_expr = expr.rhs
 
