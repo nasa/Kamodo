@@ -1,3 +1,6 @@
+
+# 2020-12-01 12:37:44.119942: clock-in
+
 # 2020-11-30 19:05:54.863344: clock-out
 
 * trying to resolve unit composition bugs
