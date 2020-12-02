@@ -1,3 +1,6 @@
+
+# 2020-12-02 10:52:59.764421: clock-in
+
 # 2020-12-01 17:55:11.661674: clock-out
 
 * resolving argument units
