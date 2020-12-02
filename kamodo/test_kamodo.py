@@ -12,7 +12,7 @@ from kamodo import Kamodo, get_unit, kamodofy, validate_units, Eq
 import functools
 from sympy import lambdify, sympify
 from kamodo import get_abbrev
-
+from .util import get_arg_units
 
 def test_Kamodo_expr():
     a, b, c, x, y, z = symbols('a b c x y z')
@@ -442,5 +442,35 @@ def test_multi_unit_composition():
     kamodo['c'] = 'b(a)'
     print(kamodo.c.meta)
     assert kamodo.c.meta['units'] == 'g'
-    assert kamodo.c.meta['arg_units']['x'] == get_abbrev(get_unit('s'))
+    assert kamodo.c.meta['arg_units']['x'] == str(get_abbrev(get_unit('s')))
 
+def test_unit_composition_conversion():
+    kamodo = Kamodo('a(x[kg])[m] = x', verbose=True)
+    kamodo['b(x[cm])[g]'] = 'x'
+    kamodo['c'] = 'b(a)'
+
+    assert kamodo.c.meta['units'] == 'g'
+    assert kamodo.c.meta['arg_units']['x'] == 'kg'
+    assert kamodo.c(3) == kamodo.b(100*kamodo.a(3))
+
+
+def test_get_arg_units():
+
+    def assign_unit(symbol, **units):
+        if isinstance(symbol, str):
+            symbol = sympify(symbol)
+        return symbol.subs(units)
+
+    f_units = assign_unit('f(x,y)', x=get_unit('s'), y=get_unit('hour'))
+    g_units = assign_unit('g(a,b,c)', a=get_unit('km'), b=get_unit('cm'), c=get_unit('m'))
+    unit_registry = {
+        sympify('f(x,y)'): f_units,
+        f_units: get_unit('kg/m^3'),
+        sympify('g(a,b,c)'): g_units,
+        g_units: get_unit('m^2')
+    }
+    x, c = symbols('x c')
+    result = get_arg_units(sympify('h(g(f(x,y)))'), unit_registry)
+    assert result[x] == get_unit('s')
+    result = get_arg_units(sympify('f(x,y)*g(a,b,c)'), unit_registry)
+    assert result[c] == get_unit('m')

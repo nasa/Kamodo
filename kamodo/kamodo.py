@@ -44,6 +44,7 @@ from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
 from .util import convert_to
 from .util import unify, resolve_unit, get_abbrev, get_expr_unit
+from .util import is_function, get_arg_units
 
 import sympy.physics.units as u
 
@@ -58,6 +59,7 @@ from types import GeneratorType
 import inspect
 
 import re
+
 
 
 def get_unit_quantities():
@@ -802,14 +804,16 @@ class Kamodo(collections.OrderedDict):
                               'had no units. Getting units from {}'.format(rhs_expr))
 
                     expr_unit = get_expr_unit(rhs_expr, self.unit_registry, self.verbose)
+                    arg_units = get_arg_units(rhs_expr, self.unit_registry)
 
                     if self.verbose:
-                        print('registering {} with {}'.format(symbol, expr_unit))
+                        print('registering {} with {} {}'.format(symbol, expr_unit, arg_units))
 
-                    if symbol not in self.unit_registry:
-                        self.unit_registry[symbol] = expr_unit
+                    if (symbol not in self.unit_registry) and (expr_unit is not None):
+                        self.unit_registry[symbol] = symbol.subs(arg_units)
+                        self.unit_registry[symbol.subs(arg_units)] = expr_unit
 
-                    if isinstance(expr_unit, UndefinedFunction):
+                    if is_function(expr_unit):
                         self.unit_registry[expr_unit] = get_expr_unit(
                             expr_unit,
                             self.unit_registry,
@@ -878,7 +882,7 @@ class Kamodo(collections.OrderedDict):
                 if unit_args is not None:
                     if len(unit_args.args) == len(symbol.args):
                         for arg, unit in zip(symbol.args, unit_args.args):
-                            arg_units[str(arg)] = get_abbrev(unit)
+                            arg_units[str(arg)] = str(get_abbrev(unit))
             func = kamodofy(
                 self.vectorize_function(symbol, rhs_expr, composition),
                 units=units,
@@ -1173,7 +1177,7 @@ def from_kamodo(kobj, **funcs):
     """copies a kamodo object, inserting additional functions"""
     knew = Kamodo()
     for var_symbol, func in kobj.items():
-        if not isinstance(var_symbol, UndefinedFunction):
+        if not is_function(var_symbol):
             knew[var_symbol] = func
     for var_symbol, func in funcs.items():
         knew[var_symbol] = func

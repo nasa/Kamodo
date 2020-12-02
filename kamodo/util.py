@@ -503,7 +503,8 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     if hasattr(expr, 'rhs'):
         return Eq(convert_to(expr.lhs, target_units, unit_system),
                  convert_to(expr.rhs, target_units, unit_system))
-    if type(type(expr)) is UndefinedFunction:
+    # if type(type(expr)) is UndefinedFunction:
+    if is_function(expr):
         print('undefined input expr:{}'.format(expr))
         return expr
 
@@ -551,7 +552,8 @@ def resolve_unit(expr, unit_registry, verbose=False):
     if unit in unit_registry:
         return unit_registry[unit]
 
-    if isinstance(unit, UndefinedFunction):
+    # if isinstance(unit, UndefinedFunction):
+    if is_function(unit):
         # {f(x):g(x)}
         result = unit_registry.get(unit)
         if verbose:
@@ -559,7 +561,7 @@ def resolve_unit(expr, unit_registry, verbose=False):
         return result
     else:
         if verbose:
-            print('{} is not an UndefinedFunction'.format(unit))
+            print('{} is not a Function'.format(unit))
 
     if unit is None:
         unit = expr.subs(unit_registry)
@@ -584,33 +586,35 @@ def get_expr_unit(expr, unit_registry, verbose=False):
             # b(a) = b(x)
             if verbose:
                 print('get_expr_unit: found matching {}:'.format(func))
-                print('get_expr_unit: func free symbols {}'.format(func.free_symbols))
-                print('get_expr_unit: expr free_symbols: {}'.format(expr.free_symbols))
+                # print('get_expr_unit: func free symbols {}'.format(func.free_symbols))
+                # print('get_expr_unit: expr free_symbols: {}'.format(expr.free_symbols))
             func_units = resolve_unit(func, unit_registry, verbose)
-            arg_units = get_arg_units(func, unit_registry)
-            if verbose:
-                print('get_expr_unit:   matching func units:', func_units)
-                print('get_expr_unit:   matching arg units:', arg_units)
-                print('get_expr_unit:   expression args:', expr.args)
-                print('get_expr_unit:   expression arg units:',
-                      [resolve_unit(arg, unit_registry, verbose) for arg in expr.args])
-            assert len(arg_units) == len(expr.args)
-            arg_swap = dict()
-            for func_arg, expr_arg in zip(func.args, expr.args):
-                if verbose:
-                    print('get_expr_unit:   from {}:{} to {}:{}'.format(
-                        func_arg,
-                        arg_units[func_arg],
-                        expr_arg,
-                        convert_to(
-                            resolve_unit(expr_arg, unit_registry, verbose),
-                            arg_units[func_arg])))
-                arg_swap[func_arg] = expr_arg*convert_to(
-                    resolve_unit(expr_arg, unit_registry, verbose),
-                    arg_units[func_arg])/arg_units[func_arg]
-            result = func.subs(arg_swap)
-            unit_registry[result] = func_units
-            return result
+            return func_units
+            # all below ignored
+            # arg_units = get_arg_units(func, unit_registry)
+            # if verbose:
+            #     print('get_expr_unit:   matching func units:', func_units)
+            #     # print('get_expr_unit:   matching arg units:', arg_units)
+            #     # print('get_expr_unit:   expression args:', expr.args)
+            #     # print('get_expr_unit:   expression arg units:',
+            #           # [resolve_unit(arg, unit_registry, verbose) for arg in expr.args])
+            # assert len(arg_units) == len(expr.args)
+            # arg_swap = dict()
+            # for func_arg, expr_arg in zip(func.args, expr.args):
+            #     if verbose:
+            #         print('get_expr_unit:   from {}:{} to {}:{}'.format(
+            #             func_arg,
+            #             arg_units[func_arg],
+            #             expr_arg,
+            #             convert_to(
+            #                 resolve_unit(expr_arg, unit_registry, verbose),
+            #                 arg_units[func_arg])))
+            #     arg_swap[func_arg] = expr_arg*convert_to(
+            #         resolve_unit(expr_arg, unit_registry, verbose),
+            #         arg_units[func_arg])/arg_units[func_arg]
+            # result = func.subs(arg_swap)
+            # unit_registry[result] = func_units
+            # return result
         else:
             if verbose:
                 print('get_expr_unit: {} not a match for {}'.format(func, expr))
@@ -630,22 +634,35 @@ def get_expr_unit(expr, unit_registry, verbose=False):
 
     return result
 
-def is_undefined(expr):
-    return type(type(expr)) is UndefinedFunction
+
+# def get_arg_units(expr, unit_registry):
+#     """for each argument, retrieve the corresponding units from registered function"""
+#     arg_units = dict()
+#     if hasattr(expr, 'args') & (expr in unit_registry):
+#         # f(x,y,z) in unit_registry
+#         unit_signature = unit_registry[expr]
+#         # f(cm,cm,cm)
+#         if unit_signature is not None:
+#             if is_function(unit_signature):
+#             # if is_undefined(unit_signature):
+#                 for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
+#                     arg_units[arg_] = arg_unit
+#     return arg_units
 
 
-def get_arg_units(expr, unit_registry):
-    """for each argument, retrieve the corresponding units from registered function"""
-    arg_units = dict()
-    if hasattr(expr, 'args') & (expr in unit_registry):
-        # f(x,y,z) in unit_registry
-        unit_signature = unit_registry[expr]
-        # f(cm,cm,cm)
-        if unit_signature is not None:
-            if is_undefined(unit_signature):
-                for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
-                    arg_units[arg_] = arg_unit
-    return arg_units
+def get_arg_units(expr, unit_registry, arg_units=None):
+    """retrieves units of expression arguments
+    """
+    if arg_units is None:
+        arg_units = dict()
+    if expr in unit_registry:
+        for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
+            arg_units[arg_] = arg_unit
+        return arg_units
+    else:
+        for arg in expr.args:
+            arg_units = get_arg_units(arg, unit_registry, arg_units)
+        return arg_units
 
 def replace_args(expr, from_map, to_map):
     func_symbol = type(expr)
@@ -672,19 +689,19 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
             unit_registry,
             to_symbol=expr.lhs,
             verbose=verbose))
-        # everything below skipped
-        if verbose:
-            print('unify: {} has rhs'.format(expr))
-        lhs_unit = resolve_unit(expr.lhs, unit_registry, verbose)
-        if lhs_unit is not None:
-            if verbose:
-                print('unify: found lhs_unit:', lhs_unit)
-            return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs, verbose=verbose))
-        else:
-            if verbose:
-                print('unify: could not find lhs_unit from {}'.format(expr.lhs))
-                print('unify: ', unit_registry.keys())
-        return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs, verbose=verbose))
+        # # everything below skipped
+        # if verbose:
+        #     print('unify: {} has rhs'.format(expr))
+        # lhs_unit = resolve_unit(expr.lhs, unit_registry, verbose)
+        # if lhs_unit is not None:
+        #     if verbose:
+        #         print('unify: found lhs_unit:', lhs_unit)
+        #     return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs, verbose=verbose))
+        # else:
+        #     if verbose:
+        #         print('unify: could not find lhs_unit from {}'.format(expr.lhs))
+        #         print('unify: ', unit_registry.keys())
+        # return Eq(expr.lhs, unify(expr.rhs, unit_registry, expr.lhs, verbose=verbose))
 
     if isinstance(expr, Add):
         if verbose:
@@ -702,15 +719,20 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
     if verbose:
         print('unify: expr unit {}'.format(expr_unit))
 
-    if is_undefined(expr):
+    if is_function(expr):
         if verbose:
-            print('unify: undefined expression: {}'.format(expr))
+            print('unify: function expression: {}'.format(expr))
         if to_symbol is not None:
             if verbose:
                 print('unify: to_symbol args: {}'.format(to_symbol.args))
                 print('unify: to_symbol free symbols: {}'.format(to_symbol.free_symbols))
                 print('unify: expr args: {}'.format(expr.args))
                 print('unify: expr free symbols: {}'.format(expr.free_symbols))
+
+            for arg in expr.args:
+                if arg in unit_registry:
+                    raise NotImplementedError('unify: need to replace {} in {}'.format(arg, expr))
+
             for arg in set(to_symbol.free_symbols).intersection(expr.free_symbols):
                 if verbose:
                     print('unify: replacing {} in {}'.format(arg, expr))
@@ -763,6 +785,19 @@ def get_dimensions(unit):
         base, exp = unit.as_base_exp()
         return Pow(get_dimensions(base), exp)
     return unit
+
+
+def is_function(expr):
+    """returns True if expr is a function
+
+    examples:
+        f(x): True
+        symbols('f', cls=UndefinedFunction): True
+        x: False
+    """
+    if isinstance(expr, UndefinedFunction):
+        return True
+    return isinstance(type(expr), UndefinedFunction)
 
 
 @kamodofy
@@ -1010,3 +1045,10 @@ def test_pad_nan():
     expected = np.array([1, 2, np.nan])
     comparison = ((solution == expected) | (numpy.isnan(solution) & numpy.isnan(expected)))
     assert comparison.all()
+
+def test_is_function():
+    assert is_function(sympify('f(g(x))'))
+    assert is_function(symbols('g', cls=UndefinedFunction))
+    assert not is_function(symbols('x'))
+
+
