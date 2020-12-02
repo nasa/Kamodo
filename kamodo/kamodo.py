@@ -806,6 +806,9 @@ class Kamodo(collections.OrderedDict):
                     expr_unit = get_expr_unit(rhs_expr, self.unit_registry, self.verbose)
                     arg_units = get_arg_units(rhs_expr, self.unit_registry)
 
+                    if expr_unit == Dimension(1):
+                        expr_unit = None
+
                     if self.verbose:
                         print('registering {} with {} {}'.format(symbol, expr_unit, arg_units))
 

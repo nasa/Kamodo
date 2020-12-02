@@ -665,7 +665,7 @@ def get_arg_units(expr, unit_registry, arg_units=None):
         return arg_units
 
 def replace_args(expr, from_map, to_map):
-    func_symbol = type(expr)
+    # func_symbol = type(expr)
     arg_map = dict()
     for arg in expr.args:
         if (arg in from_map) & (arg in to_map):
@@ -724,10 +724,27 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
             print('unify: function expression: {}'.format(expr))
         if to_symbol is not None:
             if verbose:
-                print('unify: to_symbol args: {}'.format(to_symbol.args))
+                print('\nunify: to_symbol args: {}'.format(to_symbol.args))
                 print('unify: to_symbol free symbols: {}'.format(to_symbol.free_symbols))
                 print('unify: expr args: {}'.format(expr.args))
                 print('unify: expr free symbols: {}'.format(expr.free_symbols))
+
+            for k, v in unit_registry.items():
+                if isinstance(expr, type(k)):
+                    if len(k.free_symbols) > 0:
+                        if verbose:
+                            print('unify: found matching {} -> {}'.format(expr, k))
+                        arg_units = get_arg_units(k, unit_registry)
+                        if verbose:
+                            print('unify: func units:', arg_units)
+                        expr_units = {}
+                        for arg, sym in zip(expr.args, k.free_symbols):
+                            to_unit = arg_units.get(sym)
+                            from_unit = get_expr_unit(arg, unit_registry)
+                            if (from_unit is not None) and (to_unit is not None):
+                                expr_units[arg] = convert_to(arg*from_unit, to_unit)/to_unit
+                        expr = expr.subs(expr_units)
+                        print(expr)
 
             for arg in expr.args:
                 if arg in unit_registry:
@@ -759,7 +776,8 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                 print('unify: registry:')
                 for k, v in unit_registry.items():
                     print('unify:\t{} -> {}'.format(k, v))
-            raise NameError('cannot convert {} [{}] to {}[{}]'.format(expr, expr_unit, to_symbol, to_unit))
+            raise NameError('cannot convert {} [{}] to {}[{}]'.format(
+                expr, expr_unit, to_symbol, to_unit))
 
     return expr
 
