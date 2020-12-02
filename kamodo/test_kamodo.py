@@ -122,7 +122,7 @@ def test_Kamodo_composition():
 
 def test_Kamodo_reassignment():
     a, b, c, x, y, z, r = symbols('a b c x y z r')
-    kamodo = Kamodo('f(x) = 3*x+5')
+    kamodo = Kamodo('f(x) = 3*x+5', verbose=True)
     kamodo['r(x,y)'] = x + y
     kamodo['r(x,y)'] = "3*x + y"
     assert kamodo.r(1, 1) != 2

@@ -1,3 +1,5 @@
+* fixed bugs in base units
+* passing tests
 
 # 2020-12-02 15:09:11.720943: clock-in
 

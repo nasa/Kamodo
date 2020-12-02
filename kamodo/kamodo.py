@@ -754,11 +754,6 @@ class Kamodo(collections.OrderedDict):
             self.register_function(input_expr, symbol, lhs_expr, lhs_units)
 
         else:
-            # try:
-            #     units, rhs_expr = self.check_consistency(input_expr, lhs_units)
-            #     if self.verbose:
-            #         print('after check_consistency, unit registry:', self.unit_registry)
-            # except:
             if self.verbose:
                 print(
                     "\n\nPARSING WITH UNIFY",
