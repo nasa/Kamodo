@@ -534,49 +534,49 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     expr_scale_factor = get_total_scale_factor(expr)
     return expr_scale_factor * Mul.fromiter((1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
 
-def resolve_unit(expr, unit_registry, verbose=False):
-    """get the registered unit for the expression
+# def resolve_unit(expr, unit_registry, verbose=False):
+#     """get the registered unit for the expression
 
-    unit_registry {f(x): f(cm), f(cm): kg/m^2}
-    """
-    unit = unit_registry.get(expr, None)
-    if verbose:
-        print('resolve_unit: {}'.format(unit))
-    for k, k_unit in unit_registry.items():
-        if str(expr) == str(k):
-            unit = k_unit
-            continue
-    if verbose:
-        print('resolve_unit: after registry {}'.format(unit))
+#     unit_registry {f(x): f(cm), f(cm): kg/m^2}
+#     """
+#     unit = unit_registry.get(expr, None)
+#     if verbose:
+#         print('resolve_unit: {}'.format(unit))
+#     for k, k_unit in unit_registry.items():
+#         if str(expr) == str(k):
+#             unit = k_unit
+#             continue
+#     if verbose:
+#         print('resolve_unit: after registry {}'.format(unit))
 
-    if unit in unit_registry:
-        return unit_registry[unit]
+#     if unit in unit_registry:
+#         return unit_registry[unit]
 
-    # if isinstance(unit, UndefinedFunction):
-    if is_function(unit):
-        # {f(x):g(x)}
-        result = unit_registry.get(unit)
-        if verbose:
-            print('resolve_unit: returning {}'.format(result))
-        return result
-    
-    if verbose:
-        print('resolve_unit: {} is not a Function'.format(unit))
+#     # if isinstance(unit, UndefinedFunction):
+#     if is_function(unit):
+#         # {f(x):g(x)}
+#         result = unit_registry.get(unit)
+#         if verbose:
+#             print('resolve_unit: returning {}'.format(result))
+#         return result
 
-    if unit is None:
-        unit = expr.subs(unit_registry)
+#     if verbose:
+#         print('resolve_unit: {} is not a Function'.format(unit))
 
-    if len(unit.free_symbols) > 0:
-        return None
+#     if unit is None:
+#         unit = expr.subs(unit_registry)
 
-    if unit is not None:
-        if hasattr(unit, 'dimension'):
-            return unit
-        if isinstance(unit, Mul):
-            return unit
-        if isinstance(unit, Pow):
-            return unit
-        return unit_registry.get(unit, None)
+#     if len(unit.free_symbols) > 0:
+#         return None
+
+#     if unit is not None:
+#         if hasattr(unit, 'dimension'):
+#             return unit
+#         if isinstance(unit, Mul):
+#             return unit
+#         if isinstance(unit, Pow):
+#             return unit
+#         return unit_registry.get(unit, None)
 
 def get_expr_unit(expr, unit_registry, verbose=False):
     '''Get units from an expression'''
@@ -589,7 +589,11 @@ def get_expr_unit(expr, unit_registry, verbose=False):
                     print('get_expr_unit: found matching {}:'.format(func))
                     # print('get_expr_unit: func free symbols {}'.format(func.free_symbols))
                     # print('get_expr_unit: expr free_symbols: {}'.format(expr.free_symbols))
-                func_units = resolve_unit(func, unit_registry, verbose)
+                # func_units = resolve_unit(func, unit_registry, verbose)
+                # {f(x): f(cm), f(cm): kg}
+                func_units = unit_registry[func]
+                if func_units in unit_registry:
+                    return unit_registry[func_units]
                 return func_units
             else:
                 if verbose:
@@ -661,10 +665,10 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
     if isinstance(expr, Add):
         if verbose:
             print('unify: Adding expression: {} -> {}'.format(
-                expr, resolve_unit(to_symbol, unit_registry, verbose)))
+                expr, get_expr_unit(to_symbol, unit_registry, verbose)))
         return Add.fromiter([unify(arg, unit_registry, to_symbol, verbose) for arg in expr.args])
 
-    expr_unit = resolve_unit(expr, unit_registry, verbose)
+    expr_unit = get_expr_unit(expr, unit_registry, verbose)
 
     if verbose:
         print('unify: expr unit {}'.format(expr_unit))
@@ -715,7 +719,7 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                 print('unify: converted expression:', expr)
 
     if (to_symbol is not None) & (expr_unit is not None):
-        to_unit = resolve_unit(to_symbol, unit_registry, verbose)
+        to_unit = get_expr_unit(to_symbol, unit_registry, verbose)
         if verbose:
             print('unify: to_unit {}'.format(to_unit))
         if get_dimensions(expr_unit) == get_dimensions(to_unit):

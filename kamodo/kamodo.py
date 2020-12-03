@@ -43,7 +43,7 @@ from .util import get_defaults, valid_args, eval_func
 from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
 from .util import convert_to
-from .util import unify, resolve_unit, get_abbrev, get_expr_unit
+from .util import unify, get_abbrev, get_expr_unit
 from .util import is_function, get_arg_units
 
 import sympy.physics.units as u
@@ -789,7 +789,7 @@ class Kamodo(collections.OrderedDict):
                     print('unit registry update returned', sym_name)
             else:
                 if symbol in self.unit_registry:
-                    units = resolve_unit(symbol, self.unit_registry)
+                    units = get_expr_unit(symbol, self.unit_registry)
                     if self.verbose:
                         print('{} has units {}'.format(sym_name, units))
                 else:
@@ -818,7 +818,7 @@ class Kamodo(collections.OrderedDict):
                             self.verbose)
 
                     if expr_unit is not None:
-                        lhs_units = str(get_abbrev(resolve_unit(expr_unit, self.unit_registry, self.verbose)))
+                        lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
 
                     if self.verbose:
                         print('registered lhs_units', lhs_units)
@@ -846,7 +846,7 @@ class Kamodo(collections.OrderedDict):
                 for k, v in self.unit_registry.items():
                     print('\t{}: {}'.format(k, v))
 
-            units = resolve_unit(symbol, self.unit_registry)
+            units = get_expr_unit(symbol, self.unit_registry)
             units = get_abbrev(units)
             if units is not None:
                 units = str(units)

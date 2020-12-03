@@ -474,3 +474,10 @@ def test_get_arg_units():
     assert result[x] == get_unit('s')
     result = get_arg_units(sympify('f(x,y)*g(a,b,c)'), unit_registry)
     assert result[c] == get_unit('m')
+
+def test_compose_unit_multiply():
+    kamodo = Kamodo('a(x[kg])[m] = x', verbose=True)
+    kamodo['e'] = '2*a'
+
+
+
