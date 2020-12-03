@@ -34,6 +34,7 @@ from sympy.physics.units.util import _get_conversion_matrix_for_expr
 from sympy.core.compatibility import reduce, Iterable, ordered
 from sympy import Add, Mul, Pow, Tuple, sympify, default_sort_key
 from sympy.physics.units.quantities import Quantity
+from sympy.physics.units import Dimension
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
@@ -586,7 +587,7 @@ def get_expr_unit(expr, unit_registry, verbose=False):
             if type(expr) == type(func):
                 # b(a) = b(x)
                 if verbose:
-                    print('get_expr_unit: found matching {}:'.format(func))
+                    print('get_expr_unit: found match {} for {}'.format(func, expr))
                     # print('get_expr_unit: func free symbols {}'.format(func.free_symbols))
                     # print('get_expr_unit: expr free_symbols: {}'.format(expr.free_symbols))
                 # func_units = resolve_unit(func, unit_registry, verbose)
@@ -595,9 +596,8 @@ def get_expr_unit(expr, unit_registry, verbose=False):
                 if func_units in unit_registry:
                     return unit_registry[func_units]
                 return func_units
-            else:
-                if verbose:
-                    print('get_expr_unit: {} not a match for {}'.format(func, expr))
+        if verbose:
+            print('get_expr_unit: no match found for {}'.format(expr))
 
     if isinstance(expr, Mul):
         results = []
@@ -628,14 +628,15 @@ def get_arg_units(expr, unit_registry, arg_units=None):
     """
     if arg_units is None:
         arg_units = dict()
+
     if expr in unit_registry:
         for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
             arg_units[arg_] = arg_unit
         return arg_units
-    else:
-        for arg in expr.args:
-            arg_units = get_arg_units(arg, unit_registry, arg_units)
-        return arg_units
+
+    for arg in expr.args:
+        arg_units = get_arg_units(arg, unit_registry, arg_units)
+    return arg_units
 
 def replace_args(expr, from_map, to_map):
     # func_symbol = type(expr)
@@ -645,12 +646,23 @@ def replace_args(expr, from_map, to_map):
             from_unit = from_map[arg]
             to_unit = to_map[arg]
             try:
+                assert get_dimensions(from_unit) == get_dimensions(to_unit)
                 arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
             except:
-                print('cannot convert', arg*to_unit, from_unit)
-                print(arg, type(arg), to_unit, type(to_unit), from_unit, type(from_unit))
-                raise
+                raise NameError('cannot convert', arg*to_unit, from_unit)
     return expr.subs(arg_map)
+
+def unify_args(expr, unit_registry, to_symbol, verbose):
+    """replaces arguments in an expression"""
+    expr_units = get_arg_units(expr, unit_registry)
+    to_units = get_arg_units(to_symbol, unit_registry)
+    if verbose:
+        print('unify_args: expression arg units', expr_units)
+        print('unify_args: to arg units', to_units)
+    expr = replace_args(expr, expr_units, to_units)
+    if verbose:
+        print('unify_args: converted expression:', expr)
+    return expr
 
 def unify(expr, unit_registry, to_symbol=None, verbose=False):
     """adds unit conversion factors to composed functions"""
@@ -671,7 +683,14 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
     expr_unit = get_expr_unit(expr, unit_registry, verbose)
 
     if verbose:
-        print('unify: expr unit {}'.format(expr_unit))
+        print('unify: {} unit {}'.format(expr, expr_unit))
+        print('unify: {} symbols {}'.format(expr, expr.free_symbols))
+        print('unify: {} symbols {}'.format(to_symbol, to_symbol.free_symbols))
+    try:
+        assert expr.free_symbols.issubset(to_symbol.free_symbols)
+    except:
+        raise NameError("{} arguments not in {}".format(
+            expr.free_symbols, to_symbol.free_symbols))
 
     if is_function(expr):
         if verbose:
@@ -702,21 +721,7 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                         if verbose:
                             print('unify: replaced args', expr)
 
-            for arg in expr.args:
-                if arg in unit_registry:
-                    raise NotImplementedError('unify: need to replace {} in {}'.format(arg, expr))
-
-            for arg in set(to_symbol.free_symbols).intersection(expr.free_symbols):
-                if verbose:
-                    print('unify: replacing {} in {}'.format(arg, expr))
-                expr_units = get_arg_units(expr, unit_registry)
-                to_units = get_arg_units(to_symbol, unit_registry)
-                if verbose:
-                    print('unify: expression arg units', expr_units)
-                    print('unify: to arg units', to_units)
-                expr = replace_args(expr, expr_units, to_units)
-            if verbose:
-                print('unify: converted expression:', expr)
+    expr = unify_args(expr, unit_registry, to_symbol, verbose)
 
     if (to_symbol is not None) & (expr_unit is not None):
         to_unit = get_expr_unit(to_symbol, unit_registry, verbose)
@@ -765,7 +770,15 @@ def get_base_unit(expr):
     if hasattr(expr, 'dimension'):
         return expr
     if isinstance(expr, Mul):
-        return Mul.fromiter([get_base_unit(arg) for arg in expr.args])
+        results = []
+        for arg in expr.args:
+            result = get_base_unit(arg)
+            if result is not None:
+                results.append(result)
+        if len(results) > 0:
+            return Mul.fromiter(results)
+        else:
+            return None
     if isinstance(expr, Pow):
         base, exp = expr.as_base_exp()
         return Pow(get_base_unit(base), exp)

@@ -480,4 +480,19 @@ def test_compose_unit_multiply():
     kamodo['e'] = '2*a'
 
 
+def test_compose_unit_add():
+    kamodo = Kamodo('a(x[kg])[m] = x',
+                    'b(y[cm])[km] = y', verbose=True)
+    kamodo['c(x,y)[km]'] = '2*a + 3*b'
+    assert kamodo.c.meta['arg_units']['x'] == str(get_abbrev(get_unit('kg')))
+    assert kamodo.c.meta['arg_units']['y'] == str(get_abbrev(get_unit('cm')))
+
+def test_compose_unit_raises():
+
+    with pytest.raises(NameError):
+        kamodo = Kamodo('a(x[kg])[m] = x',
+                        'b(y[cm])[km] = y', verbose=True)
+
+        # this should fail since x is registered with kg
+        kamodo['c(x[cm],y[cm])[km]'] = '2*a + 3*b'
 

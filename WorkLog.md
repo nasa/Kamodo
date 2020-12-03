@@ -1,3 +1,4 @@
+* adding algebraic unit composition tests
 * removed resolve_unit in favor of get_expr_unit
 
 # 2020-12-03 11:32:37.828682: clock-in
