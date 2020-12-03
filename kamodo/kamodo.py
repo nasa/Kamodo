@@ -589,16 +589,17 @@ class Kamodo(collections.OrderedDict):
                     print('\t', k, v)
         return func
 
-    def update_unit_registry(self, func):
+    def update_unit_registry(self, func, arg_units=None):
         """Inserts unit functions into registry"""
         lhs, unit_dict = extract_units(func)
-        units = {}
+        if arg_units is None:
+            arg_units = {}
         for key, value in unit_dict.items():
             if key != lhs:
-                units[parse_expr(key)] = get_unit(value)
+                arg_units[parse_expr(key)] = get_unit(value)
 
         lhs_expr = parse_expr(lhs)
-        func_units = lhs_expr.subs(units)
+        func_units = lhs_expr.subs(arg_units)
         self.unit_registry[lhs_expr] = func_units
         output_units = unit_dict[lhs]
         self.unit_registry[func_units] = get_unit(output_units)
@@ -783,10 +784,13 @@ class Kamodo(collections.OrderedDict):
             if '[' in sym_name:
                 if self.verbose:
                     print('updating unit registry with {} -> {}'.format(sym_name, rhs_expr))
-                sym_name = self.update_unit_registry(sym_name)
                 rhs = rhs_expr
+                arg_units = get_arg_units(rhs_expr, self.unit_registry)
                 if self.verbose:
-                    print('unit registry update returned', sym_name)
+                    print(arg_units)
+                sym_name = self.update_unit_registry(sym_name, arg_units)
+                if self.verbose:
+                    print('unit registry update returned', sym_name, self.unit_registry.get(symbol))
             else:
                 if symbol in self.unit_registry:
                     units = get_expr_unit(symbol, self.unit_registry)

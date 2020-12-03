@@ -581,7 +581,6 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
 
 def get_expr_unit(expr, unit_registry, verbose=False):
     '''Get units from an expression'''
-
     if is_function(expr):
         for func in unit_registry:
             if type(expr) == type(func):
@@ -630,10 +629,13 @@ def get_arg_units(expr, unit_registry, arg_units=None):
         arg_units = dict()
 
     if expr in unit_registry:
-        for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
-            arg_units[arg_] = arg_unit
+        # unit_registry: {f(cm,km): kg}
+        if is_function(unit_registry[expr]):
+            for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
+                arg_units[arg_] = arg_unit
         return arg_units
 
+    # 2*a(x)
     for arg in expr.args:
         arg_units = get_arg_units(arg, unit_registry, arg_units)
     return arg_units
@@ -641,7 +643,7 @@ def get_arg_units(expr, unit_registry, arg_units=None):
 def replace_args(expr, from_map, to_map):
     # func_symbol = type(expr)
     arg_map = dict()
-    for arg in expr.args:
+    for arg in expr.free_symbols:
         if (arg in from_map) & (arg in to_map):
             from_unit = from_map[arg]
             to_unit = to_map[arg]
@@ -649,7 +651,7 @@ def replace_args(expr, from_map, to_map):
                 assert get_dimensions(from_unit) == get_dimensions(to_unit)
                 arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
             except:
-                raise NameError('cannot convert', arg*to_unit, from_unit)
+                raise NameError('cannot convert from {} to {}'.format(from_unit, to_unit))
     return expr.subs(arg_map)
 
 def unify_args(expr, unit_registry, to_symbol, verbose):
@@ -657,7 +659,7 @@ def unify_args(expr, unit_registry, to_symbol, verbose):
     expr_units = get_arg_units(expr, unit_registry)
     to_units = get_arg_units(to_symbol, unit_registry)
     if verbose:
-        print('unify_args: expression arg units', expr_units)
+        print('unify_args: {} arg units {}'.format(expr, expr_units))
         print('unify_args: to arg units', to_units)
     expr = replace_args(expr, expr_units, to_units)
     if verbose:
