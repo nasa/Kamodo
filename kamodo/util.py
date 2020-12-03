@@ -35,6 +35,7 @@ from sympy.core.compatibility import reduce, Iterable, ordered
 from sympy import Add, Mul, Pow, Tuple, sympify, default_sort_key
 from sympy.physics.units.quantities import Quantity
 from sympy.physics.units import Dimension
+from sympy import nsimplify
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
@@ -506,8 +507,8 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
                  convert_to(expr.rhs, target_units, unit_system))
     # if type(type(expr)) is UndefinedFunction:
     if is_function(expr):
-        print('undefined input expr:{}'.format(expr))
-        return expr
+        # print('undefined input expr:{}'.format(expr))
+        return nsimplify(expr)
 
     if isinstance(expr, Add):
         return Add.fromiter(convert_to(i, target_units, unit_system) for i in expr.args)
@@ -530,10 +531,11 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     if depmat is None:
         if raise_errors:
             raise NameError('cannot convert {} to {} {}'.format(expr, target_units, unit_system))
-        return expr
+        return nsimplify(expr)
 
     expr_scale_factor = get_total_scale_factor(expr)
-    return expr_scale_factor * Mul.fromiter((1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
+    result = expr_scale_factor * Mul.fromiter((1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
+    return nsimplify(result)
 
 # def resolve_unit(expr, unit_registry, verbose=False):
 #     """get the registered unit for the expression
