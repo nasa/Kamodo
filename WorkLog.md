@@ -1,3 +1,6 @@
+
+# 2020-12-03 11:32:37.828682: clock-in
+
 # 2020-12-02 17:11:43.336189: clock-out
 
 * fixed bugs in base units
