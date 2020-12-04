@@ -1,3 +1,9 @@
+* increased coverage
+Generating coverage report:
+
+```bash
+(kamodo)$ pytest --cov kamodo.kamodo --cov kamodo.util --cov plotting test_plotting.py test_kamodo.py util.py --cov-report html
+```
 
 # 2020-12-04 12:54:18.896202: clock-in
 

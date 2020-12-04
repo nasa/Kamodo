@@ -13,6 +13,7 @@ import functools
 from sympy import lambdify, sympify
 from kamodo import get_abbrev
 from .util import get_arg_units
+from .util import get_unit_quantity, convert_to
 
 def test_Kamodo_expr():
     a, b, c, x, y, z = symbols('a b c x y z')
@@ -128,6 +129,13 @@ def test_Kamodo_reassignment():
     assert kamodo.r(1, 1) != 2
     assert kamodo.r(1, 1) == 4
 
+def test_Kamodo_reassignment_units():
+    kamodo = Kamodo(verbose=True)
+    kamodo['s(x[km],y[km])[kg]'] = 'x + y'
+    assert kamodo.s(1,1) == 2
+    kamodo['s(x[m],y[m])[g]'] = '3*x + y'
+    assert kamodo.s(1,1) == 4
+
 
 def test_multivariate_composition():
     kamodo = Kamodo(f='x**2', g=lambda y: y ** 3, verbose=True)
@@ -201,6 +209,17 @@ def test_expr_conversion():
     print(kamodo.items())
     kamodo.a
 
+def test_get_unit_fail():
+    with pytest.raises(NameError):
+        get_unit('unregistered units$')
+    with pytest.raises(NameError):
+        get_unit('runregistered')
+
+def test_get_unit_quantity():
+    mykm = get_unit_quantity('mykm', 'km', scale_factor=2)
+    mygm = get_unit_quantity('mygm', 'gram', scale_factor=4)
+    assert str(convert_to(mykm, get_unit('m'))) == '2000*meter'
+    assert str(convert_to(mygm, get_unit('kg'))) == 'kilogram/250'
 
 def test_validate_units():
     f, x = symbols('f x')

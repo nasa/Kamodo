@@ -56,6 +56,7 @@ def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
 
 unit_subs = dict(R_E=get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
                  erg=get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
+                 cc=sympy_units.cm**3,
                  )
 
 sympy_units.erg = unit_subs['erg']
@@ -508,7 +509,7 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     # if type(type(expr)) is UndefinedFunction:
     if is_function(expr):
         # print('undefined input expr:{}'.format(expr))
-        return nsimplify(expr)
+        return nsimplify(expr, rational=True)
 
     if isinstance(expr, Add):
         return Add.fromiter(convert_to(i, target_units, unit_system) for i in expr.args)
@@ -516,7 +517,9 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     expr = sympify(expr)
 
     if not isinstance(expr, Quantity) and expr.has(Quantity):
-        expr = expr.replace(lambda x: isinstance(x, Quantity), lambda x: x.convert_to(target_units, unit_system))
+        expr = expr.replace(
+            lambda x: isinstance(x, Quantity),
+            lambda x: x.convert_to(target_units, unit_system))
 
     def get_total_scale_factor(expr):
         if isinstance(expr, Mul):
@@ -531,11 +534,12 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     if depmat is None:
         if raise_errors:
             raise NameError('cannot convert {} to {} {}'.format(expr, target_units, unit_system))
-        return nsimplify(expr)
+        return nsimplify(expr, rational=True)
 
     expr_scale_factor = get_total_scale_factor(expr)
-    result = expr_scale_factor * Mul.fromiter((1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
-    return nsimplify(result)
+    result = expr_scale_factor * Mul.fromiter(
+        (1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
+    return nsimplify(result, rational=True)
 
 # def resolve_unit(expr, unit_registry, verbose=False):
 #     """get the registered unit for the expression
@@ -606,9 +610,15 @@ def get_expr_unit(expr, unit_registry, verbose=False):
             result = get_expr_unit(arg, unit_registry, verbose)
             if result is not None:
                 results.append(result)
-        return Mul.fromiter(results)
+        if len(results) > 0:
+            return Mul.fromiter(results)
+        else:
+            return None
 
     expr_unit = expr.subs(unit_registry, simultaneous=False).subs(unit_registry, simultaneous=False)
+
+    if len(expr_unit.free_symbols) > 0:
+        return None
 
     if isinstance(expr_unit, Add):
         # use the first term
@@ -618,8 +628,8 @@ def get_expr_unit(expr, unit_registry, verbose=False):
     else:
         result = expr_unit
 
-    if len(result.free_symbols) > 0:
-        return None
+    # if len(result.free_symbols) > 0:
+    #     return None
 
     return get_base_unit(result)
 
@@ -882,14 +892,6 @@ def test_concat_solution():
     solutions = concat_solution((kamodofy(lambda x=np.array([1, 2, 3]): x ** 2) for i in range(1, 4)), 'y')
     expected = [1, 4, 9, np.nan, 1, 4, 9, np.nan, 1, 4, 9, np.nan, ]
     assert ((solutions['y'] == expected) | (numpy.isnan(solutions['y']) & numpy.isnan(expected))).all()
-
-
-def test_get_unit_quantity():
-    from kamodo import get_unit
-    mykm = get_unit_quantity('mykm', 'km', scale_factor=2)
-    mygm = get_unit_quantity('mygm', 'gram', scale_factor=4)
-    assert str(mykm.convert_to(get_unit('m'))) == '2000*meter'
-    assert str(mygm.convert_to(get_unit('kg'))) == 'kilogram/250'
 
 
 def test_substr_replace():

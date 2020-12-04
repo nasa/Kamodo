@@ -93,39 +93,39 @@ def get_unit(unit_str, unit_subs=unit_subs):
         unit = parse_expr(unit_str.replace('^', '**')).subs(units)
     except:
         raise NameError('something wrong with unit str [{}], type {}'.format(unit_str, type(unit_str)))
-    # try:
-    #     assert len(unit.free_symbols) == 0
-    # except:
-    #     raise ValueError("Unsupported unit: {} {} {}".format(
-    #         unit_str, type(unit_str), unit.free_symbols))
+    try:
+        assert len(unit.free_symbols) == 0
+    except:
+        raise NameError("Unsupported unit: {} {} {}".format(
+            unit_str, type(unit_str), unit.free_symbols))
     return unit
 
 
-def get_expr_with_units(expr, units_map):
-    """Replaces symbols with symbol*unit"""
-    subs = []
-    for symbol, unit in list(units_map.items()):
-        if type(symbol) == str:
-            subs.append((symbol, Symbol(symbol) * unit))
-        else:  # assume symbol
-            subs.append((symbol, symbol * unit))
-    new_expr = expr.subs(subs)
-    return new_expr
+# def get_expr_with_units(expr, units_map):
+#     """Replaces symbols with symbol*unit"""
+#     subs = []
+#     for symbol, unit in list(units_map.items()):
+#         if type(symbol) == str:
+#             subs.append((symbol, Symbol(symbol) * unit))
+#         else:  # assume symbol
+#             subs.append((symbol, symbol * unit))
+#     new_expr = expr.subs(subs)
+#     return new_expr
 
 
-def get_expr_without_units(expr, to, units_map, dimensionless=False):
-    """Converts an expression with units to one without
+# def get_expr_without_units(expr, to, units_map, dimensionless=False):
+#     """Converts an expression with units to one without
 
-    apply conversion factors where necessary"""
-    if not dimensionless:
-        expr = sympy_units.convert_to(expr, to)
-    subs = []
-    for s in units_map:
-        if type(s) == str:
-            subs.append((Symbol(s) * to, Symbol(s)))
-        else:  # assume symbol
-            subs.append((s * to, s))
-    return expr.subs(subs)
+#     apply conversion factors where necessary"""
+#     if not dimensionless:
+#         expr = sympy_units.convert_to(expr, to)
+#     subs = []
+#     for s in units_map:
+#         if type(s) == str:
+#             subs.append((Symbol(s) * to, Symbol(s)))
+#         else:  # assume symbol
+#             subs.append((s * to, s))
+#     return expr.subs(subs)
 
 
 def args_from_dict(expr, local_dict):
@@ -274,18 +274,18 @@ def get_function_args(func, hidden_args=[]):
     return symbols([a for a in getfullargspec(func).args if a not in hidden_args])
 
 
-def wildcard(expr):
-    """Replace all free symbols with the wild card symbol
+# def wildcard(expr):
+#     """Replace all free symbols with the wild card symbol
 
-    not sure when this code is used
-    """
-    result = expr
-    for s in expr.free_symbols:
-        result = result.replace(s, Wild(str(s)))
-    return result
+#     not sure when this code is used
+#     """
+#     result = expr
+#     for s in expr.free_symbols:
+#         result = result.replace(s, Wild(str(s)))
+#     return result
 
-def is_dimensionless(units):
-    return not hasattr(units, 'dimension')
+# def is_dimensionless(units):
+#     return not hasattr(units, 'dimension')
 
 
 # def validate_units(expr, units, verbose=False):
@@ -376,24 +376,24 @@ def validate_units(expr, units, verbose=False):
 
 
 
-def match_dimensionless_units(lhs_units, rhs_units):
-    '''if lhs_units is dimensionless and rhs_units is not dimensionless,
-    assign rhs_units to lhs_units (and vice versa)'''
-    if lhs_units == Dimension(1):  # f = ...
-        if rhs_units != lhs_units:  # f = rho[kg/m^3]
-            lhs_units = rhs_units  # f[kg/m^3] = rho[kg/m^3]
-    elif rhs_units == Dimension(1):  # ... = x
-        if rhs_units != lhs_units:  # f[kg/m^3] = x
-            rhs_units = lhs_units  # f[kg/m^3] = x[kg/m^3]
-    return lhs_units, rhs_units
+# def match_dimensionless_units(lhs_units, rhs_units):
+#     '''if lhs_units is dimensionless and rhs_units is not dimensionless,
+#     assign rhs_units to lhs_units (and vice versa)'''
+#     if lhs_units == Dimension(1):  # f = ...
+#         if rhs_units != lhs_units:  # f = rho[kg/m^3]
+#             lhs_units = rhs_units  # f[kg/m^3] = rho[kg/m^3]
+#     elif rhs_units == Dimension(1):  # ... = x
+#         if rhs_units != lhs_units:  # f[kg/m^3] = x
+#             rhs_units = lhs_units  # f[kg/m^3] = x[kg/m^3]
+#     return lhs_units, rhs_units
 
 
-def check_unit_compatibility(rhs_units, lhs_units):
-    """This fails to raise an error when rhs and lhs units are incompatible"""
-    try:
-        assert sympy_units.convert_to(rhs_units + lhs_units, lhs_units)
-    except:
-        raise NameError('incompatible units:{} and {}'.format(lhs_units, rhs_units))
+# def check_unit_compatibility(rhs_units, lhs_units):
+#     """This fails to raise an error when rhs and lhs units are incompatible"""
+#     try:
+#         assert sympy_units.convert_to(rhs_units + lhs_units, lhs_units)
+#     except:
+#         raise NameError('incompatible units:{} and {}'.format(lhs_units, rhs_units))
 
 
 class Kamodo(collections.OrderedDict):
@@ -436,12 +436,12 @@ class Kamodo(collections.OrderedDict):
                     # function(arg)[unit] = expr
                     lhs, rhs = components
                     self[lhs.strip('$')] = rhs
-                elif len(components) == 3:
-                    # function(arg)[function(arg_unit) = unit] = expr
-                    if self.verbose:
-                        print('updating unit registry')
-                    lhs = self.update_unit_registry(func.strip('$'))
-                    self[lhs] = rhs
+                # elif len(components) == 3:
+                #     # function(arg)[function(arg_unit) = unit] = expr
+                #     if self.verbose:
+                #         print('updating unit registry')
+                #     lhs = self.update_unit_registry(func.strip('$'))
+                #     self[lhs] = rhs
 
         for sym_name, expr in list(kwargs.items()):
             if self.verbose:
@@ -452,12 +452,12 @@ class Kamodo(collections.OrderedDict):
     def register_symbol(self, symbol):
         self.symbol_registry[str(type(symbol))] = symbol
 
-    def load_symbol(self, sym_name):
-        symbol = self.symbol_registry[sym_name]
-        signature = self.signatures[str(symbol)]
-        lhs_expr = signature['lhs']
-        units = signature['units']
-        return symbol, symbol.args, units, lhs_expr
+    # def load_symbol(self, sym_name):
+    #     symbol = self.symbol_registry[sym_name]
+    #     signature = self.signatures[str(symbol)]
+    #     lhs_expr = signature['lhs']
+    #     units = signature['units']
+    #     return symbol, symbol.args, units, lhs_expr
 
     def remove_symbol(self, sym_name):
         if self.verbose:
@@ -468,10 +468,18 @@ class Kamodo(collections.OrderedDict):
         self.signatures.pop(str(symbol))
         if self.verbose:
             print('removing {} from unit_registry'.format(symbol))
-        if sym_name in self.unit_registry:
-            func_unit = self.unit_registry.pop(sym_name) # rho(x): rho(cm)
-            if func_unit in self.unit_registry:
-                self.unit_registry.pop(func_unit) # rho(cm): kg/m^3
+        remove = []
+        for sym in self.unit_registry:
+            if is_function(sym): # {rho(x): rho(cm), rho(cm): kg}
+                if type(sym) == type(symbol):
+                    remove.append(sym)
+        for sym in remove:
+            self.unit_registry.pop(sym)
+
+        # if sym_name in self.unit_registry:
+        #     func_unit = self.unit_registry.pop(sym_name) # rho(x): rho(cm)
+        #     if func_unit in self.unit_registry:
+        #         self.unit_registry.pop(func_unit) # rho(cm): kg/m^3
 
     def parse_key(self, sym_name):
         args = tuple()
@@ -686,48 +694,48 @@ class Kamodo(collections.OrderedDict):
         super(Kamodo, self).__setitem__(type(lhs_symbol), self[lhs_symbol])  # assign key 'f'
         self.register_symbol(lhs_symbol)
 
-    def check_consistency(self, input_expr, units):
-        # check that rhs units are consistent
-        rhs_expr = self.parse_value(input_expr, self.symbol_registry)
-        units_map = self.get_units_map()
-        lhs_units = get_unit(units)
-        rhs_units = validate_units(rhs_expr, units_map, self.verbose)
-        if self.verbose:
-            print('rhs_units: {}'.format(rhs_units))
-        try:
-            lhs_units, rhs_units = match_dimensionless_units(lhs_units, rhs_units)
-            check_unit_compatibility(rhs_units, lhs_units)
-        except:
-            print(type(rhs_units))
-            print(get_unit(units), validate_units(rhs_expr, units_map, self.verbose))
-            raise
+    # def check_consistency(self, input_expr, units):
+    #     # check that rhs units are consistent
+    #     rhs_expr = self.parse_value(input_expr, self.symbol_registry)
+    #     units_map = self.get_units_map()
+    #     lhs_units = get_unit(units)
+    #     rhs_units = validate_units(rhs_expr, units_map, self.verbose)
+    #     if self.verbose:
+    #         print('rhs_units: {}'.format(rhs_units))
+    #     try:
+    #         lhs_units, rhs_units = match_dimensionless_units(lhs_units, rhs_units)
+    #         check_unit_compatibility(rhs_units, lhs_units)
+    #     except:
+    #         print(type(rhs_units))
+    #         print(get_unit(units), validate_units(rhs_expr, units_map, self.verbose))
+    #         raise
 
-        rhs_expr_with_units = get_expr_with_units(rhs_expr, units_map)
+    #     rhs_expr_with_units = get_expr_with_units(rhs_expr, units_map)
 
-        if self.verbose:
-            print('rhs_expr with units:', rhs_expr_with_units)
+    #     if self.verbose:
+    #         print('rhs_expr with units:', rhs_expr_with_units)
 
-        # convert back to expression without units for lambdify
-        if units != '':
-            try:
-                if self.verbose:
-                    print('converting to {}'.format(lhs_units))
-                    for k, v in list(units_map.items()):
-                        print('\t', k, v, type(k))
-                rhs_expr = get_expr_without_units(
-                    rhs_expr_with_units,
-                    lhs_units,
-                    units_map,
-                    dimensionless=is_dimensionless(rhs_units))
-                if self.verbose:
-                    print('rhs_expr without units:', rhs_expr)
-            except:
-                print('error with units? [{}]'.format(units))
-                raise
-        else:
-            if lhs_units != Dimension(1):  # lhs_units were obtained from rhs_units
-                units = str(lhs_units)
-        return units, rhs_expr
+    #     # convert back to expression without units for lambdify
+    #     if units != '':
+    #         try:
+    #             if self.verbose:
+    #                 print('converting to {}'.format(lhs_units))
+    #                 for k, v in list(units_map.items()):
+    #                     print('\t', k, v, type(k))
+    #             rhs_expr = get_expr_without_units(
+    #                 rhs_expr_with_units,
+    #                 lhs_units,
+    #                 units_map,
+    #                 dimensionless=is_dimensionless(rhs_units))
+    #             if self.verbose:
+    #                 print('rhs_expr without units:', rhs_expr)
+    #         except:
+    #             print('error with units? [{}]'.format(units))
+    #             raise
+    #     else:
+    #         if lhs_units != Dimension(1):  # lhs_units were obtained from rhs_units
+    #             units = str(lhs_units)
+    #     return units, rhs_expr
 
     def __setitem__(self, sym_name, input_expr):
         """Assigns a function or expression to a new symbol,
