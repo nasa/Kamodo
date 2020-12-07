@@ -1,3 +1,6 @@
+
+# 2020-12-07 15:47:35.229728: clock-in
+
 # 2020-12-07 13:55:31.954661: clock-out
 
 * added test for from_kamodo
