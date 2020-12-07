@@ -1,3 +1,4 @@
+* looking at unicode symbols
 
 # 2020-12-07 11:04:24.226818: clock-in
 
