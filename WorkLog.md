@@ -1,3 +1,6 @@
+
+# 2020-12-07 13:54:57.942787: clock-in
+
 # 2020-12-07 12:02:40.382749: clock-out
 
 * looking at unicode symbols
