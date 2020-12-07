@@ -14,6 +14,7 @@ from sympy import lambdify, sympify
 from kamodo import get_abbrev
 from .util import get_arg_units
 from .util import get_unit_quantity, convert_to
+from kamodo import from_kamodo
 
 def test_Kamodo_expr():
     a, b, c, x, y, z = symbols('a b c x y z')
@@ -515,3 +516,22 @@ def test_compose_unit_raises():
         # this should fail since x is registered with kg
         kamodo['c(x[cm],y[cm])[km]'] = '2*a + 3*b'
 
+
+def test_repr_latex():
+    kamodo = Kamodo(f = 'x')
+    assert kamodo._repr_latex_() == '\\begin{equation}f{\\left(x \\right)} = x\\end{equation}'
+
+
+def test_dataframe_detail():
+    kamodo = Kamodo(f = 'x')
+    type(kamodo.detail())
+    assert len(kamodo.detail()) == 1
+    assert isinstance(kamodo.detail(), pd.DataFrame)
+
+def test_from_kamodo():
+    kamodo = Kamodo(f = 'x')
+    knew = from_kamodo(kamodo, g='f**2')
+    assert knew.g(3) == 9
+
+
+  

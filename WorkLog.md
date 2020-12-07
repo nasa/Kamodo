@@ -1,3 +1,4 @@
+* added test for from_kamodo
 
 # 2020-12-07 13:54:57.942787: clock-in
 

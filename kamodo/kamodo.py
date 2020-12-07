@@ -1186,9 +1186,9 @@ def compose(**kamodos):
 def from_kamodo(kobj, **funcs):
     """copies a kamodo object, inserting additional functions"""
     knew = Kamodo()
-    for var_symbol, func in kobj.items():
-        if not is_function(var_symbol):
-            knew[var_symbol] = func
-    for var_symbol, func in funcs.items():
-        knew[var_symbol] = func
+    for name, signature in kobj.signatures.items():
+        symbol = signature['symbol']
+        knew[symbol] = kobj[symbol]
+    for symbol, func in funcs.items():
+        knew[symbol] = func
     return knew
