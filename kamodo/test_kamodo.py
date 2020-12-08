@@ -15,6 +15,7 @@ from kamodo import get_abbrev
 from .util import get_arg_units
 from .util import get_unit_quantity, convert_to
 from kamodo import from_kamodo, compose
+from sympy import Function
 
 def test_Kamodo_expr():
     a, b, c, x, y, z = symbols('a b c x y z')
@@ -502,11 +503,19 @@ def test_compose_unit_multiply():
 
 
 def test_compose_unit_add():
-    kamodo = Kamodo('a(x[kg])[m] = x',
-                    'b(y[cm])[km] = y', verbose=True)
+    kamodo = Kamodo(verbose=True)
+
+    @kamodofy(units='m', arg_units={'x': 'kg'})
+    def a(x):
+        return x
+
+    kamodo['a'] = a
+    kamodo['b(y[cm])[km]'] = 'y'
     kamodo['c(x,y)[km]'] = '2*a + 3*b'
     assert kamodo.c.meta['arg_units']['x'] == str(get_abbrev(get_unit('kg')))
     assert kamodo.c.meta['arg_units']['y'] == str(get_abbrev(get_unit('cm')))
+    result = 2*(3)/1000 + 3*(3)
+    assert kamodo.c(3, 3) == result
 
 def test_compose_unit_raises():
 
@@ -559,3 +568,28 @@ def test_compose():
     assert k3.h_m2(3) == 3**3
     k3['h(f_m1)'] = 'f_m1'
     assert k3.h(3) == 3
+
+def test_symbol_replace():
+    k = Kamodo(f='x', verbose=True)
+
+    f1, f2 = list(k.keys())
+    print('\n|||||',f1, f2, '||||||')
+    k[f1] = 'x**2'
+    assert k.f(3) == 9
+    print('\n|||||', *list(k.keys()), '|||||')
+    k[f2] = 'x**3'
+    print('\n|||||', *list(k.keys()), '|||||')
+    assert k.f(3) == 27
+
+def test_contains():
+    kamodo = Kamodo(f='x', verbose=True)
+    assert 'f' in kamodo
+    assert 'f( x )' in kamodo
+    f, x = symbols('f x')
+    assert f in kamodo # f is a symbo
+    f = Function(f) # f is an Unefined Function
+    assert f in kamodo
+    assert f(x) in kamodo
+    assert f('x') in kamodo
+
+

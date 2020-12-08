@@ -638,7 +638,12 @@ def get_expr_unit(expr, unit_registry, verbose=False):
         else:
             return None
 
-    expr_unit = expr.subs(unit_registry, simultaneous=False).subs(unit_registry, simultaneous=False)
+    if len(unit_registry) > 0:
+        expr_unit = expr.subs(
+            unit_registry, simultaneous=False).subs(
+                unit_registry, simultaneous=False)
+    else:
+        expr_unit = expr
 
     if len(expr_unit.free_symbols) > 0:
         return None

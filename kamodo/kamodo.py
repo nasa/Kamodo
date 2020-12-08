@@ -309,13 +309,17 @@ class Kamodo(collections.OrderedDict):
 
     def remove_symbol(self, sym_name):
         if self.verbose:
-            print('removing {} from symbol_registry'.format(sym_name))
-        symbol = self.symbol_registry.pop(sym_name)
+            print('remove_symbol: removing {} from symbol_registry'.format(sym_name))
+        try:
+            symbol = self.symbol_registry.pop(sym_name)
+        except KeyError:
+            raise KeyError('{} was not in symbol_registry {}'.format(
+                sym_name, self.symbol_registry.keys()))
         if self.verbose:
-            print('removing {} from signatures'.format(symbol))
+            print('remove_symbol: removing {} from signatures'.format(symbol))
         self.signatures.pop(str(symbol))
         if self.verbose:
-            print('removing {} from unit_registry'.format(symbol))
+            print('remove_symbol: removing {} from unit_registry'.format(symbol))
         remove = []
         for sym in self.unit_registry:
             if is_function(sym): # {rho(x): rho(cm), rho(cm): kg}
@@ -343,7 +347,10 @@ class Kamodo(collections.OrderedDict):
             # if type(sym_name) is str:
             sym_name = sym_name.strip('$').strip()
             if sym_name not in self.symbol_registry:
-                symbol, args, unit_dict, lhs_expr = parse_lhs(sym_name, self.symbol_registry, self.verbose)
+                symbol, args, unit_dict, lhs_expr = parse_lhs(
+                    sym_name,
+                    self.symbol_registry,
+                    self.verbose)
                 symbol_str = str(symbol).replace(' ', '')
                 if symbol_str in unit_dict: # {'f': km}
                     units = unit_dict[symbol_str]
@@ -358,10 +365,10 @@ class Kamodo(collections.OrderedDict):
                     if self.verbose:
                         print('parse_key: error 1')
                     raise KeyError("{} found in symbol_registry".format(str(type(symbol))))
-            else:
-                if self.verbose:
-                    print('parse_key: error 2')
-                raise KeyError("{} found in symbol_registry".format(sym_name))
+            # else:
+            #     if self.verbose:
+            #         print('parse_key: error 2')
+            #     raise KeyError("{} found in symbol_registry".format(sym_name))
             # else:
             #     if self.verbose:
             #         print('parse_key: {} not a str'.format(sym_name))
@@ -380,16 +387,17 @@ class Kamodo(collections.OrderedDict):
             #         else:
             #             raise NameError('{} not found in unit_dict {}'.format(symbol_str, unit_dict))
         else:
-            if self.verbose:
-                print('parse_key: error 3')
-            # raise KeyError("{} found in symbol_registry".format(sym_name))
             symbol = Function(sym_name)
+            if len(symbol.free_symbols) > 0:
+                symbol = type(symbols)
             if self.verbose:
                 print('parse_key: error 4: {} found in keys'.format(sym_name))
-            try:
-                units = self.signatures[sym_name]['units']
-                lhs_expr = self.signaturs[sym_name]['lhs']
-            except KeyError:
+                symbol_str = str(symbol).replace(' ', '')
+            if symbol_str in self.signatures:
+                units = self.signatures[symbol_str]['units']
+                lhs_expr = self.signatures[symbol_str]['lhs']
+            else:
+                raise KeyError(symbol_str)
                 units = ''
                 lhs_expr = symbol
         return symbol, args, units, lhs_expr
@@ -406,7 +414,15 @@ class Kamodo(collections.OrderedDict):
         """Rules of replacement:
 
         """
-        lhs_args = set(symbol.args)
+        if self.verbose:
+            print('symbol arguments: >>> {} {} <<<'.format(symbol.args, type(symbol.args)))
+            print('free_symbols: >>> {} {} <<<'.format(free_symbols, type(free_symbols)))
+        try:
+            lhs_args = set(symbol.args)
+        except TypeError:
+            lhs_args = free_symbols
+            symbol = Function(str(symbol))(*lhs_args)
+
         if lhs_args != set(free_symbols):
             free_symbols_ = tuple(free_symbols)
             if len(free_symbols) == 1:
@@ -607,7 +623,7 @@ class Kamodo(collections.OrderedDict):
                 print(error)
             found_sym_name = str(error).split('found')[0].strip("'").strip(' ')
             if self.verbose:
-                print('replacing {}'.format(found_sym_name))
+                print('__setitem__: replacing {}'.format(found_sym_name))
             self.remove_symbol(found_sym_name)
             symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
 
@@ -706,9 +722,7 @@ class Kamodo(collections.OrderedDict):
 
             if self.verbose:
                 print('symbol after unify', symbol, type(symbol), rhs_expr)
-                print('unit registry to resolve units:')
-                for k, v in self.unit_registry.items():
-                    print('\t{}: {}'.format(k, v))
+                print('unit registry to resolve units:', self.unit_registry)
 
             units = get_expr_unit(symbol, self.unit_registry)
             units = get_abbrev(units)
@@ -761,6 +775,15 @@ class Kamodo(collections.OrderedDict):
             return super(Kamodo, self).__getitem__(key)
         except:
             return self[self.symbol_registry[key]]
+
+    def __contains__(self, item):
+        if self.verbose:
+            print('__contains__: {} {}'.format(item, type(item)))
+        func_str = str(item).replace(' ', '')
+        for key in self.keys():
+            if func_str == str(key).replace(' ', ''):
+                return True
+        return False
 
     def __getattr__(self, name):
         try:
