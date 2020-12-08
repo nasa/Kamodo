@@ -8,13 +8,13 @@ from sympy import symbols, Symbol
 import pytest
 from sympy.core.function import UndefinedFunction
 import pandas as pd
-from kamodo import Kamodo, get_unit, kamodofy, validate_units, Eq
+from kamodo import Kamodo, get_unit, kamodofy, Eq
 import functools
 from sympy import lambdify, sympify
 from kamodo import get_abbrev
 from .util import get_arg_units
 from .util import get_unit_quantity, convert_to
-from kamodo import from_kamodo
+from kamodo import from_kamodo, compose
 
 def test_Kamodo_expr():
     a, b, c, x, y, z = symbols('a b c x y z')
@@ -133,9 +133,9 @@ def test_Kamodo_reassignment():
 def test_Kamodo_reassignment_units():
     kamodo = Kamodo(verbose=True)
     kamodo['s(x[km],y[km])[kg]'] = 'x + y'
-    assert kamodo.s(1,1) == 2
+    assert kamodo.s(1, 1) == 2
     kamodo['s(x[m],y[m])[g]'] = '3*x + y'
-    assert kamodo.s(1,1) == 4
+    assert kamodo.s(1, 1) == 4
 
 
 def test_multivariate_composition():
@@ -222,14 +222,14 @@ def test_get_unit_quantity():
     assert str(convert_to(mykm, get_unit('m'))) == '2000*meter'
     assert str(convert_to(mygm, get_unit('kg'))) == 'kilogram/250'
 
-def test_validate_units():
-    f, x = symbols('f x')
-    with pytest.raises(ValueError):
-        validate_units(Eq(f, x), dict(f=get_unit('kg'), x=get_unit('m')))
-    validate_units(Eq(f, x), dict(f=get_unit('kg'), x=get_unit('g')))
+# def test_validate_units():
+#     f, x = symbols('f x')
+#     with pytest.raises(ValueError):
+#         validate_units(Eq(f, x), dict(f=get_unit('kg'), x=get_unit('m')))
+#     validate_units(Eq(f, x), dict(f=get_unit('kg'), x=get_unit('g')))
 
-    lhs_units = validate_units(sympify('f(x)'), dict(f=get_unit('kg'), x=get_unit('m')))
-    print(lhs_units)
+#     lhs_units = validate_units(sympify('f(x)'), dict(f=get_unit('kg'), x=get_unit('m')))
+#     print(lhs_units)
 
 
 def test_unit_conversion():
@@ -434,6 +434,7 @@ def test_vectorize():
 
     kamodo = Kamodo(f=f)
     kamodo.f([3, 4, 5], 5)
+    kamodo.evaluate('f', x=3,y=2)
 
 
 def test_redefine_variable():
@@ -518,20 +519,43 @@ def test_compose_unit_raises():
 
 
 def test_repr_latex():
-    kamodo = Kamodo(f = 'x')
+    kamodo = Kamodo(f='x')
     assert kamodo._repr_latex_() == '\\begin{equation}f{\\left(x \\right)} = x\\end{equation}'
 
 
 def test_dataframe_detail():
-    kamodo = Kamodo(f = 'x')
+    kamodo = Kamodo(f='x')
     type(kamodo.detail())
     assert len(kamodo.detail()) == 1
     assert isinstance(kamodo.detail(), pd.DataFrame)
 
 def test_from_kamodo():
-    kamodo = Kamodo(f = 'x')
+    kamodo = Kamodo(f='x')
     knew = from_kamodo(kamodo, g='f**2')
     assert knew.g(3) == 9
 
 
-  
+def test_jit_evaluate():
+    """Just-in-time evaluation"""
+    kamodo = Kamodo(f='x')
+    assert kamodo.evaluate('g=f**2', x = 3)['x'] == 3
+    with pytest.raises(SyntaxError):
+        kamodo.evaluate('f**2', x = 3)['x'] == 3
+
+def test_eval_no_defaults():
+    kamodo = Kamodo(f='x', verbose=True)
+    kamodo['g'] = lambda x=3: x
+    kamodo['h'] = kamodofy(lambda x=[2,3,4]: (kamodofy(lambda x_=np.array([1]): x_**2) for x_ in x))
+    assert kamodo.evaluate('f', x=3)['x'] == 3
+    assert kamodo.evaluate('g')['x'] == 3
+    assert kamodo.evaluate('h')['x_'][-2] == 1.
+
+def test_compose():
+    k1 = Kamodo(f='x')
+    k2 = Kamodo(g='y**2', h = kamodofy(lambda x: x**3))
+    k3 = compose(m1=k1, m2=k2)
+    assert k3.f_m1(3) == 3
+    assert k3.g_m2(3) == 3**2
+    assert k3.h_m2(3) == 3**3
+    k3['h(f_m1)'] = 'f_m1'
+    assert k3.h(3) == 3

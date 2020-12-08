@@ -36,6 +36,7 @@ from sympy import Add, Mul, Pow, Tuple, sympify, default_sort_key
 from sympy.physics.units.quantities import Quantity
 from sympy.physics.units import Dimension
 from sympy import nsimplify
+from sympy import Function
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
@@ -110,7 +111,16 @@ def decorator_wrapper(f, *args, **kwargs):
     return f(*args, **kwargs)
 
 
-def kamodofy(_func=None, units='', arg_units = None, data=None, update=None, equation=None, citation=None, hidden_args=[], **kwargs):
+def kamodofy(
+        _func=None,
+        units='',
+        arg_units=None,
+        data=None,
+        update=None,
+        equation=None,
+        citation=None,
+        hidden_args=[],
+        **kwargs):
     """Adds meta and data attributes to functions for compatibility with Komodo
 
     meta: a dictionary containing {units: <str>}
@@ -121,7 +131,13 @@ def kamodofy(_func=None, units='', arg_units = None, data=None, update=None, equ
     """
 
     def decorator_kamodofy(f):
-        f.meta = dict(units=units, arg_units = arg_units, citation=citation, equation=equation, hidden_args=hidden_args)
+        f.meta = dict(
+            units=units,
+            arg_units=arg_units,
+            citation=citation,
+            equation=equation,
+            hidden_args=hidden_args)
+
         if citation is not None:
             f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
         f.update = update
@@ -140,7 +156,8 @@ def kamodofy(_func=None, units='', arg_units = None, data=None, update=None, equ
         else:
             f_ = symbols(f.__name__, cls=UndefinedFunction)
             lhs = f_.__call__(*symbols(getfullargspec(f).args))
-            lambda_ = symbols('lambda', cls=UndefinedFunction)
+            # lambda_ = symbols('lambda', cls=UndefinedFunction)
+            lambda_ = Function('lambda')
             latex_eq = latex(Eq(lhs, lambda_(*lhs.args)))
             f._repr_latex_ = lambda: "${}$".format(latex(latex_eq))
 
@@ -171,7 +188,7 @@ def valid_args(f, kwargs):
     '''Extract arguments from kwargs that appear in f'''
     valid = OrderedDict()
     if type(f) == np.vectorize:
-        for a in getargspec(f.pyfunc).args:
+        for a in inspect.getfullargspec(f.pyfunc).args:
             if a in kwargs:
                 valid[a] = kwargs[a]
         return valid
@@ -257,6 +274,12 @@ def pad_nan(array):
 
 
 def concat_solution(gen, variable):
+    """combine solutions of a function generator
+    iterates through a function generator and extracts defaults for each function
+    these solutions are then padded with nans and stacked
+
+    stacking is vertically for N-d, horizontally for 1-d
+    """
     result = []
     params = defaultdict(list)
     for f in gen:
