@@ -592,4 +592,28 @@ def test_contains():
     assert f(x) in kamodo
     assert f('x') in kamodo
 
+def test_unusual_signature():
+    with pytest.raises(NotImplementedError):
+        kamodo = Kamodo()
+        kamodo['f(x)=f(cm)=kg'] = 'x'
+    with pytest.raises(NotImplementedError):
+        kamodo = Kamodo('f(x)=f(cm)=kg=x')
+
+
+# def test_remove_symbol():
+#     kamodo = Kamodo(f='x', verbose=True)
+#     kamodo.remove_symbol('f')
+#     assert 'f' not in kamodo
+
+def test_method_registry():
+    
+    class MyClass(Kamodo):
+        @kamodofy
+        def f(self, x):
+            return x**2
+
+    myclass = MyClass()
+    myclass['f'] = myclass.f
+
+
 

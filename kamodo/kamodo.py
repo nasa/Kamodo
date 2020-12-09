@@ -298,31 +298,46 @@ class Kamodo(collections.OrderedDict):
         self.symbol_registry[str(type(symbol))] = symbol
 
 
-    def remove_symbol(self, sym_name):
-        if self.verbose:
-            print('remove_symbol: removing {} from symbol_registry'.format(sym_name))
-        try:
-            symbol = self.symbol_registry.pop(sym_name)
-        except KeyError:
-            raise KeyError('{} was not in symbol_registry {}'.format(
-                sym_name, self.symbol_registry.keys()))
-        if self.verbose:
-            print('remove_symbol: removing {} from signatures'.format(symbol))
-        self.signatures.pop(str(symbol))
-        if self.verbose:
-            print('remove_symbol: removing {} from unit_registry'.format(symbol))
-        remove = []
-        for sym in self.unit_registry:
-            if is_function(sym): # {rho(x): rho(cm), rho(cm): kg}
-                if type(sym) == type(symbol):
-                    remove.append(sym)
-        for sym in remove:
-            self.unit_registry.pop(sym)
+    # def remove_symbol(self, sym_name):
+    #     """remove the sym_name (str) from the object"""
 
-        # if sym_name in self.unit_registry:
-        #     func_unit = self.unit_registry.pop(sym_name) # rho(x): rho(cm)
-        #     if func_unit in self.unit_registry:
-        #         self.unit_registry.pop(func_unit) # rho(cm): kg/m^3
+    #     if self.verbose:
+    #         print('remove_symbol: removing {} from symbol_registry'.format(sym_name))
+    #     try:
+    #         symbol = self.symbol_registry.pop(sym_name)
+    #     except KeyError:
+    #         raise KeyError('{} was not in symbol_registry {}'.format(
+    #             sym_name, self.symbol_registry.keys()))
+    #     if self.verbose:
+    #         print('remove_symbol: removing {} from signatures'.format(symbol))
+    #     self.signatures.pop(str(type(symbol)))
+    #     if self.verbose:
+    #         print('remove_symbol: removing {} from unit_registry'.format(symbol))
+    #     remove = []
+    #     for sym in self.unit_registry:
+    #         if is_function(sym): # {rho(x): rho(cm), rho(cm): kg}
+    #             if type(sym) == type(symbol):
+    #                 remove.append(sym)
+    #     for sym in remove:
+    #         self.unit_registry.pop(sym)
+
+    #     if self.verbose:
+    #         print('removing {} from {}'.format(symbol, self.keys()))
+
+    #     if symbol in self.keys():
+    #         try:
+    #             self.pop(symbol)
+    #         except KeyError:
+    #             if self.verbose:
+    #                 print('something wrong with {} in {}'.format(symbol, self.keys()))
+    #             raise KeyError('{} not in {}'.format(symbol, self.keys()))
+
+    #     if type(symbol) in self.keys():
+    #         try:
+    #             self.pop(type(symbol))
+    #         except KeyError:
+    #             raise KeyError('{} not in {}'.format(type(symbol), self.keys()))
+
 
     def parse_key(self, sym_name):
         """parses the symbol name
@@ -340,14 +355,14 @@ class Kamodo(collections.OrderedDict):
         except:
             raise NotImplementedError('could not parse key {}'.format(sym_name))
 
-        try:
-            if len(args) > 0:
-                symbol_str = str(symbol).replace(' ', '')
-            else:
-                symbol_str = str(type(symbol))
-            units = get_abbrev(unit_dict[symbol_str])
-        except KeyError:
-            raise KeyError('{} not in {}'.format(symbol_str, unit_dict))
+        # try:
+        if len(args) > 0:
+            symbol_str = str(symbol).replace(' ', '')
+        else:
+            symbol_str = str(type(symbol))
+        units = get_abbrev(unit_dict[symbol_str])
+        # except KeyError:
+        #     raise KeyError('{} not in {}'.format(symbol_str, unit_dict))
 
         return symbol, args, units, lhs_expr
 
@@ -366,58 +381,58 @@ class Kamodo(collections.OrderedDict):
         if self.verbose:
             print('symbol arguments: >>> {} {} <<<'.format(symbol.args, type(symbol.args)))
             print('free_symbols: >>> {} {} <<<'.format(free_symbols, type(free_symbols)))
-        try:
-            lhs_args = set(symbol.args)
-        except TypeError:
-            lhs_args = free_symbols
-            symbol = Function(str(symbol))(*lhs_args)
+        # try:
+        lhs_args = set(symbol.args)
+        # except TypeError:
+        #     lhs_args = free_symbols
+        #     symbol = Function(str(symbol))(*lhs_args)
 
         if lhs_args != set(free_symbols):
             free_symbols_ = tuple(free_symbols)
             if len(free_symbols) == 1:
-                try:
-                    symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
-                except:
-                    raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
+                # try:
+                symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                # except:
+                #     raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
             else:
                 if len(lhs_args) > 0:
                     raise NameError("Mismatched symbols {} and {}".format(lhs_args, free_symbols))
                 else:
                     if self.verbose:
                         print('type of rhs symbols:', type(free_symbols))
-                    if type(free_symbols) == set:
-                        free_symbols_ = sort_symbols(free_symbols)
+                    # if isinstance(free_symbols, set):
+                    #     free_symbols_ = sort_symbols(free_symbols)
                     if self.verbose:
                         print('replacing {} with {}'.format(
                             symbol, str(type(symbol)) + str(free_symbols_)))
-                    try:
-                        symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
-                    except:
-                        raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
+                    # try:
+                    symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                    # except:
+                    #     raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
 
         return symbol
 
     def validate_function(self, lhs_expr, rhs_expr):
         assert lhs_expr.free_symbols == rhs_expr.free_symbols
 
-    def get_composition(self, lhs_expr, rhs_expr):
-        composition = dict()
-        for k in list(self.keys()):
-            if len(rhs_expr.find(k)) > 0:
-                if self.verbose:
-                    print('composition detected: found {} in {} = {}'.format(k, lhs_expr, rhs_expr))
-                composition[str(k)] = self[k]
-            else:
-                if self.verbose:
-                    print('{} {} not in {} = {}'.format(k, type(k), lhs_expr, rhs_expr))
-        return composition
+    # def get_composition(self, lhs_expr, rhs_expr):
+    #     composition = dict()
+    #     for k in list(self.keys()):
+    #         if len(rhs_expr.find(k)) > 0:
+    #             if self.verbose:
+    #                 print('composition detected: found {} in {} = {}'.format(k, lhs_expr, rhs_expr))
+    #             composition[str(k)] = self[k]
+    #         else:
+    #             if self.verbose:
+    #                 print('{} {} not in {} = {}'.format(k, type(k), lhs_expr, rhs_expr))
+    #     return composition
 
     def vectorize_function(self, symbol, rhs_expr, composition):
         try:
             func = lambdify(symbol.args, rhs_expr, modules=['numexpr'])
             if self.verbose:
                 print('lambda {} = {} labmdified with numexpr'.format(symbol.args, rhs_expr))
-        except:
+        except: # numexpr not installed
             func = lambdify(symbol.args, rhs_expr, modules=['numpy', composition])
             if self.verbose:
                 print('lambda {} = {} lambdified with numpy and composition:'.format(
@@ -426,11 +441,11 @@ class Kamodo(collections.OrderedDict):
                     print('\t', k, v)
         return func
 
-    def update_unit_registry(self, func, arg_units=None):
+    def update_unit_registry(self, func, arg_units):
         """Inserts unit functions into registry"""
         lhs, unit_dict = extract_units(func)
-        if arg_units is None:
-            arg_units = {}
+        # if arg_units is None:
+        #     arg_units = {}
         for key, value in unit_dict.items():
             if key != lhs:
                 arg_units[parse_expr(key)] = get_unit(value)
@@ -444,18 +459,18 @@ class Kamodo(collections.OrderedDict):
 
 
     def register_signature(self, symbol, units, lhs_expr, rhs_expr):
-        if isinstance(units, str):
-            unit_str = units
-            if self.verbose:
-                print('unit str {}'.format(unit_str))
-        else:
-            if self.verbose:
-                print('getting abbreviation for', units)
-            unit_abbrev = get_abbrev(units)
-            if unit_abbrev is not None:
-                unit_str = str(unit_abbrev)
-            else:
-                unit_str = None
+        # if isinstance(units, str):
+        unit_str = units
+        if self.verbose:
+            print('unit str {}'.format(unit_str))
+        # else:
+        #     if self.verbose:
+        #         print('getting abbreviation for', units)
+        #     unit_abbrev = get_abbrev(units)
+        #     if unit_abbrev is not None:
+        #         unit_str = str(unit_abbrev)
+        #     else:
+        #         unit_str = None
         self.signatures[str(type(symbol))] = dict(
             symbol=symbol,
             units=unit_str,
@@ -496,7 +511,7 @@ class Kamodo(collections.OrderedDict):
                 print('rhs from input func {}'.format(rhs))
             try:
                 setattr(func, 'meta', dict(units=lhs_units, arg_units=None))
-            except:  # will not work on methods
+            except:  # will not work on bound methods
                 pass
 
         arg_units = func.meta.get('arg_units', None)
@@ -689,17 +704,17 @@ class Kamodo(collections.OrderedDict):
 
             rhs_args = rhs_expr.free_symbols
 
-            try:
-                symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
-                self.validate_function(symbol, rhs_expr)
-            except:
-                if self.verbose:
-                    print('\n Error in __setitem__', input_expr)
-                    print(symbol, lhs_expr, rhs_args)
-                    print('symbol registry:', self.symbol_registry)
-                    print('signatures:', self.signatures)
-                    print('unit registry:', self.unit_registry)
-                raise
+            # try:
+            symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
+            self.validate_function(symbol, rhs_expr)
+            # except:
+            #     if self.verbose:
+            #         print('\n Error in __setitem__', input_expr)
+            #         print(symbol, lhs_expr, rhs_args)
+            #         print('symbol registry:', self.symbol_registry)
+            #         print('signatures:', self.signatures)
+            #         print('unit registry:', self.unit_registry)
+            #     raise
 
             # composition = self.get_composition(lhs_expr, rhs_expr)
             composition = {str(k_): self[k_] for k_ in self}
@@ -722,14 +737,14 @@ class Kamodo(collections.OrderedDict):
 
 
     def __getitem__(self, key):
+        if self.verbose:
+            print('__getitem__: {}'.format(key))
         try:
             return super(Kamodo, self).__getitem__(key)
         except:
             return self[self.symbol_registry[key]]
 
     def __contains__(self, item):
-        if self.verbose:
-            print('__contains__: {} {}'.format(item, type(item)))
         func_str = str(item).replace(' ', '')
         for key in self.keys():
             if func_str == str(key).replace(' ', ''):
@@ -746,6 +761,8 @@ class Kamodo(collections.OrderedDict):
         raise AttributeError(name)
 
     def __delattr__(self, name):
+        if self.verbose:
+            print('__delattr__: removing {}'.format(name))
         if name in self:
             del self[name]
         else:
