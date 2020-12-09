@@ -1,3 +1,4 @@
+* tests passing
 
 # 2020-12-09 12:56:26.285722: clock-in
 

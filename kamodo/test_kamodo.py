@@ -157,7 +157,7 @@ def test_function_registry():
     kamodo = Kamodo("f(x) = x**2", "g(y) = y**3")
     kamodo['r(x,y)'] = "(x**2 + y**2)**(1/2)"
     kamodo['h(x,y)'] = 'f + g + r'
-    assert 'h(x, y)' in kamodo.signatures
+    assert 'h' in kamodo.signatures
 
 
 def test_symbol_key():
@@ -256,7 +256,7 @@ def test_unit_composition():
     kamodo['v[km/s]'] = 'y'
     kamodo['p(x,y)'] = 'm*v'
     try:
-        assert get_unit(kamodo.signatures['p(x, y)']['units']) == get_unit('kg*km/s')
+        assert get_unit(kamodo.signatures['p']['units']) == get_unit('kg*km/s')
     except:
         print(kamodo.signatures)
         raise

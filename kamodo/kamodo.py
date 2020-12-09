@@ -148,7 +148,7 @@ def str_has_arguments(func_str):
 def extract_units(func_str):
     """separate the units from the left-hand-side of an expression assuming bracket notation
 
-    We could return symbol and dictionary mapping symbols to units
+    We return symbol and dictionary mapping symbols to units
 
     needs to handle the following cases:
 
@@ -165,7 +165,7 @@ def extract_units(func_str):
             ('f', {'f': '(cm)^2'})
 
         no args named and no units named
-            f -> f, -> {f:''}
+            ('f', {'f': ''})
 
     """
     # remove any spaces
@@ -284,12 +284,9 @@ class Kamodo(collections.OrderedDict):
                     # function(arg)[unit] = expr
                     lhs, rhs = components
                     self[lhs.strip('$')] = rhs
-                # elif len(components) == 3:
-                #     # function(arg)[function(arg_unit) = unit] = expr
-                #     if self.verbose:
-                #         print('updating unit registry')
-                #     lhs = self.update_unit_registry(func.strip('$'))
-                #     self[lhs] = rhs
+                else:
+                    raise NotImplementedError(
+                        'cannot register functions of the form {}'.format(func))
 
         for sym_name, expr in list(kwargs.items()):
             if self.verbose:
@@ -300,12 +297,6 @@ class Kamodo(collections.OrderedDict):
     def register_symbol(self, symbol):
         self.symbol_registry[str(type(symbol))] = symbol
 
-    # def load_symbol(self, sym_name):
-    #     symbol = self.symbol_registry[sym_name]
-    #     signature = self.signatures[str(symbol)]
-    #     lhs_expr = signature['lhs']
-    #     units = signature['units']
-    #     return symbol, symbol.args, units, lhs_expr
 
     def remove_symbol(self, sym_name):
         if self.verbose:
@@ -341,65 +332,23 @@ class Kamodo(collections.OrderedDict):
         returns: symbol, args, unit_dict, lhs_expr
         """
         args = tuple()
-        if Function(sym_name) not in self:
-            if self.verbose:
-                print('parse_key: parsing new key {}'.format(sym_name))
-            # if type(sym_name) is str:
-            sym_name = sym_name.strip('$').strip()
-            if sym_name not in self.symbol_registry:
-                symbol, args, unit_dict, lhs_expr = parse_lhs(
-                    sym_name,
-                    self.symbol_registry,
-                    self.verbose)
-                symbol_str = str(symbol).replace(' ', '')
-                if symbol_str in unit_dict: # {'f': km}
-                    units = unit_dict[symbol_str]
-                elif str(type(symbol)) in unit_dict: # type(f(x)) == f
-                    units = unit_dict[str(type(symbol))]
-                # else:
-                #     raise NameError('{} not found in unit_dict {}'.format(symbol_str, unit_dict))
-                if self.verbose:
-                    print('newly parsed symbol:', symbol, type(symbol))
+        try:
+            symbol, args, unit_dict, lhs_expr = parse_lhs(
+                sym_name,
+                self.symbol_registry,
+                self.verbose)
+        except:
+            raise NotImplementedError('could not parse key {}'.format(sym_name))
 
-                if str(type(symbol)) in self.symbol_registry:
-                    if self.verbose:
-                        print('parse_key: error 1')
-                    raise KeyError("{} found in symbol_registry".format(str(type(symbol))))
-            # else:
-            #     if self.verbose:
-            #         print('parse_key: error 2')
-            #     raise KeyError("{} found in symbol_registry".format(sym_name))
-            # else:
-            #     if self.verbose:
-            #         print('parse_key: {} not a str'.format(sym_name))
-            #     if type(sym_name) is Symbol:
-            #         symbol = sym_name
-            #         units = ''  # where else do we get these?
-            #         lhs_expr = symbol
-            #     else:
-            #         # cast the lhs into a string and parse it
-            #         symbol, args, unit_dict, lhs_expr = parse_lhs(str(sym_name), self.symbol_registry, self.verbose)
-            #         symbol_str = str(symbol).replace(' ', '')
-            #         if symbol_str in unit_dict:
-            #             units = unit_dict[symbol_str]
-            #         elif str(type(symbol)) in unit_dict:
-            #             units = unit_dict[str(type(symbol))]
-            #         else:
-            #             raise NameError('{} not found in unit_dict {}'.format(symbol_str, unit_dict))
-        else:
-            symbol = Function(sym_name)
-            if len(symbol.free_symbols) > 0:
-                symbol = type(symbols)
-            if self.verbose:
-                print('parse_key: error 4: {} found in keys'.format(sym_name))
+        try:
+            if len(args) > 0:
                 symbol_str = str(symbol).replace(' ', '')
-            if symbol_str in self.signatures:
-                units = self.signatures[symbol_str]['units']
-                lhs_expr = self.signatures[symbol_str]['lhs']
             else:
-                raise KeyError(symbol_str)
-                units = ''
-                lhs_expr = symbol
+                symbol_str = str(type(symbol))
+            units = get_abbrev(unit_dict[symbol_str])
+        except KeyError:
+            raise KeyError('{} not in {}'.format(symbol_str, unit_dict))
+
         return symbol, args, units, lhs_expr
 
     def parse_value(self, rhs_expr, local_dict):
@@ -507,7 +456,7 @@ class Kamodo(collections.OrderedDict):
                 unit_str = str(unit_abbrev)
             else:
                 unit_str = None
-        self.signatures[str(symbol)] = dict(
+        self.signatures[str(type(symbol))] = dict(
             symbol=symbol,
             units=unit_str,
             lhs=lhs_expr,
@@ -527,6 +476,7 @@ class Kamodo(collections.OrderedDict):
         if str(rhs_args[0]) == 'self':  # in case function is a class method
             rhs_args.pop(0)
 
+        lhs_symbol_old = lhs_symbol
         lhs_symbol = self.check_or_replace_symbol(lhs_symbol, rhs_args)
         units = lhs_units
         if hasattr(func, 'meta'):
@@ -613,19 +563,21 @@ class Kamodo(collections.OrderedDict):
         if not isinstance(sym_name, str):
             sym_name = str(sym_name)
 
-        if self.verbose:
-            print('')
-        try:
-            symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
-        except KeyError as error:
-            if self.verbose:
-                print('could not use parse_key with {}'.format(sym_name))
-                print(error)
-            found_sym_name = str(error).split('found')[0].strip("'").strip(' ')
-            if self.verbose:
-                print('__setitem__: replacing {}'.format(found_sym_name))
-            self.remove_symbol(found_sym_name)
-            symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
+        symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
+
+        # if self.verbose:
+        #     print('')
+        # try:
+        #     symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
+        # except KeyError as error:
+        #     if self.verbose:
+        #         print('could not use parse_key with {}'.format(sym_name))
+        #         print(error)
+        #     found_sym_name = str(error).split('found')[0].strip("'").strip(' ')
+        #     if self.verbose:
+        #         print('__setitem__: replacing {}'.format(found_sym_name))
+        #     self.remove_symbol(found_sym_name)
+        #     symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
 
         if hasattr(input_expr, '__call__'):
             self.register_function(input_expr, symbol, lhs_expr, lhs_units)
@@ -740,7 +692,6 @@ class Kamodo(collections.OrderedDict):
             try:
                 symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
                 self.validate_function(symbol, rhs_expr)
-
             except:
                 if self.verbose:
                     print('\n Error in __setitem__', input_expr)
@@ -883,7 +834,8 @@ class Kamodo(collections.OrderedDict):
 
     def get_signature(self, name):
         """Get the signature for the named variable"""
-        return self.signatures[str(self.symbol_registry[name])]
+        return self.signatures[name]
+        # return self.signatures[str(self.symbol_registry[name])]
 
     def simulate(self, **kwargs):
         state_funcs = []
@@ -962,12 +914,13 @@ class Kamodo(collections.OrderedDict):
         return scope['solution']
 
     def figure(self, variable, indexing='ij', return_type=False, **kwargs):
+        """Generates a plotly figure for a given variable and keyword arguments"""
         result = self.evaluate(variable, **kwargs)
         signature = self.get_signature(variable)
         units = signature['units']
         if units != '':
             units = '[{}]'.format(units)
-        title = self.to_latex([str(self.symbol_registry[variable])], mode='inline')  # .replace('\\operatorname','')
+        title = self.to_latex([variable])
         title_lhs = title.split(' =')[0] + '$'
         title_short = '{}'.format(variable + units)  # something wrong with colorbar latex being vertical
         titles = dict(title=title, title_lhs=title_lhs, title_short=title_short, units=units, variable=variable)
@@ -1045,7 +998,7 @@ def compose(**kamodos):
     kamodo = Kamodo()
     for kname, k in kamodos.items():
         for name, symbol in k.symbol_registry.items():
-            signature = k.signatures[str(symbol)]
+            signature = k.signatures[name]
             meta = k[symbol].meta
             data = getattr(k[symbol], 'data', None)
 
