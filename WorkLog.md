@@ -1,3 +1,6 @@
+
+# 2020-12-09 16:46:32.320646: clock-in
+
 # 2020-12-09 15:02:57.443215: clock-out
 
 * improving coverage
