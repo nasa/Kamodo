@@ -552,6 +552,117 @@ class GITM(Kamodo):
             return fig
 
         if plottype == "iso":
+            # Check if value entered is valid (checking before possible log scale)
+            cmin=np.min(self.variables[var]['data'])
+            cmax=np.max(self.variables[var]['data'])
+            if value < cmin or value > cmax:
+                print('Iso value is out of range: iso=',value,' min/max=',cmin,cmax)
+                sys.exit("Exiting ...")
+                return
+
+            # Determine altitude start, stop, number for use in isosurface
+            step=10000. # 10000. m altitude step size
+            alt1=(step*round(self.alt[2]/step))
+            alt2=self.alt[(self.alt.shape[0]-3)]
+            nalt=round((alt2-alt1)/step)
+            alt2=alt1+step*nalt
+            nalt=1+int(nalt)
+            
+            # Set function for interpolation
+            gridp = np.ndarray(shape=(1,3), dtype=np.float32)
+            def finterp(x,y,z):
+                gridp[0,:] = [x,y,z]
+                return self.variables[var]['interpolator'](gridp)
+
+            # Extract the isosurface as vertices and triangulated connectivity
+            import mcubes
+            verts, tri = mcubes.marching_cubes_func(
+                (0, -90, alt1), (360, 90, alt2),  # Bounds (min:x,y,z), (max:x,y,z)
+                73, 37, nalt,                     # Number of samples in each dimension
+                finterp,                          # Implicit function of x,y,z
+                value)                            # Isosurface value
+
+            # Process output for creating plots, including face or vertex colors
+            X, Y, Z = verts[:,:3].T
+            I, J, K = tri.T
+            
+            # Update cmin, cmax for log, sym, vmin, vmax values if set
+            if sym == "T":
+                if vmax != "":
+                    cmax = abs(float(vmax))
+                if vmin != "":
+                    cmax = max(cmax,abs(float(vmin)))
+                cmin = -cmax
+            else:
+                if vmax != "":
+                    cmax = float(vmax)
+                if vmin != "":
+                    cmin = float(vmin)
+            dvalue=value
+            if log == "T":
+                dvalue=np.log10(value)
+                cmin=np.log10(cmin)
+                cmax=np.log10(cmax)
+                txtbar = "log<br>"+txtbar
+            
+            # Create fig and update with modifications to customize plot
+            fig=go.Figure(data=[go.Mesh3d(
+                name='ISO',
+                x=X,
+                y=Y,
+                z=Z,
+                i=I,
+                j=J,
+                k=K,
+                intensity=np.linspace(dvalue,dvalue,X.shape[0]),
+                cmin=cmin, cmax=cmax,
+                showscale=True,
+                opacity=0.6,
+                colorbar=dict(title=txtbar, tickformat=".3g"),
+                hovertemplate="Isosurface<br>"+var+"="+"{:.3g}".format(value)+" "+units+"<br><extra></extra>",
+            )])
+            if colorscale == "BlueRed":
+                fig.update_traces(colorscale="RdBu", reversescale=True)
+            elif colorscale == "Rainbow":
+                fig.update_traces(
+                    colorscale=[[0.00, 'rgb(0,0,255)'],
+                                [0.25, 'rgb(0,255,255)'],
+                                [0.50, 'rgb(0,255,0)'],
+                                [0.75, 'rgb(255,255,0)'],
+                                [1.00, 'rgb(255,0,0)']]
+                )
+            else:
+                fig.update_traces(colorscale=colorscale)
+            fig.update_scenes(
+                xaxis=dict(title=dict(text="Lon [degrees]"),tick0=0.,dtick=45.),
+                yaxis=dict(title=dict(text="Lat [degrees]"),tick0=0.,dtick=45.),
+                zaxis=dict(title=dict(text="Alt [km]"))
+            )
+            fig.update_layout(
+                scene_camera_eye=dict(x=.1, y=-1.8, z=1.5),
+                scene_aspectmode='manual',
+                scene_aspectratio=dict(x=2, y=1, z=1),
+                scene_xaxis=dict(range=[0,360]),
+                scene_yaxis=dict(range=[-90,90]),
+                scene_zaxis=dict(range=[alt1,alt2]),
+                title=dict(text="Isosurface of "+var+"="+\
+                           "{:.3g}".format(value)+" "+units+"<br>"+"Time = "+time,
+                           yref="container", yanchor="top", x=0.01, y=0.95),
+                title_font_size=16,
+                annotations=[
+                    dict(text=txtbot, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                         xshift=0, yshift=-20, xref="paper", yref="paper",
+                         font=dict(size=16, family="sans serif", color="#000000"))
+                ],
+                margin=dict(l=10,t=80),
+            )
+            
+            return fig
+
+        if plottype == "iso1":
+            # This method keeps all the data local, resulting in huge storage
+            #   as well as corrupted html divs.
+            
             ilon = np.linspace(0, 360, 73) #181
             ilat = np.linspace(-90, 90, 37) #91
             step=10000. # 5000.
@@ -664,7 +775,7 @@ class GITM(Kamodo):
             fig2.add_trace(fig1.data[0])
             
             return fig2
-        
+
         print('Unknown plottype (',plottype,') returning.')
         return
     
