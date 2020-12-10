@@ -204,6 +204,9 @@ def test_to_latex():
     assert str(kamodo.to_latex()) == r'\begin{equation}f{\left(x \right)} = x^{2}\end{equation}'
     kamodo = Kamodo(g='x', verbose=True)
     assert str(kamodo.to_latex()) == r'\begin{equation}g{\left(x \right)} = x\end{equation}'
+    kamodo['f(x[cm])[kg]'] = 'x**2'
+    kamodo['g'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'), equation='$x^2$')
+    kamodo.to_latex()
 
 
 def test_expr_conversion():
@@ -615,5 +618,17 @@ def test_method_registry():
     myclass = MyClass()
     myclass['f'] = myclass.f
 
+def test_del_function():
+    kamodo = Kamodo(f='x', g='y', h='y', verbose=True)
+    del(kamodo.f)
+    assert 'f' not in kamodo
+    del(kamodo['g'])
+    assert 'g' not in kamodo
+    del(kamodo['h(y)'])
+    print(kamodo.keys())
+    assert 'h(y)' not in kamodo
+
+    with pytest.raises(AttributeError):
+        del(kamodo.y)
 
 

@@ -1,3 +1,6 @@
+* inheriting from UserDict, latex tests
+* article on alternatives to dict inheritance  https://treyhunner.com/2019/04/why-you-shouldnt-inherit-from-list-and-dict-in-python/
+
 
 # 2020-12-09 16:46:32.320646: clock-in
 

@@ -12,6 +12,7 @@ except ImportError:  # may occur for certain versions of sympy
     from sympy import sympify as parse_expr
 
 from collections import OrderedDict
+from collections import UserDict
 import collections
 
 from sympy import lambdify
@@ -244,7 +245,8 @@ def get_function_args(func, hidden_args=[]):
 
 
 
-class Kamodo(collections.OrderedDict):
+# class Kamodo(collections.OrderedDict):
+class Kamodo(UserDict):
     '''Kamodo base class demonstrating common API for space weather models
 
 
@@ -635,40 +637,40 @@ class Kamodo(collections.OrderedDict):
                 if self.verbose:
                     print('unit registry update returned', sym_name, self.unit_registry.get(symbol))
             else:
-                if symbol in self.unit_registry:
-                    units = get_expr_unit(symbol, self.unit_registry)
-                    if self.verbose:
-                        print('{} has units {}'.format(sym_name, units))
-                else:
-                    if self.verbose:
-                        print(sym_name,
-                              symbol,
-                              'had no units. Getting units from {}'.format(rhs_expr))
+                # if symbol in self.unit_registry:
+                #     units = get_expr_unit(symbol, self.unit_registry)
+                #     if self.verbose:
+                #         print('{} has units {}'.format(sym_name, units))
+                # else:
+                if self.verbose:
+                    print(sym_name,
+                          symbol,
+                          'had no units. Getting units from {}'.format(rhs_expr))
 
-                    expr_unit = get_expr_unit(rhs_expr, self.unit_registry, self.verbose)
-                    arg_units = get_arg_units(rhs_expr, self.unit_registry)
+                expr_unit = get_expr_unit(rhs_expr, self.unit_registry, self.verbose)
+                arg_units = get_arg_units(rhs_expr, self.unit_registry)
 
-                    if expr_unit == Dimension(1):
-                        expr_unit = None
+                # if expr_unit == Dimension(1):
+                #     expr_unit = None
 
-                    if self.verbose:
-                        print('registering {} with {} {}'.format(symbol, expr_unit, arg_units))
+                if self.verbose:
+                    print('registering {} with {} {}'.format(symbol, expr_unit, arg_units))
 
-                    if (symbol not in self.unit_registry) and (expr_unit is not None):
-                        self.unit_registry[symbol] = symbol.subs(arg_units)
-                        self.unit_registry[symbol.subs(arg_units)] = expr_unit
+                if (symbol not in self.unit_registry) and (expr_unit is not None):
+                    self.unit_registry[symbol] = symbol.subs(arg_units)
+                    self.unit_registry[symbol.subs(arg_units)] = expr_unit
 
-                    if is_function(expr_unit):
-                        self.unit_registry[expr_unit] = get_expr_unit(
-                            expr_unit,
-                            self.unit_registry,
-                            self.verbose)
+                # if is_function(expr_unit):
+                #     self.unit_registry[expr_unit] = get_expr_unit(
+                #         expr_unit,
+                #         self.unit_registry,
+                #         self.verbose)
 
-                    if expr_unit is not None:
-                        lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
+                if expr_unit is not None:
+                    lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
 
-                    if self.verbose:
-                        print('registered lhs_units', lhs_units)
+                if self.verbose:
+                    print('registered lhs_units', lhs_units)
 
                 rhs = rhs_expr
                 sym_name = str(sym_name)
@@ -737,12 +739,15 @@ class Kamodo(collections.OrderedDict):
 
 
     def __getitem__(self, key):
-        if self.verbose:
-            print('__getitem__: {}'.format(key))
         try:
             return super(Kamodo, self).__getitem__(key)
-        except:
-            return self[self.symbol_registry[key]]
+        except KeyError:
+            try:
+                symbol = self.symbol_registry[str(key)]
+            except KeyError:
+                symbol = self.symbol_registry[str(type(key))]
+            if symbol in self:
+                return super().__getitem__(symbol)
 
     def __contains__(self, item):
         func_str = str(item).replace(' ', '')
@@ -755,29 +760,58 @@ class Kamodo(collections.OrderedDict):
         try:
             return self[name]
         except KeyError:
-            name_ = symbols(name, cls=Function)
-            if name_ in self:
-                return self[name_]
-        raise AttributeError(name)
+            raise AttributeError(name)
 
     def __delattr__(self, name):
-        if self.verbose:
-            print('__delattr__: removing {}'.format(name))
+
         if name in self:
-            del self[name]
+            symbol = self.symbol_registry[name]
+            if self.verbose:
+                print('__delattr__: removing name {}, symbol {}'.format(name, symbol))
+                print(self.keys())
+            # del self[symbol]
+            super().pop(symbol)
+            super().pop(type(symbol))
+
         else:
             raise AttributeError("No such field: " + name)
 
-    def get_units_map(self):
-        """Maps from string units to symbolic units"""
-        d = dict()
-        star = Wild('star')
-        for k, v in list(self.signatures.items()):
-            unit = get_unit(v['units'])
-            d[k] = unit
-            d[v['symbol']] = unit
+    def __delitem__(self, key):
+        if self.verbose:
+            print('__delitem__: got {} type: {}'.format(key, type(key)))
+        if isinstance(key, str):
+            try:
+                symbol = self.symbol_registry[key]
+            except KeyError:
+                symbol, args, unit_dict, parsed = parse_lhs(
+                    key, self.symbol_registry, self.verbose)
+        else:
+            symbol = key
+        if self.verbose:
+            print('__delitem__: removing {} {}'.format(symbol, type(symbol)))
 
-        return d
+        remove_keys = []
+        for k in self.data:
+            if str(k) == str(symbol):
+                remove_keys.append(k)
+            if str(k) == str(type(symbol)):
+                remove_keys.append(k)
+        if self.verbose:
+            print('__delitem__: removing keys:', remove_keys)
+
+        for key_ in remove_keys:
+            self.data.pop(key_)
+
+    # def get_units_map(self):
+    #     """Maps from string units to symbolic units"""
+    #     d = dict()
+    #     star = Wild('star')
+    #     for k, v in list(self.signatures.items()):
+    #         unit = get_unit(v['units'])
+    #         d[k] = unit
+    #         d[v['symbol']] = unit
+
+    #     return d
 
     def to_latex(self, keys=None, mode='equation'):
         """Generate list of LaTeX-formated formulas"""
@@ -810,27 +844,22 @@ class Kamodo(collections.OrderedDict):
             if len(units) > 0:
                 lhs_str += "[{}]".format(units)
 
-
+            latex_eq = ''
+            latex_eq_rhs = ''
             if type(rhs) == str:
-                latex_eq = rhs
+                latex_eq_rhs = rhs
                 # latex_eq = latex(Eq(lhs, parse_latex(rhs)), mode = mode)
             else:
-                if rhs is not None:
-                    try:
-                        latex_eq = latex(Eq(lhs, rhs), mode=mode)
-                        latex_eq_rhs = latex(rhs) # no $$ delimiter
-                    except:
-                        lambda_ = symbols('lambda', cls=UndefinedFunction)
-                        latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
-                        latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
-                else:
+                # if rhs is not None:
+                if hasattr(rhs, '__call__'):
                     lambda_ = symbols('lambda', cls=UndefinedFunction)
                     latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
                     latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
-            if units is None:
-                units = ''
+
+                else:
+                    latex_eq = latex(Eq(lhs, rhs), mode=mode)
+                    latex_eq_rhs = latex(rhs) # no $$ delimiter
             if len(str(units)) > 0:
-                # latex_eq = latex_eq.replace('=','\\text{' + '[{}]'.format(units) + '} =')
                 latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
 
             repr_latex += r"\begin{equation}"
