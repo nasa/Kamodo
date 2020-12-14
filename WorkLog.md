@@ -1,3 +1,6 @@
+
+# 2020-12-14 13:35:34.718198: clock-in
+
 # 2020-12-09 18:56:30.911547: clock-out
 
 * inheriting from UserDict, latex tests
