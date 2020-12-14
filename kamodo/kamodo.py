@@ -2,22 +2,17 @@
 Copyright © 2017 United States Government as represented by the Administrator, National Aeronautics and Space Administration.  
 No Copyright is claimed in the United States under Title 17, U.S. Code.  All Other Rights Reserved.
 """
-try:
-    import pytest
-except ImportError:
-    pass
-
-
 
 import numpy as np
 from sympy import Integral, Symbol, symbols, Function
 
 try:
     from sympy.parsing.sympy_parser import parse_expr
-except ImportError: # occurs in python3
-    from sympy import sympy as parse_expr
+except ImportError:  # may occur for certain versions of sympy
+    from sympy import sympify as parse_expr
 
 from collections import OrderedDict
+from collections import UserDict
 import collections
 
 from sympy import lambdify
@@ -44,9 +39,11 @@ from .util import get_defaults, valid_args, eval_func
 # from .util import to_arrays, cast_0_dim
 from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
+from .util import convert_to
+from .util import unify, get_abbrev, get_expr_unit
+from .util import is_function, get_arg_units
 
 import sympy.physics.units as u
-
 
 import plotly.graph_objs as go
 from plotly import figure_factory as ff
@@ -58,18 +55,23 @@ from sympy import Wild
 from types import GeneratorType
 import inspect
 
+import re
+
+
+
 def get_unit_quantities():
     """returns a map of sympy units {symbol: quantity} """
-    subs = {} 
-    for k, v in list(sympy_units.__dict__.items()): 
-        if isinstance(v, Expr) and v.has(sympy_units.Unit): 
-            subs[Symbol(k)] = v # Map the `Symbol` for a unit to the quantity
+    subs = {}
+    for k, v in list(sympy_units.__dict__.items()):
+        if isinstance(v, Expr) and v.has(sympy_units.Unit):
+            subs[Symbol(k)] = v  # Map the `Symbol` for a unit to the quantity
     return subs
 
 
 def clean_unit(unit_str):
     """remove brackets and all white spaces in and around unit string"""
     return unit_str.strip().strip('[]').strip()
+
 
 def get_unit(unit_str, unit_subs=unit_subs):
     """get the unit quantity corresponding to this string
@@ -91,61 +93,117 @@ def get_unit(unit_str, unit_subs=unit_subs):
     try:
         assert len(unit.free_symbols) == 0
     except:
-        raise ValueError("Unsupported unit: {} {}".format(unit_str, type(unit_str)))
+        raise NameError("Unsupported unit: {} {} {}".format(
+            unit_str, type(unit_str), unit.free_symbols))
     return unit
 
-def get_expr_with_units(expr, units_map):
-    """Replaces symbols with symbol*unit"""
-    subs = []
-    for symbol, unit in list(units_map.items()):
-        if type(symbol) == str:
-            subs.append((symbol, Symbol(symbol)*unit))
-        else: #assume symbol
-            subs.append((symbol, symbol*unit))
-    new_expr = expr.subs(subs)
-    return new_expr
-
-def get_expr_without_units(expr, to, units_map):
-    """Converts an expression with units to one without, applying conversion factors where necessary"""
-    expr = sympy_units.convert_to(expr, to)
-    subs = []
-    for s in units_map:
-        if type(s) == str:
-            subs.append((Symbol(s)*to, Symbol(s)))
-        else: #assume symbol
-            subs.append((s*to, s))
-    return expr.subs(subs)
 
 
-def args_from_dict(expr, local_dict):
+
+def args_from_dict(expr, local_dict, verbose):
     """retrieve the symbols of an expression
 
     if a  {str: symbol} mapping is provided, use its symbols instead
     """
     args = []
-    if local_dict is not None:
-        for a in expr.args:
-            if str(a) in local_dict:
-                args.append(local_dict[str(a)])
-            else:
-                args.append(a)
-        return tuple(args)
-    else:
-        return expr.args
+    # if local_dict is not None:
+    if verbose:
+        print('args_from_dict: available names {}'.format(local_dict.keys()))
+    for a in expr.args:
+        if verbose:
+            print('args_from_dict: {}'.format(a))
+        if str(a) in local_dict:
+            args.append(local_dict[str(a)])
+        else:
+            args.append(a)
+    return tuple(args)
+    # else:
+    #     return expr.args
 
-def extract_units(lhs):
-    """separate the units from the left-hand-side of an expression assuming bracket notation
-    
-    mass[gm] = ...
+def get_str_units(bracketed_str):
+    """finds all bracketed units in a string
 
-    mass, 'gm'
+    supports functions like
+        bracketed_str = 'f(x[m],y[cm**3],z[km^.5],q[(cm*g)^-3])[km/s]'
+        get_str_units(bracketed_str)
+        >>> ['m', 'cm**3', 'km^.5', '(cm*g)^-3', 'km/s']
     """
+    return re.findall(r"\[([A-Za-z0-9_/*^\\(\\)-\.]+)\]", bracketed_str)
 
-    if '[' in lhs:
-        lhs, units = lhs.split('[')
-        return lhs, units.split(']')[0]
+def str_has_arguments(func_str): 
+    bracket = func_str.find('[')
+    paren = func_str.find('(')
+    if bracket > 0:
+        if paren > 0:
+            # f(x[(cm)^2]) has arguments since paren comes first
+            # f[(cm)^2] has no arguments since bracket comes first
+            return bracket > paren
+        return False # no paren hence no arguments
+    # no bracket
+    if paren > 0:
+        # has argument
+        return True
+    return False
+
+
+def extract_units(func_str):
+    """separate the units from the left-hand-side of an expression assuming bracket notation
+
+    We return symbol and dictionary mapping symbols to units
+
+    needs to handle the following cases:
+
+        args and output have units
+            extract_units('f(x[cm],y[km])[kg]')
+            ('f(x,y)', {'x': 'cm', 'y': 'km', 'f(x,y)': 'kg'})
+
+        args have parenthesis in units and output has no units
+            extract_units('f(x[(cm )^2])')
+            ('f(x)', {'x': '(cm)^2', 'f(x)': ''})
+
+        output has parenthesis in units
+            extract_units('f[(cm)^2]')
+            ('f', {'f': '(cm)^2'})
+
+        no args named and no units named
+            ('f', {'f': ''})
+
+    """
+    # remove any spaces
+    func_str = func_str.replace(' ', '')
+    all_units = get_str_units(func_str)
+
+    unit_dict = {}
+    if str_has_arguments(func_str):
+        # f(x[cm],y[km])[kg] -> x[cm],y[km]
+        lhs_args = re.findall(r"\((.+)\)", func_str)[0]
+
+        # 'x[cm],y[km]' -> ['cm', 'km']
+        arg_units = get_str_units(lhs_args)
+        args = lhs_args.split(',')
+
+        for arg, unit in zip(args, arg_units):
+            unit_dict[arg.replace('[{}]'.format(unit), '')] = unit
+
+        if len(all_units) == len(arg_units):
+            output_units = ''
+        else:
+            output_units = all_units[-1]
     else:
-        return lhs, ''
+        if len(all_units) > 0:
+            output_units = all_units[0]
+        else:
+            output_units = ''
+
+
+    # f(x[cm],y[km])[kg]
+    lhs = func_str
+    for unit in all_units:
+        lhs = lhs.replace('[{}]'.format(unit), '')
+
+    unit_dict[lhs] = output_units
+    return lhs, unit_dict
+
 
 def expr_to_symbol(expr, args):
     """f,args -> f(args) of class function, f(x) -> f(x)"""
@@ -153,33 +211,28 @@ def expr_to_symbol(expr, args):
         return parse_expr(str(expr) + str(args))
         # return symbols(str(expr), cls = Function)
     else:
-        return expr 
+        return expr
 
-def parse_lhs(lhs, local_dict):
+
+def parse_lhs(lhs, local_dict, verbose):
     """parse the left-hand-side
 
     returns: symbol, arguments, units, parsed_expr
     """
-    lhs, units = extract_units(lhs)
+    lhs, unit_dict = extract_units(lhs)
     parsed = parse_expr(lhs)
-    try:
-        args = args_from_dict(parsed, local_dict)
-    except:
-        print(local_dict)
-        raise
+    args = args_from_dict(parsed, local_dict, verbose)
     symbol = expr_to_symbol(parsed, args)
-    return symbol, args, units, parsed
+    return symbol, args, unit_dict, parsed
 
-def parse_rhs(rhs, is_latex, local_dict=None):
+
+def parse_rhs(rhs, is_latex, local_dict):
     """parse the right-hand-side of an equation
 
     subsititute variables from local_dict where available
     """
     if is_latex:
-        if local_dict is not None:
-            expr = parse_latex(rhs).subs(local_dict)
-        else:
-            expr = parse_latex(rhs)
+        expr = parse_latex(rhs).subs(local_dict)
     else:
         expr = parse_expr(rhs).subs(local_dict)
     return expr
@@ -189,62 +242,11 @@ def get_function_args(func, hidden_args=[]):
     """converts function arguments to list of symbols"""
     return symbols([a for a in getfullargspec(func).args if a not in hidden_args])
 
-def wildcard(expr):
-    """Replace all free symbols with the wild card symbol
-
-    not sure when this code is used
-    """
-    result = expr
-    for s in expr.free_symbols:
-        result = result.replace(s, Wild(str(s)))
-    return result
 
 
-def validate_units(expr, units):
-    """Check that the right-hand-side units are consistent
 
-    First replace the expression units mapping.
-
-    IF there are free symbols remaining, assume the expression
-    is dimensionless.
-
-    If there are no free symbols remaining,
-    assume all symbols were replaced with their respective units
-    """
-
-    result = expr.subs(units, simultaneous = True)
-    if len(result.free_symbols) != 0:
-        return Dimension(1)
-    else:
-        for s, unit in list(units.items()):
-            try:
-                result = result.replace(wildcard(s), unit)
-            except:
-                pass
-        return result
-
-
-def match_dimensionless_units(lhs_units, rhs_units):
-    '''if lhs_units is dimensionless and rhs_units is not dimensionless,
-    assign rhs_units to lhs_units (and vice versa)'''
-    if lhs_units == Dimension(1): # f = ...
-        if rhs_units != lhs_units: # f = rho[kg/m^3]
-            lhs_units = rhs_units # f[kg/m^3] = rho[kg/m^3]
-    elif rhs_units == Dimension(1): # ... = x
-        if rhs_units != lhs_units: # f[kg/m^3] = x
-            rhs_units = lhs_units # f[kg/m^3] = x[kg/m^3]
-    return lhs_units, rhs_units
-
-def check_unit_compatibility(rhs_units, lhs_units):
-    """This fails to raise an error when rhs and lhs units are incompatible"""
-
-    try:
-        assert sympy_units.convert_to(rhs_units + lhs_units, lhs_units)
-    except:
-        raise NameError('incompatible units:{} and {}'.format(lhs_units, rhs_units))
-
-
-class Kamodo(collections.OrderedDict):
+# class Kamodo(collections.OrderedDict):
+class Kamodo(UserDict):
     '''Kamodo base class demonstrating common API for space weather models
 
 
@@ -257,6 +259,7 @@ class Kamodo(collections.OrderedDict):
     Required methods that have not been implemented in child classes
     will raise a NotImplementedError
     '''
+
     def __init__(self, *funcs, **kwargs):
         """Base initialization method
 
@@ -267,6 +270,7 @@ class Kamodo(collections.OrderedDict):
 
         super(Kamodo, self).__init__()
         self.symbol_registry = OrderedDict()
+        self.unit_registry = OrderedDict()
 
         symbol_dict = kwargs.pop('symbol_dict', None)
 
@@ -274,138 +278,208 @@ class Kamodo(collections.OrderedDict):
         self.signatures = OrderedDict()
 
         for func in funcs:
+            if self.verbose:
+                print('registering {}'.format(func))
             if type(func) is str:
-                lhs,rhs = func.split('=')
-                self[lhs.strip('$')] = rhs
+                components = func.split('=')
+                if len(components) == 2:
+                    # function(arg)[unit] = expr
+                    lhs, rhs = components
+                    self[lhs.strip('$')] = rhs
+                else:
+                    raise NotImplementedError(
+                        'cannot register functions of the form {}'.format(func))
 
         for sym_name, expr in list(kwargs.items()):
+            if self.verbose:
+                print('registering {} with {}'.format(sym_name, expr))
             self[sym_name] = expr
 
-
-    def __getitem__(self, key):
-        try:
-            return super(Kamodo, self).__getitem__(key)
-        except:
-            return self[self.symbol_registry[key]]
 
     def register_symbol(self, symbol):
         self.symbol_registry[str(type(symbol))] = symbol
 
-    def load_symbol(self, sym_name):
-        symbol = self.symbol_registry[sym_name]
-        signature = self.signatures[str(symbol)]
-        lhs_expr = signature['lhs']
-        units = signature['units']
-        return symbol, symbol.args, units, lhs_expr
 
-    def remove_symbol(self, sym_name):
-        if self.verbose:
-            print('removing {} from symbol_registry'.format(sym_name))
-        symbol = self.symbol_registry.pop(sym_name)
-        if self.verbose:
-            print('removing {} from signatures'.format(symbol))
-        self.signatures.pop(str(symbol))
+    # def remove_symbol(self, sym_name):
+    #     """remove the sym_name (str) from the object"""
+
+    #     if self.verbose:
+    #         print('remove_symbol: removing {} from symbol_registry'.format(sym_name))
+    #     try:
+    #         symbol = self.symbol_registry.pop(sym_name)
+    #     except KeyError:
+    #         raise KeyError('{} was not in symbol_registry {}'.format(
+    #             sym_name, self.symbol_registry.keys()))
+    #     if self.verbose:
+    #         print('remove_symbol: removing {} from signatures'.format(symbol))
+    #     self.signatures.pop(str(type(symbol)))
+    #     if self.verbose:
+    #         print('remove_symbol: removing {} from unit_registry'.format(symbol))
+    #     remove = []
+    #     for sym in self.unit_registry:
+    #         if is_function(sym): # {rho(x): rho(cm), rho(cm): kg}
+    #             if type(sym) == type(symbol):
+    #                 remove.append(sym)
+    #     for sym in remove:
+    #         self.unit_registry.pop(sym)
+
+    #     if self.verbose:
+    #         print('removing {} from {}'.format(symbol, self.keys()))
+
+    #     if symbol in self.keys():
+    #         try:
+    #             self.pop(symbol)
+    #         except KeyError:
+    #             if self.verbose:
+    #                 print('something wrong with {} in {}'.format(symbol, self.keys()))
+    #             raise KeyError('{} not in {}'.format(symbol, self.keys()))
+
+    #     if type(symbol) in self.keys():
+    #         try:
+    #             self.pop(type(symbol))
+    #         except KeyError:
+    #             raise KeyError('{} not in {}'.format(type(symbol), self.keys()))
+
 
     def parse_key(self, sym_name):
+        """parses the symbol name
+
+        sym_name must be a string
+
+        returns: symbol, args, unit_dict, lhs_expr
+        """
         args = tuple()
-        if sym_name not in self:
-            if self.verbose:
-                print('parsing new key {}'.format(sym_name))
-            if type(sym_name) is str:
-                sym_name = sym_name.strip('$').strip()
-                if sym_name not in self.symbol_registry:
-                    symbol, args, units, lhs_expr = parse_lhs(sym_name, self.symbol_registry)
-                    if self.verbose:
-                        print('newly parsed symbol:', symbol, type(symbol))
-                    if str(type(symbol)) in self.symbol_registry:
-                        raise KeyError("{} found in symbol_registry".format(str(type(symbol))))
-                else:
-                    raise KeyError("{} found in symbol_registry".format(sym_name))
-            else:
-                if type(sym_name) is Symbol:
-                    symbol = sym_name
-                    units = '' # where else do we get these?
-                    lhs_expr = symbol
-                else:
-                    #cast the lhs into a string and parse it
-                    symbol, args, units, lhs_expr = parse_lhs(str(sym_name), self.symbol_registry)
+        try:
+            symbol, args, unit_dict, lhs_expr = parse_lhs(
+                sym_name,
+                self.symbol_registry,
+                self.verbose)
+        except:
+            raise NotImplementedError('could not parse key {}'.format(sym_name))
+
+        # try:
+        if len(args) > 0:
+            symbol_str = str(symbol).replace(' ', '')
         else:
-            symbol = sym_name
-            if self.verbose:
-                print('{} found in keys'.format(sym_name))
-            try:
-                units = self.signatures[sym_name]['units']
-                lhs_expr = self.signaturs[sym_name]['lhs']
-            except KeyError:
-                units = ''
-                lhs_expr = symbol
+            symbol_str = str(type(symbol))
+        units = get_abbrev(unit_dict[symbol_str])
+        # except KeyError:
+        #     raise KeyError('{} not in {}'.format(symbol_str, unit_dict))
+
         return symbol, args, units, lhs_expr
 
-
-    def parse_value(self, rhs_expr, local_dict = None):
+    def parse_value(self, rhs_expr, local_dict):
+        """returns an expression from string"""
         if type(rhs_expr) is str:
             is_latex = '$' in rhs_expr
             rhs_expr = rhs_expr.strip('$').strip()
-            rhs_expr = parse_rhs(rhs_expr, is_latex, local_dict=local_dict)
+            rhs_expr = parse_rhs(rhs_expr, is_latex, local_dict)
         return rhs_expr
-
 
     def check_or_replace_symbol(self, symbol, free_symbols, rhs_expr=None):
         """Rules of replacement:
 
         """
+        if self.verbose:
+            print('symbol arguments: >>> {} {} <<<'.format(symbol.args, type(symbol.args)))
+            print('free_symbols: >>> {} {} <<<'.format(free_symbols, type(free_symbols)))
+        # try:
         lhs_args = set(symbol.args)
+        # except TypeError:
+        #     lhs_args = free_symbols
+        #     symbol = Function(str(symbol))(*lhs_args)
+
         if lhs_args != set(free_symbols):
             free_symbols_ = tuple(free_symbols)
             if len(free_symbols) == 1:
+                # try:
                 symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                # except:
+                #     raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
             else:
                 if len(lhs_args) > 0:
                     raise NameError("Mismatched symbols {} and {}".format(lhs_args, free_symbols))
                 else:
                     if self.verbose:
                         print('type of rhs symbols:', type(free_symbols))
-                    if type(free_symbols) == set:
-                        free_symbols_ = sort_symbols(free_symbols)
+                    # if isinstance(free_symbols, set):
+                    #     free_symbols_ = sort_symbols(free_symbols)
                     if self.verbose:
                         print('replacing {} with {}'.format(
                             symbol, str(type(symbol)) + str(free_symbols_)))
+                    # try:
                     symbol = parse_expr(str(type(symbol)) + str(free_symbols_))
+                    # except:
+                    #     raise NotImplementedError('cannot parse', str(type(symbol)) + str(free_symbols_))
 
         return symbol
 
     def validate_function(self, lhs_expr, rhs_expr):
         assert lhs_expr.free_symbols == rhs_expr.free_symbols
 
-    def get_composition(self, lhs_expr, rhs_expr):
-        composition = dict()
-        for k in list(self.keys()):
-            if len(rhs_expr.find(k)) > 0:
-                if self.verbose: 
-                    print('composition detected: found {} in {} = {}'.format(k, lhs_expr, rhs_expr))
-                composition[str(k)] = self[k]
-        return composition
-
+    # def get_composition(self, lhs_expr, rhs_expr):
+    #     composition = dict()
+    #     for k in list(self.keys()):
+    #         if len(rhs_expr.find(k)) > 0:
+    #             if self.verbose:
+    #                 print('composition detected: found {} in {} = {}'.format(k, lhs_expr, rhs_expr))
+    #             composition[str(k)] = self[k]
+    #         else:
+    #             if self.verbose:
+    #                 print('{} {} not in {} = {}'.format(k, type(k), lhs_expr, rhs_expr))
+    #     return composition
 
     def vectorize_function(self, symbol, rhs_expr, composition):
         try:
-            func = lambdify(symbol.args, rhs_expr, modules = ['numexpr'])
+            func = lambdify(symbol.args, rhs_expr, modules=['numexpr'])
             if self.verbose:
                 print('lambda {} = {} labmdified with numexpr'.format(symbol.args, rhs_expr))
-        except:
-            func = lambdify(symbol.args, rhs_expr, modules = ['numpy', composition])
+        except: # numexpr not installed
+            func = lambdify(symbol.args, rhs_expr, modules=['numpy', composition])
             if self.verbose:
-                print('lambda {} = {} lambdified with numpy and {}'.format(symbol.args, rhs_expr, composition))
+                print('lambda {} = {} lambdified with numpy and composition:'.format(
+                    symbol.args, rhs_expr))
+                for k, v in composition.items():
+                    print('\t', k, v)
         return func
 
+    def update_unit_registry(self, func, arg_units):
+        """Inserts unit functions into registry"""
+        lhs, unit_dict = extract_units(func)
+        # if arg_units is None:
+        #     arg_units = {}
+        for key, value in unit_dict.items():
+            if key != lhs:
+                arg_units[parse_expr(key)] = get_unit(value)
+
+        lhs_expr = parse_expr(lhs)
+        func_units = lhs_expr.subs(arg_units)
+        self.unit_registry[lhs_expr] = func_units
+        output_units = unit_dict[lhs]
+        self.unit_registry[func_units] = get_unit(output_units)
+        return lhs
+
+
     def register_signature(self, symbol, units, lhs_expr, rhs_expr):
-        self.signatures[str(symbol)] = dict(
-            symbol=symbol, 
-            units=units, 
+        # if isinstance(units, str):
+        unit_str = units
+        if self.verbose:
+            print('unit str {}'.format(unit_str))
+        # else:
+        #     if self.verbose:
+        #         print('getting abbreviation for', units)
+        #     unit_abbrev = get_abbrev(units)
+        #     if unit_abbrev is not None:
+        #         unit_str = str(unit_abbrev)
+        #     else:
+        #         unit_str = None
+        self.signatures[str(type(symbol))] = dict(
+            symbol=symbol,
+            units=unit_str,
             lhs=lhs_expr,
             rhs=rhs_expr,
             # update = getattr(self[lhs_expr],'update', None),
-            )
+        )
 
     def register_function(self, func, lhs_symbol, lhs_expr, lhs_units):
         hidden_args = []
@@ -416,12 +490,15 @@ class Kamodo(collections.OrderedDict):
             rhs_args = get_function_args(func.pyfunc, hidden_args)
         else:
             rhs_args = get_function_args(func, hidden_args)
-        if str(rhs_args[0]) == 'self': # in case function is a class method
+        if str(rhs_args[0]) == 'self':  # in case function is a class method
             rhs_args.pop(0)
 
+        lhs_symbol_old = lhs_symbol
         lhs_symbol = self.check_or_replace_symbol(lhs_symbol, rhs_args)
         units = lhs_units
         if hasattr(func, 'meta'):
+            if self.verbose:
+                print('function has metadata', func.meta.keys())
             if len(lhs_units) > 0:
                 if lhs_units != func.meta['units']:
                     raise NameError('Units mismatch:{} != {}'.format(lhs_units, func.meta['units']))
@@ -435,148 +512,364 @@ class Kamodo(collections.OrderedDict):
             if self.verbose:
                 print('rhs from input func {}'.format(rhs))
             try:
-                setattr(func, 'meta', dict(units = lhs_units))
-            except: # will not work on methods
+                setattr(func, 'meta', dict(units=lhs_units, arg_units=None))
+            except:  # will not work on bound methods
                 pass
-        super(Kamodo, self).__setitem__(lhs_symbol, func) # assign key 'f(x)'
+
+        arg_units = func.meta.get('arg_units', None)
+        if arg_units is not None:
+            unit_dict = {arg: get_unit(arg_unit) for arg, arg_unit in arg_units.items()}
+            unit_expr = lhs_symbol.subs(unit_dict)
+            self.unit_registry[lhs_symbol] = unit_expr
+            self.unit_registry[unit_expr] = get_unit(units)
+        else:
+            self.unit_registry[lhs_symbol] = get_unit(units)
+        super(Kamodo, self).__setitem__(lhs_symbol, func)  # assign key 'f(x)'
         self.register_signature(lhs_symbol, units, lhs_expr, rhs)
-        super(Kamodo, self).__setitem__(type(lhs_symbol), self[lhs_symbol]) # assign key 'f'
+        super(Kamodo, self).__setitem__(type(lhs_symbol), self[lhs_symbol])  # assign key 'f'
         self.register_symbol(lhs_symbol)
 
+    # def check_consistency(self, input_expr, units):
+    #     # check that rhs units are consistent
+    #     rhs_expr = self.parse_value(input_expr, self.symbol_registry)
+    #     units_map = self.get_units_map()
+    #     lhs_units = get_unit(units)
+    #     rhs_units = validate_units(rhs_expr, units_map, self.verbose)
+    #     if self.verbose:
+    #         print('rhs_units: {}'.format(rhs_units))
+    #     try:
+    #         lhs_units, rhs_units = match_dimensionless_units(lhs_units, rhs_units)
+    #         check_unit_compatibility(rhs_units, lhs_units)
+    #     except:
+    #         print(type(rhs_units))
+    #         print(get_unit(units), validate_units(rhs_expr, units_map, self.verbose))
+    #         raise
+
+    #     rhs_expr_with_units = get_expr_with_units(rhs_expr, units_map)
+
+    #     if self.verbose:
+    #         print('rhs_expr with units:', rhs_expr_with_units)
+
+    #     # convert back to expression without units for lambdify
+    #     if units != '':
+    #         try:
+    #             if self.verbose:
+    #                 print('converting to {}'.format(lhs_units))
+    #                 for k, v in list(units_map.items()):
+    #                     print('\t', k, v, type(k))
+    #             rhs_expr = get_expr_without_units(
+    #                 rhs_expr_with_units,
+    #                 lhs_units,
+    #                 units_map,
+    #                 dimensionless=is_dimensionless(rhs_units))
+    #             if self.verbose:
+    #                 print('rhs_expr without units:', rhs_expr)
+    #         except:
+    #             print('error with units? [{}]'.format(units))
+    #             raise
+    #     else:
+    #         if lhs_units != Dimension(1):  # lhs_units were obtained from rhs_units
+    #             units = str(lhs_units)
+    #     return units, rhs_expr
 
     def __setitem__(self, sym_name, input_expr):
         """Assigns a function or expression to a new symbol,
         performs unit conversion where appropriate
 
         """
-        if self.verbose:
-            print('')
-        try:
-            symbol, args, units, lhs_expr = self.parse_key(sym_name)
-        except KeyError as error:
-            if self.verbose:
-                print(error)
-            found_sym_name = str(error).split('found')[0].strip("'").strip(' ')
-            if self.verbose:
-                print('replacing {}'.format(found_sym_name))
-            self.remove_symbol(found_sym_name)
-            symbol, args, units, lhs_expr = self.parse_key(sym_name)
+        if not isinstance(sym_name, str):
+            sym_name = str(sym_name)
+
+        symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
+
+        # if self.verbose:
+        #     print('')
+        # try:
+        #     symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
+        # except KeyError as error:
+        #     if self.verbose:
+        #         print('could not use parse_key with {}'.format(sym_name))
+        #         print(error)
+        #     found_sym_name = str(error).split('found')[0].strip("'").strip(' ')
+        #     if self.verbose:
+        #         print('__setitem__: replacing {}'.format(found_sym_name))
+        #     self.remove_symbol(found_sym_name)
+        #     symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
 
         if hasattr(input_expr, '__call__'):
-            self.register_function(input_expr, symbol, lhs_expr, units)
+            self.register_function(input_expr, symbol, lhs_expr, lhs_units)
+
         else:
+            if self.verbose:
+                print(
+                    "\n\nPARSING WITH UNIFY",
+                    lhs_expr,
+                    symbol,
+                    lhs_units,
+                    len(lhs_units),
+                    type(lhs_units))
+                print('symbol registry:', self.symbol_registry)
+
             rhs_expr = self.parse_value(input_expr, self.symbol_registry)
-            units_map = self.get_units_map()
-            lhs_units = get_unit(units)
-            rhs_units = validate_units(rhs_expr, units_map) # check that rhs units are consistent
-
-            try:
-                lhs_units, rhs_units = match_dimensionless_units(lhs_units, rhs_units)
-                check_unit_compatibility(rhs_units, lhs_units)
-            except:
-                print(type(rhs_units))
-                print(get_unit(units), validate_units(rhs_expr, units_map))
-                raise
-
-            rhs_expr_with_units = get_expr_with_units(rhs_expr, units_map)
 
             if self.verbose:
-                print('rhs_expr with units:', rhs_expr_with_units)
+                print('parsed rhs_expr', rhs_expr)
 
-            # convert back to expression without units for lambdify
-            if units != '':
-                try:
-                    if self.verbose:
-                        print('converting to {}'.format(lhs_units))
-                        for k,v in list(units_map.items()):
-                            print('\t', k,v, type(k))
-                    rhs_expr = get_expr_without_units(rhs_expr_with_units, lhs_units, units_map)
-                    if self.verbose:
-                        print('rhs_expr without units:', rhs_expr)
-                except:
-                    print('error with units? [{}]'.format(units))
-                    raise
+            if not isinstance(symbol, Symbol):
+                if isinstance(lhs_expr, Symbol):
+                    symbol = Function(lhs_expr)(*tuple(rhs_expr.free_symbols))
+                else: #lhs is already a function
+                    symbol = lhs_expr
+                lhs_str = str(symbol)
+                sym_name = sym_name.replace(str(lhs_expr), lhs_str)
+            if self.verbose:
+                print('unit registry contents:')
+                for k, v in self.unit_registry.items():
+                    print('\t', k, type(k), v)
+            if '[' in sym_name:
+                if self.verbose:
+                    print('updating unit registry with {} -> {}'.format(sym_name, rhs_expr))
+                rhs = rhs_expr
+                arg_units = get_arg_units(rhs_expr, self.unit_registry)
+                if self.verbose:
+                    print(arg_units)
+                sym_name = self.update_unit_registry(sym_name, arg_units)
+                if self.verbose:
+                    print('unit registry update returned', sym_name, self.unit_registry.get(symbol))
             else:
-                if lhs_units != Dimension(1): # lhs_units were obtained from rhs_units
-                    units = str(lhs_units)
+                # if symbol in self.unit_registry:
+                #     units = get_expr_unit(symbol, self.unit_registry)
+                #     if self.verbose:
+                #         print('{} has units {}'.format(sym_name, units))
+                # else:
+                if self.verbose:
+                    print(sym_name,
+                          symbol,
+                          'had no units. Getting units from {}'.format(rhs_expr))
+
+                expr_unit = get_expr_unit(rhs_expr, self.unit_registry, self.verbose)
+                arg_units = get_arg_units(rhs_expr, self.unit_registry)
+
+                # if expr_unit == Dimension(1):
+                #     expr_unit = None
+
+                if self.verbose:
+                    print('registering {} with {} {}'.format(symbol, expr_unit, arg_units))
+
+                if (symbol not in self.unit_registry) and (expr_unit is not None):
+                    self.unit_registry[symbol] = symbol.subs(arg_units)
+                    self.unit_registry[symbol.subs(arg_units)] = expr_unit
+
+                # if is_function(expr_unit):
+                #     self.unit_registry[expr_unit] = get_expr_unit(
+                #         expr_unit,
+                #         self.unit_registry,
+                #         self.verbose)
+
+                if expr_unit is not None:
+                    lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
+
+                if self.verbose:
+                    print('registered lhs_units', lhs_units)
+
+                rhs = rhs_expr
+                sym_name = str(sym_name)
+
+
+
+            if len(lhs_units) > 0:
+                if self.verbose:
+                    print('about to unify lhs_units {} {} with {}'.format(
+                        lhs_units, type(lhs_units), rhs))
+
+                expr = unify(
+                    Eq(parse_expr(sym_name), rhs),
+                    self.unit_registry,
+                    # to_symbol = symbol,
+                    verbose=self.verbose)
+                rhs_expr = expr.rhs
+
+            if self.verbose:
+                print('symbol after unify', symbol, type(symbol), rhs_expr)
+                print('unit registry to resolve units:', self.unit_registry)
+
+            units = get_expr_unit(symbol, self.unit_registry)
+            units = get_abbrev(units)
+            if units is not None:
+                units = str(units)
+            else:
+                units = ''
+            if self.verbose:
+                print('units after resolve', symbol, units)
+                for k, v in self.unit_registry.items():
+                    print('\t{}: {}'.format(k, v))
 
             rhs_args = rhs_expr.free_symbols
 
-            if self.verbose:
-                print('lhs_expr:', lhs_expr, 'units:', lhs_units)
-                print('rhs_expr:', rhs_expr, 'units:', rhs_units)
-            try:
-                symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
-                self.validate_function(symbol, rhs_expr)
+            # try:
+            symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
+            self.validate_function(symbol, rhs_expr)
+            # except:
+            #     if self.verbose:
+            #         print('\n Error in __setitem__', input_expr)
+            #         print(symbol, lhs_expr, rhs_args)
+            #         print('symbol registry:', self.symbol_registry)
+            #         print('signatures:', self.signatures)
+            #         print('unit registry:', self.unit_registry)
+            #     raise
 
-            except:
-                if self.verbose:
-                    print('\n Error in __setitem__', input_expr)
-                    print(symbol, lhs_expr, rhs_args)
-                    print('symbol registry:', self.symbol_registry)
-                    print('signatures:', self.signatures)
-                raise
-        
-
-            composition = self.get_composition(lhs_expr, rhs_expr)
+            # composition = self.get_composition(lhs_expr, rhs_expr)
+            composition = {str(k_): self[k_] for k_ in self}
+            arg_units = {}
+            if symbol in self.unit_registry:
+                unit_args = self.unit_registry[symbol]
+                if unit_args is not None:
+                    if len(unit_args.args) == len(symbol.args):
+                        for arg, unit in zip(symbol.args, unit_args.args):
+                            arg_units[str(arg)] = str(get_abbrev(unit))
             func = self.vectorize_function(symbol, rhs_expr, composition)
+            meta = dict(units=units, arg_units=arg_units)
+            func.meta = meta
+            func.data = None
             self.register_signature(symbol, units, lhs_expr, rhs_expr)
             super(Kamodo, self).__setitem__(symbol, func)
             super(Kamodo, self).__setitem__(type(symbol), self[symbol])
             self.register_symbol(symbol)
-            self[symbol].meta = dict(units = units)
+            # self[symbol].meta = dict(units=units)
+
+
+    def __getitem__(self, key):
+        try:
+            return super(Kamodo, self).__getitem__(key)
+        except KeyError:
+            try:
+                symbol = self.symbol_registry[str(key)]
+            except KeyError:
+                symbol = self.symbol_registry[str(type(key))]
+            if symbol in self:
+                return super().__getitem__(symbol)
+
+    def __contains__(self, item):
+        func_str = str(item).replace(' ', '')
+        for key in self.keys():
+            if func_str == str(key).replace(' ', ''):
+                return True
+        return False
 
     def __getattr__(self, name):
-        name_ = symbols(name, cls = Function)
-        if name_ in self:
-            return self[name_]
-        else:
-            raise AttributeError("No such symbol: {}".format(name))
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
 
     def __delattr__(self, name):
+
         if name in self:
-            del self[name]
+            symbol = self.symbol_registry[name]
+            if self.verbose:
+                print('__delattr__: removing name {}, symbol {}'.format(name, symbol))
+                print(self.keys())
+            # del self[symbol]
+            super().pop(symbol)
+            super().pop(type(symbol))
+
         else:
             raise AttributeError("No such field: " + name)
 
-    def get_units_map(self):
-        """Maps from string units to symbolic units"""
-        d = dict()
-        star = Wild('star')
-        for k,v in list(self.signatures.items()):
-            unit = get_unit(v['units'])
-            d[k] = unit
-            d[v['symbol']] = unit
+    def __delitem__(self, key):
+        if self.verbose:
+            print('__delitem__: got {} type: {}'.format(key, type(key)))
+        if isinstance(key, str):
+            try:
+                symbol = self.symbol_registry[key]
+            except KeyError:
+                symbol, args, unit_dict, parsed = parse_lhs(
+                    key, self.symbol_registry, self.verbose)
+        else:
+            symbol = key
+        if self.verbose:
+            print('__delitem__: removing {} {}'.format(symbol, type(symbol)))
 
-        return d 
+        remove_keys = []
+        for k in self.data:
+            if str(k) == str(symbol):
+                remove_keys.append(k)
+            if str(k) == str(type(symbol)):
+                remove_keys.append(k)
+        if self.verbose:
+            print('__delitem__: removing keys:', remove_keys)
+
+        for key_ in remove_keys:
+            self.data.pop(key_)
+
+    # def get_units_map(self):
+    #     """Maps from string units to symbolic units"""
+    #     d = dict()
+    #     star = Wild('star')
+    #     for k, v in list(self.signatures.items()):
+    #         unit = get_unit(v['units'])
+    #         d[k] = unit
+    #         d[v['symbol']] = unit
+
+    #     return d
+
+    def func_latex(self, key, mode='equation'):
+        repr_latex = ""
+        lhs = self.signatures[key]['symbol']
+        rhs = self.signatures[key]['rhs']
+        units = self.signatures[key]['units']
+        arg_units = get_arg_units(lhs, self.unit_registry)
+
+        if units is not None:
+            units = '{}'.format(get_abbrev(units))
+        else:
+            units = ''
+
+        if len(arg_units) > 0:
+            arg_strs = []
+            for arg, arg_unit in arg_units.items():
+                arg_strs.append("{}[{}]".format(latex(arg), get_abbrev(arg_unit)))
+            lhs_str = "{}({})".format(latex(type(lhs)), ",".join(arg_strs))
+        else:
+            lhs_str = latex(lhs)
+            # lhs_str = "{}({})".format(
+            #     latex(type(lhs)),
+            #     ','.join([latex(s) for s in lhs.args]))
+
+        if len(units) > 0:
+            lhs_str += "[{}]".format(units)
+
+        latex_eq = ''
+        latex_eq_rhs = ''
+        if type(rhs) == str:
+            latex_eq_rhs = rhs
+        else:
+            if hasattr(rhs, '__call__'):
+                lambda_ = symbols('lambda', cls=UndefinedFunction)
+                latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
+                latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
+            else:
+                latex_eq = latex(Eq(lhs, rhs), mode=mode)
+                latex_eq_rhs = latex(rhs) # no $$ delimiter
+
+        if len(str(units)) > 0:
+            latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
 
 
-    def to_latex(self, keys = None, mode = 'equation'):
+        repr_latex += r"\begin{equation}"
+        repr_latex += "{} = {}".format(lhs_str, latex_eq_rhs)
+        repr_latex += r"\end{equation}"
+        return repr_latex
+
+
+
+    def to_latex(self, keys=None, mode='equation'):
         """Generate list of LaTeX-formated formulas"""
         if keys is None:
             keys = list(self.signatures.keys())
         repr_latex = ""
         for k in keys:
-            lhs = self.signatures[k]['symbol']
-            rhs = self.signatures[k]['rhs']
-            units = self.signatures[k]['units']
-            if type(rhs) == str:
-                latex_eq = rhs
-                # latex_eq = latex(Eq(lhs, parse_latex(rhs)), mode = mode)
-            else:
-                if rhs is not None:
-                    try:
-                        latex_eq = latex(Eq(lhs, rhs), mode = mode)
-                    except:
-                        lambda_ = symbols('lambda', cls = UndefinedFunction)
-                        latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode = mode)
-                else:
-                    lambda_ = symbols('lambda', cls = UndefinedFunction)
-                    latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode = mode)
-            if len(units) > 0:
-                # latex_eq = latex_eq.replace('=','\\text{' + '[{}]'.format(units) + '} =')
-                latex_eq = latex_eq.replace('=','[{}] ='.format(units))
-            repr_latex += latex_eq
+            repr_latex += self.func_latex(k, mode)
 
         return beautify_latex(repr_latex).encode('utf-8').decode()
 
@@ -590,8 +883,8 @@ class Kamodo(collections.OrderedDict):
 
     def get_signature(self, name):
         """Get the signature for the named variable"""
-        return self.signatures[str(self.symbol_registry[name])]
-
+        return self.signatures[name]
+        # return self.signatures[str(self.symbol_registry[name])]
 
     def simulate(self, **kwargs):
         state_funcs = []
@@ -604,14 +897,31 @@ class Kamodo(collections.OrderedDict):
         return simulate(OrderedDict(state_funcs), **kwargs)
 
     def evaluate(self, variable, *args, **kwargs):
-        """evaluates the variable """
+        """evaluates the variable
+
+        if the variable is not present, try to parse it as a semicolon-delimited list
+        """
+        if not hasattr(self, variable):
+            var_dict = {}
+            for variable_ in variable.split(';'):
+                if len(variable_.split('=')) == 2:
+                    variable_name, variable_expr = variable_.strip("'").split('=')
+                    var_dict[variable_name] = variable_expr
+                else:
+                    raise SyntaxError('cannot parse {}'.format(variable_))
+            knew = from_kamodo(self, **var_dict)
+            # evaluate the last variable
+            result = knew.evaluate(variable=variable_name, *args, **kwargs)
+            return result
+
+
         if isinstance(self[variable], np.vectorize):
             params = get_defaults(self[variable].pyfunc)
         else:
             params = get_defaults(self[variable])
 
         valid_arguments = valid_args(self[variable], kwargs)
-        if params is not None:
+        if len(params) > 0:
             if self.verbose:
                 print('default parameters:', list(params.keys()))
             params.update(valid_arguments)
@@ -628,43 +938,41 @@ class Kamodo(collections.OrderedDict):
             params.update({variable: result})
         return params
 
-    def solve(self, fprime, interval, y0, 
-            dense_output = True, # generate a callable solution
-            events = None, # stop when event is triggered
-            vectorized = True,):
+    def solve(self, fprime, interval, y0,
+              dense_output=True,  # generate a callable solution
+              events=None,  # stop when event is triggered
+              vectorized=True, ):
         from scipy.integrate import solve_ivp
 
-        
-        result = solve_ivp(self[fprime], interval, y0, 
-            dense_output = dense_output, 
-            events = events, 
-            vectorized = vectorized)
+        result = solve_ivp(self[fprime], interval, y0,
+                           dense_output=dense_output,
+                           events=events,
+                           vectorized=vectorized)
         if self.verbose:
             print(result['message'])
 
-
         varname = next(iter(inspect.signature(self[fprime]).parameters.keys()))
 
-        scope = {'result':result, 'varname': varname}
+        scope = {'result': result, 'varname': varname}
 
         soln_str = r"""def solution({varname} = result['t']):
-            return result['sol'].__call__({varname}).T.squeeze()""".format(varname = varname)
+            return result['sol'].__call__({varname}).T.squeeze()""".format(varname=varname)
 
         exec(soln_str.format(), scope)
 
         return scope['solution']
 
-
-    def figure(self, variable, indexing = 'ij', return_type = False, **kwargs):
+    def figure(self, variable, indexing='ij', return_type=False, **kwargs):
+        """Generates a plotly figure for a given variable and keyword arguments"""
         result = self.evaluate(variable, **kwargs)
         signature = self.get_signature(variable)
         units = signature['units']
         if units != '':
             units = '[{}]'.format(units)
-        title = self.to_latex([str(self.symbol_registry[variable])], mode = 'inline') #.replace('\\operatorname','')
-        title_lhs = title.split(' =')[0]+'$'
-        title_short = '{}'.format(variable + units) # something wrong with colorbar latex being vertical
-        titles = dict(title = title, title_lhs = title_lhs, title_short = title_short, units = units, variable = variable)
+        title = self.to_latex([variable])
+        title_lhs = title.split(' =')[0] + '$'
+        title_short = '{}'.format(variable + units)  # something wrong with colorbar latex being vertical
+        titles = dict(title=title, title_lhs=title_lhs, title_short=title_short, units=units, variable=variable)
         fig = dict()
         chart_type = None
         traces = []
@@ -695,16 +1003,15 @@ class Kamodo(collections.OrderedDict):
 
         layout.update(
             dict(autosize=False,
-                width=700,
-                height=400,
-                margin=go.layout.Margin(
-                    # l=30,
-                    r=30,
-                    b=32,
-                    t=40,
-                    pad=0),
-                ))
-
+                 width=700,
+                 height=400,
+                 margin=go.layout.Margin(
+                     # l=30,
+                     r=30,
+                     b=32,
+                     t=40,
+                     pad=0),
+                 ))
 
         fig['data'] = traces
         fig['layout'] = layout
@@ -735,395 +1042,30 @@ class Kamodo(collections.OrderedDict):
             return go.Figure(data=traces, layout=layouts[-1])
 
 
-
 def compose(**kamodos):
     """Kamposes multiple kamodo instances into one"""
     kamodo = Kamodo()
     for kname, k in kamodos.items():
         for name, symbol in k.symbol_registry.items():
-            signature = k.signatures[str(symbol)]
+            signature = k.signatures[name]
             meta = k[symbol].meta
             data = getattr(k[symbol], 'data', None)
 
             rhs = signature['rhs']
             registry_name = '{}_{}'.format(name, kname)
             if (rhs is None) | hasattr(rhs, '__call__'):
-                kamodo[registry_name] = kamodofy(k[symbol], data = data, **meta)
+                kamodo[registry_name] = kamodofy(k[symbol], data=data, **meta)
             else:
                 kamodo[registry_name] = str(rhs)
 
     return kamodo
 
-##------------ Tests Below --------------------
-
-def test_Kamodo_expr():
-    a, b, c, x, y, z = symbols('a b c x y z')
-    kamodo = Kamodo(a = x**2, verbose = False)
-    try:
-        assert kamodo.a(3) == 3**2
-    except:
-        print(kamodo.symbol_registry)
-        raise
-
-def test_Kamodo_ambiguous_expr():
-    a, b, c, x, y, z = symbols('a b c x y z')
-    with pytest.raises(NameError):
-        kamodo = Kamodo()
-        kamodo[a(b,c)] = x**2 + y**2
-    kamodo = Kamodo()
-    kamodo['a(x, y)'] = x**2 + y**2
-    assert kamodo.a(3,4) == 3**2 + 4**2
-
-def test_Kamodo_callable():
-    kamodo = Kamodo(f = lambda x: x**2, verbose = False)
-    assert kamodo.f(3) == 9
-    kamodo = Kamodo(f = lambda x,y: x**2 + y**3)
-    assert kamodo.f(3,4) == 3**2 + 4**3
-
-
-def test_Kamodo_callable_array():
-    kamodo = Kamodo(f = lambda x: x**2)
-    assert (kamodo.f(np.linspace(0,1,107)) == np.linspace(0,1,107)**2).all()
-
-
-def test_Kamodo_str():
-    kamodo = Kamodo('f(a,x,b) = a*x+b')
-    try:
-        assert kamodo.f(3,4,5) == 3*4+5
-    except:
-        print(kamodo.signatures)
-        print(list(kamodo.keys()))
-        raise
-
-def test_Kamodo_latex():
-    kamodo = Kamodo('$f(a,x,b) = a^x+b $')
-    assert kamodo.f(3,4,5) == 3**4+5
-
-def test_Kamodo_get():
-    kamodo = Kamodo('$f(a,x,b) = a^x+b $')
-    try:
-        assert kamodo['f'](3,4,5) == 3**4+5
-    except:
-        print(kamodo.signatures)
-        print(list(kamodo.keys()))
-        raise
-
-
-def test_Kamodo_set():
-    kamodo = Kamodo()
-    kamodo['f(a,x,b)'] = '$a^x+b$'
-    assert kamodo.f(2,3,4) == 2**3+4
-
-
-def test_Kamodo_mismatched_symbols():
-    with pytest.raises(NameError):
-        kamodo = Kamodo('$f(a,b) = a + b + c$', verbose = False)
-        assert 'f' not in kamodo
-
-def test_Kamodo_assign_by_expression():
-    kamodo = Kamodo()
-    f,x,y = symbols('f x y')
-    kamodo[f(x,y)] = x**2 + y**2
-    assert kamodo['f'](3,4) == 3**2 + 4**2
-    assert kamodo.f(3,4) == 3**2 + 4**2 
-
-def test_Kamodo_assign_by_callable():
-    kamodo = Kamodo(f = lambda x: x**2, verbose = False)
-    assert kamodo['f'](3) == 3**2
-    assert kamodo.f(3) == 3**2  
-    Kamodo(f = lambda x,y: x+y)
-    def rho(x,y): 
-        return x+y
-    kamodo['g'] = rho
-    assert kamodo.g(3,4) == 3 + 4
-
-def test_Kamodo_composition():
-    f, g = symbols('f g', cls = UndefinedFunction)
-    x = Symbol('x')
-    kamodo = Kamodo(f = "$x^2$")
-    kamodo['g(x)'] = "$f(x) + x^2$"
-    kamodo['h(x)'] = g(x)**2 + x**2
-
-    assert kamodo.f(3) == 3**2
-    assert kamodo.g(3) == 3**2 + 3**2
-    assert kamodo.h(3) == (3**2 + 3**2)**2 + 3**2
-
-def test_Kamodo_reassignment():
-    a,b,c, x,y,z, r = symbols('a b c x y z r')
-    kamodo = Kamodo('f(x) = 3*x+5')
-    kamodo[r(x,y)] = x + y
-    kamodo[r(x,y)] = "3*x + y"
-
-def test_multivariate_composition():
-    kamodo = Kamodo(f = 'x**2', g = lambda y: y**3)
-    kamodo['h(x,y)'] = 'f(x) + g(y)'
-    kamodo['i(x,y)'] = 'x + f(h(x,y))'
-    assert kamodo.h(3,4) == 3**2 + 4**3
-    assert kamodo.i(3,4) == 3 + (3**2 + 4**3)**2
-
-
-def test_special_numbers():
-    kamodo = Kamodo()
-    kamodo['f'] = "${}^x$".format(np.e)
-    assert np.isclose(kamodo.f(1), np.e)
-
-def test_function_registry():
-    kamodo = Kamodo("f(x) = x**2", "g(y) = y**3")
-    kamodo['r(x,y)'] = "(x**2 + y**2)**(1/2)"
-    kamodo['h(x,y)'] = 'f + g + r'
-    assert 'h(x, y)' in kamodo.signatures   
-
-def test_symbol_key():
-    f = symbols('f', cls = UndefinedFunction)
-    x = Symbol('x')
-    f_ = f(x)
-    kamodo = Kamodo()
-    kamodo[f_] = x**2
-    assert kamodo.f(3) == 9
-
-def test_compact_variable_syntax():
-    f = symbols('f', cls = UndefinedFunction)
-    x = symbols('x') 
-    kamodo = Kamodo(f = 'x**2')# f also registers f(x)
-    kamodo['g(x)'] = 'f + x'
-    assert kamodo.g(3) == 3**2 + 3
-
-def test_unit_registry():
-    def rho(x,y):
-        return x*y
-    def v(x,y):
-        return x+y
-    v.meta = dict(units = 'km/s')
-    kamodo = Kamodo(v = v, verbose = False)
-    kamodo['rho[kg/cc]'] = rho
-    try:
-        assert kamodo.rho.meta['units'] == 'kg/cc'
-        assert kamodo.v.meta['units'] == 'km/s'
-    except:
-        print('\n',pd.DataFrame(kamodo.signatures))
-        raise
-
-    with pytest.raises(NameError):
-        kamodo['p[kg]'] = v
-    assert 'p' not in kamodo
-
-def test_to_latex():
-    kamodo = Kamodo(f = 'x**2')
-    assert kamodo.to_latex() == '\\begin{equation}f{\\left (x \\right )} = x^{2}\\end{equation}'
-    kamodo = Kamodo(g = 'x')
-    assert kamodo.to_latex() == '\\begin{equation}g{\\left (x \\right )} = x\\end{equation}'
-
-
-def test_expr_conversion():
-    kamodo = Kamodo('$a[km] = x$')
-    kamodo.a
-
-def test_validate_units():
-    f,x = symbols('f x')
-    with pytest.raises(ValueError):
-        validate_units(Eq(f,x), dict(f = get_unit('kg'), x = get_unit('m')))
-    validate_units(Eq(f,x), dict(f = get_unit('kg'), x = get_unit('g')))
-    
-    lhs_units = validate_units(f(x), dict(f = get_unit('kg'), x = get_unit('m')))
-    print(lhs_units)
-
-def test_unit_conversion():
-    kamodo = Kamodo('$a(x)[km/s] = x$',
-                        '$b(y)[m/s]  = y$',)
-    kamodo['c(x,y)[m/s]'] = '$a + b$'
-    assert kamodo.c(1,2) == 1002 
-
-
-def test_get_unit():
-    assert get_unit('kg/m^3') == get_unit('kg/m**3')
-
-def test_unit_conversion_syntax():
-    kamodo = Kamodo('rho[kg/m^3] = x', verbose = False)
-    with pytest.raises(NameError):
-        kamodo['d[kg]'] = 'rho'
-        print(kamodo.detail())
-
-
-def test_unit_composition():
-    kamodo = Kamodo('m[kg] = x', verbose = False)
-    kamodo['v[km/s]'] = 'y'
-    kamodo['p'] = 'm*v'
-    assert get_unit(kamodo.signatures['p(x, y)']['units']) == get_unit('kg*km/s')
-
-def test_unit_function_composition():
-    kamodo = Kamodo('X[m] = x', verbose = True)
-    @kamodofy(units = 'km/s')
-    def v(x):
-        return y
-
-    kamodo['v'] = v
-    kamodo['speed'] = 'v(X)'
-    assert kamodo.speed.meta['units'] == 'kilometer/second'
-
-
-
-def test_method_args():
-    class TestModel(Kamodo):
-        def __init__(self, *args, **kwargs):
-            super(TestModel, self).__init__(*args, **kwargs)
-            self['rho'] = self.density
-                
-        def density(self, alt, lat, lon):
-            return alt + lat + lon
-        
-        density.meta = dict(units = '1/cm^3')
-
-    test = TestModel(verbose = False)
-    assert str(list(test.keys())[0].args[0]) != 'self'
-
-    test['r(alt, lat, lon)[1/m^3]'] = 'rho'
-    try: # check that args are in the correct order
-        assert list(test.signatures.values())[0]['symbol'].args == list(test.signatures.values())[1]['symbol'].args
-    except:
-        print('\n', test.detail())
-        raise
-
-
-
-def test_komodofy_decorator():
-    @kamodofy(units = 'kg/cm^3')
-    def my_density(x,y,z):
-        return x+y+z
-
-    assert my_density.meta['units'] == 'kg/cm^3'
-    assert my_density(3,4,5) == 12
-
-def test_komodofy_register():
-    @kamodofy(units = 'kg/cm^3')
-    def my_density(x,y,z):
-        return x+y+z
-
-    kamodo = Kamodo(rho = my_density)
-    assert kamodo.rho.meta['units'] == 'kg/cm^3'
-
-def test_komodofy_method():
-    class TestModel(Kamodo):
-        def __init__(self, *args, **kwargs):
-            super(TestModel, self).__init__(*args, **kwargs)
-            self['rho'] = self.density
-        
-        @kamodofy(units = '1/cm^3')        
-        def density(self, alt, lat, lon):
-            return alt + lat + lon
-
-    test = TestModel(verbose = False)
-    assert test.density.meta['units'] == '1/cm^3'
-
-
-
-#   try:
-#       assert len(kamodo.detail()) == 1
-#   except:
-#       print kamodo.symbol_registry
-#       print kamodo.detail()
-#       raise
-
-# # def test_remove_symbol():
-# #     kamodo = Kamodo(f = 'x')
-# #     kamodo['g'] = '2*f'
-# #     kamodo.remove_symbol('f')
-# #     try:
-# #         assert len(kamodo.symbol_registry) == 1
-# #         assert len(kamodo) == 2
-# #     except:
-# #         print '\n',kamodo.detail()
-# #         raise
-
-# def test_function_arg_ordering():
-#   def x(r,theta,phi):
-#       '''converts from spherical to cartesian'''
-#       return r*np.sin(theta)*np.cos(phi)
-
-#   kamodo = Kamodo(x = x)
-#   rhs_args = get_function_args(kamodo.x)
-#   lhs_args = kamodo.signatures.values()[0]['symbol'].args
-
-#   for i in range(3):
-#       assert lhs_args[i] == rhs_args[i]
-
-# def test_function_change_of_variables():
-#   def rho(x):
-#       return x**2
-
-#   kamodo = Kamodo(x = 'y')
-#   kamodo['rho'] = rho
-#   kamodo['rho_perp'] = 'rho(x)'
-
-#   assert str(get_function_args(kamodo.rho_perp)[0]) == 'y'
-
-
-def test_kamodofy_update_attribute():
-    @kamodofy(units = 'cm', update = 'y')
-    def f(x):
-        return x
-
-    kamodo = Kamodo(f = f)
-    assert f.update == 'y'
-
-
-def test_kamodo_coupling():
-    @kamodofy(units = 'cm', update = 'y')
-    def y_iplus1(y, x):
-        return y + x
-
-    @kamodofy(units = 'm')
-    def x_iplus1(x, y):
-        return x - y
-
-
-    kamodo = Kamodo()
-    kamodo['x_iplus1'] = x_iplus1
-    kamodo['y_iplus1'] = y_iplus1
-
-    kamodo.x_iplus1.update = 'x'
-    assert kamodo.x_iplus1.update == 'x'
-    assert kamodo.y_iplus1.update == 'y'
-
-    simulation = kamodo.simulate(y = 1, x = 0, steps = 1)
-
-    for state in simulation:
-        pass
-
-    assert state['x'] == -1
-    assert state['y'] == 0
-
-
-def test_units():
-    nT = get_unit('nT')
-    assert str(nT) == 'nanotesla'
-    assert str(nT.abbrev) == 'nT'
-
-    R_E = get_unit('R_E')
-    assert str(R_E) == 'earth radii'
-    assert str(R_E.abbrev) == 'R_E'
-
-def test_default_composition():
-    ## Need to wrap function defaults
-    def create_wrapped(args, expr):
-        func = lambdify(args, expr)
-        @functools.wraps(func)
-        def wrapped(*_args, **kwargs):
-            # Write the logic here to parse _args and kwargs for the arguments as you want them
-            return func(*actual_args)
-        return wrapped
-
-def test_vectorize():
-    @np.vectorize
-    @kamodofy(units = 'kg')
-    def f(x, y):
-        return x + y
-
-    kamodo = Kamodo(f = f)
-    kamodo.f([3,4,5],5)
-    
-
-
-def test_redefine_variable():
-    kamodo = Kamodo(rho = 'x + y')
-    kamodo['rho'] = 'a + b'
-    kamodo['rho(a,b)'] = 'a*b'
+def from_kamodo(kobj, **funcs):
+    """copies a kamodo object, inserting additional functions"""
+    knew = Kamodo()
+    for name, signature in kobj.signatures.items():
+        symbol = signature['symbol']
+        knew[symbol] = kobj[symbol]
+    for symbol, func in funcs.items():
+        knew[symbol] = func
+    return knew

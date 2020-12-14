@@ -1,4 +1,304 @@
+
+# 2020-12-14 16:44:16.293931: clock-in
+
+# 2020-12-14 14:45:50.930880: clock-out
+
+* fixed latex rendering
+
+# 2020-12-14 13:35:34.718198: clock-in
+
+# 2020-12-09 18:56:30.911547: clock-out
+
+* inheriting from UserDict, latex tests
+* article on alternatives to dict inheritance  https://treyhunner.com/2019/04/why-you-shouldnt-inherit-from-list-and-dict-in-python/
+
+
+# 2020-12-09 16:46:32.320646: clock-in
+
+# 2020-12-09 15:02:57.443215: clock-out
+
+* improving coverage
+* tests passing
+
+# 2020-12-09 12:56:26.285722: clock-in
+
+# 2020-12-08 16:29:15.942982: clock-out
+
+* test_contains
+
+# 2020-12-08 14:04:35.969497: clock-in
+
+# 2020-12-07 18:07:09.300996: clock-out
+
+* boosting code coverage
+
+# 2020-12-07 15:47:35.229728: clock-in
+
+# 2020-12-07 13:55:31.954661: clock-out
+
+* added test for from_kamodo
+
+# 2020-12-07 13:54:57.942787: clock-in
+
+# 2020-12-07 12:02:40.382749: clock-out
+
+* looking at unicode symbols
+
+# 2020-12-07 11:04:24.226818: clock-in
+
+# 2020-12-04 14:35:27.018180: clock-out
+
+* increased coverage
+Generating coverage report:
+
+```bash
+(kamodo)$ pytest --cov kamodo.kamodo --cov kamodo.util --cov plotting test_plotting.py test_kamodo.py util.py --cov-report html
+```
+
+# 2020-12-04 12:54:18.896202: clock-in
+
+# 2020-12-04 12:48:07.464397: clock-out
+
+* stress testing
+
+# 2020-12-04 12:40:30.271441: clock-in
+
+# 2020-12-03 16:33:17.672964: clock-out
+
+* cleaned up conversion factors as fractions
+* algebraic unit composition algebra
+
+# 2020-12-03 15:45:57.247823: clock-in
+
+# 2020-12-03 14:59:25.677055: clock-out
+
+
+# 2020-12-03 14:31:39.023179: clock-in
+
+# 2020-12-03 13:46:56.103902: clock-out
+
+* adding algebraic unit composition tests
+* removed resolve_unit in favor of get_expr_unit
+
+# 2020-12-03 11:32:37.828682: clock-in
+
+# 2020-12-02 17:11:43.336189: clock-out
+
+* fixed bugs in base units
+* passing tests
+
+# 2020-12-02 15:09:11.720943: clock-in
+
+# 2020-12-02 13:01:09.866258: clock-out
+
+* isolated unit composition conversion issues
+
+# 2020-12-02 10:52:59.764421: clock-in
+
+# 2020-12-01 17:55:11.661674: clock-out
+
+* resolving argument units
+
+# 2020-12-01 16:29:52.875869: clock-in
+
+# 2020-12-01 15:00:14.542857: clock-out
+
+* bug fixing
+
+# 2020-12-01 12:37:44.119942: clock-in
+
+# 2020-11-30 19:05:54.863344: clock-out
+
+* trying to resolve unit composition bugs
+
+# 2020-11-30 17:00:58.216070: clock-in
+
+# 2020-11-30 12:10:03.081932: clock-out
+
+* finding bugs in unit composition
+
+# 2020-11-30 10:56:13.021112: clock-in
+
+# 2020-11-28 14:51:56.208988: clock-out
+
+* clean up
+* changing signature of unit composition
+
+using a more intuitive signature
+
+```python
+kamodo['f(x[km],y[cm])[kg]'] = ...
+```
+
+# 2020-11-28 11:09:32.470142: clock-in
+
+# 2020-11-27 15:41:15.004368: clock-out
+
+* fixed unit conversion flip
+
+# 2020-11-27 14:57:36.010904: clock-in
+
+# 2020-11-27 14:21:05.568354: clock-out
+
+* fixed composing with multiplied functions
+
+# 2020-11-27 14:02:45.405415: clock-in
+
+# 2020-11-26 14:57:57.717229: clock-out
+
+* all kamodo tests passing
+
+# 2020-11-26 14:08:27.224461: clock-in
+
+# 2020-11-26 11:53:11.236857: clock-out
+
+* raising NameError for bad unit conversion
+
+# 2020-11-26 11:25:57.649820: clock-in
+
+# 2020-11-25 18:57:00.223313: clock-out
+
+* got unit composition to pass tests
+
+# 2020-11-25 17:02:25.523707: clock-in
+
+# 2020-11-25 14:28:39.430228: clock-out
+
+* fixed vectorize composition
+
+# 2020-11-25 13:36:07.998404: clock-in
+
+# 2020-11-25 13:36:05.297272: clock-out: T-1h 
+
+
+# 2020-11-25 12:19:16.144012: clock-in
+
+# 2020-11-25 11:58:57.636064: clock-out
+
+
+# 2020-11-25 11:42:44.748499: clock-in
+
+# 2020-11-25 11:38:18.718909: clock-out
+
+
+# 2020-11-25 10:55:45.291278: clock-in
+
+# 2020-11-24 18:42:53.683721: clock-out
+
+* unit composition
+
+# 2020-11-24 16:51:00.759291: clock-in
+
+# 2020-11-17 17:35:34.486919: clock-out
+
+
+# 2020-11-17 16:06:38.651579: clock-in
+
+# 2020-11-17 13:46:18.035319: clock-out
+
+* passing functional unit test
+
+# 2020-11-17 11:17:10.446484: clock-in
+
+# 2020-11-16 18:34:07.584293: clock-out
+
+* implementing unit functions
+
+# 2020-11-16 16:59:30.697802: clock-in
+
+# 2020-11-16 15:01:46.527485: clock-out
+
+
+# 2020-11-16 13:11:21.254349: clock-in
+
+# 2020-11-16 13:05:29.126719: clock-out: T-1h 
+
+
+# 2020-11-16 11:12:27.592786: clock-in
+
+# 2020-11-15 17:03:30.218928: clock-out
+
+
+# 2020-11-15 15:17:08.285800: clock-in
+
+# 2020-11-15 13:09:56.154786: clock-out
+
+
+# 2020-11-15 11:52:34.355935: clock-in
+
+# 2020-11-13 23:16:23.702830: clock-out
+
+
+# 2020-11-13 22:37:29.395330: clock-in
+
+# 2020-11-13 18:50:51.601791: clock-out
+
+
+# 2020-11-13 17:01:21.677780: clock-in
+
+# 2020-11-13 11:59:07.207912: clock-out
+
+* overhauling units
+
+# 2020-11-13 11:23:14.433529: clock-in
+
+# 2020-11-12 15:25:13.259993: clock-out
+
+
+# 2020-11-12 13:53:04.513345: clock-in
+
+# 2020-11-12 11:40:29.694990: clock-out
+
+
+# 2020-11-12 11:22:56.545479: clock-in
+
+# 2020-11-11 17:42:08.055155: clock-out
+
+* updated convert_to to raise errors
+
+# 2020-11-11 16:46:46.677731: clock-in
+
+# 2020-11-11 16:29:02.695711: clock-out
+
+
+# 2020-11-11 16:10:38.700105: clock-in
+
+# 2020-11-09 11:08:06.200728: clock-out
+
+* fixing unit bugs
+
+# 2020-11-09 10:00:15.420963: clock-in
+
+* fixing unit conversion bugs
+
+# 2020-11-03 11:17:20.736909: clock-out
+
+* added dynamic function evaluation
+
+# 2020-11-03 09:18:36.269712: clock-in
+
+* radians
+* why can't user access constants?
+
+# 2020-10-27 23:26:44.585965: clock-out
+
+* developing evaluate endpoint
+
+
+`http://127.0.0.1:5000/api/mymodel/evaluate?variable=%27g=(f%2B1)**.5%27&x=[3,4,5]`
+
+plus sign: `%2B`
+
+# 2020-10-27 21:16:42.216480: clock-in
+
+# 2020-10-27 15:30:20.449578: clock-out
+
+* merging tests from Dhruv
+
+# 2020-10-27 13:31:24.216328: clock-in
+
 * code cleanup
+
 # 2020-10-19 18:22:01.985135: clock-out
 
 * all util.py unit tests pass

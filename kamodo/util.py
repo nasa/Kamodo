@@ -29,7 +29,14 @@ from sympy import latex, Eq
 from sympy.parsing.latex import parse_latex
 import pandas as pd
 from scipy.integrate import solve_ivp
+from sympy.physics.units.util import _get_conversion_matrix_for_expr
 
+from sympy.core.compatibility import reduce, Iterable, ordered
+from sympy import Add, Mul, Pow, Tuple, sympify, default_sort_key
+from sympy.physics.units.quantities import Quantity
+from sympy.physics.units import Dimension
+from sympy import nsimplify
+from sympy import Function
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
@@ -48,29 +55,29 @@ def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     return u
 
 
-unit_subs = dict(nT=get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
-                 R_E=get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
+unit_subs = dict(R_E=get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
                  erg=get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
-                 nPa=get_unit_quantity('nanopascals', 'pascal', .000000001, 'nPa', 'SI'),
+                 cc=sympy_units.cm**3,
                  )
 
-# global_ureg = UnitRegistry()
-# global_ureg.define('m^3 = m * m * m = m3')
-# global_ureg.define('cc = cm * cm * cm')
-# global_ureg.define('R_s = 6.957e8 m')
-# global_ureg.define('AU = 1.496e+11 m')
+sympy_units.erg = unit_subs['erg']
 
+prefix_dict = sympy_units.prefixes.PREFIXES  #built-in dictionary of Prefix instances
+#test_unit_subs={}  #dictionary to replace subs in kamodo.get_unit_quantities()
+unit_list = ['m', 's', 'g', 'A', 'K', 'radian', 'sr', 'cd', 'mole', 'eV', 'Pa', 'F', 'N',
+             'V', 'Hz', 'C', 'W', 'Wb', 'H', 'S', 'Bq', 'Gy', 'erg', 'T']
 
+#list of SI units included in sympy (likely not complete)
 
-# def compile_fortran(source, module_name, extra_args='', folder='./'):
-#     with tempfile.NamedTemporaryFile('w', suffix='.f90') as f:
-#         f.write(source)
-#         f.flush()
+for item in unit_list:
+    unit_item = getattr(sympy_units, item)
+    unit_subs[item] = unit_item
+    for key in prefix_dict.keys():
+        unit_subs[key+item] = get_unit_quantity(str(prefix_dict[key].name)+
+                                                str(unit_item.name), str(unit_item.name),
+                                                float(prefix_dict[key].scale_factor),
+                                                abbrev=key+item)
 
-#         args = ' -c -m {} {} {}'.format(module_name, f.name, extra_args)
-#         command = 'cd "{}" && "{}" -c "import numpy.f2py as f2py;f2py.main()" {}'.format(folder, sys.executable, args)
-#         status, output = exec_command(command)
-#         return status, output, command
 
 
 def substr_replace(name, name_maps):
@@ -83,6 +90,7 @@ def substr_replace(name, name_maps):
 # This should be in yaml
 def beautify_latex(s):
     return substr_replace(s, [
+        ('**', '^'),
         ('plus', '+'),
         ('minus', '-'),
         ('comma', ','),
@@ -103,7 +111,16 @@ def decorator_wrapper(f, *args, **kwargs):
     return f(*args, **kwargs)
 
 
-def kamodofy(_func=None, units='', data=None, update=None, equation=None, citation=None, hidden_args=[], **kwargs):
+def kamodofy(
+        _func=None,
+        units='',
+        arg_units=None,
+        data=None,
+        update=None,
+        equation=None,
+        citation=None,
+        hidden_args=[],
+        **kwargs):
     """Adds meta and data attributes to functions for compatibility with Komodo
 
     meta: a dictionary containing {units: <str>}
@@ -114,7 +131,13 @@ def kamodofy(_func=None, units='', data=None, update=None, equation=None, citati
     """
 
     def decorator_kamodofy(f):
-        f.meta = dict(units=units, citation=citation, equation=equation, hidden_args=hidden_args)
+        f.meta = dict(
+            units=units,
+            arg_units=arg_units,
+            citation=citation,
+            equation=equation,
+            hidden_args=hidden_args)
+
         if citation is not None:
             f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
         f.update = update
@@ -133,7 +156,8 @@ def kamodofy(_func=None, units='', data=None, update=None, equation=None, citati
         else:
             f_ = symbols(f.__name__, cls=UndefinedFunction)
             lhs = f_.__call__(*symbols(getfullargspec(f).args))
-            lambda_ = symbols('lambda', cls=UndefinedFunction)
+            # lambda_ = symbols('lambda', cls=UndefinedFunction)
+            lambda_ = Function('lambda')
             latex_eq = latex(Eq(lhs, lambda_(*lhs.args)))
             f._repr_latex_ = lambda: "${}$".format(latex(latex_eq))
 
@@ -164,7 +188,7 @@ def valid_args(f, kwargs):
     '''Extract arguments from kwargs that appear in f'''
     valid = OrderedDict()
     if type(f) == np.vectorize:
-        for a in getargspec(f.pyfunc).args:
+        for a in inspect.getfullargspec(f.pyfunc).args:
             if a in kwargs:
                 valid[a] = kwargs[a]
         return valid
@@ -250,6 +274,12 @@ def pad_nan(array):
 
 
 def concat_solution(gen, variable):
+    """combine solutions of a function generator
+    iterates through a function generator and extracts defaults for each function
+    these solutions are then padded with nans and stacked
+
+    stacking is vertically for N-d, horizontally for 1-d
+    """
     result = []
     params = defaultdict(list)
     for f in gen:
@@ -285,7 +315,7 @@ existing_plot_types.columns = ['Plot Type', 'notes']
 
 # manually generate the appropriate function signature
 grid_wrapper_def = r"""def wrapped({signature}):
-    coordinates = np.meshgrid({arg_str}, indexing = 'xy')
+    coordinates = np.meshgrid({arg_str}, indexing = 'xy', sparse = False, copy = False)
     points = np.column_stack([c.ravel() for c in coordinates])
     return np.squeeze({fname}(points).reshape(coordinates[0].shape, order = 'A'))
     """
@@ -437,4 +467,628 @@ def solve(fprime=None, seeds=None, varname=None, interval=None,
         return decorator_solve
     else:
         return decorator_solve(fprime)
+
+
+def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
+    """
+    Same as sympy.convert_to but accepts equations and allows functions of units to pass
+
+    Convert ``expr`` to the same expression with all of its units and quantities
+    represented as factors of ``target_units``, whenever the dimension is compatible.
+
+    ``target_units`` may be a single unit/quantity, or a collection of
+    units/quantities.
+
+    Examples
+    ========
+
+    >>> from sympy.physics.units import speed_of_light, meter, gram, second, day
+    >>> from sympy.physics.units import mile, newton, kilogram, atomic_mass_constant
+    >>> from sympy.physics.units import kilometer, centimeter
+    >>> from sympy.physics.units import gravitational_constant, hbar
+    >>> from sympy.physics.units import convert_to
+    >>> convert_to(mile, kilometer)
+    25146*kilometer/15625
+    >>> convert_to(mile, kilometer).n()
+    1.609344*kilometer
+    >>> convert_to(speed_of_light, meter/second)
+    299792458*meter/second
+    >>> convert_to(day, second)
+    86400*second
+    >>> 3*newton
+    3*newton
+    >>> convert_to(3*newton, kilogram*meter/second**2)
+    3*kilogram*meter/second**2
+    >>> convert_to(atomic_mass_constant, gram)
+    1.660539060e-24*gram
+
+    Conversion to multiple units:
+
+    >>> convert_to(speed_of_light, [meter, second])
+    299792458*meter/second
+    >>> convert_to(3*newton, [centimeter, gram, second])
+    300000*centimeter*gram/second**2
+
+    Conversion to Planck units:
+
+    >>> from sympy.physics.units import gravitational_constant, hbar
+    >>> convert_to(atomic_mass_constant, [gravitational_constant, speed_of_light, hbar]).n()
+    7.62963085040767e-20*gravitational_constant**(-0.5)*hbar**0.5*speed_of_light**0.5
+
+    """
+
+
+    from sympy.physics.units import UnitSystem
+    unit_system = UnitSystem.get_unit_system(unit_system)
+
+    if not isinstance(target_units, (Iterable, Tuple)):
+        target_units = [target_units]
+
+
+    if hasattr(expr, 'rhs'):
+        return Eq(convert_to(expr.lhs, target_units, unit_system),
+                 convert_to(expr.rhs, target_units, unit_system))
+    # if type(type(expr)) is UndefinedFunction:
+    if is_function(expr):
+        # print('undefined input expr:{}'.format(expr))
+        return nsimplify(expr, rational=True)
+
+    if isinstance(expr, Add):
+        return Add.fromiter(convert_to(i, target_units, unit_system) for i in expr.args)
+
+    expr = sympify(expr)
+
+    if not isinstance(expr, Quantity) and expr.has(Quantity):
+        expr = expr.replace(
+            lambda x: isinstance(x, Quantity),
+            lambda x: x.convert_to(target_units, unit_system))
+
+    def get_total_scale_factor(expr):
+        if isinstance(expr, Mul):
+            return reduce(lambda x, y: x * y, [get_total_scale_factor(i) for i in expr.args])
+        elif isinstance(expr, Pow):
+            return get_total_scale_factor(expr.base) ** expr.exp
+        elif isinstance(expr, Quantity):
+            return unit_system.get_quantity_scale_factor(expr)
+        return expr
+
+    depmat = _get_conversion_matrix_for_expr(expr, target_units, unit_system)
+    if depmat is None:
+        if raise_errors:
+            raise NameError('cannot convert {} to {} {}'.format(expr, target_units, unit_system))
+        return nsimplify(expr, rational=True)
+
+    expr_scale_factor = get_total_scale_factor(expr)
+    result = expr_scale_factor * Mul.fromiter(
+        (1/get_total_scale_factor(u) * u) ** p for u, p in zip(target_units, depmat))
+    return nsimplify(result, rational=True)
+
+# def resolve_unit(expr, unit_registry, verbose=False):
+#     """get the registered unit for the expression
+
+#     unit_registry {f(x): f(cm), f(cm): kg/m^2}
+#     """
+#     unit = unit_registry.get(expr, None)
+#     if verbose:
+#         print('resolve_unit: {}'.format(unit))
+#     for k, k_unit in unit_registry.items():
+#         if str(expr) == str(k):
+#             unit = k_unit
+#             continue
+#     if verbose:
+#         print('resolve_unit: after registry {}'.format(unit))
+
+#     if unit in unit_registry:
+#         return unit_registry[unit]
+
+#     # if isinstance(unit, UndefinedFunction):
+#     if is_function(unit):
+#         # {f(x):g(x)}
+#         result = unit_registry.get(unit)
+#         if verbose:
+#             print('resolve_unit: returning {}'.format(result))
+#         return result
+
+#     if verbose:
+#         print('resolve_unit: {} is not a Function'.format(unit))
+
+#     if unit is None:
+#         unit = expr.subs(unit_registry)
+
+#     if len(unit.free_symbols) > 0:
+#         return None
+
+#     if unit is not None:
+#         if hasattr(unit, 'dimension'):
+#             return unit
+#         if isinstance(unit, Mul):
+#             return unit
+#         if isinstance(unit, Pow):
+#             return unit
+#         return unit_registry.get(unit, None)
+
+def get_expr_unit(expr, unit_registry, verbose=False):
+    '''Get units from an expression'''
+    if is_function(expr):
+        for func in unit_registry:
+            if type(expr) == type(func):
+                # b(a) = b(x)
+                if verbose:
+                    print('get_expr_unit: found match {} for {}'.format(func, expr))
+                    # print('get_expr_unit: func free symbols {}'.format(func.free_symbols))
+                    # print('get_expr_unit: expr free_symbols: {}'.format(expr.free_symbols))
+                # func_units = resolve_unit(func, unit_registry, verbose)
+                # {f(x): f(cm), f(cm): kg}
+                func_units = unit_registry[func]
+                if func_units in unit_registry:
+                    return unit_registry[func_units]
+                return func_units
+        if verbose:
+            print('get_expr_unit: no match found for {}'.format(expr))
+
+    if isinstance(expr, Mul):
+        results = []
+        for arg in expr.args:
+            result = get_expr_unit(arg, unit_registry, verbose)
+            if result is not None:
+                results.append(result)
+        if len(results) > 0:
+            return Mul.fromiter(results)
+        else:
+            return None
+
+    if len(unit_registry) > 0:
+        expr_unit = expr.subs(
+            unit_registry, simultaneous=False).subs(
+                unit_registry, simultaneous=False)
+    else:
+        expr_unit = expr
+
+    if len(expr_unit.free_symbols) > 0:
+        return None
+
+    if isinstance(expr_unit, Add):
+        # use the first term
+        arg_0 = expr_unit.args[0]
+        convert_to(expr_unit, arg_0)
+        result = arg_0
+    else:
+        result = expr_unit
+
+    # if len(result.free_symbols) > 0:
+    #     return None
+
+    return get_base_unit(result)
+
+
+def get_arg_units(expr, unit_registry, arg_units=None):
+    """retrieves units of expression arguments
+    """
+    if arg_units is None:
+        arg_units = dict()
+
+    if expr in unit_registry:
+        # unit_registry: {f(cm,km): kg}
+        if is_function(unit_registry[expr]):
+            for arg_, arg_unit in zip(expr.args, unit_registry[expr].args):
+                arg_units[arg_] = arg_unit
+        return arg_units
+
+    # 2*a(x)
+    for arg in expr.args:
+        arg_units = get_arg_units(arg, unit_registry, arg_units)
+    return arg_units
+
+def replace_args(expr, from_map, to_map):
+    # func_symbol = type(expr)
+    arg_map = dict()
+    for arg in expr.free_symbols:
+        if (arg in from_map) & (arg in to_map):
+            from_unit = from_map[arg]
+            to_unit = to_map[arg]
+            try:
+                assert get_dimensions(from_unit) == get_dimensions(to_unit)
+                arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
+            except:
+                raise NameError('cannot convert from {} to {}'.format(from_unit, to_unit))
+    return expr.subs(arg_map)
+
+def unify_args(expr, unit_registry, to_symbol, verbose):
+    """replaces arguments in an expression"""
+    expr_units = get_arg_units(expr, unit_registry)
+    to_units = get_arg_units(to_symbol, unit_registry)
+    if verbose:
+        print('unify_args: {} arg units {}'.format(expr, expr_units))
+        print('unify_args: to arg units', to_units)
+    expr = replace_args(expr, expr_units, to_units)
+    if verbose:
+        print('unify_args: converted expression:', expr)
+    return expr
+
+def unify(expr, unit_registry, to_symbol=None, verbose=False):
+    """adds unit conversion factors to composed functions"""
+    if verbose:
+        print('unify: to_symbol:', to_symbol)
+    if hasattr(expr, 'rhs'):
+        return Eq(expr.lhs, unify(
+            expr.rhs,
+            unit_registry,
+            to_symbol=expr.lhs,
+            verbose=verbose))
+    if isinstance(expr, Add):
+        if verbose:
+            print('unify: Adding expression: {} -> {}'.format(
+                expr, get_expr_unit(to_symbol, unit_registry, verbose)))
+        return Add.fromiter([unify(arg, unit_registry, to_symbol, verbose) for arg in expr.args])
+
+    expr_unit = get_expr_unit(expr, unit_registry, verbose)
+
+    if verbose:
+        print('unify: {} unit {}'.format(expr, expr_unit))
+        print('unify: {} symbols {}'.format(expr, expr.free_symbols))
+        print('unify: {} symbols {}'.format(to_symbol, to_symbol.free_symbols))
+    try:
+        assert expr.free_symbols.issubset(to_symbol.free_symbols)
+    except:
+        raise NameError("{} arguments not in {}".format(
+            expr.free_symbols, to_symbol.free_symbols))
+
+    if is_function(expr):
+        if verbose:
+            print('unify: function expression: {}'.format(expr))
+        if to_symbol is not None:
+            if verbose:
+                print('\nunify: to_symbol args: {}'.format(to_symbol.args))
+                print('unify: to_symbol free symbols: {}'.format(to_symbol.free_symbols))
+                print('unify: expr args: {}'.format(expr.args))
+                print('unify: expr free symbols: {}'.format(expr.free_symbols))
+
+            for k, v in unit_registry.items():
+                if isinstance(expr, type(k)):
+                    if len(k.free_symbols) > 0:
+                        if verbose:
+                            print('unify: found matching {} -> {}'.format(expr, k))
+                        arg_units = get_arg_units(k, unit_registry)
+                        if verbose:
+                            print('unify: func units:', arg_units)
+                        expr_units = {}
+                        for arg, sym in zip(expr.args, k.free_symbols):
+                            to_unit = arg_units.get(sym)
+                            from_unit = get_expr_unit(arg, unit_registry)
+                            if (from_unit is not None) and (to_unit is not None):
+                                expr_units[arg] = convert_to(arg*from_unit, to_unit)/to_unit
+                        expr = expr.subs(expr_units)
+
+                        if verbose:
+                            print('unify: replaced args', expr)
+
+    expr = unify_args(expr, unit_registry, to_symbol, verbose)
+
+    if (to_symbol is not None) & (expr_unit is not None):
+        to_unit = get_expr_unit(to_symbol, unit_registry, verbose)
+        if verbose:
+            print('unify: to_unit {}'.format(to_unit))
+        if get_dimensions(expr_unit) == get_dimensions(to_unit):
+            if verbose:
+                print('unify: {} [{}] -> to_symbol: {}[{}]'.format(
+                    expr, expr_unit, to_symbol, to_unit))
+            expr = convert_to(expr*expr_unit, to_unit)/to_unit
+        else:
+            if verbose:
+                print('unify: registry:')
+                for k, v in unit_registry.items():
+                    print('unify:\t{} -> {}'.format(k, v))
+            raise NameError('cannot convert {} [{}] to {}[{}]'.format(
+                expr, expr_unit, to_symbol, to_unit))
+
+    return expr
+
+def get_abbrev(unit):
+    """get the abbreviation for a mixed unit"""
+    if hasattr(unit, 'abbrev'):
+        return unit.abbrev
+    if isinstance(unit, Mul):
+        return Mul.fromiter([get_abbrev(arg) for arg in unit.args])
+    if isinstance(unit, Pow):
+        base, exp = unit.as_base_exp()
+        return Pow(get_abbrev(base), exp)
+    return unit
+
+
+def get_dimensions(unit):
+    """get the set of basis units"""
+    if hasattr(unit, 'dimension'):
+        return unit.dimension
+    if isinstance(unit, Mul):
+        return Mul.fromiter([get_dimensions(arg) for arg in unit.args])
+    if isinstance(unit, Pow):
+        base, exp = unit.as_base_exp()
+        return Pow(get_dimensions(base), exp)
+    return unit
+
+
+def get_base_unit(expr):
+    if hasattr(expr, 'dimension'):
+        return expr
+    if isinstance(expr, Mul):
+        results = []
+        for arg in expr.args:
+            result = get_base_unit(arg)
+            if result is not None:
+                results.append(result)
+        if len(results) > 0:
+            return Mul.fromiter(results)
+        else:
+            return None
+    if isinstance(expr, Pow):
+        base, exp = expr.as_base_exp()
+        return Pow(get_base_unit(base), exp)
+    if isinstance(expr, Add):
+        results = [get_dimensions(arg) for arg in expr.args]
+        arg0_dimensions = results[0]
+        for r in results:
+            try:
+                assert arg0_dimensions == r
+            except:
+                print(results)
+                raise
+        return get_base_unit(expr.args[0])
+    return None
+
+def is_function(expr):
+    """returns True if expr is a function
+
+    examples:
+        f(x): True
+        symbols('f', cls=UndefinedFunction): True
+        x: False
+    """
+    if isinstance(expr, UndefinedFunction):
+        return True
+    return isinstance(type(expr), UndefinedFunction)
+
+
+@kamodofy
+def rho(x=np.array([3, 4, 5])):
+    """rho means density"""
+    return x ** 2
+
+
+@kamodofy
+def divide(x=np.array([3, 4, 5])):
+    """rho means density"""
+    return x / 2
+
+
+@np.vectorize
+def myfunc(x, y, z):
+    return x + y + z
+
+
+def defaults_fun(var1, var2, default_var1=10, default_var2=20):
+    return var1 + var2 + default_var1 + default_var2
+
+
+@kamodofy
+@gridify(x=np.linspace(-3, 3, 20),
+         y=np.linspace(-5, 5, 10),
+         z=np.linspace(-7, 7, 30))
+def grid_fun(xvec):
+    """my density function, returning array of size N
+
+    xvec should have shape (N,3)"""
+    return xvec[:, 0]
+
+
+def test_kamodofy():
+    comparison = rho.data == np.array([9, 16, 25])
+    assert comparison.all()
+    comparison = divide(np.array([6, 13, 2])) == np.array([3, 13 / 2, 1])
+    assert comparison.all()
+
+
+def test_sort_symbols():
+    myexpr = parse_expr('x+rho+a+b+c')
+    assert sort_symbols(myexpr.free_symbols) == (Symbol('a'), Symbol('b'), Symbol('c'), Symbol('rho'), Symbol('x'))
+
+
+def test_valid_args():
+    assert valid_args(myfunc, dict(x='a', other='you')) == OrderedDict([('x', 'a')])
+    assert valid_args(myfunc, dict(y='b', other='you')) == OrderedDict([('y', 'b')])
+    assert valid_args(myfunc, dict(z='c', other='you')) == OrderedDict([('z', 'c')])
+    assert valid_args(myfunc, dict(x='a', y='b', z='c', other='you')) == OrderedDict(
+        [('x', 'a'), ('y', 'b'), ('z', 'c')])
+
+
+def test_eval_func():
+    assert eval_func(myfunc, dict(x='a', y='b', z='c', other='you')) == myfunc('a', 'b', 'c')
+    assert eval_func(myfunc, dict(x=1, y=2, z=3, other=100)) == myfunc(1, 2, 3)
+
+
+def test_get_defaults():
+    assert get_defaults(defaults_fun) == {'default_var1': 10, 'default_var2': 20}
+
+
+def test_cast_0_dim():
+    to = np.array([1, 2, 3])
+    casted_array = cast_0_dim(np.array(1), to=to)
+    assert casted_array.shape == to.shape
+
+
+def test_concat_solution():
+    solutions = concat_solution((kamodofy(lambda x=np.array([1, 2, 3]): x ** 2) for i in range(1, 4)), 'y')
+    expected = [1, 4, 9, np.nan, 1, 4, 9, np.nan, 1, 4, 9, np.nan, ]
+    assert ((solutions['y'] == expected) | (numpy.isnan(solutions['y']) & numpy.isnan(expected))).all()
+
+
+def test_substr_replace():
+    mystr = "replace this string"
+    mystr = substr_replace(mystr, [
+        ('this', 'is'),
+        ('replace', 'this'),
+        ('string', 'replaced')
+    ])
+    assert mystr == 'this is replaced'
+
+
+def test_beautify_latex():
+    beautified = beautify_latex('LEFTx__plus1RIGHTminusLEFTacommabRIGHT')
+    assert beautified == '\\left (x__+1\\right )-\\left (a,b\\right )'
+
+
+def test_arg_to_latex():
+    my_latex = arg_to_latex('x__iplus1')
+    assert my_latex == 'x^{i+1}'
+
+
+def test_valid_args():
+    def f(x, y, z):
+        return x + y + z
+
+    args = valid_args(f, dict(x=1, y=2, z=3, g=4))
+    assert args['x'] == 1
+    assert ('g' not in args)
+
+
+def test_eval_func():
+    def f(x, y):
+        return x + y
+
+    assert eval_func(f, dict(x=1, y=2, z=3)) == 1 + 2
+
+
+def test_simulate():
+    def update_y(x):
+        return x + 1
+
+    def update_x(y):
+        return y - 2
+
+    state_funcs = OrderedDict([
+        ('y', update_y),
+        ('x', update_x),
+        ('t', lambda t, dt: t + dt)
+    ])
+
+    simulation = simulate(state_funcs,
+                          x=3,  # initial conditions
+                          t=0,
+                          dt=1,
+                          steps=10)
+
+    for state in simulation:
+        pass
+
+    assert state['x'] == -7
+    assert state['y'] == -5
+    assert state['t'] == 10
+
+
+def test_meta_units():
+    @kamodofy(units='kg')
+    def mass(x):
+        return x
+
+    assert mass.meta['units'] == 'kg'
+
+
+def test_meta_data():
+    @kamodofy(units='kg')
+    def mass(x=list(range(5)), y=3):
+        return [x_ + y for x_ in x]
+
+    assert mass.data[-1] == 7
+
+
+def test_meta_data_kwargs():
+    @kamodofy(x=3, y=3)
+    def e(x, y):
+        return x + y
+
+    assert e.data == 6
+
+    @kamodofy(x=3)
+    def f(x=5, y=3):
+        return x + y
+
+    assert f.data == 6
+
+    @kamodofy()
+    def g(x, y):
+        return x + y
+
+    assert g.data == None
+    assert g.meta['units'] == ''
+
+    @kamodofy(data=3)
+    def h(x, y):
+        return x + y
+
+    assert h.data == 3
+
+
+def test_repr_latex():
+    @kamodofy(equation='$f(x) = x_i^2$')
+    def f(x):
+        return x
+
+    assert f._repr_latex_() == 'f(x) = x_i^2'
+
+    @kamodofy
+    def g(x, y, z):
+        return x
+    print(g._repr_latex_())
+
+    assert g._repr_latex_() == r'$g{\left(x,y,z \right)} = \lambda{\left(x,y,z \right)}$'
+
+
+def test_bibtex():
+    bibtex = """
+@phdthesis{phdthesis,
+  author       = {Peter Joslin},
+  title        = {The title of the work},
+  school       = {The school of the thesis},
+  year         = 1993,
+  address      = {The address of the publisher},
+  month        = 7,
+  note         = {An optional note}
+}"""
+
+    @kamodofy(citation=bibtex)
+    def h(x):
+        '''This equation came out of my own brain'''
+        return x
+
+    assert '@phdthesis' in h.meta['citation']
+
+
+def test_gridify():
+    from kamodo import Kamodo
+    kamodo = Kamodo(grids=grid_fun)
+    assert kamodo.grids().shape == (10, 20, 30)
+
+
+def test_symbolic():
+    assert symbolic(['a']) == UndefinedFunction('a')
+    assert symbolic(['a', 'b']) == [UndefinedFunction('a'), UndefinedFunction('b')]
+
+
+def test_pad_nan():
+    array = np.array([[1, 2], [1, 2]])
+    solution = pad_nan(array)
+    expected = np.array([[1, 2], [1, 2], [np.nan, np.nan]])
+    comparison = ((solution == expected) | (numpy.isnan(solution) & numpy.isnan(expected)))
+    assert comparison.all()
+
+    array = np.array([1, 2])
+    solution = pad_nan(array)
+    expected = np.array([1, 2, np.nan])
+    comparison = ((solution == expected) | (numpy.isnan(solution) & numpy.isnan(expected)))
+    assert comparison.all()
+
+def test_is_function():
+    assert is_function(sympify('f(g(x))'))
+    assert is_function(symbols('g', cls=UndefinedFunction))
+    assert not is_function(symbols('x'))
+
 
