@@ -813,60 +813,63 @@ class Kamodo(UserDict):
 
     #     return d
 
+    def func_latex(self, key, mode='equation'):
+        repr_latex = ""
+        lhs = self.signatures[key]['symbol']
+        rhs = self.signatures[key]['rhs']
+        units = self.signatures[key]['units']
+        arg_units = get_arg_units(lhs, self.unit_registry)
+
+        if units is not None:
+            units = '{}'.format(get_abbrev(units))
+        else:
+            units = ''
+
+        if len(arg_units) > 0:
+            arg_strs = []
+            for arg, arg_unit in arg_units.items():
+                arg_strs.append("{}[{}]".format(latex(arg), get_abbrev(arg_unit)))
+            lhs_str = "{}({})".format(latex(type(lhs)), ",".join(arg_strs))
+        else:
+            lhs_str = latex(lhs)
+            # lhs_str = "{}({})".format(
+            #     latex(type(lhs)),
+            #     ','.join([latex(s) for s in lhs.args]))
+
+        if len(units) > 0:
+            lhs_str += "[{}]".format(units)
+
+        latex_eq = ''
+        latex_eq_rhs = ''
+        if type(rhs) == str:
+            latex_eq_rhs = rhs
+        else:
+            if hasattr(rhs, '__call__'):
+                lambda_ = symbols('lambda', cls=UndefinedFunction)
+                latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
+                latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
+            else:
+                latex_eq = latex(Eq(lhs, rhs), mode=mode)
+                latex_eq_rhs = latex(rhs) # no $$ delimiter
+
+        if len(str(units)) > 0:
+            latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
+
+
+        repr_latex += r"\begin{equation}"
+        repr_latex += "{} = {}".format(lhs_str, latex_eq_rhs)
+        repr_latex += r"\end{equation}"
+        return repr_latex
+
+
+
     def to_latex(self, keys=None, mode='equation'):
         """Generate list of LaTeX-formated formulas"""
         if keys is None:
             keys = list(self.signatures.keys())
         repr_latex = ""
         for k in keys:
-            lhs = self.signatures[k]['symbol']
-            rhs = self.signatures[k]['rhs']
-            units = self.signatures[k]['units']
-            arg_units = self.unit_registry.get(lhs, None)
-
-            # f(x[cm],y[km],z)[km] = expr
-            units = self.unit_registry.get(arg_units)
-            if units is not None:
-                units = '{}'.format(get_abbrev(units))
-            else:
-                units = ''
-
-            if arg_units is not None:
-                lhs_str = "{}({})".format(
-                    latex(type(lhs)),
-                    ",".join([
-                        "{}[{}]".format(latex(arg), get_abbrev(unit)) for arg, unit in zip(lhs.args, arg_units.args)
-                        ])
-                    )
-            else:
-                lhs_str = latex(lhs)
-
-            if len(units) > 0:
-                lhs_str += "[{}]".format(units)
-
-            latex_eq = ''
-            latex_eq_rhs = ''
-            if type(rhs) == str:
-                latex_eq_rhs = rhs
-                # latex_eq = latex(Eq(lhs, parse_latex(rhs)), mode = mode)
-            else:
-                # if rhs is not None:
-                if hasattr(rhs, '__call__'):
-                    lambda_ = symbols('lambda', cls=UndefinedFunction)
-                    latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
-                    latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
-
-                else:
-                    latex_eq = latex(Eq(lhs, rhs), mode=mode)
-                    latex_eq_rhs = latex(rhs) # no $$ delimiter
-            if len(str(units)) > 0:
-                latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
-
-            repr_latex += r"\begin{equation}"
-            repr_latex += "{} = {}".format(lhs_str, latex_eq_rhs)
-            repr_latex += r"\end{equation}"
-
-            # repr_latex += latex_eq
+            repr_latex += self.func_latex(k, mode)
 
         return beautify_latex(repr_latex).encode('utf-8').decode()
 

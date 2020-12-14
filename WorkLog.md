@@ -1,3 +1,4 @@
+* fixed latex rendering
 
 # 2020-12-14 13:35:34.718198: clock-in
 
