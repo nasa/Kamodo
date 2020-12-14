@@ -820,7 +820,7 @@ class Kamodo(UserDict):
         units = self.signatures[key]['units']
         arg_units = get_arg_units(lhs, self.unit_registry)
 
-        if units is not None:
+        if len(units) > 0:
             units = '{}'.format(get_abbrev(units))
         else:
             units = ''
@@ -841,15 +841,15 @@ class Kamodo(UserDict):
 
         latex_eq = ''
         latex_eq_rhs = ''
-        if type(rhs) == str:
+        if isinstance(rhs, str):
             latex_eq_rhs = rhs
         else:
             if hasattr(rhs, '__call__'):
                 lambda_ = symbols('lambda', cls=UndefinedFunction)
-                latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
+                # latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
                 latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
             else:
-                latex_eq = latex(Eq(lhs, rhs), mode=mode)
+                # latex_eq = latex(Eq(lhs, rhs), mode=mode)
                 latex_eq_rhs = latex(rhs) # no $$ delimiter
 
         if len(str(units)) > 0:

@@ -17,6 +17,9 @@ from .util import get_unit_quantity, convert_to
 from kamodo import from_kamodo, compose
 from sympy import Function
 
+import warnings
+
+
 def test_Kamodo_expr():
     a, b, c, x, y, z = symbols('a b c x y z')
     kamodo = Kamodo(a=x ** 2, verbose=True)
@@ -200,12 +203,14 @@ def test_unit_registry():
 
 
 def test_to_latex():
+    warnings.simplefilter('error')
     kamodo = Kamodo(f='x**2', verbose=True)
     assert str(kamodo.to_latex()) == r'\begin{equation}f{\left(x \right)} = x^{2}\end{equation}'
     kamodo = Kamodo(g='x', verbose=True)
     assert str(kamodo.to_latex()) == r'\begin{equation}g{\left(x \right)} = x\end{equation}'
     kamodo['f(x[cm])[kg]'] = 'x**2'
     kamodo['g'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'), equation='$x^2$')
+    kamodo['h'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'))
     kamodo.to_latex()
 
 

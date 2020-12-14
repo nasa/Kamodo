@@ -2,9 +2,7 @@ from kamodo import Kamodo
 import pytest
 import numpy as np
 import pandas as pd
-from .plotting import scatter_plot, line_plot, vector_plot, contour_plot, surface, plane, tri_surface_plot, \
-
-get_arg_shapes, plot_types, plot_dict
+from .plotting import scatter_plot, line_plot, vector_plot, contour_plot, surface, plane, tri_surface_plot, get_arg_shapes, plot_types, plot_dict
 
 
 def test_scatter_plot():
