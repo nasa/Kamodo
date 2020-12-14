@@ -469,7 +469,6 @@ def solve(fprime=None, seeds=None, varname=None, interval=None,
         return decorator_solve(fprime)
 
 
-
 def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
     """
     Same as sympy.convert_to but accepts equations and allows functions of units to pass

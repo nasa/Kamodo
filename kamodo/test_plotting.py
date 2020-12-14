@@ -3,7 +3,8 @@ import pytest
 import numpy as np
 import pandas as pd
 from .plotting import scatter_plot, line_plot, vector_plot, contour_plot, surface, plane, tri_surface_plot, \
-    get_arg_shapes
+
+get_arg_shapes, plot_types, plot_dict
 
 
 def test_scatter_plot():
@@ -478,12 +479,12 @@ def test_line_plot_3d_line():
     assert chart_type == '3d-line'
     assert layout['title']['text'] == title
 
-def test_line_plot_3d_pd():
-    t = np.array([-6j, -5j, 0, 5j, 6j, 4 + 4j, 4 -5.777j])
 
-    def svec(t = t):
-        index_ = pd.MultiIndex.from_arrays((t.real, t.imag))
-        return pd.DataFrame(dict(x=t.real, y=t.imag, z=np.absolute(t)), index=index_)
+def test_plot_keys():
+    for k in plot_types.to_dict(orient = 'index'):
+        try:
+            plot_dict[k[0]][k[1]]['name']
+        except KeyError:
+            print('could not find', k[0], k[1])
+            raise
 
-    kamodo = Kamodo(svec=svec)
-    kamodo.plot('svec')
