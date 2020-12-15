@@ -30,4 +30,4 @@ jobs:
         pip install .
     - name: Test with pytest
       run: |
-        pytest --cov kamodo.kamodo --cov kamodo.util --cov plotting kamodo/test_plotting.py kamodo/test_kamodo.py kamodo/util.py --cov-report html
+        pytest kamodo/test_plotting.py kamodo/test_kamodo.py kamodo/util.py
