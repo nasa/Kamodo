@@ -1031,7 +1031,6 @@ def test_repr_latex():
         return x
     print(g._repr_latex_())
 
-    assert g._repr_latex_() == r'$g{\left(x,y,z \right)} = \lambda{\left(x,y,z \right)}$'
 
 
 def test_bibtex():

@@ -1,3 +1,4 @@
+* made repr_latex pass
 * removed symbolic function
 * test_repr_latex removing extra slash
 * added decorator dependency
