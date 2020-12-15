@@ -1,3 +1,4 @@
+* automated testing
 * improved coverage
 
 # 2020-12-14 17:41:49.324815: clock-in: T-35m 
