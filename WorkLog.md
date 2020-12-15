@@ -1,4 +1,11 @@
+* test_repr_latex removing extra slash
 * added decorator dependency
+* graphviz - can be used to visualize the user's pipeline
+
+```console
+conda install -c conda-forge graphviz xorg-libxrender xorg-libxpm
+pip install graphviz
+```
 
 # 2020-12-15 11:35:04.884012: clock-in
 

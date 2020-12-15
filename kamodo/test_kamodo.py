@@ -537,7 +537,7 @@ def test_compose_unit_raises():
 
 def test_repr_latex():
     kamodo = Kamodo(f='x')
-    assert kamodo._repr_latex_() == '\\begin{equation}f{\\left(x \\right)} = x\\end{equation}'
+    assert kamodo._repr_latex_() == r'\begin{equation}f{\left(x \right)} = x\end{equation}'
 
 
 def test_dataframe_detail():
