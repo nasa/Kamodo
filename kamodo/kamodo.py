@@ -881,10 +881,6 @@ class Kamodo(UserDict):
         """Constructs a pandas dataframe from signatures"""
         return pd.DataFrame(self.signatures).T
 
-    def get_signature(self, name):
-        """Get the signature for the named variable"""
-        return self.signatures[name]
-        # return self.signatures[str(self.symbol_registry[name])]
 
     def simulate(self, **kwargs):
         state_funcs = []
@@ -965,7 +961,7 @@ class Kamodo(UserDict):
     def figure(self, variable, indexing='ij', return_type=False, **kwargs):
         """Generates a plotly figure for a given variable and keyword arguments"""
         result = self.evaluate(variable, **kwargs)
-        signature = self.get_signature(variable)
+        signature = self.signatures[variable]
         units = signature['units']
         if units != '':
             units = '[{}]'.format(units)
@@ -983,11 +979,9 @@ class Kamodo(UserDict):
         arg_arrays = [result[k] for k in result if k not in hidden_args][:-1]
 
         arg_shapes = get_arg_shapes(*arg_arrays)
-        try:
-            out_dim, arg_dims = get_plot_key(result[variable].shape, *arg_shapes)
-        except:
-            print(arg_shapes)
-            raise
+
+        out_dim, arg_dims = get_plot_key(result[variable].shape, *arg_shapes)
+
         try:
             plot_func = plot_dict[out_dim][arg_dims]['func']
         except KeyError:

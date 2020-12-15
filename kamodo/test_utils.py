@@ -2,13 +2,13 @@ from collections import OrderedDict
 
 import numpy as np
 import pytest
-from sympy import sympify as parse_expr, Symbol
+from sympy import sympify as parse_expr, Symbol, symbols
 from sympy.core.function import UndefinedFunction
 
 from kamodo import Kamodo
 from kamodo.util import kamodofy, gridify, sort_symbols, valid_args, eval_func, get_defaults, cast_0_dim, \
-    concat_solution, get_unit_quantity, substr_replace, beautify_latex, arg_to_latex, simulate, symbolic, pad_nan, \
-    pointlike, solve, event
+    concat_solution, get_unit_quantity, substr_replace, beautify_latex, arg_to_latex, simulate, pad_nan, \
+    pointlike, solve, event, is_function
 
 
 @kamodofy
@@ -125,8 +125,8 @@ def test_get_unit_quantity():
     from kamodo import get_unit
     mykm = get_unit_quantity('mykm', 'km', scale_factor=2)
     mygm = get_unit_quantity('mygm', 'gram', scale_factor=4)
-    assert str(mykm.convert_to(get_unit('m'))) == '2000*meter'
-    assert str(mygm.convert_to(get_unit('kg'))) == 'kilogram/250'
+    assert str(mykm.convert_to(get_unit('m'))) == '2000.0*meter'
+    assert str(mygm.convert_to(get_unit('kg'))) == '0.004*kilogram'
 
 
 def test_substr_replace():
@@ -255,10 +255,8 @@ def test_repr_latex():
     @kamodofy
     def g(x, y, z):
         return x
-
     print(g._repr_latex_())
 
-    assert g._repr_latex_() == r'$g{\left(x,y,z \right)} = \lambda{\left(x,y,z \right)}$'
 
 
 def test_bibtex():
@@ -286,10 +284,6 @@ def test_gridify():
     kamodo = Kamodo(grids=grid_fun)
     assert kamodo.grids().shape == (10, 20, 30)
 
-
-def test_symbolic():
-    assert symbolic(['a']) == UndefinedFunction('a')
-    assert symbolic(['a', 'b']) == [UndefinedFunction('a'), UndefinedFunction('b')]
 
 
 def test_pad_nan():
@@ -324,3 +318,10 @@ def test_solve():
     kamodo['fprime'] = solve(fprime, seeds, 'x', (0, 30), events=boundry)
 
     assert kamodo.fprime().shape == (2, 2)
+
+
+def test_is_function():
+    assert is_function(parse_expr('f(g(x))'))
+    assert is_function(symbols('g', cls=UndefinedFunction))
+    assert not is_function(symbols('x'))
+

@@ -636,4 +636,29 @@ def test_del_function():
     with pytest.raises(AttributeError):
         del(kamodo.y)
 
+def test_simple_figure():
+    @kamodofy(units='kg', hidden_args=['ions'])
+    def f_N(x_N):
+        return x_N**2
+
+    kamodo = Kamodo(f_N=f_N,verbose=True)
+    kamodo.plot(f_N=dict(x_N=np.linspace(-4, 3, 30)))
+
+def test_unavailable_4d_plot_type():
+    def g(x=np.array([1]),
+          y=np.array([1]),
+          z=np.array([1]),
+          t=np.array([1])):
+        return x**2 + y**2 + z**2 + t**2
+
+    kamodo = Kamodo(g=g, verbose=True)
+    with pytest.raises(KeyError):
+        kamodo.plot('g')
+
+def test_multiple_traces():
+    kamodo = Kamodo(f='x', g='x**2')
+    kamodo.plot(
+        f=dict(x=np.linspace(-1, 1, 10)),
+        g=dict(x=np.linspace(-5, 5, 10)))
+
 

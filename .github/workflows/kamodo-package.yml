@@ -31,7 +31,7 @@ jobs:
         pip install .
     - name: Test with pytest and generate coverage
       run: |
-        pytest --cov kamodo.kamodo --cov kamodo.util --cov plotting kamodo/test_plotting.py kamodo/test_kamodo.py kamodo/util.py
+        pytest --cov kamodo.kamodo --cov kamodo.util --cov plotting kamodo/test_plotting.py kamodo/test_kamodo.py kamodo/test_utils.py
     - name: "Upload coverage to Codecov"
       uses: codecov/codecov-action@v1
       with:
