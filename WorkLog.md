@@ -1,3 +1,5 @@
+# 2020-12-15 13:29:36.958990: clock-out
+
 * adding coverage badge
 * made repr_latex pass
 * removed symbolic function
