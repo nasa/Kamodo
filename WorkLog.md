@@ -1,3 +1,6 @@
+
+# 2020-12-15 16:32:25.927633: clock-in
+
 # 2020-12-15 13:29:36.958990: clock-out
 
 * adding coverage badge
