@@ -1,3 +1,4 @@
+* removed symbolic function
 * test_repr_latex removing extra slash
 * added decorator dependency
 * graphviz - can be used to visualize the user's pipeline

@@ -169,14 +169,6 @@ def kamodofy(
         return decorator_kamodofy(_func)
 
 
-def symbolic(sym_names):
-    """Returns symbolic functions"""
-    syms = symbols(sym_names, cls=UndefinedFunction)
-    if len(syms) == 1:
-        return syms[0]
-    else:
-        return syms
-
 
 def sort_symbols(symbols):
     symbols_ = list(symbols)
@@ -1066,11 +1058,6 @@ def test_gridify():
     from kamodo import Kamodo
     kamodo = Kamodo(grids=grid_fun)
     assert kamodo.grids().shape == (10, 20, 30)
-
-
-def test_symbolic():
-    assert symbolic(['a']) == UndefinedFunction('a')
-    assert symbolic(['a', 'b']) == [UndefinedFunction('a'), UndefinedFunction('b')]
 
 
 def test_pad_nan():
