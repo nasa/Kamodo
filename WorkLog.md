@@ -1,3 +1,11 @@
+
+# 2020-12-16 13:10:31.733582: clock-in
+
+* kamodo boolean operations?
+* range queries?
+* search?
+* jupyter widgets - can prototype dashboards
+
 # 2020-12-15 17:27:33.675261: clock-out
 
 * merging test_utils
