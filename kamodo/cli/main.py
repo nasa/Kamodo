@@ -5,22 +5,24 @@ import plotly.graph_objs as go
 from omegaconf import OmegaConf
 from os import path
 from kamodo import Kamodo, compose
+import os
+from hydra import utils
 
 
 def eval_config(params):
     """generate arrays dict from configuration"""
     args = {}
-    for k,v in params.items():
-        try:
-            args[k] = np.array(v)
-        except:
-            args[k] = np.linspace(v['min'], v['max'], v['n'])
+    if hasattr(params, 'items'):
+        for k,v in params.items():
+            try:
+                args[k] = np.array(v)
+            except:
+                args[k] = np.linspace(v['min'], v['max'], v['n'])
     return args
 
-def write_plot_div(plot_result, plot_conf):
+def write_plot_div(plot_result, plot_filename):
     """writes plot div to file"""
     if plot_result is not None:
-        plot_filename = plot_conf['filename']
         with open(plot_filename, 'w') as f:
             f.write(plot_result)
             f.write('') # needs a newline or else embedding breaks
@@ -40,7 +42,17 @@ def config_override(cfg):
         cfg = OmegaConf.merge(cfg, override_conf)
     return cfg
 
-
+def get_plot_dict(plot_params):
+    if hasattr(plot_params, 'items'):
+        pass
+    elif type(plot_params) is str:
+        plot_params = {plot_params: {}}
+    else:
+        try:
+            plot_params = {k : {} for k in plot_params}
+        except:
+            raise IOError("cannot handle plot parameters of type {}".format(type(plot_params)))
+    return plot_params
 
 
 @hydra.main(config_path='conf/config.yaml', strict = False)
@@ -57,6 +69,10 @@ def main(cfg):
     if cfg.verbose > 1:
         print(cfg.pretty())
 
+    plot_conf = cfg.plot_conf
+    plot_out_prefix = plot_conf.filename.split('.html')[0]
+    plot_conf.pop('filename')
+
     models = dict()
     for model_name, model_conf in cfg.models.items():
         print(model_name)
@@ -72,40 +88,44 @@ def main(cfg):
 
         if model_conf.evaluate is not None:
             for varname, params in model_conf.evaluate.items():
-                units = model[varname].meta['units']
-                lhs = "{}({})".format(varname, ','.join(['{}={}'.format(k,v) for k,v in params.items()]))
+                try:
+                    units = model[varname].meta['units']
+                    lhs = "{}({})".format(varname, ','.join(['{}={}'.format(k,v) for k,v in params.items()]))
 
-                rhs = model[varname](**eval_config(params))
+                    rhs = model[varname](**eval_config(params))
 
-                print("{} {} = \n".format(lhs,units))
-                print(rhs)
+                    print("{} {} = \n".format(lhs,units))
+                    print(rhs)
+                except Exception as m:
+                    print('could not evaluate {} with params\n{}'.format(
+                        varname, params))
+                    print(m)
+                    pass
 
-        plot_conf = model_conf.plot_conf
         fig_layout = model_conf.fig_layout
         plot_params = model_conf.plot
         if plot_params is not None:
-            if hasattr(plot_params, 'items'):
-                pass
-            elif type(plot_params) is str:
-                plot_params = {plot_params: {}}
-            else:
-                try:
-                    plot_params = {k : {} for k in plot_params}
-                except:
-                    raise IOError("cannot handle plot parameters of type {}".format(type(plot_params)))
+            plot_params = get_plot_dict(plot_params)
 
             for varname, params in plot_params.items():
-                plot_args = {varname: eval_config(params)}
+                try:
+                    plot_args = {varname: eval_config(params)}
+                except:
+                    print('issue with these params for {}'.format(varname))
+                    print(params)
+                    raise
                 try:
                     fig = go.Figure(model.plot(**plot_args))
                     if fig_layout is not None:
                         fig.update_layout(**fig_layout)
-                    plot_result = plot(fig, **plot_conf)
+                    out_filename = '{}_{}'.format(plot_out_prefix, varname)
+                    plot_result = plot(fig, filename = out_filename, **plot_conf)
                     if plot_result is not None:
-                        write_plot_div(plot_result, plot_conf)
+                        write_plot_div(plot_result, out_filename)
                 except:
                     print('could not plot {} with params:'.format(varname))
                     print(plot_args)
+                    print(plot_conf)
                     raise
 
     kamodo = compose(**models)
@@ -114,11 +134,6 @@ def main(cfg):
     if cfg.verbose > 1:   
         print(kamodo.to_latex())
 
-    if cfg.gui:
-        from kamodo.cli.gui import get_gui
-
-        app = get_gui(cfg)
-        app.run_server(debug=True)
 
 # entrypoint for package installer
 def entry():

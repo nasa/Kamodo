@@ -54,7 +54,10 @@ class Kameleon(Kamodo):
         except:
             print('could not open file')
             print('offending command:\n\t{}'.format(cmd))
-            print(self._metadata)
+            try:
+                print(self._metadata)
+            except:
+                pass
         print('{} opened'.format(file_name))
         
         
@@ -67,9 +70,14 @@ class Kameleon(Kamodo):
     def make_interpolators(self):
         for variable, metadata in self._metadata['variables'].items():
             coords = self.get_coords()
+            if 'r1' in coords:
+                cname = 'rvec_1'
+            else:
+                cname = coords[0]+'vec'
+            
             units = metadata['units']
-            exec_str = """def interpolate({c0}vec):
-                points = {c0}vec
+            exec_str = """def interpolate({cname}):
+                points = {cname}
             
                 if type(points) == np.ndarray:
                     points = points.tolist()
@@ -78,15 +86,14 @@ class Kameleon(Kamodo):
                     points = points)
                 self._ch.send(package)
                 results = self._ch.receive()
-                if type({c0}vec) == np.ndarray:
+                if type({cname}) == np.ndarray:
                     return np.array(results)
                 else:
                     return results
             """.format(varname = variable,
-                      c0 = coords[0],
-                      c1 = coords[1],
-                      c2 = coords[2])
+                      cname = cname)
             d = {'self':self, 'np':np}
             exec(exec_str, d)
             interp_func = d['interpolate']
             self[variable] = kamodofy(interp_func, units = units)
+

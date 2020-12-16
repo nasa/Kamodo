@@ -9,4 +9,4 @@ compensation:
       pi: 1.0
 
 report:
-  timesheet: true
+  timesheet: false
