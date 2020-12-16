@@ -1,3 +1,5 @@
+# 2020-12-16 14:56:58.695307: clock-out
+
 * ccmc tagup
 * `docker run -p 5000:5000 asherp/kamodo`
 * adding flask dependency, running api on dockerfile startup
