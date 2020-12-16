@@ -1,5 +1,11 @@
 * docker container
 
+ | git merge master |	git rebase master
+---- | ---- | ----
+Keep changes from master	| --theirs	| --ours
+Keep changes from feature |	--ours	| --theirs
+
+
 # 2020-12-16 16:04:52.924287: clock-in
 
 # 2020-12-16 14:56:58.695307: clock-out
