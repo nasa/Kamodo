@@ -1,3 +1,5 @@
+* ccmc tagup
+* `docker run -p 5000:5000 asherp/kamodo`
 * adding flask dependency, running api on dockerfile startup
 * adding dockerfile from nasa branch
 * adding hapi
