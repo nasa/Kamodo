@@ -38,27 +38,33 @@ from sympy.physics.units import Dimension
 from sympy import nsimplify
 from sympy import Function
 
+
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
-    u = units.Quantity(name, abbrev=abbrev)
+    unit = units.Quantity(name, abbrev=abbrev)
     base_unit = getattr(sympy_units, base)
 
     try:
         # sympy >= 1.5 raises the following warning:
         #   Use unit_system.set_quantity_dimension or
         # <unit>.set_global_relative_scale_factor
-        u.set_global_relative_scale_factor(scale_factor, base_unit)
+        unit.set_global_relative_scale_factor(scale_factor, base_unit)
     except AttributeError:
-        u.set_dimension(base_unit.dimension)
-        u.set_scale_factor(scale_factor * base_unit, unit_system=unit_system)
+        unit.set_dimension(base_unit.dimension)
+        unit.set_scale_factor(scale_factor * base_unit, unit_system=unit_system)
 
-    return u
+    return unit
 
 
-unit_subs = dict(R_E=get_unit_quantity('earth radii', 'km', 6.371e6, 'R_E', 'SI'),
-                 erg=get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
-                 cc=sympy_units.cm**3,
-                 )
+unit_subs = dict(
+    nT=get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
+    R_E=get_unit_quantity('earth radii', 'm', 6.371e6, 'R_E', 'SI'),
+    R_S=get_unit_quantity('solar radii', 'm', 6.957e8, 'R_S', 'SI'),
+    erg=get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
+    nPa=get_unit_quantity('nanopascals', 'pascal', .000000001, 'nPa', 'SI'),
+    cc=sympy_units.cm**3,
+    AU=get_unit_quantity('astronomical unit', 'm', 1.496e+11, 'AU', 'SI'),
+    )
 
 sympy_units.erg = unit_subs['erg']
 
@@ -79,6 +85,27 @@ for item in unit_list:
                                                 abbrev=key+item)
 
 
+def get_ufunc(expr, variable_map):
+    """Numerically optimize expression"""
+
+    expr = sympify(expr, locals=variable_map)
+    func = ufuncify(expr.free_symbols, expr)
+    formula = 'f{} = {}'.format(tuple(expr.free_symbols), expr)
+    return func, formula
+
+
+def compile_fortran(source, module_name, extra_args='', folder='./'):
+    """compile fortran source code"""
+    with tempfile.NamedTemporaryFile('w', suffix='.f90') as fortran_file:
+        fortran_file.write(source)
+        fortran_file.flush()
+
+        args = ' -c -m {} {} {}'.format(module_name, fortran_file.name, extra_args)
+        command = 'cd "{}" && "{}" -c "import numpy.f2py as f2py;f2py.main()" {}'.format(
+            folder, sys.executable, args)
+        status, output = exec_command(command)
+        return status, output, command
+
 
 def substr_replace(name, name_maps):
     """replaces all substrings in name with those given by name_maps"""
@@ -88,8 +115,9 @@ def substr_replace(name, name_maps):
 
 
 # This should be in yaml
-def beautify_latex(s):
-    return substr_replace(s, [
+def beautify_latex(expr):
+    """convert string to latex-compatible expression"""
+    return substr_replace(expr, [
         ('**', '^'),
         ('plus', '+'),
         ('minus', '-'),
