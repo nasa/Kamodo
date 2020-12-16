@@ -38,10 +38,69 @@ from sympy.physics.units import Dimension
 from sympy import nsimplify
 from sympy import Function
 
-def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
-    '''Define a unit in terms of a base unit'''
-    u = units.Quantity(name, abbrev=abbrev)
-    base_unit = getattr(sympy_units, base)
+
+def get_unit_quantity(name, base, scale_factor, abbrev = None, unit_system = 'SI'):
+	'''Define a unit in terms of a base unit'''
+	u = units.Quantity(name, abbrev = abbrev)
+	base_unit = getattr(sympy_units, base)
+	u.set_dimension(base_unit.dimension)
+	u.set_scale_factor(scale_factor*base_unit, unit_system = unit_system)
+	return u
+
+unit_subs = dict(nT = get_unit_quantity('nanotesla', 'tesla', .000000001, 'nT', 'SI'),
+				R_E = get_unit_quantity('earth radii', 'm', 6.371e6, 'R_E', 'SI'),
+				erg = get_unit_quantity('erg', 'J', .0000001, 'erg', 'SI'),
+				nPa = get_unit_quantity('nanopascals', 'pascal', .000000001, 'nPa', 'SI'),
+				)
+
+# global_ureg = UnitRegistry()
+# global_ureg.define('m^3 = m * m * m = m3')
+# global_ureg.define('cc = cm * cm * cm')
+# global_ureg.define('R_s = 6.957e8 m')
+# global_ureg.define('AU = 1.496e+11 m')
+
+def get_ufunc(expr, variable_map):    
+	expr = sympify(expr, locals = variable_map)
+	f = ufuncify(expr.free_symbols, expr)
+	formula = 'f{} = {}'.format(tuple(expr.free_symbols), expr)
+	return f, formula
+
+def Quantity_Factory(ureg = None):
+	"""Emits Quantity class from unit registry that supports unit bracket syntax"""
+	if ureg is None:
+		ureg = global_ureg
+
+	class Quantity(ureg.Quantity):
+		def __init__(self, *args, **kwargs):
+			super(Quantity, self).__init__(*args, **kwargs)
+
+		def __getitem__(self, key):
+			"""Extends [] notation to support unit conversion"""
+			try:
+				super(Quantity, self).__getitem__(key)
+			except:
+				return self.to(key)
+
+	return Quantity
+
+
+def Quantity(fun, ureg = None):
+	"""Wraps a function as a Quantity"""
+	if ureg is None:
+		ureg = global_ureg
+	def wrapper(*args, **kwargs):
+		return Quantity_Factory(ureg)(fun(*args, **kwargs), fun.units)
+	return wrapper
+
+def compile_fortran(source, module_name, extra_args='', folder = './'):
+	with tempfile.NamedTemporaryFile('w', suffix='.f90') as f:
+		f.write(source)
+		f.flush()
+
+		args = ' -c -m {} {} {}'.format(module_name, f.name, extra_args)
+		command = 'cd "{}" && "{}" -c "import numpy.f2py as f2py;f2py.main()" {}'.format(folder, sys.executable, args)
+		status, output = exec_command(command)
+		return status, output, command
 
     try:
         # sympy >= 1.5 raises the following warning:
