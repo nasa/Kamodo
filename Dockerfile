@@ -5,9 +5,10 @@ LABEL maintainer "Darren De Zeeuw <darrens@umich.edu>"
 
 RUN conda install jupyter
 RUN pip install antlr4-python3-runtime
-RUN pip install kamodo
+# RUN pip install kamodo
 
-RUN git clone https://github.com/nasa/Kamodo.git
+RUN git clone https://github.com/asherp/kamodo
+RUN pip install -e kamodo
 
 
 # Add Tini. Tini operates as a process subreaper for jupyter. This prevents kernel crashes.
@@ -16,9 +17,11 @@ ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/
 RUN chmod +x /usr/bin/tini
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-WORKDIR Kamodo/docs/notebooks
+WORKDIR kamodo
 
-CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+CMD ["python", "kamodo/cli/api.py"]
+
+# CMD ["jupyter", "notebook", "./docs/notebooks", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
 
 #####
 # For Jupyter notebook interaction, use:

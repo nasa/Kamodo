@@ -1,3 +1,4 @@
+* adding flask dependency, running api on dockerfile startup
 * adding dockerfile from nasa branch
 * adding hapi
 
