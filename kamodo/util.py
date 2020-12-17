@@ -64,6 +64,7 @@ unit_subs = dict(
     nPa=get_unit_quantity('nanopascals', 'pascal', .000000001, 'nPa', 'SI'),
     cc=sympy_units.cm**3,
     AU=get_unit_quantity('astronomical unit', 'm', 1.496e+11, 'AU', 'SI'),
+    arcsec=get_unit_quantity('arc seconds', 'degrees', 1./3600, '\"', 'SI'),
     )
 
 sympy_units.erg = unit_subs['erg']

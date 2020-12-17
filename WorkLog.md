@@ -1,3 +1,4 @@
+* added arcseconds
 # 2020-12-16 17:51:46.867654: clock-out
 
 * added API.Dockerfile
