@@ -1,5 +1,8 @@
+* added unitless composition test
 * fixed latex for kamodofied functions with no equations
 * added arcseconds
+* need to make sure kamodo objects remove signature when deleting items
+
 # 2020-12-16 17:51:46.867654: clock-out
 
 * added API.Dockerfile
