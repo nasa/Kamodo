@@ -1,3 +1,5 @@
+# 2020-12-21 13:52:51.879393: clock-out
+
 * dimensionless composition passes
 
 # 2020-12-21 13:32:17.655577: clock-in
