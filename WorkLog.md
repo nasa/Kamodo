@@ -1,3 +1,6 @@
+
+# 2020-12-21 13:32:17.655577: clock-in
+
 * added unitless composition test
 * fixed latex for kamodofied functions with no equations
 * added arcseconds
