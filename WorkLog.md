@@ -1,3 +1,4 @@
+* fixed latex for kamodofied functions with no equations
 * added arcseconds
 # 2020-12-16 17:51:46.867654: clock-out
 

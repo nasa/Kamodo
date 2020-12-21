@@ -234,7 +234,11 @@ def parse_rhs(rhs, is_latex, local_dict):
     if is_latex:
         expr = parse_latex(rhs).subs(local_dict)
     else:
-        expr = parse_expr(rhs).subs(local_dict)
+        try:
+            expr = parse_expr(rhs).subs(local_dict)
+        except SyntaxError:
+            print('cannot parse {} with {}'.format(rhs, local_dict))
+            raise
     return expr
 
 
@@ -841,16 +845,16 @@ class Kamodo(UserDict):
 
         latex_eq = ''
         latex_eq_rhs = ''
+
         if isinstance(rhs, str):
-            latex_eq_rhs = rhs
+            latex_eq_rhs = rhs       
+        elif hasattr(rhs, '__call__') | (rhs is None):
+            lambda_ = symbols('lambda', cls=UndefinedFunction)
+            # latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
+            latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
         else:
-            if hasattr(rhs, '__call__'):
-                lambda_ = symbols('lambda', cls=UndefinedFunction)
-                # latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
-                latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
-            else:
-                # latex_eq = latex(Eq(lhs, rhs), mode=mode)
-                latex_eq_rhs = latex(rhs) # no $$ delimiter
+            # latex_eq = latex(Eq(lhs, rhs), mode=mode)
+            latex_eq_rhs = latex(rhs) # no $$ delimiter
 
         if len(str(units)) > 0:
             latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
