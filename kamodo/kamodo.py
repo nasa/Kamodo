@@ -50,6 +50,7 @@ from plotly import figure_factory as ff
 
 from plotting import plot_dict, get_arg_shapes, get_plot_key
 from .util import existing_plot_types
+from .util import get_dimensions
 
 from sympy import Wild
 from types import GeneratorType
@@ -671,7 +672,11 @@ class Kamodo(UserDict):
                 #         self.verbose)
 
                 if expr_unit is not None:
-                    lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
+                    expr_dimensions = get_dimensions(expr_unit)
+                    if expr_dimensions != Dimension(1):
+                        lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
+                    else:
+                        lhs_units = ''
 
                 if self.verbose:
                     print('registered lhs_units', lhs_units)

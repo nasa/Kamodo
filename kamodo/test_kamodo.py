@@ -661,4 +661,17 @@ def test_multiple_traces():
         f=dict(x=np.linspace(-1, 1, 10)),
         g=dict(x=np.linspace(-5, 5, 10)))
 
+def test_unitless_composition():
+    @kamodofy
+    def alpha(x):
+        return x
+
+    @kamodofy
+    def beta(y):
+        return y
+
+
+    kamodo = Kamodo(alpha=alpha, beta_=beta, verbose=True)
+    kamodo['Gamma'] = 'alpha(beta_)'
+    kamodo
 

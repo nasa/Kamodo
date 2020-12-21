@@ -565,6 +565,9 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
             return unit_system.get_quantity_scale_factor(expr)
         return expr
 
+    if expr == target_units:
+        return expr
+
     depmat = _get_conversion_matrix_for_expr(expr, target_units, unit_system)
     if depmat is None:
         if raise_errors:
