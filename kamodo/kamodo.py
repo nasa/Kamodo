@@ -703,11 +703,15 @@ class Kamodo(UserDict):
                 print('unit registry to resolve units:', self.unit_registry)
 
             units = get_expr_unit(symbol, self.unit_registry)
-            units = get_abbrev(units)
-            if units is not None:
-                units = str(units)
+            if get_dimensions(units) != Dimension(1):
+                units = get_abbrev(units)
+                if units is not None:
+                    units = str(units)
+                else:
+                    units = ''
             else:
                 units = ''
+
             if self.verbose:
                 print('units after resolve', symbol, units)
                 for k, v in self.unit_registry.items():

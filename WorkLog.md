@@ -1,3 +1,4 @@
+* cleaned up dimensioness latex
 # 2020-12-21 13:52:51.879393: clock-out
 
 * dimensionless composition passes
