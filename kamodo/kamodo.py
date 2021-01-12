@@ -223,7 +223,7 @@ def parse_lhs(lhs, local_dict, verbose):
     """
     lhs, unit_dict = extract_units(lhs)
     if lhs in reserved_names:
-        raise NameError('{} is a reserved name')
+        raise NameError('{} is a reserved name'.format(lhs))
     parsed = parse_expr(lhs)
     args = args_from_dict(parsed, local_dict, verbose)
     symbol = expr_to_symbol(parsed, args)
