@@ -1,3 +1,5 @@
+# 2021-01-12 16:11:56.285579: clock-out
+
 * checking for reserved names
 
 # 2021-01-12 15:49:29.698018: clock-in
