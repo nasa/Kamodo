@@ -675,3 +675,11 @@ def test_unitless_composition():
     kamodo['Gamma'] = 'alpha(beta_)'
     kamodo
 
+def test_reserved_name():
+    kamodo = Kamodo(verbose=True)
+  
+    @kamodofy
+    def test(x, y):
+        return x+y
+    with pytest.raises(NotImplementedError):
+        kamodo['test'] = test

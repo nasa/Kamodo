@@ -51,6 +51,7 @@ from plotly import figure_factory as ff
 from plotting import plot_dict, get_arg_shapes, get_plot_key
 from .util import existing_plot_types
 from .util import get_dimensions
+from .util import reserved_names
 
 from sympy import Wild
 from types import GeneratorType
@@ -221,6 +222,8 @@ def parse_lhs(lhs, local_dict, verbose):
     returns: symbol, arguments, units, parsed_expr
     """
     lhs, unit_dict = extract_units(lhs)
+    if lhs in reserved_names:
+        raise NameError('{} is a reserved name')
     parsed = parse_expr(lhs)
     args = args_from_dict(parsed, local_dict, verbose)
     symbol = expr_to_symbol(parsed, args)

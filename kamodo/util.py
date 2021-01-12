@@ -10,7 +10,7 @@ import numpy.f2py  # just to check it presents
 from numpy.distutils.exec_command import exec_command
 
 
-
+import sympy
 from collections import OrderedDict, defaultdict
 import collections
 import functools
@@ -327,14 +327,22 @@ existing_plot_types.index.set_names(['nargs', 'arg shapes', 'out shape'], inplac
 existing_plot_types.columns = ['Plot Type', 'notes']
 
 # manually generate the appropriate function signature
-grid_wrapper_def = r"""def wrapped({signature}):
+grid_wrapper_def_A = r"""def wrapped({signature}):
     coordinates = np.meshgrid({arg_str}, indexing = 'xy', sparse = False, copy = False)
     points = np.column_stack([c.ravel() for c in coordinates])
-    return np.squeeze({fname}(points).reshape(coordinates[0].shape, order = 'A'))
+    out_shape = [-1] + list(coordinates[0].shape)
+    return np.squeeze({fname}(points).reshape(out_shape, order = 'A'))
+    """
+
+grid_wrapper_def_C = r"""def wrapped({signature}):
+    coordinates = np.meshgrid({arg_str}, indexing = 'ij', sparse = False, copy = False)
+    points = np.column_stack([c.ravel() for c in coordinates])
+    out_shape = list(coordinates[0].shape) + [-1]
+    return np.squeeze({fname}(points).reshape(out_shape, order = 'C'))
     """
 
 
-def gridify(_func=None, **defaults):
+def gridify(_func=None, order='A', **defaults):
     """Given a function of shape (n,dim) and arguments of shape (L), (M), calls f with points L*M"""
 
     def decorator_gridify(f):
@@ -349,7 +357,10 @@ def gridify(_func=None, **defaults):
         scope['np'] = np
         scope[f.__name__] = f
 
-        exec(grid_wrapper_def.format(signature=signature, arg_str=arg_str, fname=f.__name__), scope)
+        if order == 'A':
+            exec(grid_wrapper_def_A.format(signature=signature, arg_str=arg_str, fname=f.__name__), scope)
+        elif order == 'C':
+            exec(grid_wrapper_def_C.format(signature=signature, arg_str=arg_str, fname=f.__name__), scope)
         wrapped = scope['wrapped']
         wrapped.__name__ = f.__name__
         wrapped.__doc__ = f.__doc__
@@ -817,3 +828,4 @@ def is_function(expr):
         return True
     return isinstance(type(expr), UndefinedFunction)
 
+reserved_names = dir(sympy)

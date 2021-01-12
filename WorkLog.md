@@ -1,7 +1,9 @@
+* checking for reserved names
 
 # 2021-01-12 15:49:29.698018: clock-in
 
 * cleaned up dimensioness latex
+
 # 2020-12-21 13:52:51.879393: clock-out
 
 * dimensionless composition passes
