@@ -175,7 +175,7 @@ class GitmBin(PbData):
                 # Reshape arrays, note that ordering in file is Fortran-like.
                 self[v]=self[v].reshape( 
                     (self.attrs['nLon'],self.attrs['nLat'],self.attrs['nAlt']),
-                    order='fortran')
+                    order='F')
                 
             f.read(4)
 
@@ -436,9 +436,11 @@ class GitmBin(PbData):
                      "V!Dn!N (up,NO                  )":"m s^{-1}",
                      "V!Dn!N (up,O!D2!N              )":"m s^{-1}",
                      "V!Dn!N (up,O(!U3!NP)           )":"m s^{-1}",
+                     "V!Dn!N (up,He                  )":"m s^{-1}",
                      "e-":"m^{-3}", 
                      "Electron_Average_Energy":"J",
                      "eTemperature":"K", "iTemperature":"K", "LT":"h",
+                     "Local Time":"h",
                      "Solar Zenith Angle":"radians", 
                      "Vertical TEC":"TECU",
                      "CO!D2!N":"kg \, m^{-3}",  
@@ -508,6 +510,7 @@ class GitmBin(PbData):
                       "V!Dn!N (up,NO                  )":"linear",
                       "V!Dn!N (up,O!D2!N              )":"linear",
                       "V!Dn!N (up,O(!U3!NP)           )":"linear",
+                      "V!Dn!N (up,He                  )":"linear",
                       "e-":"linear", 
                       # "e-                   (/m3)":"linear",
                       "Electron_Average_Energy":"linear",
@@ -524,6 +527,7 @@ class GitmBin(PbData):
                       "B.F. Vertical":"linear", "B.F. East":"linear",
                       "B.F. North":"linear", "B.F. Magnitude":"linear",
                       "Magnetic Latitude":"linear", "LT":"linear",
+                      "Local Time":"linear",
                       "Magnetic Longitude":"linear", "dLat":"linear",
                       "Gravity":"linear", "PressGrad (east)":"linear",
                       "PressGrad (north)":"linear", "PressGrad (up)":"linear",
@@ -583,6 +587,7 @@ class GitmBin(PbData):
                      "V!Dn!N (up,NO                  )":"u$_{Up, NO}$",
                      "V!Dn!N (up,O!D2!N              )":"u$_{Up, O_2}$",
                      "V!Dn!N (up,O(!U3!NP)           )":"u$_{Up, O(^3P)}$",
+                     "V!Dn!N (up,He                  )":"u$_{Up, He}$",
                      "e-":"[e-]",
                      "Electron_Average_Energy":"Electron Average Energy",
                      "eTemperature":"T$_e$", "iTemperature":"T$_i$",
@@ -597,6 +602,7 @@ class GitmBin(PbData):
                      "Potential":"Potential", "Hall Conductance":"$\Sigma_H$",
                      "Je2":"Region 2 Current", "Je1":"Region 1 Current",
                      "Ed1":"Ed1", "Ed2":"Ed2", "LT":"Solar Local Time",
+                     "Local Time":"Solar Local Time",
                      "E.F. Vertical":"Vertical Electric Field",
                      "E.F. East":"Eastward Electric Field",
                      "E.F. North":"Northward Electric Field",
@@ -638,9 +644,12 @@ class GitmBin(PbData):
                     nk = 'V!Dn!N (up)'
                 elif nk.find("Vi (east) (m/s)") >= 0:
                     nk = "V!Di!N (east)"
+                # DDZ added 2020-08-31
+                if nk == "Magnetic latitude":
+                    nk = "Magnetic Latitude"
 
                 try:
-                    # print 'registering', k
+                    #print ('registering',k)
                     self.register_name(k, nk, unit_dict, scale_dict, name_dict)
                 except:
                     if k.split()[0] in name_dict:

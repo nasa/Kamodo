@@ -1,3 +1,5 @@
+kamodo_output: kamodo_output # parent output directory for all kamodo runs
+
 models:
   mymodel:
     class: kamodo.Kamodo
@@ -26,6 +28,8 @@ plot_conf:
   animation_opts: Null
 
 
-gui: false
+gui:
+  routes_pathname_prefix: /kamodo/
+  external_stylesheets: []
 
 verbose: true

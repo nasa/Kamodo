@@ -1,3 +1,709 @@
+# 2020-12-15 17:27:33.675261: clock-out
+
+* merging test_utils
+
+# 2020-12-15 16:32:25.927633: clock-in
+
+# 2020-12-15 13:29:36.958990: clock-out
+
+* adding coverage badge
+* made repr_latex pass
+* removed symbolic function
+* test_repr_latex removing extra slash
+* added decorator dependency
+* graphviz - can be used to visualize the user's pipeline
+
+```console
+conda install -c conda-forge graphviz xorg-libxrender xorg-libxpm
+pip install graphviz
+```
+
+# 2020-12-15 11:35:04.884012: clock-in
+
+# 2020-12-14 18:29:33.877095: clock-out
+
+* automated testing
+* improved coverage
+
+# 2020-12-14 17:41:49.324815: clock-in: T-35m 
+
+# 2020-12-14 17:01:22.598481: clock-out
+
+
+# 2020-12-14 16:44:16.293931: clock-in
+
+# 2020-12-14 14:45:50.930880: clock-out
+
+* fixed latex rendering
+
+# 2020-12-14 13:35:34.718198: clock-in
+
+# 2020-12-09 18:56:30.911547: clock-out
+
+* inheriting from UserDict, latex tests
+* article on alternatives to dict inheritance  https://treyhunner.com/2019/04/why-you-shouldnt-inherit-from-list-and-dict-in-python/
+
+
+# 2020-12-09 16:46:32.320646: clock-in
+
+# 2020-12-09 15:02:57.443215: clock-out
+
+* improving coverage
+* tests passing
+
+# 2020-12-09 12:56:26.285722: clock-in
+
+# 2020-12-08 16:29:15.942982: clock-out
+
+* test_contains
+
+# 2020-12-08 14:04:35.969497: clock-in
+
+# 2020-12-07 18:07:09.300996: clock-out
+
+* boosting code coverage
+
+# 2020-12-07 15:47:35.229728: clock-in
+
+# 2020-12-07 13:55:31.954661: clock-out
+
+* added test for from_kamodo
+
+# 2020-12-07 13:54:57.942787: clock-in
+
+# 2020-12-07 12:02:40.382749: clock-out
+
+* looking at unicode symbols
+
+# 2020-12-07 11:04:24.226818: clock-in
+
+# 2020-12-04 14:35:27.018180: clock-out
+
+* increased coverage
+Generating coverage report:
+
+```bash
+(kamodo)$ pytest --cov kamodo.kamodo --cov kamodo.util --cov plotting test_plotting.py test_kamodo.py util.py --cov-report html
+```
+
+# 2020-12-04 12:54:18.896202: clock-in
+
+# 2020-12-04 12:48:07.464397: clock-out
+
+* stress testing
+
+# 2020-12-04 12:40:30.271441: clock-in
+
+# 2020-12-03 16:33:17.672964: clock-out
+
+* cleaned up conversion factors as fractions
+* algebraic unit composition algebra
+
+# 2020-12-03 15:45:57.247823: clock-in
+
+# 2020-12-03 14:59:25.677055: clock-out
+
+
+# 2020-12-03 14:31:39.023179: clock-in
+
+# 2020-12-03 13:46:56.103902: clock-out
+
+* adding algebraic unit composition tests
+* removed resolve_unit in favor of get_expr_unit
+
+# 2020-12-03 11:32:37.828682: clock-in
+
+# 2020-12-02 17:11:43.336189: clock-out
+
+* fixed bugs in base units
+* passing tests
+
+# 2020-12-02 15:09:11.720943: clock-in
+
+# 2020-12-02 13:01:09.866258: clock-out
+
+* isolated unit composition conversion issues
+
+# 2020-12-02 10:52:59.764421: clock-in
+
+# 2020-12-01 17:55:11.661674: clock-out
+
+* resolving argument units
+
+# 2020-12-01 16:29:52.875869: clock-in
+
+# 2020-12-01 15:00:14.542857: clock-out
+
+* bug fixing
+
+# 2020-12-01 12:37:44.119942: clock-in
+
+# 2020-11-30 19:05:54.863344: clock-out
+
+* trying to resolve unit composition bugs
+
+# 2020-11-30 17:00:58.216070: clock-in
+
+# 2020-11-30 12:10:03.081932: clock-out
+
+* finding bugs in unit composition
+
+# 2020-11-30 10:56:13.021112: clock-in
+
+# 2020-11-28 14:51:56.208988: clock-out
+
+* clean up
+* changing signature of unit composition
+
+using a more intuitive signature
+
+```python
+kamodo['f(x[km],y[cm])[kg]'] = ...
+```
+
+# 2020-11-28 11:09:32.470142: clock-in
+
+# 2020-11-27 15:41:15.004368: clock-out
+
+* fixed unit conversion flip
+
+# 2020-11-27 14:57:36.010904: clock-in
+
+# 2020-11-27 14:21:05.568354: clock-out
+
+* fixed composing with multiplied functions
+
+# 2020-11-27 14:02:45.405415: clock-in
+
+# 2020-11-26 14:57:57.717229: clock-out
+
+* all kamodo tests passing
+
+# 2020-11-26 14:08:27.224461: clock-in
+
+# 2020-11-26 11:53:11.236857: clock-out
+
+* raising NameError for bad unit conversion
+
+# 2020-11-26 11:25:57.649820: clock-in
+
+# 2020-11-25 18:57:00.223313: clock-out
+
+* got unit composition to pass tests
+
+# 2020-11-25 17:02:25.523707: clock-in
+
+# 2020-11-25 14:28:39.430228: clock-out
+
+* fixed vectorize composition
+
+# 2020-11-25 13:36:07.998404: clock-in
+
+# 2020-11-25 13:36:05.297272: clock-out: T-1h 
+
+
+# 2020-11-25 12:19:16.144012: clock-in
+
+# 2020-11-25 11:58:57.636064: clock-out
+
+
+# 2020-11-25 11:42:44.748499: clock-in
+
+# 2020-11-25 11:38:18.718909: clock-out
+
+
+# 2020-11-25 10:55:45.291278: clock-in
+
+# 2020-11-24 18:42:53.683721: clock-out
+
+* unit composition
+
+# 2020-11-24 16:51:00.759291: clock-in
+
+# 2020-11-17 17:35:34.486919: clock-out
+
+
+# 2020-11-17 16:06:38.651579: clock-in
+
+# 2020-11-17 13:46:18.035319: clock-out
+
+* passing functional unit test
+
+# 2020-11-17 11:17:10.446484: clock-in
+
+# 2020-11-16 18:34:07.584293: clock-out
+
+* implementing unit functions
+
+# 2020-11-16 16:59:30.697802: clock-in
+
+# 2020-11-16 15:01:46.527485: clock-out
+
+
+# 2020-11-16 13:11:21.254349: clock-in
+
+# 2020-11-16 13:05:29.126719: clock-out: T-1h 
+
+
+# 2020-11-16 11:12:27.592786: clock-in
+
+# 2020-11-15 17:03:30.218928: clock-out
+
+
+# 2020-11-15 15:17:08.285800: clock-in
+
+# 2020-11-15 13:09:56.154786: clock-out
+
+
+# 2020-11-15 11:52:34.355935: clock-in
+
+# 2020-11-13 23:16:23.702830: clock-out
+
+
+# 2020-11-13 22:37:29.395330: clock-in
+
+# 2020-11-13 18:50:51.601791: clock-out
+
+
+# 2020-11-13 17:01:21.677780: clock-in
+
+# 2020-11-13 11:59:07.207912: clock-out
+
+* overhauling units
+
+# 2020-11-13 11:23:14.433529: clock-in
+
+# 2020-11-12 15:25:13.259993: clock-out
+
+
+# 2020-11-12 13:53:04.513345: clock-in
+
+# 2020-11-12 11:40:29.694990: clock-out
+
+
+# 2020-11-12 11:22:56.545479: clock-in
+
+# 2020-11-11 17:42:08.055155: clock-out
+
+* updated convert_to to raise errors
+
+# 2020-11-11 16:46:46.677731: clock-in
+
+# 2020-11-11 16:29:02.695711: clock-out
+
+
+# 2020-11-11 16:10:38.700105: clock-in
+
+# 2020-11-09 11:08:06.200728: clock-out
+
+* fixing unit bugs
+
+# 2020-11-09 10:00:15.420963: clock-in
+
+* fixing unit conversion bugs
+
+# 2020-11-03 11:17:20.736909: clock-out
+
+* added dynamic function evaluation
+
+# 2020-11-03 09:18:36.269712: clock-in
+
+* radians
+* why can't user access constants?
+
+# 2020-10-27 23:26:44.585965: clock-out
+
+* developing evaluate endpoint
+
+
+`http://127.0.0.1:5000/api/mymodel/evaluate?variable=%27g=(f%2B1)**.5%27&x=[3,4,5]`
+
+plus sign: `%2B`
+
+# 2020-10-27 21:16:42.216480: clock-in
+
+# 2020-10-27 15:30:20.449578: clock-out
+
+* merging tests from Dhruv
+
+# 2020-10-27 13:31:24.216328: clock-in
+
+* code cleanup
+
+# 2020-10-19 18:22:01.985135: clock-out
+
+* all util.py unit tests pass
+* spacing
+
+* trying to fix collections warning
+
+```bash
+DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
+```
+
+# 2020-10-19 17:32:57.246898: clock-in
+
+# 2020-10-14 23:22:57.047235: clock-out
+
+* commenting util.py
+
+# 2020-10-14 21:43:10.943127: clock-in
+
+# 2020-10-14 12:31:50.544849: clock-out
+
+* going through util.py
+
+# 2020-10-14 11:29:55.853990: clock-in
+
+# 2020-10-13 15:52:04.229990: clock-out
+
+* cleaning up unit conversion code
+
+# 2020-10-13 12:10:24.428950: clock-in
+
+# 2020-09-02 16:03:51.164640: clock-out
+
+* how to keep NASA readers and core from conflicting:
+	- currently these are separate files so merges should be straight-forward
+	- readers are all subclasses of Kamodo, so breaking changes should only be downstream
+* modifications to core should be made with hourly to comply with NASA license
+* could also rewrite kamodo core as a separate package with its own repo
+
+# 2020-09-02 14:59:41.540200: clock-in
+
+# 2020-08-12 12:54:08.590956: clock-out
+
+* dev meeting
+
+# 2020-08-12 11:59:10.698783: clock-in
+
+# 2020-08-05 12:37:04.934436: clock-out
+
+* dev meeting
+
+# 2020-08-05 12:01:11.230431: clock-in
+
+# 2020-07-29 12:58:25.948624: clock-out
+
+* dev meeting
+* modularity
+	- make sure readers are independent
+	- allow matplotlib without installing plotly
+
+# 2020-07-29 12:02:08.702440: clock-in
+
+# 2020-07-15 13:00:19.299408: clock-out
+
+* dev meeting
+* send blurb on cli to darren for gem
+
+# 2020-07-15 12:31:56.828729: clock-in: T-15m 
+
+* developer meeting
+# 2020-07-08 12:31:42.478226: clock-out
+
+* developer meeting
+* attend GEM/AGU?
+
+# 2020-07-08 11:59:12.669083: clock-in
+
+# 2020-07-08 11:52:18.410732: clock-out
+
+
+# 2020-07-08 11:50:08.658452: clock-in
+
+# 2020-07-01 12:54:01.716646: clock-out
+
+* developer meeting
+
+# 2020-07-01 12:04:30.950750: clock-in
+
+# 2020-06-24 12:54:16.183808: clock-out
+
+* developer meeting
+
+# 2020-06-24 12:16:33.594954: clock-in
+
+# 2020-06-17 12:13:35.118654: clock-out
+
+
+# 2020-06-17 12:12:50.788007: clock-in
+
+# 2020-06-10 12:46:57.416636: clock-out
+
+* developer meeting
+
+# 2020-06-10 12:16:22.661881: clock-in
+
+# 2020-06-03 13:01:51.004408: clock-out
+
+* kamodo team meeting
+
+# 2020-06-03 13:01:28.636263: clock-in: T-50m 
+
+* forwarding plot args to plot funcs, works for quiver plots
+* found forge tool to generate custom function signatures!
+
+```console
+pip install python-forge
+```
+```python
+@forge.sign(
+    forge.arg('x'),
+    forge.arg('y'),
+    forge.arg('opt', default=None),
+)
+def func(*args, **kwargs):
+    # signature becomes: func(x, y, opt=None)
+    return (args, kwargs)
+
+assert func(1, 2) == ((), {'x': 1, 'y': 2, 'opt': None})
+```
+
+# 2020-05-27 14:38:38.650053: clock-out
+
+
+# 2020-05-27 14:35:57.387894: clock-in
+
+# 2020-05-27 12:57:54.286201: clock-out
+
+* developer meeting
+
+# 2020-05-27 11:38:16.287492: clock-in
+
+# 2020-05-23 20:54:58.496791: clock-out
+
+* fixed ordering bug in generator function evaluation
+
+# 2020-05-23 20:01:46.123612: clock-in
+
+* cleaning up skew contour carpet plots
+* squeezing gridify output, added rvert lvert
+
+# 2020-05-13 15:02:23.437971: clock-out
+
+* got basic api working
+* developer meeting
+* making `get_defaults` return None for args without defaults
+* argument parsing https://flask-restful.readthedocs.io/en/latest/reqparse.html
+* got api to return model description 
+
+* to specify curl `-d` options as url query, use `-G` flag
+
+So this:
+
+	curl http://127.0.0.1:8050/api/mymodel -d greeting=goodbye -G
+
+is equivalent to
+
+	http://127.0.0.1:8050/api/mymodel?greeting=goodbye
+
+# 2020-05-13 09:06:37.493882: clock-in
+
+# 2020-04-29 13:42:44.161370: clock-out
+
+* flask server integration, api test working
+* PYHC meeting
+
+# 2020-04-29 12:14:17.372197: clock-in
+
+# 2020-04-22 14:16:35.278555: clock-out: T-1h16m 
+
+* More on flask integration from [plotly](https://dash.plotly.com/integrating-dash)
+
+
+# 2020-04-22 11:56:00.335536: clock-in
+
+# 2020-04-15 13:16:43.205737: clock-out: T-15m 
+
+
+# 2020-04-15 11:57:50.421409: clock-in
+
+# 2020-04-08 13:01:50.501409: clock-out
+
+* meeting with developers
+
+# 2020-04-08 12:18:16.752330: clock-in
+
+# 2020-04-01 13:52:05.021374: clock-out
+
+* read through [flask app tutorial](https://github.com/toddbirchard/plotlydash-flask-tutorial)
+* ran with `python wsgi.py `
+
+## Kamodo meeting
+
+pandas time interpolation:
+
+```python
+def time_interpolation(df, t):
+	# combine original time index with new times
+	df_ = df.reindex(df.index.union(t))
+	# apply pandas' interpolation method to fill in new data
+	df_interpolated = df_.interpolate(method='time')
+	# return only values at selected times
+	result = df_interpolated.reindex(t)
+	return result
+```
+
+plans for May:
+* gui working for summer schools
+* include field line tracing
+* include services
+* choose a name for kamodo network
+
+# 2020-04-01 12:08:40.151618: clock-in
+
+# 2020-03-25 14:02:55.608031: clock-out
+
+## kamodo meeting
+* set deadlines for gui, april->may
+* need a function that converts rho(x,y,z) -> rho(xvec)
+* [dash-flask app tutorial](https://hackersandslackers.com/plotly-dash-with-flask/)
+* tried running flask_restful with Dash, got `'Dash' object has no attribute 'handle_exception'`
+
+# 2020-03-25 12:30:23.986927: clock-in
+
+# 2020-03-25 12:20:20.625681: clock-out
+
+
+# 2020-03-25 12:04:20.154862: clock-in
+
+# 2020-03-18 21:37:24.225992: clock-out: T-5h 
+
+
+# 2020-03-18 16:26:22.789889: clock-in
+
+# 2020-03-18 13:03:13.421786: clock-out
+
+* looking at flask rest api https://flask-restful.readthedocs.io/en/latest/quickstart.html#full-example
+
+## developer meeting
+* sscweb is positions also extrapolated into the future
+* cdaweb is positions and data
+
+# 2020-03-18 11:31:13.223644: clock-in
+
+# 2020-03-11 20:25:31.313266: clock-out
+
+* developer meeting
+
+# 2020-03-11 20:25:18.435898: clock-in: T-45m 
+
+# 2020-03-05 00:02:00.846556: clock-out
+
+* prototyping mas
+
+# 2020-03-04 22:01:13.683543: clock-in: T-30m 
+
+# 2020-03-04 13:12:38.209902: clock-out
+
+## developer meeting
+* put website url in github description
+* pyHC standards grading
+
+https://github.com/heliophysicsPy/heliophysicsPy.github.io/blob/master/_pyhc_projects/pyhc_project_grading_guidelines.md
+
+# 2020-03-04 11:52:51.855025: clock-in
+
+# 2020-02-25 15:49:05.616947: clock-out
+
+* addressing Liang's suggestions
+* fixed deprecation warning from sympy>=1.5
+
+# 2020-02-25 14:37:23.285614: clock-in
+
+* check out partial functions
+# 2020-02-19 13:03:32.424355: clock-out
+
+* developer meeting
+
+# 2020-02-19 12:22:27.823834: clock-in
+
+# 2020-02-16 17:09:14.266657: clock-out: T-56h 
+
+* submitted several feature issues
+
+# 2020-02-14 09:56:13.530302: clock-in
+
+# 2020-02-13 10:39:58.363603: clock-out
+
+* iSWAT-COSPAR sessions
+* end-to-end solutions
+* community involvement
+* visibility
+* understanding interpolators
+
+# 2020-02-13 09:09:49.084779: clock-in
+
+# 2020-02-13 09:09:44.638954: clock-out: T-20h 
+
+
+# 2020-02-12 09:37:08.349586: clock-in: T-30m 
+
+# 2020-02-10 12:05:07.684918: clock-out
+
+* fixed cli bug that prevented multiple plots from being saved
+
+# 2020-02-10 12:03:49.344691: clock-in: T-1h 
+
+# 2020-02-09 22:22:51.749709: clock-out
+
+* gui and cli release
+* fixed continuous reload bug
+
+# 2020-02-09 20:13:13.525126: clock-in
+
+# 2020-02-09 11:07:16.234918: clock-out
+
+
+# 2020-02-09 10:30:57.198701: clock-in
+
+# 2020-02-08 19:06:04.754325: clock-out
+
+* gui improvements
+
+# 2020-02-08 17:41:35.076690: clock-in
+
+# 2020-02-08 15:54:29.107857: clock-out
+
+* got reload config to work\!
+
+# 2020-02-08 15:17:25.461178: clock-in
+
+# 2020-02-08 14:26:00.479448: clock-out
+
+* tried getting fully dynamic dash callbacks to work
+
+# 2020-02-08 12:40:38.991214: clock-in
+
+# 2020-02-07 19:58:47.600209: clock-out
+
+* got interactiv configuration
+
+# 2020-02-07 18:28:09.035029: clock-in
+
+# 2020-02-05 18:28:53.256342: clock-out
+
+
+# 2020-02-05 16:56:46.743551: clock-in
+
+# 2020-02-05 16:50:08.675833: clock-out
+
+* testing stateful storage update
+
+# 2020-02-05 16:22:00.871936: clock-in
+
+# 2020-02-05 14:14:54.356827: clock-out
+
+* got clientside subplots to render
+* meeting for iSWAT-COSPAR
+* pushed code into NASA master
+* need to update pypi version
+* think about kamodo api
+* docker container!
+
+# 2020-02-05 11:23:08.377881: clock-in
+
 # 2020-02-04 14:59:50.123294: clock-out
 
 * got gui to load separate models and parameters
