@@ -137,7 +137,7 @@ def main():
     def index():
         return 'Hello Flask app'
 
-    app.run()
+    app.run(host='0.0.0.0')
 
 
 def get_model_resource(model_name, model):
