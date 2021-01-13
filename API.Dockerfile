@@ -1,11 +1,10 @@
+# docker build -t asherp/kamodo -f API.Dockerfile .
+
 FROM continuumio/miniconda3:latest
-LABEL maintainer "Darren De Zeeuw <darrens@umich.edu>"
+LABEL maintainer "Asher Pembroke <apembroke@predsci.com>"
 
 RUN conda install jupyter
 RUN pip install antlr4-python3-runtime
-RUN pip install kamodo
-
-RUN git clone https://github.com/nasa/Kamodo.git
 
 
 # Add Tini. Tini operates as a process subreaper for jupyter. This prevents kernel crashes.
@@ -14,11 +13,16 @@ ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/
 RUN chmod +x /usr/bin/tini
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-WORKDIR Kamodo/docs/notebooks
+# Install latest kamodo
+RUN git clone https://github.com/asherp/kamodo.git
+RUN pip install -e kamodo
 
-CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+WORKDIR kamodo
+
+CMD ["python", "kamodo/cli/api.py"]
 
 # CMD ["jupyter", "notebook", "./docs/notebooks", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+
 #####
 # For Jupyter notebook interaction, use:
 #	docker run -p 8888:8888 dezeeuw/kamodo

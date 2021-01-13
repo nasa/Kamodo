@@ -1,4 +1,8 @@
 config_override: kamodo.yaml
+gui:
+  external_stylesheets: []
+  routes_pathname_prefix: /kamodo/
+kamodo_output: kamodo_output
 models:
   mymodel:
     class: kamodo.Kamodo
@@ -19,6 +23,14 @@ models:
           max: 1
           min: -1
           n: 31
+  myothermodel:
+    class: kamodo.Kamodo
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      f: x**3
+      g: y - x
 plot_conf:
   animation_opts: null
   auto_open: true

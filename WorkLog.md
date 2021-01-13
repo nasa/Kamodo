@@ -1,3 +1,53 @@
+* fixing error msg
+# 2021-01-12 16:11:56.285579: clock-out
+
+* checking for reserved names
+
+# 2021-01-12 15:49:29.698018: clock-in
+
+* cleaned up dimensioness latex
+
+# 2020-12-21 13:52:51.879393: clock-out
+
+* dimensionless composition passes
+
+# 2020-12-21 13:32:17.655577: clock-in
+
+* added unitless composition test
+* fixed latex for kamodofied functions with no equations
+* added arcseconds
+* need to make sure kamodo objects remove signature when deleting items
+
+# 2020-12-16 17:51:46.867654: clock-out
+
+* added API.Dockerfile
+* set ip for localhost in flask container, antlr
+* merging util.py from psi/ensemble
+* docker container
+
+ | git merge master |	git rebase master
+---- | ---- | ----
+Keep changes from master	| --theirs	| --ours
+Keep changes from feature |	--ours	| --theirs
+
+
+# 2020-12-16 16:04:52.924287: clock-in
+
+# 2020-12-16 14:56:58.695307: clock-out
+
+* ccmc tagup
+* `docker run -p 5000:5000 asherp/kamodo`
+* adding flask dependency, running api on dockerfile startup
+* adding dockerfile from nasa branch
+* adding hapi
+
+# 2020-12-16 13:10:31.733582: clock-in
+
+* kamodo boolean operations?
+* range queries?
+* search?
+* jupyter widgets - can prototype dashboards
+
 # 2020-12-15 17:27:33.675261: clock-out
 
 * merging test_utils

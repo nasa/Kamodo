@@ -50,6 +50,8 @@ from plotly import figure_factory as ff
 
 from plotting import plot_dict, get_arg_shapes, get_plot_key
 from .util import existing_plot_types
+from .util import get_dimensions
+from .util import reserved_names
 
 from sympy import Wild
 from types import GeneratorType
@@ -220,6 +222,8 @@ def parse_lhs(lhs, local_dict, verbose):
     returns: symbol, arguments, units, parsed_expr
     """
     lhs, unit_dict = extract_units(lhs)
+    if lhs in reserved_names:
+        raise NameError('{} is a reserved name'.format(lhs))
     parsed = parse_expr(lhs)
     args = args_from_dict(parsed, local_dict, verbose)
     symbol = expr_to_symbol(parsed, args)
@@ -234,7 +238,11 @@ def parse_rhs(rhs, is_latex, local_dict):
     if is_latex:
         expr = parse_latex(rhs).subs(local_dict)
     else:
-        expr = parse_expr(rhs).subs(local_dict)
+        try:
+            expr = parse_expr(rhs).subs(local_dict)
+        except SyntaxError:
+            print('cannot parse {} with {}'.format(rhs, local_dict))
+            raise
     return expr
 
 
@@ -667,7 +675,11 @@ class Kamodo(UserDict):
                 #         self.verbose)
 
                 if expr_unit is not None:
-                    lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
+                    expr_dimensions = get_dimensions(expr_unit)
+                    if expr_dimensions != Dimension(1):
+                        lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
+                    else:
+                        lhs_units = ''
 
                 if self.verbose:
                     print('registered lhs_units', lhs_units)
@@ -694,11 +706,15 @@ class Kamodo(UserDict):
                 print('unit registry to resolve units:', self.unit_registry)
 
             units = get_expr_unit(symbol, self.unit_registry)
-            units = get_abbrev(units)
-            if units is not None:
-                units = str(units)
+            if get_dimensions(units) != Dimension(1):
+                units = get_abbrev(units)
+                if units is not None:
+                    units = str(units)
+                else:
+                    units = ''
             else:
                 units = ''
+
             if self.verbose:
                 print('units after resolve', symbol, units)
                 for k, v in self.unit_registry.items():
@@ -841,16 +857,16 @@ class Kamodo(UserDict):
 
         latex_eq = ''
         latex_eq_rhs = ''
+
         if isinstance(rhs, str):
-            latex_eq_rhs = rhs
+            latex_eq_rhs = rhs       
+        elif hasattr(rhs, '__call__') | (rhs is None):
+            lambda_ = symbols('lambda', cls=UndefinedFunction)
+            # latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
+            latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
         else:
-            if hasattr(rhs, '__call__'):
-                lambda_ = symbols('lambda', cls=UndefinedFunction)
-                # latex_eq = latex(Eq(lhs, lambda_(*lhs.args)), mode=mode)
-                latex_eq_rhs = latex(lambda_(*lhs.args)) # no $$
-            else:
-                # latex_eq = latex(Eq(lhs, rhs), mode=mode)
-                latex_eq_rhs = latex(rhs) # no $$ delimiter
+            # latex_eq = latex(Eq(lhs, rhs), mode=mode)
+            latex_eq_rhs = latex(rhs) # no $$ delimiter
 
         if len(str(units)) > 0:
             latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
