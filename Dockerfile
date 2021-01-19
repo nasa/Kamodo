@@ -19,7 +19,6 @@ WORKDIR Kamodo/docs/notebooks
 CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
 
 # CMD ["jupyter", "notebook", "./docs/notebooks", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
-
 #####
 # For Jupyter notebook interaction, use:
 #	docker run -p 8888:8888 dezeeuw/kamodo
