@@ -26,6 +26,13 @@ try:
 except:
     pass
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
 app = Flask(__name__)
 
 CORS(app) # enable Cross Origin Resource Sharing (CORS), making cross-origin AJAX possible.
@@ -125,6 +132,10 @@ def main():
                     get_func_resource(model_name, model_, var_symbol),
                     '/api/{}/{}'.format(model_name, var_label),
                     endpoint='/'.join([model_name, var_label]))
+                api.add_resource(
+                    get_defaults_resource(model_name, model_, var_symbol),
+                    '/api/{}/{}/{}'.format(model_name, var_label, 'defaults'),
+                    endpoint='/'.join([model_name, var_label, 'defaults']))
 
         api.add_resource(
             get_evaluate_resource(model_name, model_),
@@ -177,6 +188,21 @@ def get_func_resource(model_name, model, var_symbol):
             return func(**args).tolist()
     return FuncResource
 
+def get_defaults_resource(model_name, model, var_symbol):
+    """Get resource associated with this function's defaults"""
+    print('getting defaults for {}.{}'.format(model_name, var_symbol))
+    parser = reqparse.RequestParser()
+    func = model[var_symbol]
+    defaults = get_defaults(func)
+
+    class FuncResource(Resource):
+        """Resource associated with this function's defaults"""
+        def get(self):
+            """get method for this resource"""
+            return json.dumps(defaults, cls=NumpyEncoder)
+
+    return FuncResource
+
 def get_evaluate_resource(model_name, model):
     """get resource associated with evaluate"""
     parser = reqparse.RequestParser()
@@ -187,7 +213,6 @@ def get_evaluate_resource(model_name, model):
             func = model[var_symbol]
             for arg in getfullargspec(func).args:
                 parser.add_argument(arg, type=str)
-
 
 
     class EvaluateResource(Resource):

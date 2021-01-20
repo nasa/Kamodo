@@ -1,3 +1,4 @@
+* added defaults output
 * added kamodo-serve
 * fixing error msg
 
