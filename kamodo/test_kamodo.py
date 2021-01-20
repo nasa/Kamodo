@@ -683,3 +683,18 @@ def test_reserved_name():
         return x+y
     with pytest.raises(NotImplementedError):
         kamodo['test'] = test
+
+
+class Ktest(Kamodo):
+    def __init__(self, **kwargs):
+        super(Ktest, self).__init__()
+
+        @kamodofy
+        def f(  x=np.linspace(-1,1,10),
+                y=pd.date_range(start="Jan 1, 2020", end="July 21, 2020")):
+            return x**2
+
+        self['f'] = f
+
+
+

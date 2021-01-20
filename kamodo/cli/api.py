@@ -199,7 +199,7 @@ def get_defaults_resource(model_name, model, var_symbol):
         """Resource associated with this function's defaults"""
         def get(self):
             """get method for this resource"""
-            return json.dumps(defaults, cls=NumpyEncoder)
+            return json.dumps(defaults, cls=NumpyEncoder, default=str)
 
     return FuncResource
 

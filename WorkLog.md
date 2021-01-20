@@ -1,3 +1,4 @@
+* added default str json
 * added defaults output
 * added kamodo-serve
 * fixing error msg
