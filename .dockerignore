@@ -10,6 +10,8 @@ build
 *.pyc
 *.pyo
 *.pyd
+pip-wheel-metadata
+kamodo.egg-info
 
 # pysat example data
 cnofs
@@ -28,3 +30,5 @@ outputs
 
 # random notebooks
 *.ipynb
+notebooks
+

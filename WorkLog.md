@@ -1,3 +1,4 @@
+* updated API.dockerfile
 * added .dockerignore
 * added function-specfic plot resource
 
