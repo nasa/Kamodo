@@ -20,6 +20,7 @@ import hydra
 from hydra.experimental import compose
 from omegaconf import OmegaConf
 
+import plotly.graph_objs as go
 
 try:
     hydra.experimental.initialize(strict=False)
@@ -136,6 +137,10 @@ def main():
                     get_defaults_resource(model_name, model_, var_symbol),
                     '/api/{}/{}/{}'.format(model_name, var_label, 'defaults'),
                     endpoint='/'.join([model_name, var_label, 'defaults']))
+                api.add_resource(
+                    get_func_plot_resource(model_, var_symbol),
+                    '/api/{}/{}/{}'.format(model_name, var_label, 'plot'),
+                    endpoint='/'.join([model_name, var_label, 'plot']))
 
         api.add_resource(
             get_evaluate_resource(model_name, model_),
@@ -195,13 +200,13 @@ def get_defaults_resource(model_name, model, var_symbol):
     func = model[var_symbol]
     defaults = get_defaults(func)
 
-    class FuncResource(Resource):
+    class DefaultsResource(Resource):
         """Resource associated with this function's defaults"""
         def get(self):
             """get method for this resource"""
             return json.dumps(defaults, cls=NumpyEncoder, default=str)
 
-    return FuncResource
+    return DefaultsResource
 
 def get_evaluate_resource(model_name, model):
     """get resource associated with evaluate"""
@@ -243,10 +248,34 @@ def get_evaluate_resource(model_name, model):
     return EvaluateResource
 
 
-def get_plot_resource(model_name, model, var_symbol):
-    """Get resource associated with this plot"""
-    pass
+def get_func_plot_resource(model, var_symbol):
+    """Get resource associated with this function's plot"""
 
+    parser = reqparse.RequestParser()
+    func = model[var_symbol]
+    defaults = get_defaults(func)
+
+    for arg in getfullargspec(func).args:
+        if arg in defaults:
+            parser.add_argument(arg, type=str)
+        else:
+            parser.add_argument(arg, type=str, required=True)
+
+
+    class FuncPlotResource(Resource):
+        """Resource associated with evaluate"""
+        def get(self):
+            """get method for this resource"""
+            print('function plot resource called')
+            args_ = parser.parse_args(strict=True)
+            args = dict(indexing='ij') # needed for gridded data
+
+            for argname, val_ in args_.items():
+                args[argname] = pd.read_json(StringIO(val_), typ='series')
+            figure = model.figure(variable=str(type(var_symbol)), **args)
+            return go.Figure(figure).to_json()
+
+    return FuncPlotResource
 
 if __name__ == '__main__':
     main()

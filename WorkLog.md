@@ -1,3 +1,4 @@
+* added function-specfic plot resource
 
 # 2021-01-21 23:14:54.363159: clock-in
 
