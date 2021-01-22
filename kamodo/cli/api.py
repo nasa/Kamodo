@@ -197,8 +197,11 @@ def get_func_resource(model_name, model, var_symbol):
 
             for argname, val_ in args_.items():
                 args[argname] = pd.read_json(StringIO(val_), typ='series')
-
-            return func(**args).tolist()
+            result = func(**args)
+            try:
+                return result.tolist()
+            except:
+                return result
     return FuncResource
 
 def get_defaults_resource(model_name, model, var_symbol):

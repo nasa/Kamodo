@@ -691,8 +691,13 @@ class Ktest(Kamodo):
 
         t_N = pd.date_range('Nov 9, 2018', 'Nov 20, 2018', freq = 'H')
         @kamodofy(units = 'kg/m^3')
-        def rho_N(t_N = t_N):
-            dt_days = (t_N - t_N[0]).total_seconds()/(24*3600)
+        def rho_N(t_N=t_N):
+            t_N = pd.DatetimeIndex(t_N)
+            try:
+                dt_days = (t_N - t_N[0]).total_seconds()/(24*3600)
+            except Exception as err_msg:
+                return 'cannot work with {} {}  {}'.format(type(t_N), type(t_N[0]), err_msg)
+
             return 1+np.sin(dt_days) + .1*np.random.random(len(dt_days))
 
 

@@ -1,3 +1,4 @@
+* fixed datetime api example
 * serialized time series, fixed default plot
 * adding kTest to kamodo.yaml
 * made test object have defaults
