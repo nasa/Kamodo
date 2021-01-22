@@ -1,3 +1,4 @@
+* made test object have defaults
 # 2021-01-21 23:35:17.186812: clock-out
 
 * updated API.dockerfile

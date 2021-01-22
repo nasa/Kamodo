@@ -689,12 +689,13 @@ class Ktest(Kamodo):
     def __init__(self, **kwargs):
         super(Ktest, self).__init__()
 
-        @kamodofy
-        def f(  x=np.linspace(-1,1,10),
-                y=pd.date_range(start="Jan 1, 2020", end="July 21, 2020")):
-            return x**2
+        t_N = np.linspace(-5, 5, 300)
 
-        self['f'] = f
+        @kamodofy(units='kg/m^3')
+        def rho_N(t_N=t_N):
+            """1-D density as a function of time"""
+            dt_days = t_N
+            return 1+np.sin(dt_days) + .1*np.random.random(len(dt_days))
 
-
+        self['rho_N'] = rho_N
 
