@@ -1,0 +1,30 @@
+
+.git
+
+# python
+.pytest_cache
+.ipynb_checkpoints
+__pycache__
+dist
+build
+*.pyc
+*.pyo
+*.pyd
+
+# pysat example data
+cnofs
+
+# hourly
+hourly-outputs
+
+# coverage
+htmlcov
+
+# kamodo runs
+kamodo_output
+
+site
+outputs
+
+# random notebooks
+*.ipynb
