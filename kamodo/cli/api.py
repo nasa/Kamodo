@@ -33,6 +33,14 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
 
+def serialize(obj):
+    try:
+        return json.dumps(obj)
+    except TypeError:
+        if isinstance(obj, pd.DatetimeIndex):
+            return obj.map(pd.datetime.isoformat).to_list()
+        raise TypeError('cannot serialize {}'.format(type(obj)))
+
 
 app = Flask(__name__)
 
@@ -204,7 +212,7 @@ def get_defaults_resource(model_name, model, var_symbol):
         """Resource associated with this function's defaults"""
         def get(self):
             """get method for this resource"""
-            return json.dumps(defaults, cls=NumpyEncoder, default=str)
+            return json.dumps(defaults, cls=NumpyEncoder, default=serialize)
 
     return DefaultsResource
 
@@ -271,7 +279,8 @@ def get_func_plot_resource(model, var_symbol):
             args = dict(indexing='ij') # needed for gridded data
 
             for argname, val_ in args_.items():
-                args[argname] = pd.read_json(StringIO(val_), typ='series')
+                if val_ is not None:
+                    args[argname] = pd.read_json(StringIO(val_), typ='series')
             figure = model.figure(variable=str(type(var_symbol)), **args)
             return go.Figure(figure).to_json()
 
