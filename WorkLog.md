@@ -1,3 +1,4 @@
+* overriding models with config
 * fixed datetime api example
 * serialized time series, fixed default plot
 * adding kTest to kamodo.yaml

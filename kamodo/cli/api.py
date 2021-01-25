@@ -94,6 +94,10 @@ def main():
         if config_override_ is not None:
             cfg = OmegaConf.merge(cfg, config_override_)
 
+            # make sure models is replaced
+            if 'models' in config_override_:
+                cfg['models'] = config_override_.models
+
 
     if cfg.verbose > 0:
         print(cfg.pretty())
