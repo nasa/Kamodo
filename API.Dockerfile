@@ -14,8 +14,12 @@ RUN pip install antlr4-python3-runtime
 # ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Install latest kamodo
-RUN git clone https://github.com/asherp/kamodo.git
+ADD . /kamodo
+# RUN git clone https://github.com/asherp/kamodo.git
 RUN pip install -e kamodo
+
+# Keep plotly at lower api
+RUN pip install plotly==4.7.1
 
 WORKDIR kamodo
 

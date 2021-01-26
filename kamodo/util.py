@@ -38,6 +38,9 @@ from sympy.physics.units import Dimension
 from sympy import nsimplify
 from sympy import Function
 
+import urllib.request, json
+import requests
+
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
@@ -827,5 +830,32 @@ def is_function(expr):
     if isinstance(expr, UndefinedFunction):
         return True
     return isinstance(type(expr), UndefinedFunction)
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+    
+class NumpyArrayEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NumpyArrayEncoder, self).default(obj)
+
+def serialize(obj):
+    try:
+        return json.dumps(obj, cls=NumpyArrayEncoder)
+    except TypeError:
+        if isinstance(obj, pd.DatetimeIndex):
+            return obj.map(pd.datetime.isoformat).to_list()
+        raise TypeError('cannot serialize {}'.format(type(obj)))
+
 
 reserved_names = dir(sympy)

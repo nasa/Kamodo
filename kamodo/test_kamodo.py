@@ -701,5 +701,11 @@ class Ktest(Kamodo):
             return 1+np.sin(dt_days) + .1*np.random.random(len(dt_days))
 
 
+        @kamodofy(units='nPa')
+        def p(x = np.linspace(-5,5,30)):
+            return x**2
+
+
         self['rho_N'] = rho_N
+        self['p'] = p
 

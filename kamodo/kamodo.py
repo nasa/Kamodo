@@ -59,6 +59,11 @@ import inspect
 
 import re
 
+import urllib.request, json
+import requests
+from .util import serialize
+import forge
+
 
 
 def get_unit_quantities():
@@ -1051,6 +1056,63 @@ class Kamodo(UserDict):
             # Todo: merge the layouts instead of selecting the last one
             return go.Figure(data=traces, layout=layouts[-1])
 
+
+class KamodoAPI(Kamodo):
+    """JSON api wrapper for kamodo services"""
+    def __init__(self, url_path):
+        self._url_path = url_path
+        super(KamodoAPI, self).__init__()
+
+        self._kdata = self._get(self._url_path)
+
+        self._defaults = {}
+
+        for k, v in self._kdata.items():
+            self[v['lhs']] = kamodofy(units=v['units'])
+            default_path = '{}/{}/defaults'.format(self._url_path, k)
+            self._defaults[k] = self._get(default_path)
+            self[k] = kamodofy(self.load_func(k), units=v['units'])
+
+    def _get(self, url_path):
+        result_dict = {}
+        with urllib.request.urlopen(url_path) as url:
+            result = json.loads(url.read().decode())
+            if isinstance(result, str):
+                result = json.loads(result)
+            for k, v in result.items():
+                if isinstance(v, str):
+                    try:
+                        v = json.loads(v)
+                    except:
+                        pass
+                result_dict[k] = v
+        return result_dict
+
+    def _call_func(self, func_name, **kwargs):
+        """construct the url and call api with params"""
+        url_path = '{}/{}'.format(self._url_path, func_name)
+        params = []
+        for k, v in kwargs.items():
+            params.append((k, json.dumps(v, default=serialize)))
+        result = requests.get(
+            url=url_path,
+            params=params)
+        return np.array(result.json())
+
+    def load_func(self, func_name):
+        """loads a function signature"""
+        signature = []
+        for arg, arg_default in self._defaults[func_name].items():
+            signature.append(forge.arg(arg, default=arg_default))
+
+        @forge.sign(*signature)
+        def api_func(*args, **kwargs):
+            """API function"""
+            return self._call_func(func_name, **kwargs)
+
+        api_func.__name__ = func_name
+        api_func.__doc__ = "{}/{}".format(self._url_path, func_name)
+        return api_func
 
 def compose(**kamodos):
     """Kamposes multiple kamodo instances into one"""

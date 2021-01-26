@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from kamodo import kamodofy, Kamodo
 from sympy.core.function import UndefinedFunction
-from kamodo import get_defaults, getfullargspec
+from kamodo import get_defaults, getfullargspec, serialize
 
 
 import flask
@@ -27,19 +27,6 @@ try:
 except:
     pass
 
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
-
-def serialize(obj):
-    try:
-        return json.dumps(obj)
-    except TypeError:
-        if isinstance(obj, pd.DatetimeIndex):
-            return obj.map(pd.datetime.isoformat).to_list()
-        raise TypeError('cannot serialize {}'.format(type(obj)))
 
 
 app = Flask(__name__)
