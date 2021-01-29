@@ -27,6 +27,9 @@ try:
 except:
     pass
 
+from kamodo.util import NumpyArrayEncoder
+
+import logging
 
 
 app = Flask(__name__)
@@ -70,13 +73,13 @@ def main():
     if cfg.config_override is not None:
         override_path = "{}/{}".format(os.getcwd(), cfg.config_override)
         if path.exists(override_path):
-            print("found {}".format(override_path))
+            app.logger.info("found {}".format(override_path))
             config_override_ = OmegaConf.load(override_path)
-            # print(config_override.pretty())
+            app.logger.info(config_override)
             extra_files.append(override_path)
         else:
             if cfg.verbose > 0:
-                print("could not get override: {}".format(override_path))
+                app.logger.info("could not get override: {}".format(override_path))
 
         if config_override_ is not None:
             cfg = OmegaConf.merge(cfg, config_override_)
@@ -87,7 +90,7 @@ def main():
 
 
     if cfg.verbose > 0:
-        print(cfg.pretty())
+        app.logger.info(cfg.pretty())
 
 
     models = dict()
@@ -107,7 +110,7 @@ def main():
             details = dict()
             for model_name, model_ in models.items():
                 detail = model_.detail().astype(str)
-                print(detail)
+                app.logger.info(detail)
                 details[model_name] = detail.to_dict(
                     # default_handler=str,
                     # indent =4,
@@ -128,14 +131,17 @@ def main():
         for var_symbol in model_:
             if type(var_symbol) != UndefinedFunction:
                 var_label = str(type(var_symbol))
+                # /api/mymodel/myfunc
                 api.add_resource(
                     get_func_resource(model_name, model_, var_symbol),
                     '/api/{}/{}'.format(model_name, var_label),
                     endpoint='/'.join([model_name, var_label]))
+                # /api/mymodel/myfunc/defaults
                 api.add_resource(
                     get_defaults_resource(model_name, model_, var_symbol),
                     '/api/{}/{}/{}'.format(model_name, var_label, 'defaults'),
                     endpoint='/'.join([model_name, var_label, 'defaults']))
+                # /api/mymodel/myfunc/plot
                 api.add_resource(
                     get_func_plot_resource(model_, var_symbol),
                     '/api/{}/{}/{}'.format(model_name, var_label, 'plot'),
@@ -189,15 +195,22 @@ def get_func_resource(model_name, model, var_symbol):
             for argname, val_ in args_.items():
                 args[argname] = pd.read_json(StringIO(val_), typ='series')
             result = func(**args)
-            try:
-                return result.tolist()
-            except:
-                return result
+            app.logger.info('kamodo function returned {}'.format(type(result)))
+            result = json.dumps(
+                result,
+                cls=NumpyArrayEncoder,
+                default=serialize)
+            return result
+            # try:
+            #     return result.tolist()
+            # except:
+            #     return result
     return FuncResource
+
 
 def get_defaults_resource(model_name, model, var_symbol):
     """Get resource associated with this function's defaults"""
-    print('getting defaults for {}.{}'.format(model_name, var_symbol))
+    app.logger.info('getting defaults for {}.{}'.format(model_name, var_symbol))
     parser = reqparse.RequestParser()
     func = model[var_symbol]
     defaults = get_defaults(func)
@@ -206,7 +219,7 @@ def get_defaults_resource(model_name, model, var_symbol):
         """Resource associated with this function's defaults"""
         def get(self):
             """get method for this resource"""
-            return json.dumps(defaults, cls=NumpyEncoder, default=serialize)
+            return json.dumps(defaults, cls=NumpyArrayEncoder, default=serialize)
 
     return DefaultsResource
 
@@ -268,7 +281,7 @@ def get_func_plot_resource(model, var_symbol):
         """Resource associated with evaluate"""
         def get(self):
             """get method for this resource"""
-            print('function plot resource called')
+            app.logger.info('function plot resource called')
             args_ = parser.parse_args(strict=True)
             args = dict(indexing='ij') # needed for gridded data
 

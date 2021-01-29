@@ -16,6 +16,9 @@ from .util import get_arg_units
 from .util import get_unit_quantity, convert_to
 from kamodo import from_kamodo, compose
 from sympy import Function
+from kamodo import KamodoAPI
+import requests_mock, requests
+from .util import serialize, NumpyArrayEncoder
 
 import warnings
 
@@ -205,9 +208,9 @@ def test_unit_registry():
 def test_to_latex():
     warnings.simplefilter('error')
     kamodo = Kamodo(f='x**2', verbose=True)
-    assert str(kamodo.to_latex()) == r'\begin{equation}f{\left(x \right)} = x^{2}\end{equation}'
+    assert str(kamodo.to_latex(mode='inline')) == r'$f{\left(x \right)} = x^{2}$'
     kamodo = Kamodo(g='x', verbose=True)
-    assert str(kamodo.to_latex()) == r'\begin{equation}g{\left(x \right)} = x\end{equation}'
+    assert str(kamodo.to_latex(mode='inline')) == r'$g{\left(x \right)} = x$'
     kamodo['f(x[cm])[kg]'] = 'x**2'
     kamodo['g'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'), equation='$x^2$')
     kamodo['h'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'))
@@ -702,10 +705,30 @@ class Ktest(Kamodo):
 
 
         @kamodofy(units='nPa')
-        def p(x = np.linspace(-5,5,30)):
-            return x**2
+        def p(x = np.linspace(-5, 5 ,30)):
+            try:
+                return x**2
+            except TypeError as m:
+                print(m)
+                print(type(x))
+                raise
 
 
         self['rho_N'] = rho_N
         self['p'] = p
+
+# @requests_mock.Mocker(kw='mock')
+# def test_kw_function(text='hello', **kwargs):
+#     mock = kwargs['mock']
+#     mock.get('http://test.com', text=text)
+#     return requests.get('http://test.com').text
+
+
+
+# def test_datetime_serialize():
+#     t_N = pd.date_range('Nov 9, 2018', 'Nov 20, 2018', freq='H')
+#     js_str = json.dumps(t_N, default=serialize, cls=NumpyArrayEncoder)
+#     t_N_ = pd.read_json(StringIO(js_str), typ='series').values
+#     assert((t_N == t_N_).all())
+
 

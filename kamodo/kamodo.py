@@ -61,7 +61,7 @@ import re
 
 import urllib.request, json
 import requests
-from .util import serialize
+from .util import serialize, NumpyArrayEncoder
 import forge
 
 
@@ -682,7 +682,10 @@ class Kamodo(UserDict):
                 if expr_unit is not None:
                     expr_dimensions = get_dimensions(expr_unit)
                     if expr_dimensions != Dimension(1):
-                        lhs_units = str(get_abbrev(get_expr_unit(expr_unit, self.unit_registry, self.verbose)))
+                        lhs_units = str(get_abbrev(get_expr_unit(
+                            expr_unit,
+                            self.unit_registry,
+                            self.verbose)))
                     else:
                         lhs_units = ''
 
@@ -753,6 +756,7 @@ class Kamodo(UserDict):
             func.meta = meta
             func.data = None
             self.register_signature(symbol, units, lhs_expr, rhs_expr)
+            func._repr_latex_ = lambda: self.func_latex(str(type(symbol)), mode='inline')
             super(Kamodo, self).__setitem__(symbol, func)
             super(Kamodo, self).__setitem__(type(symbol), self[symbol])
             self.register_symbol(symbol)
@@ -876,10 +880,15 @@ class Kamodo(UserDict):
         if len(str(units)) > 0:
             latex_eq = latex_eq.replace('=', '[{}] ='.format(units))
 
+        if mode == 'equation':
+            repr_latex += r"\begin{equation}"
+            repr_latex += "{} = {}".format(lhs_str, latex_eq_rhs)
+            repr_latex += r"\end{equation}"
+        else:
+            repr_latex += r"$"
+            repr_latex += "{} = {}".format(lhs_str, latex_eq_rhs)
+            repr_latex += r"$"
 
-        repr_latex += r"\begin{equation}"
-        repr_latex += "{} = {}".format(lhs_str, latex_eq_rhs)
-        repr_latex += r"\end{equation}"
         return repr_latex
 
 
@@ -888,9 +897,12 @@ class Kamodo(UserDict):
         """Generate list of LaTeX-formated formulas"""
         if keys is None:
             keys = list(self.signatures.keys())
-        repr_latex = ""
+
+        funcs_latex = []
         for k in keys:
-            repr_latex += self.func_latex(k, mode)
+            funcs_latex.append(self.func_latex(k, mode))
+
+        repr_latex = " ".join(funcs_latex)
 
         return beautify_latex(repr_latex).encode('utf-8').decode()
 
@@ -986,7 +998,7 @@ class Kamodo(UserDict):
         units = signature['units']
         if units != '':
             units = '[{}]'.format(units)
-        title = self.to_latex([variable])
+        title = self.to_latex([variable], 'inline')
         title_lhs = title.split(' =')[0] + '$'
         title_short = '{}'.format(variable + units)  # something wrong with colorbar latex being vertical
         titles = dict(title=title, title_lhs=title_lhs, title_short=title_short, units=units, variable=variable)
@@ -1075,17 +1087,18 @@ class KamodoAPI(Kamodo):
 
     def _get(self, url_path):
         result_dict = {}
-        with urllib.request.urlopen(url_path) as url:
-            result = json.loads(url.read().decode())
-            if isinstance(result, str):
-                result = json.loads(result)
-            for k, v in result.items():
-                if isinstance(v, str):
-                    try:
-                        v = json.loads(v)
-                    except:
-                        pass
-                result_dict[k] = v
+        result = requests.get(url_path).json() # returns a dictionary
+        if isinstance(result, str):
+            result = json.loads(result)
+        for k, v in result.items():
+            if isinstance(v, str):
+                try:
+                    v = json.loads(v)
+                except:
+                    pass
+            if isinstance(v, list):
+                v = np.array(v)
+            result_dict[k] = v
         return result_dict
 
     def _call_func(self, func_name, **kwargs):
@@ -1093,11 +1106,11 @@ class KamodoAPI(Kamodo):
         url_path = '{}/{}'.format(self._url_path, func_name)
         params = []
         for k, v in kwargs.items():
-            params.append((k, json.dumps(v, default=serialize)))
+            params.append((k, json.dumps(v, cls=NumpyArrayEncoder, default=serialize)))
         result = requests.get(
             url=url_path,
-            params=params)
-        return np.array(result.json())
+            params=params).json() #returns a dictionary
+        return np.array(result)
 
     def load_func(self, func_name):
         """loads a function signature"""

@@ -1,3 +1,4 @@
+* fixed plot title latex
 * added KamodoAPI class
 * overriding models with config
 * fixed datetime api example
