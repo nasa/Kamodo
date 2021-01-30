@@ -1,3 +1,6 @@
+
+# 2021-01-30 13:03:53.446801: clock-in
+
 * fixed plot title latex
 * added KamodoAPI class
 * overriding models with config
