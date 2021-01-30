@@ -1,3 +1,15 @@
+# 2021-01-30 14:13:25.401017: clock-out
+
+trying different serialization methods
+
+binary options:
+* msgpack - binary serialization of numpy https://github.com/lebedov/msgpack-numpy https://github.com/msgpack/msgpack-javascript
+* json and base64 encoding only https://stackoverflow.com/a/30698135
+* bson `from bson.json_util import dumps, loads`
+
+ascii options:
+* pandas build_table_schema https://pandas.pydata.org/pandas-docs/version/0.21.0/generated/pandas.io.json.build_table_schema.html
+* datapackage/table-schema https://github.com/frictionlessdata/datapackage-pipelines-pandas-driver#getting-started
 
 # 2021-01-30 13:03:53.446801: clock-in
 
