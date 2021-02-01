@@ -1,3 +1,6 @@
+
+# 2021-02-01 17:45:54.355466: clock-in
+
 # 2021-02-01 08:59:03.221914: clock-out
 
 * can use byte swapping and restore endianess https://numpy.org/doc/stable/user/basics.byteswapping.html
