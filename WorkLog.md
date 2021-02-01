@@ -1,3 +1,6 @@
+
+# 2021-02-01 08:15:47.966367: clock-in
+
 # 2021-01-30 14:13:25.401017: clock-out
 
 trying different serialization methods
