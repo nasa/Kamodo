@@ -719,3 +719,11 @@ class Ktest(Kamodo):
         self['p'] = p
 
 
+def test_kamodo_inline_merge():
+    k1 = Kamodo(f='x**2')
+    k2 = Kamodo(g=lambda y: y-1)
+
+    # create a local namespace holding both kamodo objects
+    ns = {'k1':k1, 'k2': k2}
+    k3 = Kamodo(myf = sympify('k1.f(x) + k2.g(y)', locals=ns))
+    assert k3.myf(x=3, y=4) == 3**2 + 4 - 1
