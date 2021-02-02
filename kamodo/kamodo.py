@@ -64,8 +64,6 @@ import requests
 from .util import serialize, deserialize
 import forge
 
-from bson import json_util
-
 
 
 def get_unit_quantities():

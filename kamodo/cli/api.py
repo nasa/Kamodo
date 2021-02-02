@@ -31,7 +31,7 @@ except:
 from kamodo.util import NumpyArrayEncoder
 
 import logging
-from bson import json_util
+
 
 app = Flask(__name__)
 
@@ -195,14 +195,8 @@ def get_func_resource(model_name, model, var_symbol):
 
             for argname, val_ in args_.items():
                 args[argname] = json.loads(val_, object_hook=deserialize)
-                # old ways
-                # args[argname] = json_util.loads(val_)
-                # result = requests.get(
-                #     url=url_path,
-                #     params=params).json() #returns a dictionary
                 if isinstance(args[argname], str):
-                    args[argname] = json_util.loads(args[argname])
-                # args[argname] = pd.read_json(StringIO(val_), typ='series')
+                    args[argname] = json.loads(val_, object_hook=deserialize)
             result = func(**args)
             print('{} {} function returned {}'.format(
                 model_name, var_symbol, type(result)))

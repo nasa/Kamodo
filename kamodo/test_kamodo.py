@@ -17,7 +17,6 @@ from .util import get_unit_quantity, convert_to
 from kamodo import from_kamodo, compose
 from sympy import Function
 from kamodo import KamodoAPI
-import requests_mock, requests
 from .util import serialize, NumpyArrayEncoder
 
 import warnings
@@ -718,19 +717,5 @@ class Ktest(Kamodo):
 
         self['rho_N'] = rho_N
         self['p'] = p
-
-# @requests_mock.Mocker(kw='mock')
-# def test_kw_function(text='hello', **kwargs):
-#     mock = kwargs['mock']
-#     mock.get('http://test.com', text=text)
-#     return requests.get('http://test.com').text
-
-
-
-# def test_datetime_serialize():
-#     t_N = pd.date_range('Nov 9, 2018', 'Nov 20, 2018', freq='H')
-#     js_str = json.dumps(t_N, default=serialize, cls=NumpyArrayEncoder)
-#     t_N_ = pd.read_json(StringIO(js_str), typ='series').values
-#     assert((t_N == t_N_).all())
 
 
