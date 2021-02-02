@@ -853,20 +853,6 @@ class NumpyArrayEncoder(json.JSONEncoder):
         else:
             return super(NumpyArrayEncoder, self).default(obj)
 
-# def serialize(obj):
-#     if hasattr(obj, 'shape'):
-#         if len(obj.shape) == 0:
-#             return json.dumps(obj)
-#         if len(obj.shape) == 1: 
-#             # 1-d array
-#             return pd.Series(obj).to_json(orient='values', date_format='iso')
-#         elif len(obj.shape) > 1:
-#             return pd.DataFrame(obj).to_json(orient='values', date_format='iso')
-#     try:
-#         return json.dumps(obj, cls=NumpyArrayEncoder)
-#     except TypeError:
-#         raise TypeError('cannot serialize {}'.format(type(obj)))
-
 
 def serialize(obj):
     if isinstance(obj, (np.ndarray, np.generic)):
@@ -883,6 +869,18 @@ def serialize(obj):
                 '__ndarray__': obj.tolist(),
                 'dtype': obj.dtype.str,
             }
+    if isinstance(obj, pd.DataFrame):
+        return {
+            '__pddataframe__': obj.values.tolist(),
+            '__index__': obj.index.tolist(),
+            'dtype': 'pd.DataFrame'
+        }
+    if isinstance(obj, pd.Series):
+        return {
+            '__pdseries__': obj.values.tolist(),
+            '__index__': obj.index.tolist(),
+            'dtype': "pd.series",
+        }
     if isinstance(obj, pd.DatetimeIndex):
         return {
             '__datetime__': [_ for _ in map(pd.datetime.isoformat, obj)],
@@ -914,6 +912,10 @@ def deserialize(obj):
             #     dtype=np.dtype(obj['dtype'])
             # )[0]
             return np.array(obj['__npgeneric__'])
+        if '__pddataframe__' in obj:
+            return pd.DataFrame(obj['__pddataframe__'], index=obj['__index__'])
+        if '__pdseries__' in obj:
+            return pd.Series(obj['__pdseries__'], index=obj['__index__'])
         if '__datetime__' in obj:
             return pd.to_datetime(obj['__datetime__'])
         if '__set__' in obj:

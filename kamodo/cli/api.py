@@ -31,6 +31,8 @@ except:
 from kamodo.util import NumpyArrayEncoder
 
 import logging
+# log = logging.getLogger('werkzeug')
+# log.setLevel(logging.ERROR)
 
 
 app = Flask(__name__)

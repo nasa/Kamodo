@@ -329,19 +329,33 @@ def test_is_function():
     assert not is_function(symbols('x'))
 
 def test_serialize_np():
-    x = np.linspace(-5, 5, 12).reshape((3,4))
+    x = np.linspace(-5, 5, 12).reshape((3, 4))
 
-    assert deserialize(serialize(x)).shape == (3,4)
-    assert deserialize(serialize(x))[0,0] == -5
+    assert deserialize(serialize(x)).shape == (3, 4)
+    assert deserialize(serialize(x))[0, 0] == -5
 
-    t = pd.date_range('Jan 1, 2021', 'Jan 11, 2021', freq='H')
-    assert isinstance(t, pd.DatetimeIndex)
 
     x_json = json.dumps(x, default=serialize)
     x_ = json.loads(x_json, object_hook=deserialize)
     assert (x_ == x).all()
 
+def test_serialize_pd():
+    t = pd.date_range('Jan 1, 2021', 'Jan 11, 2021', freq='H')
+    
+    t_json = json.dumps(t, default=serialize)
+    t_ = json.loads(t_json, object_hook=deserialize)
+    assert (t_ == t).all()
 
+
+    s = pd.Series(np.linspace(-5, 5, 10), index=list(range(10)))
+    s_json = json.dumps(s, default=serialize)
+    s_ = json.loads(s_json, object_hook=deserialize)
+    assert (s_ == s).all()
+
+    df = pd.DataFrame(np.linspace(-5, 5, 10), index=list(range(10)))
+    df_json = json.dumps(df, default=serialize)
+    df_ = json.loads(df_json, object_hook=deserialize)
+    assert (df_ == df).all().all()
 
 
     
