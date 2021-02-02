@@ -853,6 +853,11 @@ class NumpyArrayEncoder(json.JSONEncoder):
         else:
             return super(NumpyArrayEncoder, self).default(obj)
 
+def full_classname(o):
+    module = o.__class__.__module__
+    if module is None or module == str.__class__.__module__:
+        return o.__class__.__name__
+    return module + '.' + o.__class__.__name__
 
 def serialize(obj):
     if isinstance(obj, (np.ndarray, np.generic)):
@@ -872,19 +877,25 @@ def serialize(obj):
     if isinstance(obj, pd.DataFrame):
         return {
             '__pddataframe__': obj.values.tolist(),
-            '__index__': obj.index.tolist(),
-            'dtype': 'pd.DataFrame'
+            '__index__': serialize(obj.index),
+            'dtype': full_classname(obj),
         }
+    if isinstance(obj, pd.Index):
+        if isinstance(obj, pd.DatetimeIndex):
+            return {
+                '__datetime__': [_ for _ in map(pd.datetime.isoformat, obj)],
+                'dtype': full_classname(obj),
+            }
+        else:
+            return {
+                '__index__': obj.tolist(),
+                'dtype': full_classname(obj),
+            }
     if isinstance(obj, pd.Series):
         return {
             '__pdseries__': obj.values.tolist(),
-            '__index__': obj.index.tolist(),
-            'dtype': "pd.series",
-        }
-    if isinstance(obj, pd.DatetimeIndex):
-        return {
-            '__datetime__': [_ for _ in map(pd.datetime.isoformat, obj)],
-            'dtype': "pd.datetime",
+            '__index__': serialize(obj.index),
+            'dtype': full_classname(obj),
         }
     if isinstance(obj, set):
         return {'__set__': list(obj)}
@@ -913,11 +924,17 @@ def deserialize(obj):
             # )[0]
             return np.array(obj['__npgeneric__'])
         if '__pddataframe__' in obj:
-            return pd.DataFrame(obj['__pddataframe__'], index=obj['__index__'])
+            return pd.DataFrame(
+                obj['__pddataframe__'],
+                index=deserialize(obj['__index__']))
         if '__pdseries__' in obj:
-            return pd.Series(obj['__pdseries__'], index=obj['__index__'])
+            return pd.Series(
+                obj['__pdseries__'],
+                index=deserialize(obj['__index__']))
         if '__datetime__' in obj:
             return pd.to_datetime(obj['__datetime__'])
+        if '__index__' in obj:
+            return pd.Index(obj['__index__'])
         if '__set__' in obj:
             return set(obj['__set__'])
         if '__tuple__' in obj:

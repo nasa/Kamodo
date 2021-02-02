@@ -1,3 +1,4 @@
+* fixed index serialization
 # 2021-02-02 11:28:10.308687: clock-out
 
 * improved serialization tests
