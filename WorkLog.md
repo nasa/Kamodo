@@ -1,3 +1,6 @@
+
+# 2021-02-02 11:16:43.496588: clock-in
+
 # 2021-02-02 09:37:36.981135: clock-out
 
 * removing requests-mock
