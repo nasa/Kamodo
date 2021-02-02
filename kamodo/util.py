@@ -41,6 +41,9 @@ from sympy import Function
 import urllib.request, json
 import requests
 
+import base64
+
+
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
     '''Define a unit in terms of a base unit'''
@@ -88,6 +91,7 @@ for item in unit_list:
                                                 float(prefix_dict[key].scale_factor),
                                                 abbrev=key+item)
 
+reserved_names = dir(sympy)
 
 def get_ufunc(expr, variable_map):
     """Numerically optimize expression"""
@@ -849,13 +853,94 @@ class NumpyArrayEncoder(json.JSONEncoder):
         else:
             return super(NumpyArrayEncoder, self).default(obj)
 
+# def serialize(obj):
+#     if hasattr(obj, 'shape'):
+#         if len(obj.shape) == 0:
+#             return json.dumps(obj)
+#         if len(obj.shape) == 1: 
+#             # 1-d array
+#             return pd.Series(obj).to_json(orient='values', date_format='iso')
+#         elif len(obj.shape) > 1:
+#             return pd.DataFrame(obj).to_json(orient='values', date_format='iso')
+#     try:
+#         return json.dumps(obj, cls=NumpyArrayEncoder)
+#     except TypeError:
+#         raise TypeError('cannot serialize {}'.format(type(obj)))
+
+
 def serialize(obj):
-    try:
-        return json.dumps(obj, cls=NumpyArrayEncoder)
-    except TypeError:
-        if isinstance(obj, pd.DatetimeIndex):
-            return obj.map(pd.datetime.isoformat).to_list()
-        raise TypeError('cannot serialize {}'.format(type(obj)))
+    if isinstance(obj, (np.ndarray, np.generic)):
+        if isinstance(obj, np.ndarray):
+            return {
+                # '__ndarray__': base64.b64encode(obj.tobytes()),
+                '__ndarray__': obj.tolist(),
+                'dtype': obj.dtype.str,
+                'shape': obj.shape,
+            }
+        elif isinstance(obj, (np.bool_, np.number)):
+            return {
+                # '__npgeneric__': base64.b64encode(obj.tobytes()),
+                '__ndarray__': obj.tolist(),
+                'dtype': obj.dtype.str,
+            }
+    if isinstance(obj, pd.DatetimeIndex):
+        return {
+            '__datetime__': [_ for _ in map(pd.datetime.isoformat, obj)],
+            'dtype': "pd.datetime",
+        }
+    if isinstance(obj, set):
+        return {'__set__': list(obj)}
+    if isinstance(obj, tuple):
+        return {'__tuple__': list(obj)}
+    if isinstance(obj, complex):
+        return {'__complex__': obj.__repr__()}
+
+    # Let the base class default method raise the TypeError
+    raise TypeError('Unable to serialise object of type {}'.format(type(obj)))
 
 
-reserved_names = dir(sympy)
+def deserialize(obj):
+    # check for numpy
+    if isinstance(obj, dict):
+        if '__ndarray__' in obj:
+            # return np.frombuffer(
+            #     base64.b64decode(obj['__ndarray__']),
+            #     dtype=np.dtype(obj['dtype'])
+            # ).reshape(obj['shape'])
+            return np.array(obj['__ndarray__'])
+        if '__npgeneric__' in obj:
+            # return np.frombuffer(
+            #     base64.b64decode(obj['__npgeneric__']),
+            #     dtype=np.dtype(obj['dtype'])
+            # )[0]
+            return np.array(obj['__npgeneric__'])
+        if '__datetime__' in obj:
+            return pd.to_datetime(obj['__datetime__'])
+        if '__set__' in obj:
+            return set(obj['__set__'])
+        if '__tuple__' in obj:
+            return tuple(obj['__tuple__'])
+        if '__complex__' in obj:
+            return complex(obj['__complex__'])
+
+    return obj
+
+# over-write the load(s)/dump(s) functions
+def load(*args, **kwargs):
+    kwargs['object_hook'] = deserialize
+    return json.load(*args, **kwargs)
+
+
+def loads(*args, **kwargs):
+    kwargs['object_hook'] = deserialize
+    return json.loads(*args, **kwargs)
+
+
+def dump(*args, **kwargs):
+    kwargs['default'] = serialize
+    return json.dump(*args, **kwargs)
+
+
+def dumps(*args, **kwargs):
+    kwargs['default'] = serialize
+    return json.dumps(*args, **kwargs)

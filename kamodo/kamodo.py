@@ -61,8 +61,10 @@ import re
 
 import urllib.request, json
 import requests
-from .util import serialize, NumpyArrayEncoder
+from .util import serialize, deserialize
 import forge
+
+from bson import json_util
 
 
 
@@ -537,8 +539,14 @@ class Kamodo(UserDict):
             self.unit_registry[unit_expr] = get_unit(units)
         else:
             self.unit_registry[lhs_symbol] = get_unit(units)
-        super(Kamodo, self).__setitem__(lhs_symbol, func)  # assign key 'f(x)'
+
         self.register_signature(lhs_symbol, units, lhs_expr, rhs)
+        try:
+            func._repr_latex_ = lambda: self.func_latex(str(type(lhs_symbol)), mode='inline')
+        except AttributeError:
+            # happens with bound methods
+            pass
+        super(Kamodo, self).__setitem__(lhs_symbol, func)  # assign key 'f(x)'
         super(Kamodo, self).__setitem__(type(lhs_symbol), self[lhs_symbol])  # assign key 'f'
         self.register_symbol(lhs_symbol)
 
@@ -894,13 +902,20 @@ class Kamodo(UserDict):
 
 
     def to_latex(self, keys=None, mode='equation'):
-        """Generate list of LaTeX-formated formulas"""
+        """Generate list of LaTeX-formated formulas
+        Upon registeration, each function should have a _repr_latex_ method.
+        """
         if keys is None:
             keys = list(self.signatures.keys())
 
         funcs_latex = []
         for k in keys:
-            funcs_latex.append(self.func_latex(k, mode))
+            # funcs_latex.append(self.func_latex(k, mode))
+            func_latex = self[k]._repr_latex_()
+            if mode == 'equation':
+                func_latex = func_latex.strip('$')
+                func_latex = r"\begin{equation}" + func_latex + r"\end{equation}"
+            funcs_latex.append(func_latex)
 
         repr_latex = " ".join(funcs_latex)
 
@@ -1071,9 +1086,9 @@ class Kamodo(UserDict):
 
 class KamodoAPI(Kamodo):
     """JSON api wrapper for kamodo services"""
-    def __init__(self, url_path):
+    def __init__(self, url_path, **kwargs):
         self._url_path = url_path
-        super(KamodoAPI, self).__init__()
+        super(KamodoAPI, self).__init__(**kwargs)
 
         self._kdata = self._get(self._url_path)
 
@@ -1086,31 +1101,32 @@ class KamodoAPI(Kamodo):
             self[k] = kamodofy(self.load_func(k), units=v['units'])
 
     def _get(self, url_path):
-        result_dict = {}
-        result = requests.get(url_path).json() # returns a dictionary
+        result = requests.get(url_path).json() # returns a dictionary maybe
         if isinstance(result, str):
-            result = json.loads(result)
-        for k, v in result.items():
-            if isinstance(v, str):
-                try:
-                    v = json.loads(v)
-                except:
-                    pass
-            if isinstance(v, list):
-                v = np.array(v)
-            result_dict[k] = v
+            result_dict = json.loads(result, object_hook=deserialize)
+        else:
+            result_dict = result
         return result_dict
 
     def _call_func(self, func_name, **kwargs):
         """construct the url and call api with params"""
         url_path = '{}/{}'.format(self._url_path, func_name)
+        if self.verbose:
+            print('querying {}'.format(url_path))
         params = []
         for k, v in kwargs.items():
-            params.append((k, json.dumps(v, cls=NumpyArrayEncoder, default=serialize)))
+            params.append((k, json.dumps(v, default=serialize)))
         result = requests.get(
             url=url_path,
             params=params).json() #returns a dictionary
-        return np.array(result)
+
+        if isinstance(result, str):
+            if self.verbose:
+                print('reloading json as str')
+            result = json.loads(result, object_hook=deserialize)
+        else:
+            result = deserialize(result)
+        return result
 
     def load_func(self, func_name):
         """loads a function signature"""

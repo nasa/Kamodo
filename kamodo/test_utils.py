@@ -10,6 +10,9 @@ from kamodo.util import kamodofy, gridify, sort_symbols, valid_args, eval_func, 
     concat_solution, get_unit_quantity, substr_replace, beautify_latex, arg_to_latex, simulate, pad_nan, \
     pointlike, solve, event, is_function
 
+from .util import serialize, deserialize
+import pandas as pd
+import json
 
 @kamodofy
 def rho(x=np.array([3, 4, 5])):
@@ -325,3 +328,20 @@ def test_is_function():
     assert is_function(symbols('g', cls=UndefinedFunction))
     assert not is_function(symbols('x'))
 
+def test_serialize_np():
+    x = np.linspace(-5, 5, 12).reshape((3,4))
+
+    assert deserialize(serialize(x)).shape == (3,4)
+    assert deserialize(serialize(x))[0,0] == -5
+
+    t = pd.date_range('Jan 1, 2021', 'Jan 11, 2021', freq='H')
+    assert isinstance(t, pd.DatetimeIndex)
+
+    x_json = json.dumps(x, default=serialize)
+    x_ = json.loads(x_json, object_hook=deserialize)
+    assert (x_ == x).all()
+
+
+
+
+    

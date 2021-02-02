@@ -541,6 +541,8 @@ def test_compose_unit_raises():
 def test_repr_latex():
     kamodo = Kamodo(f='x')
     assert kamodo._repr_latex_() == r'\begin{equation}f{\left(x \right)} = x\end{equation}'
+    kamodo = Kamodo(f=lambda x:x)
+    assert kamodo.f._repr_latex_() == '$f{\\left(x \\right)} = \\lambda{\\left(x \\right)}$'
 
 
 def test_dataframe_detail():
@@ -701,16 +703,16 @@ class Ktest(Kamodo):
             except Exception as err_msg:
                 return 'cannot work with {} {}  {}'.format(type(t_N), type(t_N[0]), err_msg)
 
-            return 1+np.sin(dt_days) + .1*np.random.random(len(dt_days))
-
+            result = 1+np.sin(dt_days) + .1*np.random.random(len(dt_days))
+            return result.values
 
         @kamodofy(units='nPa')
-        def p(x = np.linspace(-5, 5 ,30)):
+        def p(x = np.linspace(-5, 5, 30)):
             try:
                 return x**2
             except TypeError as m:
                 print(m)
-                print(type(x))
+                print(type(x), x[0])
                 raise
 
 

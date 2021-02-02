@@ -5,7 +5,8 @@ import numpy as np
 import pandas as pd
 from kamodo import kamodofy, Kamodo
 from sympy.core.function import UndefinedFunction
-from kamodo import get_defaults, getfullargspec, serialize
+from kamodo import get_defaults, getfullargspec
+from kamodo import serialize, deserialize
 
 
 import flask
@@ -30,7 +31,7 @@ except:
 from kamodo.util import NumpyArrayEncoder
 
 import logging
-
+from bson import json_util
 
 app = Flask(__name__)
 
@@ -193,14 +194,20 @@ def get_func_resource(model_name, model, var_symbol):
             args = dict()
 
             for argname, val_ in args_.items():
-                args[argname] = pd.read_json(StringIO(val_), typ='series')
+                args[argname] = json.loads(val_, object_hook=deserialize)
+                # old ways
+                # args[argname] = json_util.loads(val_)
+                # result = requests.get(
+                #     url=url_path,
+                #     params=params).json() #returns a dictionary
+                if isinstance(args[argname], str):
+                    args[argname] = json_util.loads(args[argname])
+                # args[argname] = pd.read_json(StringIO(val_), typ='series')
             result = func(**args)
-            app.logger.info('kamodo function returned {}'.format(type(result)))
-            result = json.dumps(
-                result,
-                cls=NumpyArrayEncoder,
-                default=serialize)
-            return result
+            print('{} {} function returned {}'.format(
+                model_name, var_symbol, type(result)))
+            return serialize(result)
+
             # try:
             #     return result.tolist()
             # except:
@@ -211,15 +218,20 @@ def get_func_resource(model_name, model, var_symbol):
 def get_defaults_resource(model_name, model, var_symbol):
     """Get resource associated with this function's defaults"""
     app.logger.info('getting defaults for {}.{}'.format(model_name, var_symbol))
-    parser = reqparse.RequestParser()
+    # parser = reqparse.RequestParser()
     func = model[var_symbol]
-    defaults = get_defaults(func)
+    function_defaults = get_defaults(func)
+    try:
+        function_defaults_ = json.dumps(function_defaults, default=serialize)
+    except:
+        print('problem with {}.{}'.format(model_name, var_symbol))
+        raise
 
     class DefaultsResource(Resource):
         """Resource associated with this function's defaults"""
         def get(self):
             """get method for this resource"""
-            return json.dumps(defaults, cls=NumpyArrayEncoder, default=serialize)
+            return function_defaults_
 
     return DefaultsResource
 
