@@ -1,3 +1,6 @@
+
+# 2021-02-03 12:11:53.187449: clock-in
+
 # 2021-02-03 10:05:23.688588: clock-out
 
 * serializing/deserializing generators - need to forge deserialized signatures? kamodofy?
