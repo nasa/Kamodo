@@ -1,3 +1,6 @@
+# 2021-02-03 10:05:23.688588: clock-out
+
+* serializing/deserializing generators - need to forge deserialized signatures? kamodofy?
 * added flask.host and flask.port
 
 # 2021-02-03 09:37:31.803474: clock-in
