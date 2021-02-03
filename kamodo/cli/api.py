@@ -102,7 +102,10 @@ def main():
             # this might fail
             model_ = hydra.utils.instantiate(model_conf)
             models[model_name] = model_
-        except:
+        except Exception as m:
+            print(m)
+            if cfg.verbose:
+                print('could not start {}'.format(model_name))
             pass
 
     api = Api(app)
@@ -161,7 +164,12 @@ def main():
     def index():
         return 'Hello Flask app'
 
-    app.run(host='0.0.0.0')
+    try:
+        app.run(host=cfg.flask.host, port=cfg.flask.port)
+    except OSError as m:
+        print('cannot start with configuration', cfg.flask)
+        raise
+
 
 
 def get_model_resource(model_name, model):
