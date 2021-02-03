@@ -42,6 +42,9 @@ import urllib.request, json
 import requests
 
 import base64
+import types
+import forge
+
 
 
 
@@ -904,12 +907,33 @@ def serialize(obj):
     if isinstance(obj, complex):
         return {'__complex__': obj.__repr__()}
 
+    if isinstance(obj, types.GeneratorType):
+        return {'__lambdagen__': [{
+            'params':{k:serialize(v) for k,v in get_defaults(func).items()},
+            'result':serialize(func())} for func in obj]}
+        
+    if isinstance(obj, int):
+        return obj
+    
     # Let the base class default method raise the TypeError
     raise TypeError('Unable to serialise object of type {}'.format(type(obj)))
 
-
+def lambdagen(obj):
+    """create a generator of lambda functions"""
+    for func_ in obj['__lambdagen__']:
+        signature = []
+        for arg, arg_default in func_['params'].items():
+            signature.append(forge.arg(
+                arg,
+                default=deserialize(arg_default)))
+        @forge.sign(*signature)
+        def func(*args, **kwargs):
+            """API function"""
+            return deserialize(func_['result'])
+        yield func
+    
 def deserialize(obj):
-    # check for numpy
+    # convert obj into numpy, pandas
     if isinstance(obj, dict):
         if '__ndarray__' in obj:
             # return np.frombuffer(
@@ -941,7 +965,8 @@ def deserialize(obj):
             return tuple(obj['__tuple__'])
         if '__complex__' in obj:
             return complex(obj['__complex__'])
-
+        if '__lambdagen__' in obj:
+            return lambdagen(obj)
     return obj
 
 # over-write the load(s)/dump(s) functions

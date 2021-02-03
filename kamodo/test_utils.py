@@ -357,5 +357,27 @@ def test_serialize_pd():
     df_ = json.loads(df_json, object_hook=deserialize)
     assert (df_ == df).all().all()
 
+def test_serialize_generator():
+    gen = (lambda x=b: x**2 for b in np.linspace(-5,5,12).reshape((4,3)))
+    # need to reproduce the generator for comparison
+    gen_duplicate = (lambda x=b: x**2 for b in np.linspace(-5,5,12).reshape((4,3)))
+    gen_json = json.dumps(gen, default=serialize)
+    gen_ = json.loads(gen_json, object_hook=deserialize)
+
+    for f, f_ in zip(gen_, gen_duplicate):
+        assert(f() == f_()).all()
+        f_defaults = get_defaults(f)
+        f__defaults = get_defaults(f_)
+        for k, v in f_defaults.items():
+            assert (v == f__defaults[k]).all()
+
+def test_serialize_generator_pd():
+    t = pd.date_range('Jan 1, 2021', 'Jan 11, 2021', freq='H')
+
+    gent = (lambda t=t: (t - t0).total_seconds() for t0 in t[::10])
+
+    for f in deserialize(serialize(gent)):
+        assert len(f()) == len(t)
+    assert f()[-1] == 0
 
     
