@@ -1,3 +1,6 @@
+
+# 2021-02-03 09:37:31.803474: clock-in
+
 * test accessing multiple kamodo objects in same namespace
 * fixed index serialization
 # 2021-02-02 11:28:10.308687: clock-out
