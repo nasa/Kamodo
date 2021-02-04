@@ -1,4 +1,8 @@
+* added data endpoint for cached function result
 * installed requests for workflow
+* kamodoAPI only registers units
+* can add data to api to avoid initial call with defaults
+
 # 2021-02-03 12:51:16.021583: clock-out
 
 * serialized lambda generators
@@ -14,6 +18,7 @@
 
 * test accessing multiple kamodo objects in same namespace
 * fixed index serialization
+
 # 2021-02-02 11:28:10.308687: clock-out
 
 * improved serialization tests

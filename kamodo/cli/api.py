@@ -147,6 +147,11 @@ def main():
                     get_defaults_resource(model_name, model_, var_symbol),
                     '/api/{}/{}/{}'.format(model_name, var_label, 'defaults'),
                     endpoint='/'.join([model_name, var_label, 'defaults']))
+                # /api/mymodel/myfunc/data
+                api.add_resource(
+                    get_data_resource(model_name, model_, var_symbol),
+                    '/api/{}/{}/{}'.format(model_name, var_label, 'data'),
+                    endpoint='/'.join([model_name, var_label, 'data']))
                 # /api/mymodel/myfunc/plot
                 api.add_resource(
                     get_func_plot_resource(model_, var_symbol),
@@ -238,6 +243,33 @@ def get_defaults_resource(model_name, model, var_symbol):
             return function_defaults_
 
     return DefaultsResource
+
+def get_data_resource(model_name, model, var_symbol):
+    """Get resource associated with this function's data"""
+    app.logger.info('getting data for {}.{}'.format(model_name, var_symbol))
+    func = model[var_symbol]
+
+    # assume function is kamodofied
+    try:
+        func_data = func.data
+    except AttributeError:
+        raise AttributeError('function {}.{} has no data!'.format(
+            model_name, var_symbol))
+
+    try:
+        func_data_ = json.dumps(func_data, default=serialize)
+    except:
+        print('problem with {}.{} data'.format(model_name, var_symbol))
+        raise
+
+    class DefaultsResource(Resource):
+        """Resource associated with this function's defaults"""
+        def get(self):
+            """get method for this resource"""
+            return func_data_
+
+    return DefaultsResource
+
 
 def get_evaluate_resource(model_name, model):
     """get resource associated with evaluate"""

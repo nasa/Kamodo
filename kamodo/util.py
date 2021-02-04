@@ -930,7 +930,8 @@ def lambdagen(obj):
         def func(*args, **kwargs):
             """API function"""
             return deserialize(func_['result'])
-        yield func
+
+        yield kamodofy(func)
     
 def deserialize(obj):
     # convert obj into numpy, pandas

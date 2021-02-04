@@ -1091,12 +1091,24 @@ class KamodoAPI(Kamodo):
         self._kdata = self._get(self._url_path)
 
         self._defaults = {}
+        self._data = {}
 
         for k, v in self._kdata.items():
             self[v['lhs']] = kamodofy(units=v['units'])
+
+            # get defaults for this func
             default_path = '{}/{}/defaults'.format(self._url_path, k)
             self._defaults[k] = self._get(default_path)
-            self[k] = kamodofy(self.load_func(k), units=v['units'])
+
+            # get cached data (result of calling with no args)
+            data_path = '{}/{}/data'.format(self._url_path, k)
+            self._data[k] = self._get(data_path)
+
+            # get kamodofied function
+            self[k] = kamodofy(
+                self.load_func(k),
+                data=self._data[k],
+                units=v['units'])
 
     def _get(self, url_path):
         result = requests.get(url_path).json() # returns a dictionary maybe
