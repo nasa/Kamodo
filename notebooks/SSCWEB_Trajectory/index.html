@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>SSCWEB Trajectory - Kamodo Analysis Suite</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "SSCWEB Trajectory";
+    var mkdocs_page_input_path = "notebooks/SSCWEB_Trajectory.ipynb";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> Kamodo Analysis Suite</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../about/">About</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodo/">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Visualization/">Visualization</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Syntax/">Syntax</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodofying_Models/">Kamodofying Models</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../FieldIntegration/">Field Integration</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../kameleon-kamodo/">Kameleon</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../TIEGCM/">TIEGCM</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../CommandLineInterface/">CommandLine</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../additional_resources/">Additional Resources</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">Kamodo Analysis Suite</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>SSCWEB Trajectory</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="sscweb-trajectory">SSCWeb trajectory:<a class="headerlink" href="#sscweb-trajectory" title="Permanent link">&para;</a></h2>
+<pre><code class="python">%load_ext autoreload
+%autoreload 2
+</code></pre>
+
+<pre><code>The autoreload extension is already loaded. To reload it, use:
+  %reload_ext autoreload
+</code></pre>
+<pre><code class="python">import numpy as np
+import pandas as pd
+import os
+import scipy
+import scipy.constants as constants
+from scipy import interpolate
+from scipy.interpolate import RegularGridInterpolator
+import math
+import time
+from kamodo import Kamodo, kamodofy
+import kamodo
+from datetime import datetime,timezone,timedelta
+</code></pre>
+
+<pre><code class="python">from readers.sscweb_trajectory import SSCWEB_Trajectory
+</code></pre>
+
+<pre><code class="python">traj=SSCWEB_Trajectory('goes15',(2018,11,20,20,25,0),(2018,11,20,23,59,0))
+</code></pre>
+
+<pre><code>Obtaining trajectory from SSCWeb for goes15
+variable: X unit: km data.size: 71
+variable: Y unit: km data.size: 71
+variable: Z unit: km data.size: 71
+variable: Xvec unit: km data.size: 213
+</code></pre>
+<pre><code class="python">date=[datetime(2018,11,20,20,35,0,tzinfo=timezone.utc),datetime(2018,11,20,21,35,0,tzinfo=timezone.utc)]
+
+</code></pre>
+
+<pre><code class="python">traj['Xvec'](traj.seconds_from_20000101(date))
+
+</code></pre>
+
+<pre><code>array([[39584.38601851,  -168.54190274, 14458.75714376],
+       [37482.78756334, 10509.45712366, 16152.54767952]])
+</code></pre>
+<pre><code class="python">traj.variables['Xvec']['data']
+</code></pre>
+
+<pre><code>array([[ 3.96623330e+04,  3.96390489e+04,  3.96089704e+04,
+         3.95720938e+04,  3.95284295e+04,  3.94779864e+04,
+         3.94207709e+04,  3.93567944e+04,  3.92860683e+04,
+         3.92086046e+04,  3.91244128e+04,  3.90335099e+04,
+         3.89359146e+04,  3.88316420e+04,  3.87207085e+04,
+         3.86031358e+04,  3.84789427e+04,  3.83481517e+04,
+         3.82107828e+04,  3.80668603e+04,  3.79164116e+04,
+         3.77594616e+04,  3.75960358e+04,  3.74261635e+04,
+         3.72498707e+04,  3.70671982e+04,  3.68781650e+04,
+         3.66828079e+04,  3.64811650e+04,  3.62732621e+04,
+         3.60591454e+04,  3.58388482e+04,  3.56124053e+04,
+         3.53798543e+04,  3.51412372e+04,  3.48966033e+04,
+         3.46459835e+04,  3.43894234e+04,  3.41269687e+04,
+         3.38586692e+04,  3.35845593e+04,  3.33046999e+04,
+         3.30191255e+04,  3.27278971e+04,  3.24310603e+04,
+         3.21286610e+04,  3.18207637e+04,  3.15074063e+04,
+         3.11886500e+04,  3.08645512e+04,  3.05351632e+04,
+         3.02005459e+04,  2.98607530e+04,  2.95158402e+04,
+         2.91658758e+04,  2.88109081e+04,  2.84510124e+04,
+         2.80862371e+04,  2.77166492e+04,  2.73423197e+04,
+         2.69633043e+04,  2.65796695e+04,  2.61914817e+04,
+         2.57988077e+04,  2.54017129e+04,  2.50002721e+04,
+         2.45945502e+04,  2.41846107e+04,  2.37705340e+04,
+         2.33523861e+04,  2.29302400e+04],
+       [-1.60746417e+03, -1.06800795e+03, -5.28365382e+02,
+         1.13698369e+01,  5.51106807e+02,  1.09075247e+03,
+         1.63021364e+03,  2.16939738e+03,  2.70821495e+03,
+         3.24656822e+03,  3.78436729e+03,  4.32151846e+03,
+         4.85793338e+03,  5.39351719e+03,  5.92817720e+03,
+         6.46182416e+03,  6.99436551e+03,  7.52571095e+03,
+         8.05576589e+03,  8.58444119e+03,  9.11164679e+03,
+         9.63729256e+03,  1.01612873e+04,  1.06835420e+04,
+         1.12039647e+04,  1.17224726e+04,  1.22389685e+04,
+         1.27533675e+04,  1.32655832e+04,  1.37755234e+04,
+         1.42831053e+04,  1.47882412e+04,  1.52908414e+04,
+         1.57908196e+04,  1.62880914e+04,  1.67825762e+04,
+         1.72741824e+04,  1.77628274e+04,  1.82484287e+04,
+         1.87309051e+04,  1.92101673e+04,  1.96861412e+04,
+         2.01587372e+04,  2.06278812e+04,  2.10934904e+04,
+         2.15554817e+04,  2.20137835e+04,  2.24683085e+04,
+         2.29189827e+04,  2.33657301e+04,  2.38084725e+04,
+         2.42471372e+04,  2.46816446e+04,  2.51119207e+04,
+         2.55378958e+04,  2.59594908e+04,  2.63766414e+04,
+         2.67892684e+04,  2.71973038e+04,  2.76006822e+04,
+         2.79993289e+04,  2.83931770e+04,  2.87821597e+04,
+         2.91662095e+04,  2.95452611e+04,  2.99192507e+04,
+         3.02881140e+04,  3.06517843e+04,  3.10102055e+04,
+         3.13633111e+04,  3.17110444e+04],
+       [ 1.41548551e+04,  1.42709770e+04,  1.43846385e+04,
+         1.44958165e+04,  1.46044935e+04,  1.47106513e+04,
+         1.48142706e+04,  1.49153340e+04,  1.50138251e+04,
+         1.51097255e+04,  1.52030178e+04,  1.52936866e+04,
+         1.53817181e+04,  1.54670960e+04,  1.55498048e+04,
+         1.56298318e+04,  1.57071623e+04,  1.57817838e+04,
+         1.58536817e+04,  1.59228442e+04,  1.59892606e+04,
+         1.60529191e+04,  1.61138080e+04,  1.61719175e+04,
+         1.62272357e+04,  1.62797587e+04,  1.63294707e+04,
+         1.63763658e+04,  1.64204378e+04,  1.64616752e+04,
+         1.65000755e+04,  1.65356308e+04,  1.65683332e+04,
+         1.65981766e+04,  1.66251567e+04,  1.66492734e+04,
+         1.66705166e+04,  1.66888841e+04,  1.67043736e+04,
+         1.67169848e+04,  1.67267096e+04,  1.67335533e+04,
+         1.67375081e+04,  1.67385791e+04,  1.67367642e+04,
+         1.67320610e+04,  1.67244766e+04,  1.67140051e+04,
+         1.67006518e+04,  1.66844199e+04,  1.66653111e+04,
+         1.66433307e+04,  1.66184800e+04,  1.65907626e+04,
+         1.65601875e+04,  1.65267543e+04,  1.64904760e+04,
+         1.64513520e+04,  1.64093916e+04,  1.63646057e+04,
+         1.63169976e+04,  1.62665765e+04,  1.62133515e+04,
+         1.61573317e+04,  1.60985261e+04,  1.60369476e+04,
+         1.59726054e+04,  1.59055076e+04,  1.58356708e+04,
+         1.57631042e+04,  1.56878216e+04]])
+</code></pre>
+<pre><code class="python">
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
+      <script src="../../search/main.js" defer></script>
+
+</body>
+</html>

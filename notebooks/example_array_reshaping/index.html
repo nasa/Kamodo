@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>Example array reshaping - Kamodo Analysis Suite</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Example array reshaping";
+    var mkdocs_page_input_path = "notebooks/example_array_reshaping.ipynb";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> Kamodo Analysis Suite</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../about/">About</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodo/">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Visualization/">Visualization</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Syntax/">Syntax</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodofying_Models/">Kamodofying Models</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../FieldIntegration/">Field Integration</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../kameleon-kamodo/">Kameleon</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../TIEGCM/">TIEGCM</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../CommandLineInterface/">CommandLine</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../additional_resources/">Additional Resources</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">Kamodo Analysis Suite</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Example array reshaping</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <pre><code class="python">import numpy as np
+</code></pre>
+
+<pre><code class="python">x = np.linspace(0., 3., 30)
+y = np.linspace(0., 1., 20)
+z = np.linspace(0., .5, 10)
+xx, yy, zz = np.meshgrid(x,y,z, indexing = 'xy')
+print('x shape = ',x.shape)
+print('xx shape = ',xx.shape)
+</code></pre>
+
+<pre><code>x shape =  (30,)
+xx shape =  (20, 30, 10)
+</code></pre>
+<pre><code class="python">x1 = xx.shape[0]
+x2 = xx.shape[1]
+x3 = xx.shape[2]
+print(x1,x2,x3)
+</code></pre>
+
+<pre><code>20 30 10
+</code></pre>
+<pre><code class="python">xflat = np.reshape(xx,-1)
+print(xflat.shape)
+</code></pre>
+
+<pre><code>(6000,)
+</code></pre>
+<pre><code class="python">newxx = np.reshape(xflat,(x1,x2,x3))
+print(newxx.shape)
+</code></pre>
+
+<pre><code>(20, 30, 10)
+</code></pre>
+<pre><code class="python">(xx==newxx).all()
+</code></pre>
+
+<pre><code>True
+</code></pre>
+<pre><code class="python">
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
+      <script src="../../search/main.js" defer></script>
+
+</body>
+</html>

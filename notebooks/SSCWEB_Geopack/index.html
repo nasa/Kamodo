@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>SSCWEB Geopack - Kamodo Analysis Suite</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "SSCWEB Geopack";
+    var mkdocs_page_input_path = "notebooks/SSCWEB_Geopack.ipynb";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> Kamodo Analysis Suite</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../about/">About</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodo/">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Visualization/">Visualization</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Syntax/">Syntax</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../Kamodofying_Models/">Kamodofying Models</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../FieldIntegration/">Field Integration</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../kameleon-kamodo/">Kameleon</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../TIEGCM/">TIEGCM</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../CommandLineInterface/">CommandLine</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../additional_resources/">Additional Resources</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">Kamodo Analysis Suite</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>SSCWEB Geopack</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h2 id="sscweb-trajectory">SSCWeb trajectory:<a class="headerlink" href="#sscweb-trajectory" title="Permanent link">&para;</a></h2>
+<pre><code class="python">%load_ext autoreload
+%autoreload 2
+</code></pre>
+
+<pre><code>The autoreload extension is already loaded. To reload it, use:
+  %reload_ext autoreload
+</code></pre>
+<pre><code class="python">import numpy as np
+import pandas as pd
+import os
+import scipy
+import scipy.constants as constants
+from scipy import interpolate
+from scipy.interpolate import RegularGridInterpolator
+import math
+import time
+from kamodo import Kamodo, kamodofy
+import kamodo
+from datetime import datetime,timezone,timedelta
+</code></pre>
+
+<pre><code class="python">from readers.sscweb_trajectory import SSCWEB_Trajectory
+</code></pre>
+
+<pre><code class="python">traj=SSCWEB_Trajectory('goes15',(2018,11,20,20,25,0),(2018,11,20,23,59,0))
+</code></pre>
+
+<pre><code>Obtaining trajectory from SSCWeb for goes15
+variable: X unit: km data.size: 71
+variable: Y unit: km data.size: 71
+variable: Z unit: km data.size: 71
+variable: Xvec unit: km data.size: 213
+</code></pre>
+<h2 id="use-geopack-to-perform-coordinate-transformations">Use GEOPACK to perform coordinate transformations<a class="headerlink" href="#use-geopack-to-perform-coordinate-transformations" title="Permanent link">&para;</a></h2>
+<pre><code class="python">from geopack_transform import transform,seconds_from_19700101
+</code></pre>
+
+<pre><code class="python"># GSE are Satellite data obtained via SSCWEB_trajectory are in GSE.
+# GSE is default for coord_in transform()
+# transform entire trajectory to GEO 
+# using a different time stamp for each vertex along the trajectory:
+Xvec_data_GEO=transform(Time=traj.Time,Xvec=traj.variables['Xvec']['data'],coord_out='GEO')
+</code></pre>
+
+<pre><code class="python">Time=traj.Time
+</code></pre>
+
+<pre><code class="python">Xvec=traj.Xvec(traj.Time)
+</code></pre>
+
+<pre><code class="python"># transform a trajectory to GSM
+Xvec_GSM=transform(Xvec=Xvec,Time=Time,coord_in='GSE',coord_out='GSM')
+</code></pre>
+
+<pre><code class="python">Time[0]
+</code></pre>
+
+<pre><code>datetime.datetime(2018, 11, 20, 20, 27, tzinfo=tzutc())
+</code></pre>
+<pre><code class="python">Xvec[0,:]
+</code></pre>
+
+<pre><code>array([39662.3330457 , -1607.46417177, 14154.85507733])
+</code></pre>
+<pre><code class="python">Xvec_GSM[:][0]
+</code></pre>
+
+<pre><code>[39662.333045704676, -479.56823692406124, 14237.76238142179]
+</code></pre>
+<pre><code class="python"># test will show if transformation and reverse transformation result in the same vector
+# the default vector is [0.,0.,1.]
+# this vector is the same in GEO and GEI, which differ only by a rotation around the Z-axis
+# the vector returned after the inverse transformation should differ from 
+# the original only by the numerical roundoff error
+def test_geopack_convert():
+    coords=['GSE','GSM','SM','MAG','GEO','GEI']
+    Time=np.array([datetime(2018,11,20,21,25,0,tzinfo=timezone.utc)])
+
+    print(Time)
+    xyz_in=np.array([[0.,0.,1.]])
+    for coord_in in coords:
+        for coord_out in coords:
+            if coord_in != coord_out:
+                xyz_out=transform(xyz_in,debug=True,Time=Time,coord_in=coord_in,coord_out=coord_out)
+                xyz_in2=transform(xyz_out,Time=Time,coord_in=coord_out,coord_out=coord_in)
+
+                print('in: ',coord_in,' out: ',coord_out)
+                print(xyz_in)  # input position vector
+                print(xyz_out) # position vector in new coordinate system
+                print(xyz_in2) # this should be the original vector
+
+</code></pre>
+
+<pre><code class="python">test_geopack_convert()
+# debug=True shows the first time stamp, seconds from Jan. 1, 1970 00:00 UT
+# and the resulting psi (tilt angle) value from Geopack's recalc().
+# The test will show the input and output coordinate systems,
+# the start position, transformed position and 
+# the position after reversing the transformation,
+# which should be nearly identical to the original position.
+</code></pre>
+
+<pre><code>[datetime.datetime(2018, 11, 20, 21, 25, tzinfo=datetime.timezone.utc)]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSE  out:  GSM
+[[0. 0. 1.]]
+[[0.0, 0.05876639828690128, 0.9982717618125765]]
+[[0.0, 0.0, 1.0000000000000002]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSE  out:  SM
+[[0. 0. 1.]]
+[[0.2855963363092814, 0.05876639828690128, 0.9565465190564969]]
+[[0.0, 6.938893903907228e-18, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSE  out:  MAG
+[[0. 0. 1.]]
+[[0.1579242866530239, -0.24510951953368185, 0.9565465190564969]]
+[[5.551115123125783e-17, -6.938893903907228e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSE  out:  GEO
+[[0. 0. 1.]]
+[[-0.1431364038714405, -0.37108394162844693, 0.9175013232427773]]
+[[-5.551115123125783e-17, -4.85722573273506e-17, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSE  out:  GEI
+[[0. 0. 1.]]
+[[-5.551115123125783e-17, -0.3977327266491315, 0.9175013232427773]]
+[[0.0, 0.0, 1.0000000000000002]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSM  out:  GSE
+[[0. 0. 1.]]
+[[0.0, -0.05876639828690128, 0.9982717618125765]]
+[[0.0, 0.0, 1.0000000000000002]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSM  out:  SM
+[[0. 0. 1.]]
+[[0.2860907693018582, 0.0, 0.958202521244998]]
+[[0.0, 0.0, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSM  out:  MAG
+[[0. 0. 1.]]
+[[-0.10888156841481998, -0.017133714737089238, 0.9939070579681165]]
+[[-0.30670913801540584, -0.10772255063660002, 0.945687769161784]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSM  out:  GEO
+[[0. 0. 1.]]
+[[-0.1795038142396681, -0.32612845667750345, 0.928126397867532]]
+[[0.0, -5.551115123125783e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GSM  out:  GEI
+[[0. 0. 1.]]
+[[-0.05010935007623267, -0.3688772731090614, 0.928126397867532]]
+[[0.0, -5.551115123125783e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  SM  out:  GSE
+[[0. 0. 1.]]
+[[-0.2860907693018582, -0.05631011100299654, 0.9565465190564969]]
+[[5.551115123125783e-17, 0.0, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  SM  out:  GSM
+[[0. 0. 1.]]
+[[-0.2860907693018582, 0.0, 0.958202521244998]]
+[[0.0, 0.0, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  SM  out:  MAG
+[[0. 0. 1.]]
+[[0.0, 0.0, 1.0]]
+[[0.0, 0.0, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  SM  out:  GEO
+[[0. 0. 1.]]
+[[0.047993793846839196, -0.15746062240193084, 0.9863583264437846]]
+[[1.0021924903815286e-17, 2.5883063941063493e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  SM  out:  GEI
+[[0. 0. 1.]]
+[[0.10144519355067624, -0.12963843782027837, 0.9863583264437846]]
+[[-0.05917233610407402, 0.01124564164553289, 0.9981844369574024]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  MAG  out:  GSE
+[[0. 0. 1.]]
+[[-0.2860907693018582, -0.056310111002996564, 0.9565465190564969]]
+[[0.0, -2.7755575615628914e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  MAG  out:  GSM
+[[0. 0. 1.]]
+[[-0.2860907693018582, -2.7755575615628914e-17, 0.958202521244998]]
+[[-0.18660429140314866, -0.29007874242424, 0.9386336674248906]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  MAG  out:  SM
+[[0. 0. 1.]]
+[[0.0, 0.0, 1.0]]
+[[0.0, 0.0, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  MAG  out:  GEO
+[[0. 0. 1.]]
+[[0.047993793846839196, -0.15746062240193084, 0.9863583264437846]]
+[[2.7755575615628914e-17, 0.0, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  MAG  out:  GEI
+[[0. 0. 1.]]
+[[0.10144519355067624, -0.12963843782027837, 0.9863583264437846]]
+[[0.0479937938468392, -0.15746062240193084, 0.9863583264437846]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEO  out:  GSE
+[[0. 0. 1.]]
+[[-0.3391415675865605, -0.20778430879804946, 0.9175013232427773]]
+[[-5.551115123125783e-17, 5.551115123125783e-17, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEO  out:  GSM
+[[0. 0. 1.]]
+[[-0.3391415675865605, -0.15350695983039325, 0.928126397867532]]
+[[-2.7755575615628914e-17, 5.551115123125783e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEO  out:  SM
+[[0. 0. 1.]]
+[[-0.05943790994513839, -0.15350695983039322, 0.9863583264437846]]
+[[0.0, -2.7755575615628914e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEO  out:  MAG
+[[0. 0. 1.]]
+[[-0.16461242922396943, 0.0, 0.9863583264437846]]
+[[-6.938893903907228e-18, 0.0, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEO  out:  GEI
+[[0. 0. 1.]]
+[[0.0, 0.0, 1.0]]
+[[0.0, 0.0, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEI  out:  GSE
+[[0. 0. 1.]]
+[[-0.3391415675865605, -0.20778430879804946, 0.9175013232427773]]
+[[-7.176920945309953e-17, 3.1814405487393336e-17, 1.0]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEI  out:  GSM
+[[0. 0. 1.]]
+[[-0.3391415675865605, -0.15350695983039325, 0.928126397867532]]
+[[-4.587330571797632e-17, 4.180310647881988e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEI  out:  SM
+[[0. 0. 1.]]
+[[-0.05943790994513839, -0.15350695983039322, 0.9863583264437846]]
+[[9.98870099142655e-18, -2.5895903735123218e-17, 0.9999999999999999]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEI  out:  MAG
+[[0. 0. 1.]]
+[[0.0, 0.0, 1.0]]
+[[0.10144519355067624, -0.12963843782027837, 0.9863583264437846]]
+2018-11-20 21:25:00+00:00
+1542749100.0
+psi= -0.2901445844736547
+in:  GEI  out:  GEO
+[[0. 0. 1.]]
+[[0.0, 0.0, 1.0]]
+[[0.0, 0.0, 1.0]]
+</code></pre>
+<pre><code class="python">
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '../..';</script>
+    <script src="../../js/theme.js" defer></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
+      <script src="../../search/main.js" defer></script>
+
+</body>
+</html>
