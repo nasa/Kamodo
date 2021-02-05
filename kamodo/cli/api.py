@@ -62,6 +62,7 @@ def get_api(app):
     api = Api(app)
     return api
 
+user_models = {}
 
 def main():
     """main entrypoint"""
@@ -168,6 +169,19 @@ def main():
     @app.route('/')
     def index():
         return 'Hello Flask app'
+
+    @app.route('/hello/')
+    def howdy():
+        return json.dumps(user_models)
+
+    @app.route('/hello/<model_name>')
+    @app.route('/hello/<model_name>/')
+    def hello(model_name=None):
+        if model_name in user_models:
+            json.dumps(user_models[model_name])
+        else:
+            user_models[model_name] = {'user_model': model_name}
+        return json.dumps({'model_name':model_name})
 
     try:
         app.run(host=cfg.flask.host, port=cfg.flask.port)
