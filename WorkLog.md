@@ -1,3 +1,5 @@
+# 2021-02-05 13:38:41.602116: clock-out
+
 * prototyping user-defined kamodo objects
 * added default forwarding for expressions
 
