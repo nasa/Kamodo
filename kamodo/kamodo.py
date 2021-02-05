@@ -62,6 +62,7 @@ import re
 import urllib.request, json
 import requests
 from .util import serialize, deserialize
+from .util import sign_defaults
 import forge
 
 
@@ -430,17 +431,6 @@ class Kamodo(UserDict):
     def validate_function(self, lhs_expr, rhs_expr):
         assert lhs_expr.free_symbols == rhs_expr.free_symbols
 
-    # def get_composition(self, lhs_expr, rhs_expr):
-    #     composition = dict()
-    #     for k in list(self.keys()):
-    #         if len(rhs_expr.find(k)) > 0:
-    #             if self.verbose:
-    #                 print('composition detected: found {} in {} = {}'.format(k, lhs_expr, rhs_expr))
-    #             composition[str(k)] = self[k]
-    #         else:
-    #             if self.verbose:
-    #                 print('{} {} not in {} = {}'.format(k, type(k), lhs_expr, rhs_expr))
-    #     return composition
 
     def vectorize_function(self, symbol, rhs_expr, composition):
         try:
@@ -454,7 +444,9 @@ class Kamodo(UserDict):
                     symbol.args, rhs_expr))
                 for k, v in composition.items():
                     print('\t', k, v)
-        return func
+        signature = sign_defaults(symbol, rhs_expr, composition)
+        return signature(func)
+
 
     def update_unit_registry(self, func, arg_units):
         """Inserts unit functions into registry"""
@@ -478,14 +470,7 @@ class Kamodo(UserDict):
         unit_str = units
         if self.verbose:
             print('unit str {}'.format(unit_str))
-        # else:
-        #     if self.verbose:
-        #         print('getting abbreviation for', units)
-        #     unit_abbrev = get_abbrev(units)
-        #     if unit_abbrev is not None:
-        #         unit_str = str(unit_abbrev)
-        #     else:
-        #         unit_str = None
+
         self.signatures[str(type(symbol))] = dict(
             symbol=symbol,
             units=unit_str,
@@ -548,48 +533,6 @@ class Kamodo(UserDict):
         super(Kamodo, self).__setitem__(type(lhs_symbol), self[lhs_symbol])  # assign key 'f'
         self.register_symbol(lhs_symbol)
 
-    # def check_consistency(self, input_expr, units):
-    #     # check that rhs units are consistent
-    #     rhs_expr = self.parse_value(input_expr, self.symbol_registry)
-    #     units_map = self.get_units_map()
-    #     lhs_units = get_unit(units)
-    #     rhs_units = validate_units(rhs_expr, units_map, self.verbose)
-    #     if self.verbose:
-    #         print('rhs_units: {}'.format(rhs_units))
-    #     try:
-    #         lhs_units, rhs_units = match_dimensionless_units(lhs_units, rhs_units)
-    #         check_unit_compatibility(rhs_units, lhs_units)
-    #     except:
-    #         print(type(rhs_units))
-    #         print(get_unit(units), validate_units(rhs_expr, units_map, self.verbose))
-    #         raise
-
-    #     rhs_expr_with_units = get_expr_with_units(rhs_expr, units_map)
-
-    #     if self.verbose:
-    #         print('rhs_expr with units:', rhs_expr_with_units)
-
-    #     # convert back to expression without units for lambdify
-    #     if units != '':
-    #         try:
-    #             if self.verbose:
-    #                 print('converting to {}'.format(lhs_units))
-    #                 for k, v in list(units_map.items()):
-    #                     print('\t', k, v, type(k))
-    #             rhs_expr = get_expr_without_units(
-    #                 rhs_expr_with_units,
-    #                 lhs_units,
-    #                 units_map,
-    #                 dimensionless=is_dimensionless(rhs_units))
-    #             if self.verbose:
-    #                 print('rhs_expr without units:', rhs_expr)
-    #         except:
-    #             print('error with units? [{}]'.format(units))
-    #             raise
-    #     else:
-    #         if lhs_units != Dimension(1):  # lhs_units were obtained from rhs_units
-    #             units = str(lhs_units)
-    #     return units, rhs_expr
 
     def __setitem__(self, sym_name, input_expr):
         """Assigns a function or expression to a new symbol,
@@ -600,20 +543,6 @@ class Kamodo(UserDict):
             sym_name = str(sym_name)
 
         symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
-
-        # if self.verbose:
-        #     print('')
-        # try:
-        #     symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
-        # except KeyError as error:
-        #     if self.verbose:
-        #         print('could not use parse_key with {}'.format(sym_name))
-        #         print(error)
-        #     found_sym_name = str(error).split('found')[0].strip("'").strip(' ')
-        #     if self.verbose:
-        #         print('__setitem__: replacing {}'.format(found_sym_name))
-        #     self.remove_symbol(found_sym_name)
-        #     symbol, args, lhs_units, lhs_expr = self.parse_key(sym_name)
 
         if hasattr(input_expr, '__call__'):
             self.register_function(input_expr, symbol, lhs_expr, lhs_units)
@@ -656,11 +585,7 @@ class Kamodo(UserDict):
                 if self.verbose:
                     print('unit registry update returned', sym_name, self.unit_registry.get(symbol))
             else:
-                # if symbol in self.unit_registry:
-                #     units = get_expr_unit(symbol, self.unit_registry)
-                #     if self.verbose:
-                #         print('{} has units {}'.format(sym_name, units))
-                # else:
+
                 if self.verbose:
                     print(sym_name,
                           symbol,
@@ -669,8 +594,6 @@ class Kamodo(UserDict):
                 expr_unit = get_expr_unit(rhs_expr, self.unit_registry, self.verbose)
                 arg_units = get_arg_units(rhs_expr, self.unit_registry)
 
-                # if expr_unit == Dimension(1):
-                #     expr_unit = None
 
                 if self.verbose:
                     print('registering {} with {} {}'.format(symbol, expr_unit, arg_units))
@@ -679,11 +602,6 @@ class Kamodo(UserDict):
                     self.unit_registry[symbol] = symbol.subs(arg_units)
                     self.unit_registry[symbol.subs(arg_units)] = expr_unit
 
-                # if is_function(expr_unit):
-                #     self.unit_registry[expr_unit] = get_expr_unit(
-                #         expr_unit,
-                #         self.unit_registry,
-                #         self.verbose)
 
                 if expr_unit is not None:
                     expr_dimensions = get_dimensions(expr_unit)
@@ -736,19 +654,9 @@ class Kamodo(UserDict):
 
             rhs_args = rhs_expr.free_symbols
 
-            # try:
             symbol = self.check_or_replace_symbol(symbol, rhs_args, rhs_expr)
             self.validate_function(symbol, rhs_expr)
-            # except:
-            #     if self.verbose:
-            #         print('\n Error in __setitem__', input_expr)
-            #         print(symbol, lhs_expr, rhs_args)
-            #         print('symbol registry:', self.symbol_registry)
-            #         print('signatures:', self.signatures)
-            #         print('unit registry:', self.unit_registry)
-            #     raise
 
-            # composition = self.get_composition(lhs_expr, rhs_expr)
             composition = {str(k_): self[k_] for k_ in self}
             arg_units = {}
             if symbol in self.unit_registry:
@@ -766,7 +674,6 @@ class Kamodo(UserDict):
             super(Kamodo, self).__setitem__(symbol, func)
             super(Kamodo, self).__setitem__(type(symbol), self[symbol])
             self.register_symbol(symbol)
-            # self[symbol].meta = dict(units=units)
 
 
     def __getitem__(self, key):

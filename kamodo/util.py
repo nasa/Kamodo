@@ -989,3 +989,33 @@ def dump(*args, **kwargs):
 def dumps(*args, **kwargs):
     kwargs['default'] = serialize
     return json.dumps(*args, **kwargs)
+
+def get_undefined_funcs(expr):
+    """retrieve an expression's undefined functions"""
+    return expr.atoms(sympy.function.AppliedUndef)
+
+def sign_defaults(symbol, expr, composition):
+    '''gets defaults from an expression using composition'''
+    defaults={}
+    for f_ in get_undefined_funcs(expr):
+        # includes {h(f(g)), f(g)}
+        if str(f_) in composition:
+            # ignores h(f(g))
+            f_defaults = get_defaults(composition[str(f_)])
+            # flatten defaults
+            for arg, arg_default in f_defaults.items():
+                defaults[arg] = arg_default
+
+    arg_signatures = []
+    # defaults have to go last, which may conflict with user's ordering
+    for arg in symbol.args:
+        str_arg = str(arg)
+        if str_arg in defaults:
+            arg_default=defaults[str(arg)]
+            arg_signatures.append(forge.arg(str_arg, default=arg_default))
+        else:
+            arg_signatures.append(forge.arg(str_arg))
+
+    # will raise an error if defaults are not last
+    signature = forge.sign(*arg_signatures)
+    return signature

@@ -1,3 +1,4 @@
+* added default forwarding for expressions
 
 # 2021-02-05 11:10:12.407904: clock-in
 

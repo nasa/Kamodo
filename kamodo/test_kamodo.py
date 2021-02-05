@@ -727,3 +727,14 @@ def test_kamodo_inline_merge():
     ns = {'k1':k1, 'k2': k2}
     k3 = Kamodo(myf = sympify('k1.f(x) + k2.g(y)', locals=ns))
     assert k3.myf(x=3, y=4) == 3**2 + 4 - 1
+
+def test_default_forwarding():
+    x = np.linspace(-5,5,12)
+    
+    def f(x=x):
+        return x**2
+    
+    k = Kamodo(f=f)
+    k['g'] = 'f+2'
+    assert len(k.g()) == 12
+    
