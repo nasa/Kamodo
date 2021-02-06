@@ -13,6 +13,7 @@ import flask
 from flask import Flask, render_template, jsonify
 from flask_cors import CORS, cross_origin
 from flask_restful import reqparse, abort, Api, Resource
+from flask import request
 
 from io import StringIO
 import json
@@ -170,24 +171,31 @@ def main():
     def index():
         return 'Hello Flask app'
 
-    @app.route('/hello/')
+    @app.route('/kamodo/')
     def howdy():
         return json.dumps(user_models)
 
-    @app.route('/hello/<model_name>')
-    @app.route('/hello/<model_name>/')
-    def hello(model_name=None):
+    @app.route('/kamodo/<model_name>', methods=['POST', 'GET'])
+    @app.route('/kamodo/<model_name>/', methods=['POST', 'GET'])
+    def kamodo_model(model_name=None):
         if model_name in user_models:
-            json.dumps(user_models[model_name])
+            k = user_models[model_name]
         else:
-            user_models[model_name] = {'user_model': model_name}
-        return json.dumps({'model_name':model_name})
+            k = Kamodo()
+            user_models[model_name] = k
+        if request.method == 'POST':
+            func_key = request.form['sig']
+            func_expr = request.form['expr']
+            k[func_key] = func_expr
+        return json.dumps(k.to_latex())
+
 
     try:
         app.run(host=cfg.flask.host, port=cfg.flask.port)
     except OSError as m:
         print('cannot start with configuration', cfg.flask)
         raise
+
 
 
 
