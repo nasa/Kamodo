@@ -1,3 +1,6 @@
+
+# 2021-02-06 11:01:27.615022: clock-in
+
 # 2021-02-05 13:38:41.602116: clock-out
 
 * prototyping user-defined kamodo objects
