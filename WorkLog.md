@@ -1,3 +1,9 @@
+* user model endpoints
+
+## user models
+- `/kamodo/usermodelA/api`
+- `/api/servermodelA`
+- `/api/servermodelB`
 
 # 2021-02-08 11:45:28.857313: clock-in
 

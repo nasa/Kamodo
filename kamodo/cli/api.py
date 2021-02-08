@@ -63,6 +63,11 @@ def get_api(app):
     api = Api(app)
     return api
 
+# models registered at startup
+global_models = {}
+
+# models registered by users
+# these provide access to global models
 user_models = {}
 
 def main():
@@ -98,12 +103,11 @@ def main():
         app.logger.info(cfg.pretty())
 
 
-    models = dict()
     for model_name, model_conf in cfg.models.items():
         try:
             # this might fail
             model_ = hydra.utils.instantiate(model_conf)
-            models[model_name] = model_
+            global_models[model_name] = model_
         except Exception as m:
             print(m)
             if cfg.verbose:
@@ -113,6 +117,58 @@ def main():
     api = Api(app)
 
 
+    api.add_resource(get_models_resource(global_models), '/api', '/api/')
+
+
+    for model_name, model_ in global_models.items():
+        api.add_resource(
+            get_model_resource(model_name, model_),
+            '/api/{}'.format(model_name),
+            '/api/{}/'.format(model_name),
+            endpoint=model_name)
+
+        register_endpoints(api, model_name, model_, '/api')
+
+
+    @app.route('/')
+    def index():
+        return 'Hello Flask app'
+
+    @app.route('/kamodo/')
+    def howdy():
+        return json.dumps(user_models)
+
+    @app.route('/kamodo/<user_model>', methods=['POST', 'GET'])
+    @app.route('/kamodo/<user_model>/', methods=['POST', 'GET'])
+    def kamodo_model(user_model=None):
+        if user_model in user_models:
+            k = user_models[user_model]
+        else:
+            k = Kamodo(f = lambda x=np.linspace(-5, 5, 25): x**2)
+            user_models[user_model] = k
+            api.add_resource(
+                get_model_resource(user_model, model_),
+                '/kamodo/{}/api'.format(user_model),
+                '/kamodo/{}/api/'.format(user_model),
+                endpoint=user_model)
+            register_endpoints(api, user_model, k, base_name='/kamodo/{}/api/'.format(user_model))
+        if request.method == 'POST':
+            func_key = request.form['signature']
+            func_expr = request.form['expr']
+            k[func_key] = func_expr
+            # register the function
+
+        return json.dumps(k.to_latex())
+
+
+    try:
+        app.run(host=cfg.flask.host, port=cfg.flask.port)
+    except OSError as m:
+        print('cannot start with configuration', cfg.flask)
+        raise
+
+def get_models_resource(models):
+    '''registers signatures of multiple models'''
     class Models(Resource):
         def get(self):
             details = dict()
@@ -125,77 +181,38 @@ def main():
                     orient='index',
                     )
             return details
+    return Models
 
-    api.add_resource(Models, '/api', '/api/')
+def register_endpoints(api, model_name, model_, base_name='/api'):
+    for var_symbol in model_:
+        if type(var_symbol) != UndefinedFunction:
+            var_label = str(type(var_symbol))
+            # /api/mymodel/myfunc
+            api.add_resource(
+                get_func_resource(model_name, model_, var_symbol),
+                '{}/{}/{}'.format(base_name, model_name, var_label),
+                endpoint='/'.join([model_name, var_label]))
+            # /api/mymodel/myfunc/defaults
+            api.add_resource(
+                get_defaults_resource(model_name, model_, var_symbol),
+                '{}/{}/{}/{}'.format(base_name, model_name, var_label, 'defaults'),
+                endpoint='/'.join([model_name, var_label, 'defaults']))
+            # /api/mymodel/myfunc/data
+            api.add_resource(
+                get_data_resource(model_name, model_, var_symbol),
+                '{}/{}/{}/{}'.format(base_name, model_name, var_label, 'data'),
+                endpoint='/'.join([model_name, var_label, 'data']))
+            # /api/mymodel/myfunc/plot
+            api.add_resource(
+                get_func_plot_resource(model_, var_symbol),
+                '{}/{}/{}/{}'.format(base_name, model_name, var_label, 'plot'),
+                endpoint='/'.join([model_name, var_label, 'plot']))
 
-
-    for model_name, model_ in models.items():
-        api.add_resource(
-            get_model_resource(model_name, model_),
-            '/api/{}'.format(model_name),
-            '/api/{}/'.format(model_name),
-            endpoint=model_name)
-
-        for var_symbol in model_:
-            if type(var_symbol) != UndefinedFunction:
-                var_label = str(type(var_symbol))
-                # /api/mymodel/myfunc
-                api.add_resource(
-                    get_func_resource(model_name, model_, var_symbol),
-                    '/api/{}/{}'.format(model_name, var_label),
-                    endpoint='/'.join([model_name, var_label]))
-                # /api/mymodel/myfunc/defaults
-                api.add_resource(
-                    get_defaults_resource(model_name, model_, var_symbol),
-                    '/api/{}/{}/{}'.format(model_name, var_label, 'defaults'),
-                    endpoint='/'.join([model_name, var_label, 'defaults']))
-                # /api/mymodel/myfunc/data
-                api.add_resource(
-                    get_data_resource(model_name, model_, var_symbol),
-                    '/api/{}/{}/{}'.format(model_name, var_label, 'data'),
-                    endpoint='/'.join([model_name, var_label, 'data']))
-                # /api/mymodel/myfunc/plot
-                api.add_resource(
-                    get_func_plot_resource(model_, var_symbol),
-                    '/api/{}/{}/{}'.format(model_name, var_label, 'plot'),
-                    endpoint='/'.join([model_name, var_label, 'plot']))
-
-        api.add_resource(
-            get_evaluate_resource(model_name, model_),
-            '/api/{}/evaluate'.format(model_name),
-            endpoint='/'.join([model_name, 'evaluate'])
-            )
-
-
-    @app.route('/')
-    def index():
-        return 'Hello Flask app'
-
-    @app.route('/kamodo/')
-    def howdy():
-        return json.dumps(user_models)
-
-    @app.route('/kamodo/<model_name>', methods=['POST', 'GET'])
-    @app.route('/kamodo/<model_name>/', methods=['POST', 'GET'])
-    def kamodo_model(model_name=None):
-        if model_name in user_models:
-            k = user_models[model_name]
-        else:
-            k = Kamodo()
-            user_models[model_name] = k
-        if request.method == 'POST':
-            func_key = request.form['sig']
-            func_expr = request.form['expr']
-            k[func_key] = func_expr
-        return json.dumps(k.to_latex())
-
-
-    try:
-        app.run(host=cfg.flask.host, port=cfg.flask.port)
-    except OSError as m:
-        print('cannot start with configuration', cfg.flask)
-        raise
-
+    api.add_resource(
+        get_evaluate_resource(model_name, model_),
+        '{}/{}/evaluate'.format(base_name, model_name),
+        endpoint='/'.join([model_name, 'evaluate'])
+        )
 
 
 
