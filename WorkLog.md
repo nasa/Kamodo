@@ -1,3 +1,5 @@
+# 2021-02-08 15:36:06.082620: clock-out
+
 * registering custom fields
 * need to deserialize as numpy arrays in combination with object_hook
 
