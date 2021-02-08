@@ -1,3 +1,6 @@
+
+# 2021-02-08 13:07:56.346344: clock-in
+
 # 2021-02-08 12:05:21.062862: clock-out
 
 * user model endpoints
