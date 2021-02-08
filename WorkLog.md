@@ -1,3 +1,6 @@
+
+# 2021-02-08 10:11:35.338486: clock-in
+
 # 2021-02-06 11:37:06.027891: clock-out
 
 * testing post method for user-defined expression
