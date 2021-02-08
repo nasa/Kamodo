@@ -1,4 +1,10 @@
-* developer meeting
+* registering custom fields
+* need to deserialize as numpy arrays in combination with object_hook
+
+## developer meeting
+* emmpy - empirical modeling in python (tsygenenko, etc)
+* pypluto
+* ccmc docs have been updated
 
 # 2021-02-08 13:07:56.346344: clock-in
 
