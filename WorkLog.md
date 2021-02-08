@@ -1,3 +1,6 @@
+
+# 2021-02-08 17:24:04.082408: clock-in
+
 # 2021-02-08 15:36:06.082620: clock-out
 
 * registering custom fields
