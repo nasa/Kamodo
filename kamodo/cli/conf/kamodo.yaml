@@ -7,6 +7,7 @@ models:
     evaluate: {}
     plot: {}
     fig_layout: {}
+user_model: ${models.mymodel}
 
 config_override: kamodo.yaml
 

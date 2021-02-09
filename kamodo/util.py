@@ -909,12 +909,12 @@ def serialize(obj):
 
     if isinstance(obj, types.GeneratorType):
         return {'__lambdagen__': [{
-            'params':{k:serialize(v) for k,v in get_defaults(func).items()},
+            'params':{k:serialize(v) for k, v in get_defaults(func).items()},
             'result':serialize(func())} for func in obj]}
-        
+
     if isinstance(obj, int):
         return obj
-    
+
     # Let the base class default method raise the TypeError
     raise TypeError('Unable to serialise object of type {}'.format(type(obj)))
 
@@ -968,6 +968,7 @@ def deserialize(obj):
             return complex(obj['__complex__'])
         if '__lambdagen__' in obj:
             return lambdagen(obj)
+
     return obj
 
 # over-write the load(s)/dump(s) functions

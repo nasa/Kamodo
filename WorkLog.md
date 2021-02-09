@@ -1,3 +1,10 @@
+* added user user model endpoints
+how do we determine default user model?
+
+got user endpoints working
+* user models: `kamodo/api/usermodel`
+* global models: `/api/modelA`
+
 
 # 2021-02-08 17:24:04.082408: clock-in
 

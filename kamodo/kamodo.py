@@ -1018,7 +1018,13 @@ class KamodoAPI(Kamodo):
                 units=v['units'])
 
     def _get(self, url_path):
-        result = requests.get(url_path).json() # returns a dictionary maybe
+        req_result = requests.get(url_path)
+        try:
+            result = req_result.json() # returns a dictionary maybe
+        except json.JSONDecodeError as m:
+            print('could not decode request {}'.format(req_result.text))
+            raise json.JSONDecodeError(m)
+
         if isinstance(result, str):
             result_dict = json.loads(result, object_hook=deserialize)
         else:

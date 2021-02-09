@@ -31,6 +31,10 @@ except:
 
 from kamodo.util import NumpyArrayEncoder
 
+from collections import defaultdict
+from kamodo import from_kamodo
+
+
 import logging
 # log = logging.getLogger('werkzeug')
 # log.setLevel(logging.ERROR)
@@ -66,8 +70,7 @@ def get_api(app):
 # models registered at startup
 global_models = {}
 
-# models registered by users
-# these provide access to global models
+# models registered by users, providing access to global models
 user_models = {}
 
 def main():
@@ -117,48 +120,39 @@ def main():
     api = Api(app)
 
 
-    api.add_resource(get_models_resource(global_models), '/api', '/api/')
+    api.add_resource(get_global_models_resource(), '/api', '/api/')
 
 
     for model_name, model_ in global_models.items():
-        api.add_resource(
-            get_model_resource(model_name, model_),
-            '/api/{}'.format(model_name),
-            '/api/{}/'.format(model_name),
-            endpoint=model_name)
-
         register_endpoints(api, model_name, model_, '/api')
 
+    # use the last model as default
+    global user_models
+    user_model_default = hydra.utils.instantiate(cfg.user_model)
+    user_models = defaultdict(lambda: from_kamodo(user_model_default))
 
-    @app.route('/')
-    def index():
-        return 'Hello Flask app'
+    api.add_resource(get_user_models_resource(), '/kamodo/api', '/kamodo/api/')
 
-    @app.route('/kamodo/')
-    def howdy():
-        return json.dumps(user_models)
-
-    @app.route('/kamodo/<user_model>', methods=['POST', 'GET'])
-    @app.route('/kamodo/<user_model>/', methods=['POST', 'GET'])
+    @app.route('/kamodo/api/<user_model>', methods=['POST', 'GET'])
+    @app.route('/kamodo/api/<user_model>/', methods=['POST', 'GET'])
     def kamodo_model(user_model=None):
         if user_model in user_models:
-            k = user_models[user_model]
+            k = user_models[user_model] # retrieve model
         else:
-            k = Kamodo(f = lambda x=np.linspace(-5, 5, 25): x**2)
-            user_models[user_model] = k
-            api.add_resource(
-                get_model_resource(user_model, model_),
-                '/kamodo/{}/api'.format(user_model),
-                '/kamodo/{}/api/'.format(user_model),
-                endpoint=user_model)
-            register_endpoints(api, user_model, k, base_name='/kamodo/{}/api/'.format(user_model))
+            k = user_models[user_model] # register user_model and retrieve
+            register_endpoints(
+                api,
+                user_model,
+                k,
+                base_name='/kamodo/api',
+                register_base = False)
         if request.method == 'POST':
             func_key = request.form['signature']
             func_expr = request.form['expr']
             k[func_key] = func_expr
             # register the function
 
-        return json.dumps(k.to_latex())
+        return get_model_details(k)
 
 
     try:
@@ -167,50 +161,92 @@ def main():
         print('cannot start with configuration', cfg.flask)
         raise
 
-def get_models_resource(models):
-    '''registers signatures of multiple models'''
-    class Models(Resource):
-        def get(self):
-            details = dict()
-            for model_name, model_ in models.items():
-                detail = model_.detail().astype(str)
-                app.logger.info(detail)
-                details[model_name] = detail.to_dict(
+def get_model_details(model):
+    detail = model.detail().astype(str)
+    return detail.to_dict(
                     # default_handler=str,
                     # indent =4,
                     orient='index',
                     )
-            return details
-    return Models
 
-def register_endpoints(api, model_name, model_, base_name='/api'):
+def get_global_models_resource():
+    '''registers signatures of multiple models'''
+    class GlobalModels(Resource):
+        def get(self):
+            details = dict()
+            for model_name, model_ in global_models.items():
+                details[model_name] = get_model_details(model_)
+            return details
+    return GlobalModels
+
+def get_user_models_resource():
+    '''registers signatures of multiple models'''
+    class UserModels(Resource):
+        def get(self):
+            details = dict()
+            for model_name, model_ in user_models.items():
+                details[model_name] = get_model_details(model_)
+            return details
+    return UserModels
+
+def register_endpoints(api, model_name, model_, base_name, register_base=True):
+    print('registering endpoints for {}/{}'.format(base_name, model_name))
+    logging.info('registering endpoints for {}/{}'.format(base_name, model_name))
+
+    if register_base:
+        model_resource_endpoint = '{}/{}'.format(base_name, model_name)
+        print('registering ' + model_resource_endpoint)
+        api.add_resource(
+            get_model_resource(model_name, model_),
+            model_resource_endpoint,
+            model_resource_endpoint + '/',
+            endpoint=model_name)
+
     for var_symbol in model_:
         if type(var_symbol) != UndefinedFunction:
             var_label = str(type(var_symbol))
+
             # /api/mymodel/myfunc
+            func_resource_endpoint = '{}/{}/{}'.format(base_name, model_name, var_label)
+            print('registering ' + func_resource_endpoint)
             api.add_resource(
                 get_func_resource(model_name, model_, var_symbol),
-                '{}/{}/{}'.format(base_name, model_name, var_label),
+                func_resource_endpoint,
                 endpoint='/'.join([model_name, var_label]))
+
             # /api/mymodel/myfunc/defaults
+            defaults_resource_endpoint = '{}/{}/{}/{}'.format(
+                base_name, model_name, var_label, 'defaults')
+            print('registering ' + defaults_resource_endpoint)
             api.add_resource(
                 get_defaults_resource(model_name, model_, var_symbol),
-                '{}/{}/{}/{}'.format(base_name, model_name, var_label, 'defaults'),
+                defaults_resource_endpoint,
                 endpoint='/'.join([model_name, var_label, 'defaults']))
+
             # /api/mymodel/myfunc/data
+            data_resource_endpoint = '{}/{}/{}/{}'.format(
+                base_name, model_name, var_label, 'data')
+            print('registering ' + data_resource_endpoint)
             api.add_resource(
                 get_data_resource(model_name, model_, var_symbol),
-                '{}/{}/{}/{}'.format(base_name, model_name, var_label, 'data'),
+                data_resource_endpoint,
                 endpoint='/'.join([model_name, var_label, 'data']))
+
             # /api/mymodel/myfunc/plot
+            func_plot_resource_endpoint = '{}/{}/{}/{}'.format(
+                base_name, model_name, var_label, 'plot')
+            print('registering ' + func_plot_resource_endpoint)
             api.add_resource(
                 get_func_plot_resource(model_, var_symbol),
-                '{}/{}/{}/{}'.format(base_name, model_name, var_label, 'plot'),
+                func_plot_resource_endpoint,
                 endpoint='/'.join([model_name, var_label, 'plot']))
 
+    # /api/mymodel/evaluate
+    evaluate_resource_endpoint = '{}/{}/evaluate'.format(base_name, model_name)
+    print('registering ' + evaluate_resource_endpoint)
     api.add_resource(
         get_evaluate_resource(model_name, model_),
-        '{}/{}/evaluate'.format(base_name, model_name),
+        evaluate_resource_endpoint,
         endpoint='/'.join([model_name, 'evaluate'])
         )
 
@@ -251,6 +287,12 @@ def get_func_resource(model_name, model, var_symbol):
                 args[argname] = json.loads(val_, object_hook=deserialize)
                 if isinstance(args[argname], str):
                     args[argname] = json.loads(val_, object_hook=deserialize)
+                if isinstance(args[argname], list):
+                    args[argname] = np.array(args[argname])
+            print('{} {} passed {}'.format(
+                model_name,
+                var_symbol,
+                ' '.join(['{}:{}'.format(arg, type(arg_value)) for arg, arg_value in args.items()])))
             result = func(**args)
             print('{} {} function returned {}'.format(
                 model_name, var_symbol, type(result)))
