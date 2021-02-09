@@ -15,6 +15,10 @@ RUN pip install antlr4-python3-runtime
 
 # Install latest kamodo
 ADD . /kamodo
+
+# need to pin this version for api
+RUN pip install sympy==1.5.1
+
 # RUN git clone https://github.com/asherp/kamodo.git
 RUN pip install -e kamodo
 
