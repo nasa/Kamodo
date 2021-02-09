@@ -1,3 +1,6 @@
+# 2021-02-09 10:40:48.036338: clock-out
+
+* need to include in `POST` method the ability to reference global models
 * including user_model in kamodo.yaml, added delete method
 
 # 2021-02-09 09:38:01.649942: clock-in
