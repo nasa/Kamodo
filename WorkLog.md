@@ -1,3 +1,5 @@
+# 2021-02-09 13:05:10.883744: clock-out
+
 * allowing function defaults with null args
 * `flask.jsonify` should be used when returning from custom `get` methods
 
