@@ -133,26 +133,103 @@ def main():
 
     api.add_resource(get_user_models_resource(), '/kamodo/api', '/kamodo/api/')
 
-    @app.route('/kamodo/api/<user_model>', methods=['POST', 'GET'])
-    @app.route('/kamodo/api/<user_model>/', methods=['POST', 'GET'])
-    def kamodo_model(user_model=None):
-        if user_model in user_models:
-            k = user_models[user_model] # retrieve model
-        else:
-            k = user_models[user_model] # register user_model and retrieve
-            register_endpoints(
-                api,
-                user_model,
-                k,
-                base_name='/kamodo/api',
-                register_base = False)
+
+    @app.route('/kamodo/api/<user_model_name>', methods=['GET', 'POST'])
+    @app.route('/kamodo/api/<user_model_name>/', methods=['GET', 'POST'])
+    @app.route('/kamodo/api/<user_model_name>/<user_func>', methods=['GET', 'POST'])
+    def kamodo_model_func(user_model_name, user_func=None):
+        user_model = user_models[user_model_name]
+        print(user_model_name, user_func)
+        print(user_model)
+
         if request.method == 'POST':
             func_key = request.form['signature']
-            func_expr = request.form['expr']
-            k[func_key] = func_expr
-            # register the function
+            func_expr = request.form['expression']
+            if func_key in user_model:
+                del user_model[func_key]
+            user_model[func_key] = func_expr
+        
+        if user_func is not None:
+            parser = reqparse.RequestParser()
+            if request.method == 'GET':
+                func = user_model[user_func]
+                defaults = get_defaults(func)
+                for arg in getfullargspec(func).args:
+                    if arg in defaults:
+                        parser.add_argument(arg, type=str)
+                    else:
+                        parser.add_argument(arg, type=str, required=True)
 
-        return get_model_details(k)
+                args_ = parser.parse_args(strict=True)
+                args = dict()
+
+                for argname, val_ in args_.items():
+                    args[argname] = json.loads(val_, object_hook=deserialize)
+                    if isinstance(args[argname], str):
+                        args[argname] = json.loads(val_, object_hook=deserialize)
+                    if isinstance(args[argname], list):
+                        args[argname] = np.array(args[argname])
+                print('{} {} passed {}'.format(
+                    model_name,
+                    user_func,
+                    ' '.join(['{}:{}'.format(arg, type(arg_value)) for arg, arg_value in args.items()])))
+                result = func(**args)
+                print('{} {} function returned {}'.format(
+                    model_name, user_func, type(result)))
+                return serialize(result)
+
+        return get_model_details(user_model)
+        # return dict(user_func = user_func, user_model_name = user_model_name)
+
+    @app.route('/kamodo/api/<user_model_name>/<user_func>/defaults', methods=['GET'])
+    @app.route('/kamodo/api/<user_model_name>/<user_func>/defaults/', methods=['GET'])
+    def kamodo_model_func_defaults(user_model_name, user_func):
+        user_model = user_models[user_model_name]
+        user_func = user_model[user_func]
+        function_defaults = get_defaults(user_func)
+        try:
+            function_defaults_ = json.dumps(function_defaults, default=serialize)
+        except:
+            print('problem with {}.{}'.format(model_name, user_func))
+            raise
+        return jsonify(function_defaults_)
+
+    @app.route('/kamodo/api/<user_model_name>/<user_func>/data', methods=['GET'])
+    @app.route('/kamodo/api/<user_model_name>/<user_func>/data/', methods=['GET'])
+    def kamodo_model_func_data(user_model_name, user_func):
+        user_model = user_models[user_model_name]
+        func = user_model[user_func]
+        # assume function is kamodofied
+        function_defaults = get_defaults(func)
+        func_data = func(**function_defaults)
+        return jsonify(serialize(func_data))
+
+    @app.route('/kamodo/api/<user_model_name>/<user_func>/plot', methods=['GET'])
+    @app.route('/kamodo/api/<user_model_name>/<user_func>/plot/', methods=['GET'])
+    def kamodo_model_func_plot(user_model_name, user_func):
+        user_model = user_models[user_model_name]
+        func = user_model[user_func]
+        defaults = get_defaults(func)
+
+        parser = reqparse.RequestParser()
+
+        for arg in getfullargspec(func).args:
+            if arg in defaults:
+                parser.add_argument(arg, type=str)
+            else:
+                parser.add_argument(arg, type=str, required=True)
+
+
+        app.logger.info('function plot resource called')
+        args_ = parser.parse_args(strict=True)
+        args = dict(indexing='ij') # needed for gridded data
+
+        for argname, val_ in args_.items():
+            if val_ is not None:
+                args[argname] = pd.read_json(StringIO(val_), typ='series')
+        figure = user_model.figure(variable=user_func, **args)
+        return go.Figure(figure).to_json()
+
 
 
     try:
@@ -160,6 +237,9 @@ def main():
     except OSError as m:
         print('cannot start with configuration', cfg.flask)
         raise
+
+
+
 
 def get_model_details(model):
     detail = model.detail().astype(str)
@@ -189,7 +269,48 @@ def get_user_models_resource():
             return details
     return UserModels
 
+def register_func_endpoints(api, model_name, model_, base_name, var_symbol):
+    var_label = str(type(var_symbol))
+
+    # /api/mymodel/myfunc
+    func_resource_endpoint = '{}/{}/{}'.format(base_name, model_name, var_label)
+    print('registering ' + func_resource_endpoint)
+    api.add_resource(
+        get_func_resource(model_name, model_, var_symbol),
+        func_resource_endpoint,
+        endpoint='/'.join([model_name, var_label]))
+
+    # /api/mymodel/myfunc/defaults
+    defaults_resource_endpoint = '{}/{}/{}/{}'.format(
+        base_name, model_name, var_label, 'defaults')
+    print('registering ' + defaults_resource_endpoint)
+    api.add_resource(
+        get_defaults_resource(model_name, model_, var_symbol),
+        defaults_resource_endpoint,
+        endpoint='/'.join([model_name, var_label, 'defaults']))
+
+    # /api/mymodel/myfunc/data
+    data_resource_endpoint = '{}/{}/{}/{}'.format(
+        base_name, model_name, var_label, 'data')
+    print('registering ' + data_resource_endpoint)
+    api.add_resource(
+        get_data_resource(model_name, model_, var_symbol),
+        data_resource_endpoint,
+        endpoint='/'.join([model_name, var_label, 'data']))
+
+    # /api/mymodel/myfunc/plot
+    func_plot_resource_endpoint = '{}/{}/{}/{}'.format(
+        base_name, model_name, var_label, 'plot')
+    print('registering ' + func_plot_resource_endpoint)
+    api.add_resource(
+        get_func_plot_resource(model_, var_symbol),
+        func_plot_resource_endpoint,
+        endpoint='/'.join([model_name, var_label, 'plot']))
+
+
+
 def register_endpoints(api, model_name, model_, base_name, register_base=True):
+    '''register all endpoints for this model'''
     print('registering endpoints for {}/{}'.format(base_name, model_name))
     logging.info('registering endpoints for {}/{}'.format(base_name, model_name))
 
@@ -204,42 +325,7 @@ def register_endpoints(api, model_name, model_, base_name, register_base=True):
 
     for var_symbol in model_:
         if type(var_symbol) != UndefinedFunction:
-            var_label = str(type(var_symbol))
-
-            # /api/mymodel/myfunc
-            func_resource_endpoint = '{}/{}/{}'.format(base_name, model_name, var_label)
-            print('registering ' + func_resource_endpoint)
-            api.add_resource(
-                get_func_resource(model_name, model_, var_symbol),
-                func_resource_endpoint,
-                endpoint='/'.join([model_name, var_label]))
-
-            # /api/mymodel/myfunc/defaults
-            defaults_resource_endpoint = '{}/{}/{}/{}'.format(
-                base_name, model_name, var_label, 'defaults')
-            print('registering ' + defaults_resource_endpoint)
-            api.add_resource(
-                get_defaults_resource(model_name, model_, var_symbol),
-                defaults_resource_endpoint,
-                endpoint='/'.join([model_name, var_label, 'defaults']))
-
-            # /api/mymodel/myfunc/data
-            data_resource_endpoint = '{}/{}/{}/{}'.format(
-                base_name, model_name, var_label, 'data')
-            print('registering ' + data_resource_endpoint)
-            api.add_resource(
-                get_data_resource(model_name, model_, var_symbol),
-                data_resource_endpoint,
-                endpoint='/'.join([model_name, var_label, 'data']))
-
-            # /api/mymodel/myfunc/plot
-            func_plot_resource_endpoint = '{}/{}/{}/{}'.format(
-                base_name, model_name, var_label, 'plot')
-            print('registering ' + func_plot_resource_endpoint)
-            api.add_resource(
-                get_func_plot_resource(model_, var_symbol),
-                func_plot_resource_endpoint,
-                endpoint='/'.join([model_name, var_label, 'plot']))
+            register_func_endpoints(api, model_name, model_, base_name, var_symbol)
 
     # /api/mymodel/evaluate
     evaluate_resource_endpoint = '{}/{}/evaluate'.format(base_name, model_name)
@@ -307,46 +393,51 @@ def get_func_resource(model_name, model, var_symbol):
 
 def get_defaults_resource(model_name, model, var_symbol):
     """Get resource associated with this function's defaults"""
-    app.logger.info('getting defaults for {}.{}'.format(model_name, var_symbol))
-    # parser = reqparse.RequestParser()
-    func = model[var_symbol]
-    function_defaults = get_defaults(func)
-    try:
-        function_defaults_ = json.dumps(function_defaults, default=serialize)
-    except:
-        print('problem with {}.{}'.format(model_name, var_symbol))
-        raise
+
+    # These defaults may change if the user redefines a variables
+    # Therefore, the defaults need to be checked every time there's a get request
 
     class DefaultsResource(Resource):
         """Resource associated with this function's defaults"""
         def get(self):
             """get method for this resource"""
+            app.logger.info('getting defaults for {}.{}'.format(model_name, var_symbol))
+            func = model[var_symbol]
+            function_defaults = get_defaults(func)
+            try:
+                function_defaults_ = json.dumps(function_defaults, default=serialize)
+            except:
+                print('problem with {}.{}'.format(model_name, var_symbol))
+                raise
             return function_defaults_
 
     return DefaultsResource
 
 def get_data_resource(model_name, model, var_symbol):
     """Get resource associated with this function's data"""
-    app.logger.info('getting data for {}.{}'.format(model_name, var_symbol))
-    func = model[var_symbol]
 
-    # assume function is kamodofied
-    try:
-        func_data = func.data
-    except AttributeError:
-        raise AttributeError('function {}.{} has no data!'.format(
-            model_name, var_symbol))
-
-    try:
-        func_data_ = json.dumps(func_data, default=serialize)
-    except:
-        print('problem with {}.{} data'.format(model_name, var_symbol))
-        raise
+    # The data may change if the user redefines a variable
+    # Data needs to come from the current state of the model
 
     class DefaultsResource(Resource):
         """Resource associated with this function's defaults"""
         def get(self):
             """get method for this resource"""
+            print('getting data for {}.{}'.format(model_name, var_symbol))
+            func = model[var_symbol]
+
+            # assume function is kamodofied
+            try:
+                func_data = func.data
+            except AttributeError:
+                raise AttributeError('function {}.{} has no data!'.format(
+                    model_name, var_symbol))
+
+            try:
+                func_data_ = json.dumps(func_data, default=serialize)
+            except:
+                print('problem with {}.{} data'.format(model_name, var_symbol))
+                raise
             return func_data_
 
     return DefaultsResource
@@ -354,6 +445,10 @@ def get_data_resource(model_name, model, var_symbol):
 
 def get_evaluate_resource(model_name, model):
     """get resource associated with evaluate"""
+    # not sure what to do if the model changes
+    # get doesn't know what variables exist in the model
+    # maybe move to route/<model_name>
+
     parser = reqparse.RequestParser()
     parser.add_argument('variable', type=str, required=True)
 

@@ -631,6 +631,7 @@ def test_del_function():
     kamodo = Kamodo(f='x', g='y', h='y', verbose=True)
     del(kamodo.f)
     assert 'f' not in kamodo
+    assert 'f' not in kamodo.signatures
     del(kamodo['g'])
     assert 'g' not in kamodo
     del(kamodo['h(y)'])

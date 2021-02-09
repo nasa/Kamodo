@@ -1,3 +1,4 @@
+* fixed bug in jsonifying user funcs
 
 # 2021-02-08 23:05:27.925457: clock-in
 

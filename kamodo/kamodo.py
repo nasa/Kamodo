@@ -718,15 +718,19 @@ class Kamodo(UserDict):
         if self.verbose:
             print('__delitem__: got {} type: {}'.format(key, type(key)))
         if isinstance(key, str):
-            try:
-                symbol = self.symbol_registry[key]
-            except KeyError:
+            if self.verbose:
+                print('__delitem__: removing {} from symbol_registry'.format(key))
+            symbol = self.symbol_registry.pop(key, None)
+            if symbol is None:
                 symbol, args, unit_dict, parsed = parse_lhs(
                     key, self.symbol_registry, self.verbose)
         else:
             symbol = key
+            if self.verbose:
+                print('__delitem__: received non str key {}'.format(symbol))
         if self.verbose:
             print('__delitem__: removing {} {}'.format(symbol, type(symbol)))
+
 
         remove_keys = []
         for k in self.data:
@@ -739,6 +743,9 @@ class Kamodo(UserDict):
 
         for key_ in remove_keys:
             self.data.pop(key_)
+            self.signatures.pop(str(key_), None)
+            self.signatures.pop(str(type(key_)), None)
+            self.unit_registry.pop(key_, None)
 
     # def get_units_map(self):
     #     """Maps from string units to symbolic units"""
