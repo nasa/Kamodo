@@ -1,3 +1,6 @@
+
+# 2021-02-08 22:48:42.433467: clock-in
+
 # 2021-02-08 21:26:50.968524: clock-out
 
 * need a way to post changes to variables
