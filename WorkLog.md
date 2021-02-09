@@ -1,3 +1,5 @@
+# 2021-02-09 01:21:34.140453: clock-out
+
 * pinning sympy for api
 * fixed bug in jsonifying user funcs
 
