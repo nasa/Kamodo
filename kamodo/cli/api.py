@@ -144,11 +144,19 @@ def main():
 
         if request.method == 'POST':
             func_key = request.form['signature']
-            func_expr = request.form['expression']
-            if func_key in user_model:
-                del user_model[func_key]
-            user_model[func_key] = func_expr
-        
+            if 'expression' in request.form:
+                func_expr = request.form['expression']
+                if func_key in user_model:
+                    del user_model[func_key]
+                user_model[func_key] = func_expr
+            elif 'model' in request.form:
+                global_model_name = request.form['model']
+                global_model = global_models[global_model_name]
+                if 'model_func' in request.form:
+                    global_model_func_name = request.form['model_func']
+                    global_model_func = global_model[global_model_func_name]
+                    user_model[func_key] = global_model_func
+
         if user_func is not None:
             parser = reqparse.RequestParser()
             if request.method == 'GET':
@@ -173,10 +181,13 @@ def main():
                     model_name,
                     user_func,
                     ' '.join(['{}:{}'.format(arg, type(arg_value)) for arg, arg_value in args.items()])))
-                result = func(**args)
-                print('{} {} function returned {}'.format(
-                    model_name, user_func, type(result)))
-                return serialize(result)
+                try:
+                    result = func(**args)
+                    print('{} {} function returned {}'.format(
+                        model_name, user_func, type(result)))
+                    return serialize(result)
+                except:
+                    return json.dumps(None)
             if request.method == "DELETE":
                 if user_func in user_model:
                     del user_model[user_func]
@@ -190,6 +201,12 @@ def main():
         user_model = user_models[user_model_name]
         user_func = user_model[user_func]
         function_defaults = get_defaults(user_func)
+
+        for arg in getfullargspec(user_func).args:
+            if arg in function_defaults:
+                pass
+            else:
+                function_defaults[arg] = None
         try:
             function_defaults_ = json.dumps(function_defaults, default=serialize)
         except:
@@ -203,9 +220,10 @@ def main():
         user_model = user_models[user_model_name]
         func = user_model[user_func]
         # assume function is kamodofied
-        function_defaults = get_defaults(func)
-        func_data = func(**function_defaults)
-        return jsonify(serialize(func_data))
+        return jsonify(json.dumps(func.data, default=serialize))
+        # function_defaults = get_defaults(func)
+        # func_data = func(**function_defaults)
+        # return jsonify(serialize(func_data))
 
     @app.route('/kamodo/api/<user_model_name>/<user_func>/plot', methods=['GET'])
     @app.route('/kamodo/api/<user_model_name>/<user_func>/plot/', methods=['GET'])
