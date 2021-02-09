@@ -1,3 +1,6 @@
+
+# 2021-02-09 13:05:36.824475: clock-in
+
 # 2021-02-09 13:05:10.883744: clock-out
 
 * allowing function defaults with null args
