@@ -136,7 +136,7 @@ def main():
 
     @app.route('/kamodo/api/<user_model_name>', methods=['GET', 'POST'])
     @app.route('/kamodo/api/<user_model_name>/', methods=['GET', 'POST'])
-    @app.route('/kamodo/api/<user_model_name>/<user_func>', methods=['GET', 'POST'])
+    @app.route('/kamodo/api/<user_model_name>/<user_func>', methods=['GET', 'POST', "DELETE"])
     def kamodo_model_func(user_model_name, user_func=None):
         user_model = user_models[user_model_name]
         print(user_model_name, user_func)
@@ -177,6 +177,9 @@ def main():
                 print('{} {} function returned {}'.format(
                     model_name, user_func, type(result)))
                 return serialize(result)
+            if request.method == "DELETE":
+                if user_func in user_model:
+                    del user_model[user_func]
 
         return get_model_details(user_model)
         # return dict(user_func = user_func, user_model_name = user_model_name)

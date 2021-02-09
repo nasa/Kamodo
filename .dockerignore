@@ -17,7 +17,7 @@ kamodo.egg-info
 cnofs
 
 # hourly
-hourly-outputs
+*hourly-outputs
 
 # coverage
 htmlcov
