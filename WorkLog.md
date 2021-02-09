@@ -1,3 +1,6 @@
+
+# 2021-02-09 09:38:01.649942: clock-in
+
 # 2021-02-09 01:21:34.140453: clock-out
 
 * pinning sympy for api
