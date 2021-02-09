@@ -1,5 +1,8 @@
+# 2021-02-08 21:26:50.968524: clock-out
+
+* need a way to post changes to variables
 * added user user model endpoints
-how do we determine default user model?
+how do we determine default user model? - setting this in `kamodo.yaml`
 
 got user endpoints working
 * user models: `kamodo/api/usermodel`
