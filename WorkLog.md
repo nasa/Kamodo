@@ -1,3 +1,6 @@
+
+# 2021-02-09 12:50:49.247565: clock-in
+
 # 2021-02-09 10:40:48.036338: clock-out
 
 * need to include in `POST` method the ability to reference global models
