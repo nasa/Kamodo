@@ -1,3 +1,6 @@
+
+# 2021-02-10 23:11:21.144902: clock-in
+
 # 2021-02-10 22:25:01.426986: clock-out
 
 * function generator operations
