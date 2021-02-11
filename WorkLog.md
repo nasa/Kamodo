@@ -1,3 +1,4 @@
+* fixed bug in kamodoAPI registering funtions twice
 
 # 2021-02-10 23:11:21.144902: clock-in
 

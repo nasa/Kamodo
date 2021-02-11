@@ -13,6 +13,7 @@ from kamodo.util import kamodofy, gridify, sort_symbols, valid_args, eval_func, 
 from .util import serialize, deserialize
 import pandas as pd
 import json
+from .util import LambdaGenerator
 
 @kamodofy
 def rho(x=np.array([3, 4, 5])):
@@ -379,5 +380,17 @@ def test_serialize_generator_pd():
     for f in deserialize(serialize(gent)):
         assert len(f()) == len(t)
     assert f()[-1] == 0
+
+def test_multiply_lambdagen():
+    lamb = LambdaGenerator((lambda x=np.arange(i): x**2 for i in range(5)))
+    lamb2 = LambdaGenerator((lambda x=np.arange(i): x**2 for i in range(5)))
+    for r in lamb*lamb2:
+        r()
+
+def test_divide_lambdagen():
+    lamb = LambdaGenerator(((lambda x=np.linspace(1, 5, 10): x**2) for i in range(5)))
+    lamb2 = LambdaGenerator(((lambda x=np.linspace(1, 5, 10): x**2) for i in range(5)))
+    for r in lamb/lamb2:
+        r()
 
     

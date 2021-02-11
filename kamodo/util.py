@@ -1020,3 +1020,55 @@ def sign_defaults(symbol, expr, composition):
     # will raise an error if defaults are not last
     signature = forge.sign(*arg_signatures)
     return signature
+
+class LambdaGenerator(object):
+    def __init__(self, lambda_generator):
+        """supports simple expressions for manipulating lambda generators"""
+        self._lambda_generator = lambda_generator
+
+    def __add__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                yield lambda: func()+gunc()
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func()+other
+    def __sub__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                yield lambda: func()-gunc()
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func()-other
+    def __mul__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                # what do we do with defaults?
+                yield lambda: func()*gunc()
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func()*other
+    def __truediv__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                # what do we do with defaults?
+                yield lambda: func().__truediv__(gunc())
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func().__truediv__(other)
+    def __floordiv__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                # what do we do with defaults?
+                yield lambda: func().__floordiv__(gunc())
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func().__floordiv__(other)
+    def __pow__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                yield lambda: func().__pow__(gunc())
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func().__pow__(other)
+

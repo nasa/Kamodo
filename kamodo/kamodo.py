@@ -1008,8 +1008,6 @@ class KamodoAPI(Kamodo):
         self._data = {}
 
         for k, v in self._kdata.items():
-            self[v['lhs']] = kamodofy(units=v['units'])
-
             # get defaults for this func
             default_path = '{}/{}/defaults'.format(self._url_path, k)
             self._defaults[k] = self._get(default_path)

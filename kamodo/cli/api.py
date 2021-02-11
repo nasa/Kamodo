@@ -59,6 +59,8 @@ def config_override(cfg):
             override_conf = OmegaConf.load(override_path)
             # merge overrides first input with second
             cfg = OmegaConf.merge(cfg, override_conf)
+        else:
+            print('no such path: {}\n ..ignoring'.format(override_path))
     return cfg
 
 
@@ -93,6 +95,7 @@ def main():
         else:
             if cfg.verbose > 0:
                 app.logger.info("could not get override: {}".format(override_path))
+                print("could not get override: {}".format(override_path))
 
         if config_override_ is not None:
             cfg = OmegaConf.merge(cfg, config_override_)
@@ -296,37 +299,41 @@ def register_func_endpoints(api, model_name, model_, base_name, var_symbol):
     # /api/mymodel/myfunc
     func_resource_endpoint = '{}/{}/{}'.format(base_name, model_name, var_label)
     print('registering ' + func_resource_endpoint)
-    api.add_resource(
-        get_func_resource(model_name, model_, var_symbol),
-        func_resource_endpoint,
-        endpoint='/'.join([model_name, var_label]))
+    try:
+        api.add_resource(
+            get_func_resource(model_name, model_, var_symbol),
+            func_resource_endpoint,
+            endpoint='/'.join([model_name, var_label]))
 
-    # /api/mymodel/myfunc/defaults
-    defaults_resource_endpoint = '{}/{}/{}/{}'.format(
-        base_name, model_name, var_label, 'defaults')
-    print('registering ' + defaults_resource_endpoint)
-    api.add_resource(
-        get_defaults_resource(model_name, model_, var_symbol),
-        defaults_resource_endpoint,
-        endpoint='/'.join([model_name, var_label, 'defaults']))
+        # /api/mymodel/myfunc/defaults
+        defaults_resource_endpoint = '{}/{}/{}/{}'.format(
+            base_name, model_name, var_label, 'defaults')
+        print('registering ' + defaults_resource_endpoint)
+        api.add_resource(
+            get_defaults_resource(model_name, model_, var_symbol),
+            defaults_resource_endpoint,
+            endpoint='/'.join([model_name, var_label, 'defaults']))
 
-    # /api/mymodel/myfunc/data
-    data_resource_endpoint = '{}/{}/{}/{}'.format(
-        base_name, model_name, var_label, 'data')
-    print('registering ' + data_resource_endpoint)
-    api.add_resource(
-        get_data_resource(model_name, model_, var_symbol),
-        data_resource_endpoint,
-        endpoint='/'.join([model_name, var_label, 'data']))
+        # /api/mymodel/myfunc/data
+        data_resource_endpoint = '{}/{}/{}/{}'.format(
+            base_name, model_name, var_label, 'data')
+        print('registering ' + data_resource_endpoint)
+        api.add_resource(
+            get_data_resource(model_name, model_, var_symbol),
+            data_resource_endpoint,
+            endpoint='/'.join([model_name, var_label, 'data']))
 
-    # /api/mymodel/myfunc/plot
-    func_plot_resource_endpoint = '{}/{}/{}/{}'.format(
-        base_name, model_name, var_label, 'plot')
-    print('registering ' + func_plot_resource_endpoint)
-    api.add_resource(
-        get_func_plot_resource(model_, var_symbol),
-        func_plot_resource_endpoint,
-        endpoint='/'.join([model_name, var_label, 'plot']))
+        # /api/mymodel/myfunc/plot
+        func_plot_resource_endpoint = '{}/{}/{}/{}'.format(
+            base_name, model_name, var_label, 'plot')
+        print('registering ' + func_plot_resource_endpoint)
+        api.add_resource(
+            get_func_plot_resource(model_, var_symbol),
+            func_plot_resource_endpoint,
+            endpoint='/'.join([model_name, var_label, 'plot']))
+    except ValueError as m:
+        print('warning: {}'.format(m))
+        pass
 
 
 
@@ -346,6 +353,7 @@ def register_endpoints(api, model_name, model_, base_name, register_base=True):
 
     for var_symbol in model_:
         if type(var_symbol) != UndefinedFunction:
+            print('about to register {}'.format(var_symbol))
             register_func_endpoints(api, model_name, model_, base_name, var_symbol)
 
     # /api/mymodel/evaluate
