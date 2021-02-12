@@ -1,3 +1,6 @@
+
+# 2021-02-12 10:31:25.170196: clock-in
+
 * adding docs endpoint
 # 2021-02-11 00:41:02.484844: clock-out
 
