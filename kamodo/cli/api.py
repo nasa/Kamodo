@@ -129,7 +129,7 @@ def main():
     for model_name, model_ in global_models.items():
         register_endpoints(api, model_name, model_, '/api')
 
-    # use the last model as default
+
     global user_models
     user_model_default = hydra.utils.instantiate(cfg.user_model)
     user_models = defaultdict(lambda: from_kamodo(user_model_default))
@@ -267,11 +267,12 @@ def main():
 
 def get_model_details(model):
     detail = model.detail().astype(str)
-    return detail.to_dict(
+    detail_dict = detail.to_dict(
                     # default_handler=str,
                     # indent =4,
                     orient='index',
                     )
+    return detail_dict
 
 def get_global_models_resource():
     '''registers signatures of multiple models'''
@@ -331,6 +332,16 @@ def register_func_endpoints(api, model_name, model_, base_name, var_symbol):
             get_func_plot_resource(model_, var_symbol),
             func_plot_resource_endpoint,
             endpoint='/'.join([model_name, var_label, 'plot']))
+
+        # /api/mymodel/myfunc/doc
+        func_doc_resource_endpoint = '{}/{}/{}/{}'.format(
+            base_name, model_name, var_label, 'doc')
+        print('registering ' + func_doc_resource_endpoint)
+        api.add_resource(
+            get_func_doc_resource(model_, var_symbol),
+            func_doc_resource_endpoint,
+            endpoint='/'.join([model_name, var_label, 'doc']))
+
     except ValueError as m:
         print('warning: {}'.format(m))
         pass
@@ -365,7 +376,22 @@ def register_endpoints(api, model_name, model_, base_name, register_base=True):
         endpoint='/'.join([model_name, 'evaluate'])
         )
 
+    # /api/mymodel/doc
+    model_doc_resource_endpoint = '{}/{}/doc'.format(base_name, model_name)
+    print('registering ' + model_doc_resource_endpoint)
+    api.add_resource(
+        get_model_doc_resource(model_name, model_),
+        model_doc_resource_endpoint,
+        endpoint='/'.join([model_name, 'doc'])
+        )
 
+def get_model_doc_resource(model_name, model):
+    '''retrieve documentation string for the model'''
+    class model_doc_resource(Resource):
+        def get(self):
+            """get method for the doc string"""
+            return model.__doc__
+    return model_doc_resource
 
 def get_model_resource(model_name, model):
     """Retrieve resource asscociated with this model"""
@@ -374,7 +400,8 @@ def get_model_resource(model_name, model):
         """Resource for this model"""
         def get(self):
             """Get method for this model"""
-            return model.detail().astype(str).to_dict(orient='index')
+            model_detail_dict = model.detail().astype(str).to_dict(orient='index')
+            return model_detail_dict
 
     return model_resource
 
@@ -545,6 +572,15 @@ def get_func_plot_resource(model, var_symbol):
             return go.Figure(figure).to_json()
 
     return FuncPlotResource
+
+def get_func_doc_resource(model, var_symbol):
+    """Get resource associated with this function's documentation"""
+    class FuncDocResource(Resource):
+        """Resource associated with doc"""
+        def get(self):
+            """get method for this resource"""
+            return model[var_symbol].__doc__
+    return FuncDocResource
 
 if __name__ == '__main__':
     main()

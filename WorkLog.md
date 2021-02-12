@@ -1,3 +1,4 @@
+* adding docs endpoint
 # 2021-02-11 00:41:02.484844: clock-out
 
 * fixed bug in kamodoAPI registering funtions twice

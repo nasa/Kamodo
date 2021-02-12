@@ -13,17 +13,18 @@ RUN pip install antlr4-python3-runtime
 # RUN chmod +x /usr/bin/tini
 # ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Install latest kamodo
-ADD . /kamodo
-
 # need to pin this version for api
 RUN pip install sympy==1.5.1
+
+# Keep plotly at lower api
+RUN pip install plotly==4.7.1
+
+# Install latest kamodo
+ADD . /kamodo
 
 # RUN git clone https://github.com/asherp/kamodo.git
 RUN pip install -e kamodo
 
-# Keep plotly at lower api
-RUN pip install plotly==4.7.1
 
 WORKDIR kamodo
 

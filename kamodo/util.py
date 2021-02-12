@@ -178,7 +178,10 @@ def kamodofy(
             hidden_args=hidden_args)
 
         if citation is not None:
-            f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
+            if f.__doc__ is not None:
+                f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
+            else:
+                f.__doc__ = 'citation: {}'.format(citation)
         f.update = update
         if data is None:
             try:
@@ -1072,3 +1075,27 @@ class LambdaGenerator(object):
             for func in self._lambda_generator:
                 yield lambda: func().__pow__(other)
 
+
+def get_bbox(fig):
+    t0 = fig['data'][0]
+    xmin = np.nanmin(t0['x'])
+    xmax = np.nanmax(t0['x'])
+    ymin = np.nanmin(t0['y'])
+    ymax = np.nanmax(t0['y'])
+    zmin = np.nanmin(t0['z'])
+    zmax = np.nanmax(t0['z'])
+    for t in fig['data']:
+        xmin = min(xmin, np.nanmin(t['x']))
+        xmax = max(xmax, np.nanmax(t['x']))
+        ymin = min(ymin, np.nanmin(t['y']))
+        ymax = max(ymax, np.nanmax(t['y']))
+        zmin = min(zmin, np.nanmin(t['z']))
+        zmax = max(zmax, np.nanmax(t['z']))
+    return xmin, xmax, ymin, ymax, zmin, zmax
+
+def set_aspect(fig):
+    """sets aspect ratio of the scene based on bounding box of traces"""
+    fig.layout.scene.aspectmode='manual'
+    xmin, xmax, ymin, ymax, zmin, zmax = get_bbox(fig)
+    fig.layout.scene.aspectratio=dict(x=xmax-xmin, y=ymax-ymin,z=zmax-zmin)
+    return fig

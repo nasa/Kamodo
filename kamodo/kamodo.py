@@ -1007,6 +1007,8 @@ class KamodoAPI(Kamodo):
         self._defaults = {}
         self._data = {}
 
+        self.__doc__ = requests.get('{}/doc'.format(self._url_path)).text
+
         for k, v in self._kdata.items():
             # get defaults for this func
             default_path = '{}/{}/defaults'.format(self._url_path, k)
@@ -1016,11 +1018,17 @@ class KamodoAPI(Kamodo):
             data_path = '{}/{}/data'.format(self._url_path, k)
             self._data[k] = self._get(data_path)
 
+            doc_path = '{}/{}/doc'.format(self._url_path, k)
+            func_doc = requests.get(doc_path).text
+
             # get kamodofied function
+            func = self.load_func(k)
+            func.__doc__ += '\n' + func_doc
             self[k] = kamodofy(
-                self.load_func(k),
+                func,
                 data=self._data[k],
-                units=v['units'])
+                units=v['units'],
+                )
 
     def _get(self, url_path):
         req_result = requests.get(url_path)
