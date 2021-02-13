@@ -1,3 +1,6 @@
+
+# 2021-02-13 13:01:49.691331: clock-in
+
 # 2021-02-13 01:36:52.580893: clock-out
 
 * developed slice widget for notebook
