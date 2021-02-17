@@ -698,13 +698,14 @@ class Ktest(Kamodo):
         @kamodofy(units = 'kg/m^3')
         def rho_N(t_N=t_N):
             t_N = pd.DatetimeIndex(t_N)
+            t_0 = pd.to_datetime('Nov 9, 2018') 
             try:
-                dt_days = (t_N - t_N[0]).total_seconds()/(24*3600)
+                dt_days = (t_N - t_0).total_seconds()/(24*3600)
             except Exception as err_msg:
                 return 'cannot work with {} {}  {}'.format(type(t_N), type(t_N[0]), err_msg)
 
-            result = 1+np.sin(dt_days) + .1*np.random.random(len(dt_days))
-            return result.values
+            result = np.abs(weierstrass(dt_days))
+            return result
 
         @kamodofy(units='nPa')
         def p(x = np.linspace(-5, 5, 30)):
@@ -715,9 +716,27 @@ class Ktest(Kamodo):
                 print(type(x), x[0])
                 raise
 
+        @kamodofy(
+            equation="\sum_{n=0}^{500} (1/2)^n cos(3^n \pi x)",
+            citation='https://en.wikipedia.org/wiki/Weierstrass_function'
+            )
+        def weierstrass(x = np.linspace(-2, 2, 1000)):
+            '''
+            Weierstrass  function
+            A continuous non-differentiable 
+            https://en.wikipedia.org/wiki/Weierstrass_function
+            '''
+            nmax = 500
+            n = np.arange(nmax)
+
+            xx, nn = np.meshgrid(x, n)
+            ww = (.5)**nn * np.cos(3**nn*np.pi*xx)
+            return ww.sum(axis=0)
+                
 
         self['rho_N'] = rho_N
         self['p'] = p
+        self['Weierstrass'] = weierstrass
 
 
 def test_kamodo_inline_merge():

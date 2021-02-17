@@ -918,7 +918,7 @@ class Kamodo(UserDict):
 
         return scope['solution']
 
-    def figure(self, variable, indexing='ij', return_type=False, **kwargs):
+    def figure(self, variable, indexing='ij', **kwargs):
         """Generates a plotly figure for a given variable and keyword arguments"""
         result = self.evaluate(variable, **kwargs)
         signature = self.signatures[variable]
@@ -969,22 +969,25 @@ class Kamodo(UserDict):
 
         fig['data'] = traces
         fig['layout'] = layout
-        if return_type:
-            fig['chart_type'] = chart_type
-        return fig
+        return go.Figure(fig).update_traces(meta=chart_type)
+        # if return_type:
+        #     fig['chart_type'] = chart_type
+        # return fig
 
     def plot(self, *variables, **figures):
         for k in variables:
             figures[k] = {}
         if len(figures) == 1:
             variable, kwargs = list(figures.items())[0]
-            fig = self.figure(variable, return_type=True, **kwargs)
-            if fig['chart_type'] is None:
-                raise AttributeError("No chart_type for this trace")
-            else:
-                if self.verbose:
-                    print('chart type:', fig['chart_type'])
-                return go.Figure(data=fig['data'], layout=fig['layout'])
+            fig = self.figure(variable, **kwargs)
+            # if fig['chart_type'] is None:
+            #     raise AttributeError("No chart_type for this trace")
+            # else:
+            #     if self.verbose:
+            #         print('chart type:', fig['chart_type'])
+            return go.Figure(
+                data=fig['data'],
+                layout=fig['layout'])
         else:
             traces = []
             layouts = []
