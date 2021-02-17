@@ -1,0 +1,161 @@
+
+<head>
+  <!-- Plotly.js -->
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script type="text/javascript" async
+    src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
+  </script>
+  <script src="https://d3js.org/d3-time.v2.min.js"></script>
+  <script src="https://d3js.org/d3-time-format.v3.min.js"></script>
+  <script src="https://momentjs.com/downloads/moment.js"></script>
+
+</head>
+
+<body>
+<div id="plots-container"></div>
+</body>
+
+
+<script>
+
+
+var linspace = function(start, stop, nsteps){
+  // https://gist.github.com/davebiagioni/1ac21feb1c2db04be4e6
+  if (typeof start === "string"){
+    // nsteps=5;
+    var startDate = new moment.utc(start);
+    var endDate = new moment.utc(stop);
+    var dates = [];
+    var dt = (endDate - startDate)/(nsteps-1);
+    var current = startDate;
+    var i = 1;
+    while (i <= nsteps) {
+        // current = startDate + i*dt;
+        dates.push((current.clone().add(i*dt)).toISOString());
+        // current = current.clone().add(dt);
+        i = i + 1;
+    }
+    console.log(startDate, endDate, dt, dates[0]);
+    return JSON.stringify(dates);
+    }
+  else
+    {
+      delta = (stop-start)/(nsteps-1)
+      return JSON.stringify(
+        Plotly.d3.range(nsteps).map(function(i){return start+i*delta;})
+        );
+    }
+}
+
+
+var get_defaults = function(defaults_url){
+  Plotly.d3.json(defaults_url, function(data){
+    var defaults = JSON.parse(data);
+    console.log(Object.keys(defaults));
+    xaxis = Object.keys(defaults)[0]
+  })
+}
+
+var gen_plot = function(endpoint, plot_div){
+  var plot_url=[endpoint, 'plot'].join('/');
+  var defaults_url = [endpoint, 'defaults'].join('/');
+  var data_url=endpoint;
+
+  console.log(plot_url, defaults_url, data_url);
+
+  
+
+  var xaxis;
+
+  Plotly.d3.json(defaults_url, function(data){
+    var defaults = JSON.parse(data);
+    console.log(Object.keys(defaults));
+    xaxis = Object.keys(defaults)[0];
+  })
+
+  console.log(xaxis);
+
+  Plotly.d3.json(plot_url, function(data){
+    var fig = JSON.parse(data);
+
+    Plotly.react(plot_div, fig.data, fig.layout, {showSendToCloud: true});
+
+    plot_div.on('plotly_relayout',  rescale);
+    var line_resolution = fig.data[0].x.length;
+    console.log('original min, max:',
+      fig.data[0].x[0],
+      fig.data[0].x[line_resolution-1]);
+
+    // rescale function must evaluate the function over the new range
+    // using a fixed number of points
+    function rescale(eventdata, line_props = {line_resolution: line_resolution}){
+
+      if (typeof eventdata !== "undefined"){
+        if ('xaxis.range[0]' in eventdata) {
+          xmin = eventdata['xaxis.range[0]'];
+          xmax = eventdata['xaxis.range[1]'];
+        }
+        else if ('xaxis.range' in eventdata) {
+          xmin = eventdata['xaxis.range'][0]
+          xmax = eventdata['xaxis.range'][1]
+        }
+        else
+          return;
+
+        console.log('new range:', xmin, xmax, typeof(xmin));
+
+        x = linspace(xmin, xmax, line_props.line_resolution);
+        
+        var query = {}
+        query[xaxis] = x;
+
+        $.get(
+            plot_url,
+            query,
+            function(plot_data) {
+              if (typeof plot_data !== "undefined"){
+                var fig = JSON.parse(plot_data);
+                // fig.data[0]['mode'] = 'markers';
+                Plotly.deleteTraces(plot_div, 0);
+                Plotly.addTraces(plot_div, fig.data);
+                var ymin = Math.min(fig.data[0].y),
+                    ymax = Math.max(fig.data[0].y)
+                Plotly.relayout(plot_div, {yaxis:{range:[ymin, ymax]}});
+              };
+            }
+        );
+      };
+    }
+  });
+
+  return plot_div;
+
+
+}
+
+// var plots_container = document.getElementById('plots_container');
+
+weier_plot = document.createElement('weier');
+
+$("#plots-container").append(
+  gen_plot('http://localhost:5000/api/mythirdmodel/Weierstrass', weier_plot)
+  );
+
+pressure_plot = document.createElement('pressure_plot');
+
+$("#plots-container").append(
+  gen_plot('http://localhost:5000/api/mythirdmodel/p', pressure_plot)
+  );
+
+density_plot = document.createElement('density_plot');
+
+$("#plots-container").append(
+  gen_plot('http://localhost:5000/api/mythirdmodel/rho_N', density_plot)
+  );
+
+
+
+
+
+</script>

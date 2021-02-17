@@ -1,3 +1,4 @@
+* added zoom_test.html
 * adding plot meta, made datetime test query deterministic
 
 # 2021-02-16 20:03:14.752210: clock-in

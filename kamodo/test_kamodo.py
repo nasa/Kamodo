@@ -695,20 +695,20 @@ class Ktest(Kamodo):
         super(Ktest, self).__init__()
 
         t_N = pd.date_range('Nov 9, 2018', 'Nov 20, 2018', freq = 'H')
-        @kamodofy(units = 'kg/m^3')
+        @kamodofy(units='kg/m^3')
         def rho_N(t_N=t_N):
             t_N = pd.DatetimeIndex(t_N)
             t_0 = pd.to_datetime('Nov 9, 2018') 
             try:
                 dt_days = (t_N - t_0).total_seconds()/(24*3600)
-            except Exception as err_msg:
+            except TypeError as err_msg:
                 return 'cannot work with {} {}  {}'.format(type(t_N), type(t_N[0]), err_msg)
 
             result = np.abs(weierstrass(dt_days))
             return result
 
         @kamodofy(units='nPa')
-        def p(x = np.linspace(-5, 5, 30)):
+        def p(x=np.linspace(-5, 5, 30)):
             try:
                 return x**2
             except TypeError as m:
@@ -749,7 +749,7 @@ def test_kamodo_inline_merge():
     assert k3.myf(x=3, y=4) == 3**2 + 4 - 1
 
 def test_default_forwarding():
-    x = np.linspace(-5,5,12)
+    x = np.linspace(-5, 5, 12)
     
     def f(x=x):
         return x**2
