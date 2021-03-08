@@ -26,36 +26,40 @@ bibliography: paper.bib
 
 # Summary
 
-Space weather models and data have specialized data formats, employ novel
-data structures, and are exposed with specialized interfaces suitable for
-the needs of individual research groups. However, this poses an impediment
-for research tooperations, space weather forecasting, research, and education.
+Kamodo is a functional api for scientific models and data. In Kamodo,
+all scientific resources are registered as symbolic fields which are typically mapped to
+underlying model and data interpolators. This allows many common problems, such
+as field line integration, coordinate transformation, and recontextualization,
+to be posed as function compositions. Kamodo employs a transparent unit conversion scheme
+that mimics hand-written expressions: units are declared on the left hand side of user
+expressions via bracket notation and conversion factors are automatically inserted on
+the right hand side. Kamodo includes quick-look graphics, dashboards, and a LaTeX interface,
+and is amenable to containerization and cloud hosting. While Kamodo was designed
+to solve the interperational challenges of the space weather industry, it is general
+enough to be applied in other contexts.
+
+# Statement of need
+
+Space weather models and data employ a wide variety of specialized data formats,
+data structures, and interfaces. Often these are suitable for
+the needs of individual research groups, which have sophisticated pipelines tailored
+for their field of study. However, this specialization poses an impediment
+for research to operations, space weather forecasting, research, and education.
 Kamodo is a symbolic abstraction layer that utilizes model and data interpolators
 to fascilitates downstream visualization, recontextualization and
 application development. Kamodo is built on Python libaries Sympy, Plotly, but
 the general approach may be adapted to other langvisualization paradigms
+Many common problems in science discovery. may be posed as function compositions.
 
-# Statement of need
 
-`Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
-enables wrapping low-level languages (e.g., C) for speed without losing
-flexibility or ease-of-use in the user-interface. The API for `Gala` was
-designed to provide a class-based and user-friendly interface to fast (C or
-Cython-optimized) implementations of common operations such as gravitational
-potential and force evaluation, orbit integration, dynamical transformations,
-and chaos indicators for nonlinear dynamics. `Gala` also relies heavily on and
-interfaces well with the implementations of physical units and astronomical
-coordinate systems in the `Astropy` package [@astropy] (`astropy.units` and
-`astropy.coordinates`).
+# Unit System
 
-`Gala` was designed to be used by both astronomical researchers and by
-students in courses on gravitational dynamics or astronomy. It has already been
-used in a number of scientific publications [@Pearson:2017] and has also been
-used in graduate courses on Galactic dynamics to, e.g., provide interactive
-visualizations of textbook material [@Binney:2008]. The combination of speed,
-design, and support for Astropy functionality in `Gala` will enable exciting
-scientific explorations of forthcoming data releases from the *Gaia* mission
-[@gaia] by students and experts alike.
+Kamodo's unit system differs dramatically from many other powerful packages used
+in space weather such as Astropy, for two reasons: First, Sympy includes its own
+unit system, so reliance on a parallel unit system would be redundant.
+Second, Kamodo's use of expressions allows units to be kept separately from the 
+data types used by functions. The only requirement is that the types returned
+support algebraic manipulation (e.g. support multiplication, addition, etc). 
 
 # Mathematics
 
