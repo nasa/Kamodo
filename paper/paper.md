@@ -26,40 +26,20 @@ bibliography: paper.bib
 
 # Summary
 
-Kamodo is a functional api for scientific models and data. In Kamodo,
-all scientific resources are registered as symbolic fields which are typically mapped to
-underlying model and data interpolators. This allows many common problems, such
-as field line integration, coordinate transformation, and recontextualization,
-to be posed as function compositions. Kamodo employs a transparent unit conversion scheme
-that mimics hand-written expressions: units are declared on the left hand side of user
-expressions via bracket notation and conversion factors are automatically inserted on
-the right hand side. Kamodo includes quick-look graphics, dashboards, and a LaTeX interface,
-and is amenable to containerization and cloud hosting. While Kamodo was designed
-to solve the interperational challenges of the space weather industry, it is general
-enough to be applied in other contexts.
+Kamodo is a functional programing interface for scientific models and data. In Kamodo, all scientific resources are registered as symbolic fields which are mapped to algebraic expressions or to model and data interpolators. Kamodo's functional design allows many common problems, such as field line integration and coordinate transformation, to be posed in terms of function compositions familiar to scientists. Kamodo employs a unit conversion system that mimics hand-written expressions: units are declared via bracket notation and conversion factors are automatically inserted on the right hand side of user expressions. Kamodo includes a LaTeX interface, automated plots via plotly, and a browser-based dashboard interface suitable for interactive data exploration. Kamodo's json API provides context-dependent queries and allows compositions of models and data hosted in separate containers. While Kamodo was designed to solve the cross-displinary challenges of the space weather community, it is general enough to be applied in other fields of study.
 
 # Statement of need
 
-Space weather models and data employ a wide variety of specialized data formats,
-data structures, and interfaces. Often these are suitable for
-the needs of individual research groups, which have sophisticated pipelines tailored
-for their field of study. However, this specialization poses an impediment
-for research to operations, space weather forecasting, research, and education.
-Kamodo is a symbolic abstraction layer that utilizes model and data interpolators
-to fascilitates downstream visualization, recontextualization and
-application development. Kamodo is built on Python libaries Sympy, Plotly, but
-the general approach may be adapted to other langvisualization paradigms
-Many common problems in science discovery. may be posed as function compositions.
+Space weather models and data employ a wide variety of specialized data formats, data structures, and interfaces tailored for many different domains of the heliosphere and specialized to meet the needs of individual research groups. However, this specialization is also an impediment to cross-displinary research. For example, data-model comparisons require knowledge of both model and observational data formats. Even when a mature API is available, proficiency in programing languages such as python is required before progress can be made. A similar difficulty arises in the transition from research to operations (R2O) in space weather forecasting, where many disparate data sources and models must be presented together in a clear and actionable manner. Such low-level complexity represents a high barrier to entry when introducing the field of space weather to newcomers during space weather workshops, where much of the student's time is spent installing prequisite software. Several attempts have been made to unify all existing space weather resources around a common data/metadata standard, but have met with limited success. Similarly, many object-oriented APIs have attempted to support novel data structures outside of the scope of their design. We propose a solution that builds on existing standards and APIs without imposing a new standard and without requiring programing expertise on the part of end users, yet is expressive enough to meet the needs of many scientists, educators, and space weather forecasters.
 
+
+# CCMC
+
+The Community Coordinated Modeling Center (CCMC) at NASA, GSFC provides computational resources, research-focused services, and domain expertise for a large number of space weather models.  
 
 # Unit System
 
-Kamodo's unit system differs dramatically from many other powerful packages used
-in space weather such as Astropy, for two reasons: First, Sympy includes its own
-unit system, so reliance on a parallel unit system would be redundant.
-Second, Kamodo's use of expressions allows units to be kept separately from the 
-data types used by functions. The only requirement is that the types returned
-support algebraic manipulation (e.g. support multiplication, addition, etc). 
+Kamodo's unit system differs dramatically from many other powerful packages used in space weather such as Astropy, for two reasons: First, Sympy includes its own unit system, so reliance on a parallel unit system would be redundant. Second, Kamodo's use of expressions allows units to be kept separately from the  data types used by functions. The only requirement is that the types returned support algebraic manipulation (e.g. support multiplication, addition, etc). 
 
 # Mathematics
 
