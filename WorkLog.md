@@ -1,3 +1,4 @@
+* adding citations
 * pinning sympy for tests
 
 # 2021-03-10 14:56:13.114546: clock-in: T-8m 
