@@ -1,3 +1,4 @@
+* fixing latex unit rendering
 
 # 2021-03-09 19:10:48.802378: clock-in
 

@@ -759,6 +759,7 @@ class Kamodo(UserDict):
     #     return d
 
     def func_latex(self, key, mode='equation'):
+        """get a latex string for a given function key"""
         repr_latex = ""
         lhs = self.signatures[key]['symbol']
         rhs = self.signatures[key]['rhs']
@@ -773,7 +774,9 @@ class Kamodo(UserDict):
         if len(arg_units) > 0:
             arg_strs = []
             for arg, arg_unit in arg_units.items():
-                arg_strs.append("{}[{}]".format(latex(arg), get_abbrev(arg_unit)))
+                arg_strs.append("{}[{}]".format(
+                    latex(arg),
+                    latex(get_abbrev(arg_unit))))
             lhs_str = "{}({})".format(latex(type(lhs)), ",".join(arg_strs))
         else:
             lhs_str = latex(lhs)
@@ -782,7 +785,7 @@ class Kamodo(UserDict):
             #     ','.join([latex(s) for s in lhs.args]))
 
         if len(units) > 0:
-            lhs_str += "[{}]".format(units)
+            lhs_str += "[{}]".format(latex(parse_expr(units)))
 
         latex_eq = ''
         latex_eq_rhs = ''
