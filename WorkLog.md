@@ -1,3 +1,6 @@
+
+# 2021-03-10 10:38:51.374290: clock-in
+
 # 2021-03-09 20:00:17.427586: clock-out
 
 * fixing latex unit rendering
