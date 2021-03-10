@@ -1,3 +1,5 @@
+# 2021-03-10 16:01:04.687207: clock-out
+
 * adding citations
 * pinning sympy for tests
 
