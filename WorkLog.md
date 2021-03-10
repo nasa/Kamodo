@@ -1,3 +1,4 @@
+* updating sympy version
 # 2021-03-10 12:21:29.440527: clock-out
 
 * related projects
