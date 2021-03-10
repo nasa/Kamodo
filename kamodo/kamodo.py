@@ -776,7 +776,11 @@ class Kamodo(UserDict):
             for arg, arg_unit in arg_units.items():
                 arg_strs.append("{}[{}]".format(
                     latex(arg),
-                    latex(get_abbrev(arg_unit))))
+                    latex(get_abbrev(arg_unit),
+                        fold_frac_powers=True,
+                        fold_short_frac=True,
+                        root_notation=False,
+                        )))
             lhs_str = "{}({})".format(latex(type(lhs)), ",".join(arg_strs))
         else:
             lhs_str = latex(lhs)
@@ -785,7 +789,12 @@ class Kamodo(UserDict):
             #     ','.join([latex(s) for s in lhs.args]))
 
         if len(units) > 0:
-            lhs_str += "[{}]".format(latex(parse_expr(units)))
+            lhs_str += "[{}]".format(latex(parse_expr(units),
+                    fold_frac_powers=True,
+                    fold_short_frac=True,
+                    root_notation=False,
+                ))
+
 
         latex_eq = ''
         latex_eq_rhs = ''
