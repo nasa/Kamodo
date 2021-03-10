@@ -1,3 +1,6 @@
+
+# 2021-03-10 12:20:49.749406: clock-in: T-80m 
+
 # 2021-03-10 11:00:15.169767: clock-out
 
 * fixed latex unit printing
