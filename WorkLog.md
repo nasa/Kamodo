@@ -1,3 +1,5 @@
+# 2021-03-10 11:00:15.169767: clock-out
+
 * fixed latex unit printing
 
 # 2021-03-10 10:38:51.374290: clock-in
