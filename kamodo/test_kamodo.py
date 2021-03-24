@@ -16,6 +16,8 @@ from .util import get_arg_units
 from .util import get_unit_quantity, convert_to
 from kamodo import from_kamodo, compose
 from sympy import Function
+from kamodo import KamodoAPI
+from .util import serialize, NumpyArrayEncoder
 
 import warnings
 
@@ -205,9 +207,9 @@ def test_unit_registry():
 def test_to_latex():
     warnings.simplefilter('error')
     kamodo = Kamodo(f='x**2', verbose=True)
-    assert str(kamodo.to_latex()) == r'\begin{equation}f{\left(x \right)} = x^{2}\end{equation}'
+    assert str(kamodo.to_latex(mode='inline')) == r'$f{\left(x \right)} = x^{2}$'
     kamodo = Kamodo(g='x', verbose=True)
-    assert str(kamodo.to_latex()) == r'\begin{equation}g{\left(x \right)} = x\end{equation}'
+    assert str(kamodo.to_latex(mode='inline')) == r'$g{\left(x \right)} = x$'
     kamodo['f(x[cm])[kg]'] = 'x**2'
     kamodo['g'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'), equation='$x^2$')
     kamodo['h'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'))
@@ -538,6 +540,8 @@ def test_compose_unit_raises():
 def test_repr_latex():
     kamodo = Kamodo(f='x')
     assert kamodo._repr_latex_() == r'\begin{equation}f{\left(x \right)} = x\end{equation}'
+    kamodo = Kamodo(f=lambda x:x)
+    assert kamodo.f._repr_latex_() == '$f{\\left(x \\right)} = \\lambda{\\left(x \\right)}$'
 
 
 def test_dataframe_detail():
@@ -627,6 +631,7 @@ def test_del_function():
     kamodo = Kamodo(f='x', g='y', h='y', verbose=True)
     del(kamodo.f)
     assert 'f' not in kamodo
+    assert 'f' not in kamodo.signatures
     del(kamodo['g'])
     assert 'g' not in kamodo
     del(kamodo['h(y)'])
@@ -683,3 +688,90 @@ def test_reserved_name():
         return x+y
     with pytest.raises(NotImplementedError):
         kamodo['test'] = test
+
+
+class Ktest(Kamodo):
+    def __init__(self, **kwargs):
+        super(Ktest, self).__init__()
+
+        t_N = pd.date_range('Nov 9, 2018', 'Nov 20, 2018', freq = 'H')
+        @kamodofy(units='kg/m^3')
+        def rho_N(t_N=t_N):
+            t_N = pd.DatetimeIndex(t_N)
+            t_0 = pd.to_datetime('Nov 9, 2018') 
+            try:
+                dt_days = (t_N - t_0).total_seconds()/(24*3600)
+            except TypeError as err_msg:
+                return 'cannot work with {} {}  {}'.format(type(t_N), type(t_N[0]), err_msg)
+
+            result = np.abs(weierstrass(dt_days))
+            return result
+
+        @kamodofy(units='nPa')
+        def p(x=np.linspace(-5, 5, 30)):
+            try:
+                return x**2
+            except TypeError as m:
+                print(m)
+                print(type(x), x[0])
+                raise
+
+        @kamodofy(
+            equation="\sum_{n=0}^{500} (1/2)^n cos(3^n \pi x)",
+            citation='https://en.wikipedia.org/wiki/Weierstrass_function'
+            )
+        def weierstrass(x = np.linspace(-2, 2, 1000)):
+            '''
+            Weierstrass  function
+            A continuous non-differentiable 
+            https://en.wikipedia.org/wiki/Weierstrass_function
+            '''
+            nmax = 500
+            n = np.arange(nmax)
+
+            xx, nn = np.meshgrid(x, n)
+            ww = (.5)**nn * np.cos(3**nn*np.pi*xx)
+            return ww.sum(axis=0)
+                
+
+        self['rho_N'] = rho_N
+        self['p'] = p
+        self['Weierstrass'] = weierstrass
+
+
+def test_kamodo_inline_merge():
+    k1 = Kamodo(f='x**2')
+    k2 = Kamodo(g=lambda y: y-1)
+
+    # create a local namespace holding both kamodo objects
+    ns = {'k1':k1, 'k2': k2}
+    k3 = Kamodo(myf = sympify('k1.f(x) + k2.g(y)', locals=ns))
+    assert k3.myf(x=3, y=4) == 3**2 + 4 - 1
+
+def test_default_forwarding():
+    x = np.linspace(-5, 5, 12)
+    
+    def f(x=x):
+        return x**2
+    
+    k = Kamodo(f=f)
+    k['g'] = 'f+2'
+    assert len(k.g()) == 12
+    
+#this will break without new decompose_unit function
+#it will be false until sympy_units.N is no longer overruled elsewhere
+def test_units_N():
+    unit_out = str(get_unit('N'))
+    assert unit_out == 'newton'
+  
+#this will break without new decompose_unit function
+#it will be false until sympy_units.S is no longer overruled elsewhere
+def test_units_S():
+    unit_out = str(get_unit('S'))
+    assert unit_out == 'siemen'
+        
+#this will break without new string replace line ('rad' -> 'radian')
+def test_units_rad():
+    unit_out = str(get_unit('rad'))
+    assert unit_out == 'radian'        
+
