@@ -1,3 +1,4 @@
+* added test for multi argument unit composition
 
 # 2021-03-24 18:51:37.128420: clock-in
 
