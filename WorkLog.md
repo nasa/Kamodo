@@ -1,3 +1,22 @@
+
+# 2021-03-24 18:51:37.128420: clock-in
+
+
+```python
+from sympy.abc import _clash
+{'C': C,
+ 'O': O,
+ 'Q': Q,
+ 'N': N,
+ 'I': I,
+ 'E': E,
+ 'S': S,
+ 'beta': beta,
+ 'zeta': zeta,
+ 'gamma': gamma,
+ 'pi': pi}
+```
+
 # 2021-03-15 10:00:09.146598: clock-out
 
 
@@ -11,6 +30,7 @@
 # 2021-03-10 14:56:13.114546: clock-in: T-8m 
 
 * updating sympy version
+
 # 2021-03-10 12:21:29.440527: clock-out
 
 * related projects

@@ -758,3 +758,16 @@ def test_default_forwarding():
     k['g'] = 'f+2'
     assert len(k.g()) == 12
     
+def test_multi_arg_units():
+    kamodo = Kamodo()
+
+    @kamodofy(units='m', arg_units={'x': 'kg', 'y':'cm'})
+    def a(x,y):
+        return x*y
+
+    kamodo['a'] = a
+    kamodo['b(y[cm])[kg]'] = 'y'
+    kamodo['c(z[m])[cm]'] = 'z**2'
+    kamodo['d'] = 'a(b,c)'
+
+
