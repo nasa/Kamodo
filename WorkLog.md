@@ -1,3 +1,6 @@
+
+# 2021-03-24 22:23:10.086953: clock-in
+
 # 2021-03-24 21:42:25.386116: clock-out
 
 * unify expr args not in same order as free_symbols
