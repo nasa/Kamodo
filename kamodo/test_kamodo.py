@@ -13,7 +13,7 @@ import functools
 from sympy import lambdify, sympify
 from kamodo import get_abbrev
 from .util import get_arg_units
-from .util import get_unit_quantity, convert_to
+from .util import get_unit_quantity, convert_unit_to
 from kamodo import from_kamodo, compose
 from sympy import Function
 from kamodo import KamodoAPI
@@ -230,8 +230,8 @@ def test_get_unit_fail():
 def test_get_unit_quantity():
     mykm = get_unit_quantity('mykm', 'km', scale_factor=2)
     mygm = get_unit_quantity('mygm', 'gram', scale_factor=4)
-    assert str(convert_to(mykm, get_unit('m'))) == '2000*meter'
-    assert str(convert_to(mygm, get_unit('kg'))) == 'kilogram/250'
+    assert str(convert_unit_to(mykm, get_unit('m'))) == '2000*meter'
+    assert str(convert_unit_to(mygm, get_unit('kg'))) == 'kilogram/250'
 
 # def test_validate_units():
 #     f, x = symbols('f x')
@@ -717,7 +717,7 @@ class Ktest(Kamodo):
                 raise
 
         @kamodofy(
-            equation="\sum_{n=0}^{500} (1/2)^n cos(3^n \pi x)",
+            equation=r"\sum_{n=0}^{500} (1/2)^n cos(3^n \pi x)",
             citation='https://en.wikipedia.org/wiki/Weierstrass_function'
             )
         def weierstrass(x = np.linspace(-2, 2, 1000)):
@@ -759,15 +759,16 @@ def test_default_forwarding():
     assert len(k.g()) == 12
     
 def test_multi_arg_units():
-    kamodo = Kamodo()
+    kamodo = Kamodo(verbose=True)
 
-    @kamodofy(units='m', arg_units={'x': 'kg', 'y':'cm'})
-    def a(x,y):
-        return x*y
+    # @kamodofy(units='m', arg_units={'X': 'kg', 'Y':'cm', 'Z': 's'})
+    # def f(X, Y, Z):
+    #     return x*y*z
 
-    kamodo['a'] = a
-    kamodo['b(y[cm])[kg]'] = 'y'
-    kamodo['c(z[m])[cm]'] = 'z**2'
-    kamodo['d'] = 'a(b,c)'
+    kamodo['f(X[kg],Y[cm],Z[s])[m]'] = 'X*Y*Z'
+    kamodo['a[g]'] = 'x'
+    kamodo['b[m]'] = 'y'
+    kamodo['c[ms]'] = 'z**2'
+    kamodo['d(x,y,z)[cm]'] = 'f(a,b,c)'
 
 

@@ -1,3 +1,4 @@
+* fixed multi argument unit composition
 
 # 2021-03-24 22:23:10.086953: clock-in
 

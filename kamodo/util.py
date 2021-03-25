@@ -750,9 +750,9 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                         arg_units = get_arg_units(k, unit_registry)
                         if verbose:
                             print('unify: func units:', arg_units)
-                            print('unify: {}->{}'.format(expr.args, k.free_symbols))
+                            print('unify: {}->{}'.format(expr.args, k.args))
                         expr_units = {}
-                        for arg, sym in zip(expr.args, k.free_symbols):
+                        for arg, sym in zip(expr.args, k.args):
                             to_unit = arg_units.get(sym)
                             from_unit = get_expr_unit(arg, unit_registry)
                             if (from_unit is not None) and (to_unit is not None):

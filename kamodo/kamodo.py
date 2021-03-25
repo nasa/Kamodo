@@ -39,7 +39,7 @@ from .util import get_defaults, valid_args, eval_func
 # from .util import to_arrays, cast_0_dim
 from .util import beautify_latex, arg_to_latex
 from .util import concat_solution
-from .util import convert_to
+from .util import convert_unit_to
 from .util import unify, get_abbrev, get_expr_unit
 from .util import is_function, get_arg_units
 
