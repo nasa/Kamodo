@@ -507,7 +507,7 @@ def solve(fprime=None, seeds=None, varname=None, interval=None,
         return decorator_solve(fprime)
 
 
-def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
+def convert_unit_to(expr, target_units, unit_system="SI", raise_errors=True):
     """
     Same as sympy.convert_to but accepts equations and allows functions of units to pass
 
@@ -564,22 +564,26 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
 
 
     if hasattr(expr, 'rhs'):
-        return Eq(convert_to(expr.lhs, target_units, unit_system),
-                 convert_to(expr.rhs, target_units, unit_system))
+        return Eq(convert_unit_to(expr.lhs, target_units, unit_system),
+            convert_unit_to(expr.rhs, target_units, unit_system))
     # if type(type(expr)) is UndefinedFunction:
     if is_function(expr):
         # print('undefined input expr:{}'.format(expr))
         return nsimplify(expr, rational=True)
 
     if isinstance(expr, Add):
-        return Add.fromiter(convert_to(i, target_units, unit_system) for i in expr.args)
+        return Add.fromiter(convert_unit_to(i, target_units, unit_system) for i in expr.args)
 
     expr = sympify(expr)
 
     if not isinstance(expr, Quantity) and expr.has(Quantity):
-        expr = expr.replace(
-            lambda x: isinstance(x, Quantity),
-            lambda x: x.convert_to(target_units, unit_system))
+        try:
+            expr = expr.replace(
+                lambda x: isinstance(x, Quantity),
+                lambda x: x.convert_to(target_units, unit_system))
+        except OSError:
+            raise OSError('problem converting {} to {}\n{}'.format(
+                expr, target_units, unit_system))
 
     def get_total_scale_factor(expr):
         if isinstance(expr, Mul):
@@ -645,7 +649,7 @@ def get_expr_unit(expr, unit_registry, verbose=False):
     if isinstance(expr_unit, Add):
         # use the first term
         arg_0 = expr_unit.args[0]
-        convert_to(expr_unit, arg_0)
+        convert_unit_to(expr_unit, arg_0)
         result = arg_0
     else:
         result = expr_unit
@@ -683,7 +687,7 @@ def replace_args(expr, from_map, to_map):
             to_unit = to_map[arg]
             try:
                 assert get_dimensions(from_unit) == get_dimensions(to_unit)
-                arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
+                arg_map[arg] = convert_unit_to(arg*to_unit, from_unit)/from_unit
             except:
                 raise NameError('cannot convert from {} to {}'.format(from_unit, to_unit))
     return expr.subs(arg_map)
@@ -746,12 +750,13 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                         arg_units = get_arg_units(k, unit_registry)
                         if verbose:
                             print('unify: func units:', arg_units)
+                            print('unify: {}->{}'.format(expr.args, k.free_symbols))
                         expr_units = {}
                         for arg, sym in zip(expr.args, k.free_symbols):
                             to_unit = arg_units.get(sym)
                             from_unit = get_expr_unit(arg, unit_registry)
                             if (from_unit is not None) and (to_unit is not None):
-                                expr_units[arg] = convert_to(arg*from_unit, to_unit)/to_unit
+                                expr_units[arg] = convert_unit_to(arg*from_unit, to_unit)/to_unit
                         expr = expr.subs(expr_units)
 
                         if verbose:
@@ -767,7 +772,7 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
             if verbose:
                 print('unify: {} [{}] -> to_symbol: {}[{}]'.format(
                     expr, expr_unit, to_symbol, to_unit))
-            expr = convert_to(expr*expr_unit, to_unit)/to_unit
+            expr = convert_unit_to(expr*expr_unit, to_unit)/to_unit
         else:
             if verbose:
                 print('unify: registry:')

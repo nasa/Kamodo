@@ -1,3 +1,5 @@
+* unify expr args not in same order as free_symbols
+* `pytest test_kamodo.py::test_multi_arg_units`
 
 # 2021-03-24 20:42:24.019445: clock-in
 
