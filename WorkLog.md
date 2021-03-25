@@ -1,3 +1,6 @@
+
+# 2021-03-24 20:42:24.019445: clock-in
+
 # 2021-03-24 18:52:07.659737: clock-out
 
 * added test for multi argument unit composition
