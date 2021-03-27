@@ -604,7 +604,7 @@ class Kamodo(UserDict):
 
 
                 if expr_unit is not None:
-                    expr_dimensions = get_dimensions(expr_unit)
+                    expr_dimensions = Dimension(get_dimensions(expr_unit))
                     if expr_dimensions != Dimension(1):
                         lhs_units = str(get_abbrev(get_expr_unit(
                             expr_unit,
@@ -638,7 +638,7 @@ class Kamodo(UserDict):
                 print('unit registry to resolve units:', self.unit_registry)
 
             units = get_expr_unit(symbol, self.unit_registry)
-            if get_dimensions(units) != Dimension(1):
+            if Dimension(get_dimensions(units)) != Dimension(1):
                 units = get_abbrev(units)
                 if units is not None:
                     units = str(units)

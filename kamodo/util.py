@@ -802,20 +802,25 @@ def get_abbrev(unit):
     return unit
 
 
-def extract_dimensions(d):
+def base_dimensions(d):
     dependencies = dimsys_SI.get_dimensional_dependencies(d)
     return Mul.fromiter(Pow(Dimension(base), exp_) for base, exp_ in dependencies.items())
 
 def get_dimensions(unit):
     """get the set of basis units"""
     if hasattr(unit, 'dimension'):
-        return extract_dimensions(unit.dimension)
+        base_dims = base_dimensions(unit.dimension)
+        if len(base_dims.args) == 1:
+            return base_dims.args[0]
+        else:
+            return Mul.fromiter([arg.args[0] for arg in base_dimensions(unit.dimension).args])
     if isinstance(unit, Mul):
-        return Mul.fromiter([get_dimensions(arg) for arg in unit.args])
+        terms = [get_dimensions(arg) for arg in unit.args]
+        return Mul.fromiter(terms)
     if isinstance(unit, Pow):
         base, exp = unit.as_base_exp()
         return Pow(get_dimensions(base), exp)
-    return unit
+    return 1
 
 
 def get_base_unit(expr):
