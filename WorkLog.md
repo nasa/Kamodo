@@ -1,3 +1,4 @@
+* fixed example signature
 * fixed workflow
 * fixed bug in get_dimensions preventing certain unit conversions
 
