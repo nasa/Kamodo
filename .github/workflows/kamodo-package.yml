@@ -36,7 +36,7 @@ jobs:
       run: |
         pytest --cov kamodo.kamodo --cov kamodo.util --cov plotting kamodo/test_plotting.py kamodo/test_kamodo.py kamodo/test_utils.py
         cd docs/notebooks
-        jupyter nbconvert --config run_notebooks.py
+        jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True --config run_notebooks.py
     - name: "Upload coverage to Codecov"
       uses: codecov/codecov-action@v1
       with:
