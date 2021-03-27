@@ -1,3 +1,6 @@
+
+# 2021-03-27 12:24:11.426813: clock-in
+
 # 2021-03-27 11:58:55.516981: clock-out
 
 * test of pascals failing
