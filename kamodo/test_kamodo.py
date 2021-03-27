@@ -213,6 +213,12 @@ def test_to_latex():
     kamodo['f(x[cm])[kg]'] = 'x**2'
     kamodo['g'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'), equation='$x^2$')
     kamodo['h'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'))
+    
+    @kamodofy(units = 'kg/m^3', citation = 'Bob et. al, 2018')
+    def rho(x = np.array([3,4,5]), y = np.array([1,2,3])):
+        """A function that computes density"""
+        return x+y
+    kamodo['rho'] = rho
     kamodo.to_latex()
 
 

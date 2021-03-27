@@ -789,7 +789,7 @@ class Kamodo(UserDict):
             #     ','.join([latex(s) for s in lhs.args]))
 
         if len(units) > 0:
-            lhs_str += "[{}]".format(latex(parse_expr(units),
+            lhs_str += "[{}]".format(latex(parse_expr(units.replace('^', '**')),
                     fold_frac_powers=True,
                     fold_short_frac=True,
                     root_notation=False,

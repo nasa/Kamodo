@@ -1,3 +1,4 @@
+* fixed to_latex rendering
 
 # 2021-03-27 10:42:18.972386: clock-in
 
