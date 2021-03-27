@@ -1,3 +1,4 @@
+* cleariving cells
 * fixed to-html
 * adding notebooks list
 * adding Visualization notebook to workflow
