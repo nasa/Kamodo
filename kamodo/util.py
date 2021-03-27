@@ -24,6 +24,7 @@ from inspect import getargspec, getfullargspec
 import inspect
 from sympy.physics import units
 from sympy.physics import units as sympy_units
+from sympy.physics.units.systems.si import dimsys_SI
 import numpy as np
 from sympy import latex, Eq
 from sympy.parsing.latex import parse_latex
@@ -768,7 +769,9 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
         to_unit = get_expr_unit(to_symbol, unit_registry, verbose)
         if verbose:
             print('unify: to_unit {}'.format(to_unit))
-        if get_dimensions(expr_unit) == get_dimensions(to_unit):
+        expr_dimensions = get_dimensions(expr_unit)
+        to_dimensions = get_dimensions(to_unit)
+        if expr_dimensions.compare(to_dimensions) == 0:
             if verbose:
                 print('unify: {} [{}] -> to_symbol: {}[{}]'.format(
                     expr, expr_unit, to_symbol, to_unit))
@@ -778,8 +781,12 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                 print('unify: registry:')
                 for k, v in unit_registry.items():
                     print('unify:\t{} -> {}'.format(k, v))
-            raise NameError('cannot convert {} [{}] to {}[{}]'.format(
-                expr, expr_unit, to_symbol, to_unit))
+                print('compare:{}'.format(expr_dimensions.compare(to_dimensions)))
+                error_msg = 'cannot convert {} [{}] {} to {}[{}] {}'.format(
+                expr, expr_unit, expr_dimensions,
+                to_symbol, to_unit, to_dimensions)
+                print(error_msg)
+            raise NameError(error_msg)
 
     return expr
 
@@ -795,10 +802,14 @@ def get_abbrev(unit):
     return unit
 
 
+def extract_dimensions(d):
+    dependencies = dimsys_SI.get_dimensional_dependencies(d)
+    return Mul.fromiter(Pow(Dimension(base), exp_) for base, exp_ in dependencies.items())
+
 def get_dimensions(unit):
     """get the set of basis units"""
     if hasattr(unit, 'dimension'):
-        return unit.dimension
+        return extract_dimensions(unit.dimension)
     if isinstance(unit, Mul):
         return Mul.fromiter([get_dimensions(arg) for arg in unit.args])
     if isinstance(unit, Pow):
