@@ -72,7 +72,7 @@ def parse_expr(*args, **kwargs):
         return sympy.sympify(*args, **kwargs)
     except:
         global_dict = kwargs.get('locals')
-        kwargs.pop('locals')
+        kwargs.pop('locals', None)
         try:
             return sympy.parsing.sympy_parser.parse_expr(
                 *args, global_dict=global_dict, **kwargs)
