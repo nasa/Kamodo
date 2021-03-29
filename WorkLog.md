@@ -1,3 +1,4 @@
+* fixed bug with Newton symbol clash
 
 # 2021-03-29 17:01:31.209600: clock-in
 

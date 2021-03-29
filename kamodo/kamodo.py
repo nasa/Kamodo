@@ -6,10 +6,10 @@ No Copyright is claimed in the United States under Title 17, U.S. Code.  All Oth
 import numpy as np
 from sympy import Integral, Symbol, symbols, Function
 
-try:
-    from sympy.parsing.sympy_parser import parse_expr
-except ImportError:  # may occur for certain versions of sympy
-    from sympy import sympify as parse_expr
+# try:
+#     from sympy.parsing.sympy_parser import parse_expr
+# except ImportError:  # may occur for certain versions of sympy
+#     from sympy import sympify as parse_expr
 
 from collections import OrderedDict
 from collections import UserDict
@@ -64,7 +64,20 @@ import requests
 from .util import serialize, deserialize
 from .util import sign_defaults
 import forge
+from sympy.abc import _clash
+import sympy
 
+def parse_expr(*args, **kwargs):
+    try:
+        return sympy.sympify(*args, **kwargs)
+    except:
+        global_dict = kwargs.get('locals')
+        kwargs.pop('locals')
+        try:
+            return sympy.parsing.sympy_parser.parse_expr(
+                *args, global_dict=global_dict, **kwargs)
+        except SyntaxError as error_msg:
+            raise NameError(error_msg)
 
 
 def get_unit_quantities():
@@ -94,10 +107,13 @@ def get_unit(unit_str, unit_subs=unit_subs):
 
     if len(unit_str) == 0:
         return Dimension(1)
+
+    unit_expr = parse_expr(unit_str.replace('^', '**'), locals=_clash)
     try:
-        unit = parse_expr(unit_str.replace('^', '**')).subs(units)
+        unit = unit_expr.subs(units)
     except:
-        raise NameError('something wrong with unit str [{}], type {}'.format(unit_str, type(unit_str)))
+        raise NameError('something wrong with unit str [{}], type {}, {}'.format(
+            unit_str, type(unit_str), unit_expr))
     try:
         assert len(unit.free_symbols) == 0
     except:

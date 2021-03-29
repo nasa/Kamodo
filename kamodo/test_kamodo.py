@@ -229,7 +229,7 @@ def test_expr_conversion():
 
 def test_get_unit_fail():
     with pytest.raises(NameError):
-        get_unit('unregistered units$')
+        get_unit('unregistered units')
     with pytest.raises(NameError):
         get_unit('runregistered')
 
@@ -780,5 +780,13 @@ def test_multi_arg_units():
     kamodo['b[m]'] = 'y'
     kamodo['c[ms]'] = 'z**2'
     kamodo['d(x,y,z)[cm]'] = 'f(a,b,c)'
+
+def test_broken_unit():
+    k = Kamodo()
+    k['f[N]'] = 'x'
+
+    get_unit('newton')
+    get_unit('N')
+
 
 
