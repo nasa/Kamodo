@@ -1,3 +1,4 @@
+* adding plasmapy kamodofication bug test
 * fixed bug in parse_expr locals
 * fixed bug with Newton symbol clash
 

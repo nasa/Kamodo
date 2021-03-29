@@ -788,5 +788,21 @@ def test_broken_unit():
     get_unit('newton')
     get_unit('N')
 
+def test_frequency_composition():
+    @kamodofy(units='radian/s', arg_units={'B':'T', 'n_e':'1/m**3'})
+    def omega_uh1(B, n_e):
+        return np.sqrt(B**2+n_e**2)
+
+    kamodo_test = Kamodo()
+    kamodo_test['B_mag'] = kamodofy(lambda B=np.linspace(0.1,1.,10):B, units='nT', arg_units={'B':'nT'})
+    kamodo_test['n_e'] = kamodofy(lambda n=np.linspace(4.,13.,10)*10**19:n, units='1/m**3', arg_units={'n':'1/m**3'})
+    kamodo_test['omega_uh1'] = omega_uh1
+    kamodo_test
+
+    kamodo_test.omega_uh1
+
+    #---------(input)--------
+    kamodo_test['omega_uh1A'] = 'omega_uh1(B_mag,n_e)'
+    kamodo_test.omega_uh1A
 
 
