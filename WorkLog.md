@@ -1,3 +1,6 @@
+
+# 2021-03-29 11:16:58.877386: clock-in
+
 # 2021-03-27 14:11:10.779236: clock-out
 
 * fixed example signature
