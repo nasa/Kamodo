@@ -1,3 +1,6 @@
+# 2021-03-29 16:03:16.457691: clock-out
+
+* getting function has no attribute subs with N - need to check against `_clash` list
 
 # 2021-03-29 15:47:37.025035: clock-in
 
