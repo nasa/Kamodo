@@ -1,3 +1,4 @@
+* working on functional images
 * added angular frequency units
 
 # 2021-03-30 16:16:32.599994: clock-in
