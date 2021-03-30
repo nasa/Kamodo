@@ -43,7 +43,6 @@ from .util import convert_unit_to
 from .util import unify, get_abbrev, get_expr_unit
 from .util import is_function, get_arg_units
 
-import sympy.physics.units as u
 
 import plotly.graph_objs as go
 from plotly import figure_factory as ff
@@ -67,17 +66,16 @@ import forge
 from sympy.abc import _clash
 import sympy
 
+_clash['rad'] = Symbol('rad')
+_clash['deg'] = Symbol('deg')
+
+
+
 def parse_expr(*args, **kwargs):
     try:
         return sympy.sympify(*args, **kwargs)
     except:
-        global_dict = kwargs.get('locals')
-        kwargs.pop('locals', None)
-        try:
-            return sympy.parsing.sympy_parser.parse_expr(
-                *args, global_dict=global_dict, **kwargs)
-        except SyntaxError as error_msg:
-            raise NameError(error_msg)
+        raise NameError('cannot parse {}, {}'.format(args, kwargs))
 
 
 def get_unit_quantities():
@@ -651,7 +649,9 @@ class Kamodo(UserDict):
 
             if self.verbose:
                 print('symbol after unify', symbol, type(symbol), rhs_expr)
-                print('unit registry to resolve units:', self.unit_registry)
+                print('unit registry to resolve units:')
+                for k,v in self.unit_registry.items():
+                    print('\t{}:{}'.format(k,v))
 
             units = get_expr_unit(symbol, self.unit_registry)
             if Dimension(get_dimensions(units)) != Dimension(1):
@@ -803,9 +803,8 @@ class Kamodo(UserDict):
             # lhs_str = "{}({})".format(
             #     latex(type(lhs)),
             #     ','.join([latex(s) for s in lhs.args]))
-
         if len(units) > 0:
-            lhs_str += "[{}]".format(latex(parse_expr(units.replace('^', '**')),
+            lhs_str += "[{}]".format(latex(parse_expr(units.replace('^', '**'), locals=_clash),
                     fold_frac_powers=True,
                     fold_short_frac=True,
                     root_notation=False,

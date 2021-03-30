@@ -18,6 +18,7 @@ from kamodo import from_kamodo, compose
 from sympy import Function
 from kamodo import KamodoAPI
 from .util import serialize, NumpyArrayEncoder
+from .util import get_kamodo_unit_system
 
 import warnings
 
@@ -789,20 +790,25 @@ def test_broken_unit():
     get_unit('N')
 
 def test_frequency_composition():
-    @kamodofy(units='radian/s', arg_units={'B':'T', 'n_e':'1/m**3'})
+    @kamodofy(units='rad/s', arg_units={'B':'T', 'n_e':'1/m**3'})
     def omega_uh1(B, n_e):
         return np.sqrt(B**2+n_e**2)
 
-    kamodo_test = Kamodo()
-    kamodo_test['B_mag'] = kamodofy(lambda B=np.linspace(0.1,1.,10):B, units='nT', arg_units={'B':'nT'})
+
+    kamodo_test = Kamodo(verbose=True)
+    kamodo_test['B_mag'] = kamodofy(lambda B=np.linspace(0.1,1.,10): B, units='nT', arg_units={'B':'nT'})
     kamodo_test['n_e'] = kamodofy(lambda n=np.linspace(4.,13.,10)*10**19:n, units='1/m**3', arg_units={'n':'1/m**3'})
     kamodo_test['omega_uh1'] = omega_uh1
-    kamodo_test
-
-    kamodo_test.omega_uh1
+    print(kamodo_test.unit_registry)
 
     #---------(input)--------
-    kamodo_test['omega_uh1A'] = 'omega_uh1(B_mag,n_e)'
+    kamodo_test['omega_uh1A'] = 'omega_uh1(B_mag, n_e)'
     kamodo_test.omega_uh1A
 
+
+def test_frequency_units():
+    omega = get_unit('rad')/get_unit('s')
+    freq = get_unit('deg')/get_unit('s')
+    kamodo_units = get_kamodo_unit_system()
+    convert_unit_to(omega, freq, kamodo_units)
 

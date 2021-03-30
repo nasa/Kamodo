@@ -46,6 +46,8 @@ import base64
 import types
 import forge
 
+from sympy.physics.units import UnitSystem
+from sympy.physics.units import Dimension
 
 
 
@@ -97,6 +99,32 @@ for item in unit_list:
                                                 abbrev=key+item)
 
 reserved_names = dir(sympy)
+
+
+def get_kamodo_unit_system():
+    """Same as SI but supports anglular frequency"""
+
+    radian = sympy.physics.units.radian
+    degree = sympy.physics.units.degree
+    si_unit_system = UnitSystem.get_unit_system('SI')
+    si_dimension_system = si_unit_system.get_dimension_system()
+
+    angle = Dimension('angle', 'A')
+
+    kamodo_dims = si_dimension_system.extend(
+        new_base_dims=(angle,),
+        new_derived_dims=[Dimension('angular_velocity')],
+        new_dim_deps={Symbol('angular_velocity'): {Symbol('angle'): 1, Symbol('time'): -1}})
+
+    kamodo_units = si_unit_system.extend(
+        (radian,),
+        (radian, degree),
+        dimension_system=kamodo_dims)
+
+    return kamodo_units
+
+
+kamodo_unit_system = get_kamodo_unit_system()
 
 def get_ufunc(expr, variable_map):
     """Numerically optimize expression"""
@@ -650,7 +678,7 @@ def get_expr_unit(expr, unit_registry, verbose=False):
     if isinstance(expr_unit, Add):
         # use the first term
         arg_0 = expr_unit.args[0]
-        convert_unit_to(expr_unit, arg_0)
+        convert_unit_to(expr_unit, arg_0, kamodo_unit_system)
         result = arg_0
     else:
         result = expr_unit
@@ -688,7 +716,10 @@ def replace_args(expr, from_map, to_map):
             to_unit = to_map[arg]
             try:
                 assert get_dimensions(from_unit) == get_dimensions(to_unit)
-                arg_map[arg] = convert_unit_to(arg*to_unit, from_unit)/from_unit
+                arg_map[arg] = convert_unit_to(
+                    arg*to_unit,
+                    from_unit,
+                    kamodo_unit_system)/from_unit
             except:
                 raise NameError('cannot convert from {} to {}'.format(from_unit, to_unit))
     return expr.subs(arg_map)
@@ -757,7 +788,10 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                             to_unit = arg_units.get(sym)
                             from_unit = get_expr_unit(arg, unit_registry)
                             if (from_unit is not None) and (to_unit is not None):
-                                expr_units[arg] = convert_unit_to(arg*from_unit, to_unit)/to_unit
+                                expr_units[arg] = convert_unit_to(
+                                    arg*from_unit,
+                                    to_unit,
+                                    kamodo_unit_system)/to_unit
                         expr = expr.subs(expr_units)
 
                         if verbose:
@@ -775,7 +809,10 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
             if verbose:
                 print('unify: {} [{}] -> to_symbol: {}[{}]'.format(
                     expr, expr_unit, to_symbol, to_unit))
-            expr = convert_unit_to(expr*expr_unit, to_unit)/to_unit
+            expr = convert_unit_to(
+                expr*expr_unit,
+                to_unit,
+                kamodo_unit_system)/to_unit
         else:
             if verbose:
                 print('unify: registry:')
@@ -1121,3 +1158,6 @@ def set_aspect(fig):
     xmin, xmax, ymin, ymax, zmin, zmax = get_bbox(fig)
     fig.layout.scene.aspectratio=dict(x=xmax-xmin, y=ymax-ymin,z=zmax-zmin)
     return fig
+
+
+
