@@ -1,3 +1,5 @@
+# 2021-03-30 18:45:14.238802: clock-out
+
 * working on functional images
 * added angular frequency units
 
