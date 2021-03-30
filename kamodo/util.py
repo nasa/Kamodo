@@ -536,7 +536,7 @@ def solve(fprime=None, seeds=None, varname=None, interval=None,
         return decorator_solve(fprime)
 
 
-def convert_unit_to(expr, target_units, unit_system="SI", raise_errors=True):
+def convert_unit_to(expr, target_units, unit_system=kamodo_unit_system, raise_errors=True):
     """
     Same as sympy.convert_to but accepts equations and allows functions of units to pass
 
