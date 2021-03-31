@@ -1,3 +1,6 @@
+
+# 2021-03-31 13:02:51.467590: clock-in
+
 * made kamodo unit system the default for conversion
 # 2021-03-30 18:45:14.238802: clock-out
 
