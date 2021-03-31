@@ -567,35 +567,61 @@ def tri_surface_plot(result, titles, verbose = False, **kwargs):
             zaxis = dict(title = arg2),))
     return [trace], '3d-surface', layout
 
+def image(result, titles, verbose=False, **kwargs):
+
+    variable = titles['variable']
+    if verbose:
+        print('\t2-d image', result[variable].shape)
+    z = result[variable]
+    title = titles['title']
+    arg0, val0 = list(result.items())[0]
+    arg1, val1 = list(result.items())[1]
+
+    if verbose:
+        print('2 inputs: {} {}, {} {}'.format(arg0, val0.shape, arg1, val1.shape))
+
+    trace = go.Image(z=z)
+    layout = go.Layout(
+        title = title,
+        xaxis = dict(title = '${}$'.format(arg0)),
+        yaxis = dict(title = '${}$'.format(arg1)))
+
+    return [trace], '2d-image', layout
+
+
+# {output.shape : {(input1.shape, input2.shape) : {'name':plot_name, 'func': plot_func}}}
 
 plot_dict = {
     (1,)    :   {(('N','M'), ('N','M'), ('N','M')): {'name': '3d-parametric', 'func': surface}},
     ('N',)  :   {
         (('N',),) : {'name': '1d-line', 'func': line_plot},
-        (('N',),('N',)): {'name': '2d-line-scalar', 'func': line_plot},
-        (('N',),('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},
-        (('N',3),): {'name': '3d scatter', 'func': scatter_plot},},
-    ('N',2) :   {
+        (('N',), ('N',)): {'name': '2d-line-scalar', 'func': line_plot},
+        (('N',), ('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},
+        (('N', 3),): {'name': '3d scatter', 'func': scatter_plot},},
+    ('N', 2) :   {
         (('N',),) :{'name': '2d-line', 'func': line_plot},
-        (('N',2),):{'name': '2d-vector', 'func': vector_plot},
+        (('N', 2),):{'name': '2d-vector', 'func': vector_plot},
     },
-    ('N',3) :   {
+    ('N', 3) :   {
         (('N',),) :{'name': '3d-line', 'func': line_plot},
-        (('N',3),):{'name': '3d-vector', 'func': vector_plot},
-        (('M',),('M',),('M',)):{'name': '3d-tri-surface', 'func': tri_surface_plot},
+        (('N', 3),):{'name': '3d-vector', 'func': vector_plot},
+        (('M',), ('M',), ('M',)):{'name': '3d-tri-surface', 'func': tri_surface_plot},
     },
-    ('N','M'):  {
-        (('N',),('M',)) :{'name': '2d-contour', 'func': contour_plot},
-        (('N','M'),('N','M')):{'name': '2d-contour-skew', 'func': contour_plot},
-        (('N','M'), ('N','M'), ('N','M')): {'name': '3d-parametric-scalar', 'func': surface},
-        ((1,),('N','M'),('N','M')):{'name': '3d-plane', 'func': plane},
-        (('N','M'),(1,),('N','M')):{'name': '3d-plane', 'func': plane},
-        (('N','M'),('N','M'),(1,)):{'name': '3d-plane', 'func': plane},
+    ('N', 'M'):  {
+        (('N',), ('M',)) :{'name': '2d-contour', 'func': contour_plot},
+        (('N', 'M'), ('N','M')):{'name': '2d-contour-skew', 'func': contour_plot},
+        (('N', 'M'), ('N','M'), ('N','M')): {'name': '3d-parametric-scalar', 'func': surface},
+        ((1,), ('N', 'M'),('N','M')):{'name': '3d-plane', 'func': plane},
+        (('N', 'M'), (1,),('N','M')):{'name': '3d-plane', 'func': plane},
+        (('N', 'M'), ('N','M'),(1,)):{'name': '3d-plane', 'func': plane},
     },
-    ('N','M',1): {
+    ('N', 'M', 1): {
         ((1,),('N',),('M',)):{'name': '3d-plane', 'func': plane},
-        (('N',),(1,),('M',)):{'name': '3d-plane', 'func': plane},
-        (('N',),('M',),(1,)):{'name': '3d-plane', 'func': plane},
+        (('N',), (1,),('M',)):{'name': '3d-plane', 'func': plane},
+        (('N',), ('M',),(1,)):{'name': '3d-plane', 'func': plane},
+    },
+    ('N', 'M', 3): {
+        (('N',), ('M',)):{'name': 'image', 'func': image}
     },
 }
 
@@ -636,12 +662,14 @@ def get_plot_key(out_shape, *arg_shapes):
             if out_shape[-1] == 3:
                 out_dim = 'N', 3
             else:
-                out_dim = 'N','M'
+                out_dim = 'N', 'M'
         elif len(out_shape) == 3:
             if 1 in out_shape:
                 out_dim = 'N', 'M', 1
+            elif out_shape[-1] == 3:
+                out_dim = 'N', 'M', 3
             else:
-                out_dim = 'N','M','L'
+                out_dim = 'N', 'M', 'L'
 
     if out_dim is not None:
         out_dim = tuple(out_dim)
@@ -651,45 +679,45 @@ def get_plot_key(out_shape, *arg_shapes):
         arg_dims = tuple(nargs*[out_dim])
     else:
         if nargs == 1:
-            if out_dim == ('N',2):
+            if out_dim == ('N', 2):
                 if arg_shapes[0][0] == out_shape[0]:
                     arg_dims = (('N',),)
-            elif out_dim == ('N',3):
+            elif out_dim == ('N', 3):
                 if arg_shapes[0][0] == out_shape[0]:
                     arg_dims = (('N',),)
             elif out_dim == ('N',):
                 if arg_shapes[0] == (out_shape[0], 3):
-                    arg_dims = (('N',3),)
+                    arg_dims = (('N', 3),)
         elif nargs == 2:
-            if out_dim == ('N','M'):
+            if (out_dim == ('N', 'M')) | (out_dim == ('N', 'M', 3)):
                 if (arg_shapes[0][0] in out_shape) & (arg_shapes[1][0] in out_shape):
-                    arg_dims = (('N',),('M',))
+                    arg_dims = (('N',), ('M',))
         elif nargs == 3:
             if out_dim == (1,):
                 if len(set(arg_shapes)) == 1:
                     if len(arg_shapes[0]) == 2:
                         arg_dims = tuple(3*[('N','M')])
-            elif out_dim == ('N','M'):
+            elif out_dim == ('N', 'M'):
                 arg_set = set([1])
                 for arg in arg_shapes:
                     arg_set.update(set(arg))
                 if arg_set - set(out_shape) == set([1]):
                     if arg_shapes[0] == (1,):
-                        arg_dims = ((1,), ('N','M'), ('N','M'))
+                        arg_dims = ((1,), ('N', 'M'), ('N', 'M'))
                     elif arg_shapes[1] == (1,):
-                        arg_dims = (('N','M'),(1,),('N','M',))
+                        arg_dims = (('N', 'M'),(1,), ('N', 'M',))
                     elif arg_shapes[2] == (1,):
-                        arg_dims = (('N','M'),('N','M'),(1,))
-            elif out_dim == ('N','M',1):
+                        arg_dims = (('N', 'M'), ('N', 'M'), (1,))
+            elif out_dim == ('N', 'M', 1):
                 arg_set = set([1])
                 for arg in arg_shapes:
                     arg_set.update(set(arg))
                 if arg_shapes[0] == (1,):
                     arg_dims = ((1,), ('N',), ('M',))
                 elif arg_shapes[1] == (1,):
-                    arg_dims = (('N',),(1,),('M',))
+                    arg_dims = (('N',), (1,), ('M',))
                 elif arg_shapes[2] == (1,):
-                    arg_dims = (('N',),('M',),(1,))
+                    arg_dims = (('N',), ('M',),(1,))
             elif out_dim == ('N', 3):
                 if len(set(arg_shapes)) == 1:
                     if len(arg_shapes[0]) == 1:

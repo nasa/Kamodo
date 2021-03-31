@@ -1,3 +1,4 @@
+* registered image plot type
 
 # 2021-03-31 13:02:51.467590: clock-in
 
