@@ -1,3 +1,5 @@
+# 2021-03-31 14:02:27.533428: clock-out
+
 * registered image plot type
 
 # 2021-03-31 13:02:51.467590: clock-in
