@@ -28,6 +28,7 @@ class GITM(Kamodo):
                  runname = "noname",
                  debug = 1,
                  **kwargs):
+        super(GITM, self).__init__(**kwargs)
         # Start timer
         tic = time.perf_counter()
         
