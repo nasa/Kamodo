@@ -25,6 +25,7 @@ def hapi_get_date_range(server, dataset):
 
 class HAPI(Kamodo):
     def __init__(self, server, dataset, parameters = None, start = None, stop = None, **kwargs):
+        super(HAPI, self).__init__(**kwargs)
         self.verbose=False
         self.symbol_registry=dict()
         self.signatures=dict()
@@ -55,7 +56,7 @@ class HAPI(Kamodo):
         self.stop=stop
         # Get data, meta from the HAPI python client
         data, meta = PYhapi(server, dataset, parameters, start, stop, **opts)
-        self.data = data
+        self.hdata = data
         self.meta = meta
         self.startDate = meta['startDate']
         self.stopDate = meta['stopDate']
@@ -71,7 +72,7 @@ class HAPI(Kamodo):
                 if "size" in metaparam:
                     asize = metaparam['size'][0]
                 aunit=metaparam['units']
-                adata=self.data[varname]
+                adata=self.hdata[varname]
                 afill=metaparam['fill']
                 adesc=metaparam['description']
                 if "0.1nT" in aunit:
@@ -162,12 +163,11 @@ class HAPI(Kamodo):
     def fill2nan(self):
         '''
         Replaces fill value in data with NaN.
-        Not Yet called by default. Call as needed.
         '''
         for varname in self.variables:
             data = self.variables[varname]['data']
             fill = self.variables[varname]['fill']
-            if fill is not None and fill is not "NaN":
+            if fill != None and fill != "NaN":
                 mask = data==float(fill)
                 nbad = np.count_nonzero(mask)
                 if nbad > 0:
