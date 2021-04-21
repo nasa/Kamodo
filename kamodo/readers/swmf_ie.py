@@ -19,6 +19,7 @@ from util import *
 
 class SWMF_IE(Kamodo):
     def __init__(self,filename,**kwargs):
+        super(SWMF_IE, self).__init__(**kwargs)
         print('opening SWMF Ionosphere Electrodynamics file %s' % filename)
         self.filename = filename
         self.missing_value=np.NAN
