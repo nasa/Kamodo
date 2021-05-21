@@ -1,3 +1,8 @@
+
+# 2021-05-21 11:12:40.628676: clock-in
+
+look at jupyter book for publication https://jupyterbook.org/intro.html
+
 # 2021-03-31 14:02:27.533428: clock-out
 
 * registered image plot type
@@ -5,6 +10,7 @@
 # 2021-03-31 13:02:51.467590: clock-in
 
 * made kamodo unit system the default for conversion
+
 # 2021-03-30 18:45:14.238802: clock-out
 
 * working on functional images
