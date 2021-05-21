@@ -1,3 +1,4 @@
+* simplifying plot key generation
 
 # 2021-05-21 11:12:40.628676: clock-in
 

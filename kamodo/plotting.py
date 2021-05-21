@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Copyright © 2017 United States Government as represented by the Administrator, National Aeronautics and Space Administration.  
 No Copyright is claimed in the United States under Title 17, U.S. Code.  All Other Rights Reserved.
@@ -740,4 +741,55 @@ plot_types = pd.DataFrame(plot_types).T
 plot_types.index.set_names(['out_shape', 'arg_shapes'], inplace = True)
 plot_types.columns = ['plot_type', 'function']
 
+plot_types
 
+plot_dict.keys()
+
+# Need to replace get_plot_key with something driven by plot_dict. The goal is to look up the appropriate plot based on shape tuples. If we start with the args, we can identify unique shape values.
+
+# +
+sizes_available = np.array([1, 'N', 'M', 'L'], dtype=object)
+
+def symbolic_shape(*shapes):
+    """Convert input shapes to symbolic shapes
+    
+    Allow values of 1 to pass through
+    Results should match input structure
+    """
+    _, unique = np.unique(shapes, return_inverse=True)
+    if _[0] == 1:
+        result = tuple(sizes_available[unique])
+    else:
+        # start at N
+        result = tuple(sizes_available[1+unique])
+        
+    # result comes out flattened, restructure to match input
+    shape_index = 0
+    results = []
+    for shape in shapes:
+        result_shape = []
+        for _ in shape:
+            result_shape.append(result[shape_index])
+            shape_index+=1
+        results.append(tuple(result_shape))
+    return tuple(results)
+    
+def test_symbolic_shape():
+    assert symbolic_shape((3,1,3)) == (('N', 1, 'N'),)
+    assert symbolic_shape((3,3,3)) == (('N', 'N', 'N'),)
+    assert symbolic_shape((2,1,3)) == (('N', 1, 'M'),)
+    assert symbolic_shape((2,3,4)) == (('N', 'M', 'L'),)
+    assert symbolic_shape((2,3,1)) == (('N', 'M', 1),)
+    assert symbolic_shape((3,4), (4,3), (4,2)) == (('M', 'L'), ('L', 'M'), ('L', 'N'))
+    
+
+
+# -
+
+test_symbolic_shape()
+
+symbolic_shape((3,1), (4,3), (4,2))
+
+#
+
+symbolic_shape(((3,4),(2,3),(3,4)))
