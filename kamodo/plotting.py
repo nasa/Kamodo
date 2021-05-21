@@ -626,6 +626,44 @@ plot_dict = {
     },
 }
 
+# +
+sizes_available = np.array([1, 'N', 'M', 'L', 'O', 'P', 'Q', 'R', 'S', 'T'], dtype=object)
+
+def symbolic_shape(*shapes, sizes_available=sizes_available):
+    """Convert input shapes to symbolic shapes
+    
+    Allow values of 1 to pass through
+    Results should match input structure
+    """
+    _, unique = np.unique(shapes, return_inverse=True)
+    if _[0] == 1:
+        result = tuple(sizes_available[unique])
+    elif _[0] == '1':
+        result = tuple(sizes_available[unique])
+    else:
+        # start at N
+        result = tuple(sizes_available[1+unique])
+        
+    # result comes out flattened, restructure to match input
+    shape_index = 0
+    results = []
+    for shape in shapes:
+        result_shape = []
+        for s_ in shape:
+            try:
+                result_shape.append(result[shape_index])
+            except IndexError:
+                print(_, unique, result)
+                print(s_, shape_index)
+                raise
+            shape_index+=1
+        results.append(tuple(result_shape))
+    return tuple(results)
+    
+
+
+# -
+
 def get_arg_shapes(*args):
     shapes = []
     for a in args:
@@ -642,154 +680,25 @@ def get_arg_shapes(*args):
     return shapes
 
 
-def get_plot_key(out_shape, *arg_shapes):
-    """Generates a plot key from array shapes"""
-    shapes_match = all([(a == out_shape) for a in list(arg_shapes)])
-    nargs = len(arg_shapes)
-    arg_dims = ''
-    out_dim = None
-    if nargs == 1:
-        if len(out_shape) == 1:
-            out_dim = 'N'
-        else:
-            out_dim = ('N', out_shape[-1])
-    else:
-        if len(out_shape) == 1:
-            if out_shape[0] == 1:
-                out_dim = 1,
-            else:
-                out_dim = 'N',
-        elif len(out_shape) == 2:
-            if out_shape[-1] == 3:
-                out_dim = 'N', 3
-            else:
-                out_dim = 'N', 'M'
-        elif len(out_shape) == 3:
-            if 1 in out_shape:
-                out_dim = 'N', 'M', 1
-            elif out_shape[-1] == 3:
-                out_dim = 'N', 'M', 3
-            else:
-                out_dim = 'N', 'M', 'L'
-
-    if out_dim is not None:
-        out_dim = tuple(out_dim)
-    else:
-        raise(NotImplementedError('arg shapes {} not yet supported'.format(arg_shapes)))
-    if shapes_match:
-        arg_dims = tuple(nargs*[out_dim])
-    else:
-        if nargs == 1:
-            if out_dim == ('N', 2):
-                if arg_shapes[0][0] == out_shape[0]:
-                    arg_dims = (('N',),)
-            elif out_dim == ('N', 3):
-                if arg_shapes[0][0] == out_shape[0]:
-                    arg_dims = (('N',),)
-            elif out_dim == ('N',):
-                if arg_shapes[0] == (out_shape[0], 3):
-                    arg_dims = (('N', 3),)
-        elif nargs == 2:
-            if (out_dim == ('N', 'M')) | (out_dim == ('N', 'M', 3)):
-                if (arg_shapes[0][0] in out_shape) & (arg_shapes[1][0] in out_shape):
-                    arg_dims = (('N',), ('M',))
-        elif nargs == 3:
-            if out_dim == (1,):
-                if len(set(arg_shapes)) == 1:
-                    if len(arg_shapes[0]) == 2:
-                        arg_dims = tuple(3*[('N','M')])
-            elif out_dim == ('N', 'M'):
-                arg_set = set([1])
-                for arg in arg_shapes:
-                    arg_set.update(set(arg))
-                if arg_set - set(out_shape) == set([1]):
-                    if arg_shapes[0] == (1,):
-                        arg_dims = ((1,), ('N', 'M'), ('N', 'M'))
-                    elif arg_shapes[1] == (1,):
-                        arg_dims = (('N', 'M'),(1,), ('N', 'M',))
-                    elif arg_shapes[2] == (1,):
-                        arg_dims = (('N', 'M'), ('N', 'M'), (1,))
-            elif out_dim == ('N', 'M', 1):
-                arg_set = set([1])
-                for arg in arg_shapes:
-                    arg_set.update(set(arg))
-                if arg_shapes[0] == (1,):
-                    arg_dims = ((1,), ('N',), ('M',))
-                elif arg_shapes[1] == (1,):
-                    arg_dims = (('N',), (1,), ('M',))
-                elif arg_shapes[2] == (1,):
-                    arg_dims = (('N',), ('M',),(1,))
-            elif out_dim == ('N', 3):
-                if len(set(arg_shapes)) == 1:
-                    if len(arg_shapes[0]) == 1:
-                        arg_dims = tuple(3*[('M',)])
-                    
-    if arg_dims == '':
-        raise NotImplementedError('No way to handle out_shape {}, with arg shapes:{}'.format(out_shape, arg_shapes))
-    return out_dim, arg_dims
-
-
-plot_types = dict()
-for out_shape, v in list(plot_dict.items()):
-    for arg_shapes, v_ in list(v.items()):
-        plot_key = get_plot_key(out_shape, *arg_shapes)
-        if plot_key in plot_types:
-            raise KeyError('plot_key already present {}'.format(plot_key))
-        plot_types[plot_key] = [v_['name'], v_['func']]
-
-plot_types = pd.DataFrame(plot_types).T
-plot_types.index.set_names(['out_shape', 'arg_shapes'], inplace = True)
-plot_types.columns = ['plot_type', 'function']
-
-plot_types
-
-plot_dict.keys()
-
-# Need to replace get_plot_key with something driven by plot_dict. The goal is to look up the appropriate plot based on shape tuples. If we start with the args, we can identify unique shape values.
-
 # +
-sizes_available = np.array([1, 'N', 'M', 'L'], dtype=object)
+def func_mod_name(f):
+    return '{}.{}'.format(f.__module__, f.__name__)
 
-def symbolic_shape(*shapes):
-    """Convert input shapes to symbolic shapes
+def get_plot_types_df():
+    """pack the plot types into a dataframe"""
+    plot_types = dict()
+    for out_shape, v in list(plot_dict.items()):
+        for arg_shapes, v_ in list(v.items()):
+            plot_key = out_shape, arg_shapes
+            if plot_key in plot_types:
+                raise KeyError('plot_key already present {}'.format(plot_key))
+            plot_types[plot_key] = [v_['name'], func_mod_name(v_['func'])]
     
-    Allow values of 1 to pass through
-    Results should match input structure
-    """
-    _, unique = np.unique(shapes, return_inverse=True)
-    if _[0] == 1:
-        result = tuple(sizes_available[unique])
-    else:
-        # start at N
-        result = tuple(sizes_available[1+unique])
-        
-    # result comes out flattened, restructure to match input
-    shape_index = 0
-    results = []
-    for shape in shapes:
-        result_shape = []
-        for _ in shape:
-            result_shape.append(result[shape_index])
-            shape_index+=1
-        results.append(tuple(result_shape))
-    return tuple(results)
+    plot_types = pd.DataFrame(plot_types).T
     
-def test_symbolic_shape():
-    assert symbolic_shape((3,1,3)) == (('N', 1, 'N'),)
-    assert symbolic_shape((3,3,3)) == (('N', 'N', 'N'),)
-    assert symbolic_shape((2,1,3)) == (('N', 1, 'M'),)
-    assert symbolic_shape((2,3,4)) == (('N', 'M', 'L'),)
-    assert symbolic_shape((2,3,1)) == (('N', 'M', 1),)
-    assert symbolic_shape((3,4), (4,3), (4,2)) == (('M', 'L'), ('L', 'M'), ('L', 'N'))
+    plot_types.index.set_names(['out_shape', 'arg_shapes'], inplace = True)
     
-
-
-# -
-
-test_symbolic_shape()
-
-symbolic_shape((3,1), (4,3), (4,2))
-
-#
-
-symbolic_shape(((3,4),(2,3),(3,4)))
+    plot_types.columns = ['plot_type', 'function']
+    return plot_types
+    
+plot_types = get_plot_types_df()

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Copyright © 2017 United States Government as represented by the Administrator, National Aeronautics and Space Administration.  
 No Copyright is claimed in the United States under Title 17, U.S. Code.  All Other Rights Reserved.
@@ -47,10 +48,10 @@ from .util import is_function, get_arg_units
 import plotly.graph_objs as go
 from plotly import figure_factory as ff
 
-from plotting import plot_dict, get_arg_shapes, get_plot_key
-from .util import existing_plot_types
-from .util import get_dimensions
-from .util import reserved_names
+from plotting import plot_dict, get_arg_shapes, symbolic_shape
+from util import existing_plot_types
+from util import get_dimensions
+from util import reserved_names
 
 from sympy import Wild
 from types import GeneratorType
@@ -967,10 +968,10 @@ class Kamodo(UserDict):
 
         arg_shapes = get_arg_shapes(*arg_arrays)
 
-        out_dim, arg_dims = get_plot_key(result[variable].shape, *arg_shapes)
+        out_dim, *arg_dims = symbolic_shape(result[variable].shape, *arg_shapes)
 
         try:
-            plot_func = plot_dict[out_dim][arg_dims]['func']
+            plot_func = plot_dict[out_dim][tuple(arg_dims)]['func']
         except KeyError:
             print('not supported: out_dim {}, arg_dims {}'.format(out_dim, arg_dims))
             raise
