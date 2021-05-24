@@ -1,3 +1,41 @@
+* refactored and added squeeze kwarg to gridify
+* refactoring `@gridify` to use forge
+* something to keep in mind when using forge:
+
+```
+.. warning::
+
+    When supplying previously-created parameters to :func:`~forge.sign`,
+    those parameters will be ordered by their creation order.
+
+    This is because Python implementations prior to ``3.7`` don't
+    guarantee the ordering of keyword-arguments.
+
+    Therefore, it is recommended that when supplying pre-created
+    parameters to :func:`~forge.sign`, you supply them as positional
+    arguments:
+
+
+    .. testcode::
+
+        import forge
+
+        param_b = forge.arg('b')
+        param_a = forge.arg('a')
+
+        @forge.sign(a=param_a, b=param_b)
+        def func1(**kwargs):
+            pass
+
+        @forge.sign(param_a, param_b)
+        def func2(**kwargs):
+            pass
+
+        assert forge.repr_callable(func1) == 'func1(b, a)'
+        assert forge.repr_callable(func2) == 'func2(a, b)'
+
+```
+
 
 # 2021-05-24 16:55:07.640148: clock-in
 

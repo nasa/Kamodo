@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Copyright © 2017 United States Government as represented by the Administrator, National Aeronautics and Space Administration.  
 No Copyright is claimed in the United States under Title 17, U.S. Code.  All Other Rights Reserved.
@@ -87,7 +88,7 @@ prefix_dict = sympy_units.prefixes.PREFIXES  #built-in dictionary of Prefix inst
 unit_list = ['m', 's', 'g', 'A', 'K', 'radian', 'sr', 'cd', 'mole', 'eV', 'Pa', 'F', 'N',
              'V', 'Hz', 'C', 'W', 'Wb', 'H', 'S', 'Bq', 'Gy', 'erg', 'T']
 
-#list of SI units included in sympy (likely not complete)
+# list of SI units included in sympy (likely not complete)
 
 for item in unit_list:
     unit_item = getattr(sympy_units, item)
@@ -369,42 +370,39 @@ existing_plot_types = pd.DataFrame({
 existing_plot_types.index.set_names(['nargs', 'arg shapes', 'out shape'], inplace=True)
 existing_plot_types.columns = ['Plot Type', 'notes']
 
-# manually generate the appropriate function signature
-grid_wrapper_def_A = r"""def wrapped({signature}):
-    coordinates = np.meshgrid({arg_str}, indexing = 'xy', sparse = False, copy = False)
-    points = np.column_stack([c.ravel() for c in coordinates])
-    out_shape = [-1] + list(coordinates[0].shape)
-    return np.squeeze({fname}(points).reshape(out_shape, order = 'A'))
+
+def gridify(_func=None, order='A', squeeze=True, **defaults):
+    """Given a function of shape (n,dim) and arguments of shape (L), (M), calls f with points L*M
+    
+    order: 'A' (default) uses indexing='xy' in meshgrid
+           'C' uses indexing='ij' in meshgrid
+    squeeze: True (default) passed to reshape before returning
+
     """
-
-grid_wrapper_def_C = r"""def wrapped({signature}):
-    coordinates = np.meshgrid({arg_str}, indexing = 'ij', sparse = False, copy = False)
-    points = np.column_stack([c.ravel() for c in coordinates])
-    out_shape = list(coordinates[0].shape) + [-1]
-    return np.squeeze({fname}(points).reshape(out_shape, order = 'C'))
-    """
-
-
-def gridify(_func=None, order='A', **defaults):
-    """Given a function of shape (n,dim) and arguments of shape (L), (M), calls f with points L*M"""
 
     def decorator_gridify(f):
 
-        arg_str = ', '.join([k for k in defaults])
-
-        signature = ''
-        for k, v in defaults.items():
-            signature = signature + "{} = {},".format(k, k)
-
-        scope = {**defaults}
-        scope['np'] = np
-        scope[f.__name__] = f
+        signature = []
+        for arg, arg_default in defaults.items():
+            signature.append(forge.arg(arg, default=arg_default))
 
         if order == 'A':
-            exec(grid_wrapper_def_A.format(signature=signature, arg_str=arg_str, fname=f.__name__), scope)
-        elif order == 'C':
-            exec(grid_wrapper_def_C.format(signature=signature, arg_str=arg_str, fname=f.__name__), scope)
-        wrapped = scope['wrapped']
+            indexing = 'xy'
+        else:
+            indexing = 'ij'
+        
+        @forge.sign(*signature)
+        def wrapped(**kwargs):
+            coordinates = np.meshgrid(*kwargs.values(), indexing = indexing, sparse = False, copy = False)
+            points = np.column_stack([c.ravel() for c in coordinates])
+
+            if squeeze:
+                out_shape = [-1] + list(coordinates[0].shape)
+                return np.squeeze(f(points).reshape(out_shape, order = order))
+            else:
+                out_shape = list(coordinates[0].shape)
+                return f(points).reshape(out_shape, order = order)
+
         wrapped.__name__ = f.__name__
         wrapped.__doc__ = f.__doc__
 
@@ -906,7 +904,7 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
-    
+
 class NumpyArrayEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -994,7 +992,7 @@ def lambdagen(obj):
             return deserialize(func_['result'])
 
         yield kamodofy(func)
-    
+
 def deserialize(obj):
     # convert obj into numpy, pandas
     if isinstance(obj, dict):
