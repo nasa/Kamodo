@@ -1,3 +1,10 @@
+
+# 2021-05-24 16:55:07.640148: clock-in
+
+* differential equations could be written as function decorators applied to boundary conditions.
+* boundary conditions are functions over the simulation domain boundary with nans everywhere else.
+* solutions are returned as functions over the independent variables. 
+
 # 2021-05-21 16:47:38.435955: clock-out
 
 * cleaned up plot key generation
