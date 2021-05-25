@@ -967,8 +967,12 @@ class Kamodo(UserDict):
         arg_arrays = [result[k] for k in result if k not in hidden_args][:-1]
 
         arg_shapes = get_arg_shapes(*arg_arrays)
-
-        out_dim, *arg_dims = symbolic_shape(result[variable].shape, *arg_shapes)
+        try:
+            out_dim, *arg_dims = symbolic_shape(result[variable].shape, *arg_shapes)
+        except IndexError:
+            print('could not interpret shapes from variable shape {}'.format(result[variable].shape))
+            print('argument shapes: ', *arg_shapes)
+            raise
 
         try:
             plot_func = plot_dict[out_dim][tuple(arg_dims)]['func']

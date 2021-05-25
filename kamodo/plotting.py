@@ -590,6 +590,23 @@ def image(result, titles, verbose=False, **kwargs):
     return [trace], '2d-image', layout
 
 
+def slice4d(result, titles, verbose=False, **kwargs):
+    
+    variable = titles['variable']
+    if verbose:
+        print('\t4-d slice', result[variable].shape)
+    z = result[variable]
+    title = titles['title']
+    arg0, val0 = list(result.items())[0]
+    arg1, val1 = list(result.items())[1]
+    
+    layout = go.Layout(
+        title = title,
+        xaxis = dict(title = '${}$'.format(arg0)),
+        yaxis = dict(title = '${}$'.format(arg1)))
+    return [trace], '4d-slice', layout
+
+
 # {output.shape : {(input1.shape, input2.shape) : {'name':plot_name, 'func': plot_func}}}
 
 plot_dict = {
@@ -629,13 +646,16 @@ plot_dict = {
 # +
 sizes_available = np.array([1, 'N', 'M', 'L', 'O', 'P', 'Q', 'R', 'S', 'T'], dtype=object)
 
+def flatten_shapes(shapes):
+    return [item for sublist in shapes for item in sublist]
+
 def symbolic_shape(*shapes, sizes_available=sizes_available):
     """Convert input shapes to symbolic shapes
     
     Allow values of 1 to pass through
     Results should match input structure
     """
-    _, unique = np.unique(shapes, return_inverse=True)
+    _, unique = np.unique(flatten_shapes(shapes), return_inverse=True)
     if _[0] == 1:
         result = tuple(sizes_available[unique])
     elif _[0] == '1':
@@ -653,8 +673,11 @@ def symbolic_shape(*shapes, sizes_available=sizes_available):
             try:
                 result_shape.append(result[shape_index])
             except IndexError:
-                print(_, unique, result)
-                print(s_, shape_index)
+                print('input shapes:', shapes)
+                print('unique shapes:', _, unique)
+                print('result:', result)
+                print('shape_index:', shape_index)
+                print('shape:', s_)
                 raise
             shape_index+=1
         results.append(tuple(result_shape))
