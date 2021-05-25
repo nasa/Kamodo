@@ -1,3 +1,4 @@
+* made contour time slider
 
 # 2021-05-25 17:31:43.349647: clock-in: T-30m 
 
