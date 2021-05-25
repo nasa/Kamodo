@@ -1,3 +1,6 @@
+
+# 2021-05-25 12:09:08.836291: clock-in
+
 # 2021-05-24 18:02:15.095789: clock-out
 
 * refactored and added squeeze kwarg to gridify
