@@ -1,3 +1,5 @@
+# 2021-05-25 12:52:45.366801: clock-out
+
 * flattening arg shapes in preparation for 4d
 
 # 2021-05-25 12:09:08.836291: clock-in
