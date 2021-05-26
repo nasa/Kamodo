@@ -1,3 +1,6 @@
+
+# 2021-05-25 19:39:05.600086: clock-in: T-20m 
+
 # 2021-05-25 17:39:20.981299: clock-out
 
 * made contour time slider
