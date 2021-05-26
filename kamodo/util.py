@@ -30,6 +30,7 @@ import numpy as np
 from sympy import latex, Eq
 from sympy.parsing.latex import parse_latex
 import pandas as pd
+from datetime import datetime
 from scipy.integrate import solve_ivp
 from sympy.physics.units.util import _get_conversion_matrix_for_expr
 
@@ -946,7 +947,7 @@ def serialize(obj):
     if isinstance(obj, pd.Index):
         if isinstance(obj, pd.DatetimeIndex):
             return {
-                '__datetime__': [_ for _ in map(pd.datetime.isoformat, obj)],
+                '__datetime__': [_ for _ in map(datetime.isoformat, obj)],
                 'dtype': full_classname(obj),
             }
         else:

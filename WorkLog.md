@@ -1,3 +1,4 @@
+* fixing pd.datetime deprecration warning
 
 # 2021-05-25 19:39:05.600086: clock-in: T-20m 
 
