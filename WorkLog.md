@@ -1,3 +1,6 @@
+
+# 2021-05-26 12:21:26.381522: clock-in
+
 # 2021-05-25 19:47:12.438128: clock-out
 
 * fixing pd.datetime deprecration warning
