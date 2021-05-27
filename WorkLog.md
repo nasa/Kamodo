@@ -1,5 +1,9 @@
+
+# 2021-05-27 12:40:51.097172: clock-in
+
 # 2021-05-26 12:25:41.791573: clock-out
 
+* issues with slice generation returning empty plot
 
 # 2021-05-26 12:21:26.381522: clock-in
 
