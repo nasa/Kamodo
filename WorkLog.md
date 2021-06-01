@@ -1,3 +1,10 @@
+
+# 2021-06-01 12:48:58.347646: clock-in
+
+* looking at Resen https://resen.readthedocs.io/en/latest/usage.html#resen-workflow
+
+# 2021-06-01 12:24:11.646794: clock-in
+
 # 2021-05-27 13:10:05.047450: clock-out
 
 * looking at generator arguments
