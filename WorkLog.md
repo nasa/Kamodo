@@ -1,3 +1,6 @@
+
+# 2021-06-01 17:11:13.591391: clock-in
+
 # 2021-06-01 13:52:37.320039: clock-out
 
 * fixing plot key bugs
