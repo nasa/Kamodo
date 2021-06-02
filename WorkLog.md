@@ -1,3 +1,5 @@
+* fixing plot bugs
+* there is bug in equation rendering where Kamodo.to_latex returns the function's expression rather than the symbol used in registration.
 
 # 2021-06-02 08:21:21.610958: clock-in
 
