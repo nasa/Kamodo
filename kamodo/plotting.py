@@ -590,23 +590,6 @@ def image(result, titles, verbose=False, **kwargs):
     return [trace], '2d-image', layout
 
 
-def slice4d(result, titles, verbose=False, **kwargs):
-    
-    variable = titles['variable']
-    if verbose:
-        print('\t4-d slice', result[variable].shape)
-    z = result[variable]
-    title = titles['title']
-    arg0, val0 = list(result.items())[0]
-    arg1, val1 = list(result.items())[1]
-    
-    layout = go.Layout(
-        title = title,
-        xaxis = dict(title = '${}$'.format(arg0)),
-        yaxis = dict(title = '${}$'.format(arg1)))
-    return [trace], '4d-slice', layout
-
-
 # {output.shape : {(input1.shape, input2.shape) : {'name':plot_name, 'func': plot_func}}}
 
 plot_dict = {
@@ -625,45 +608,71 @@ plot_dict = {
         (('N', 3),):{'name': '3d-vector', 'func': vector_plot},
         (('M',), ('M',), ('M',)):{'name': '3d-tri-surface', 'func': tri_surface_plot},
     },
+    ('N', 'N'): {
+        (('N',), ('N',)) :{'name': '2d-contour', 'func': contour_plot},
+    },
     ('N', 'M'):  {
         (('N',), ('M',)) :{'name': '2d-contour', 'func': contour_plot},
+        (('M',), ('N',)) :{'name': '2d-contour', 'func': contour_plot},
         (('N', 'M'), ('N','M')):{'name': '2d-contour-skew', 'func': contour_plot},
         (('N', 'M'), ('N','M'), ('N','M')): {'name': '3d-parametric-scalar', 'func': surface},
         ((1,), ('N', 'M'),('N','M')):{'name': '3d-plane', 'func': plane},
         (('N', 'M'), (1,),('N','M')):{'name': '3d-plane', 'func': plane},
         (('N', 'M'), ('N','M'),(1,)):{'name': '3d-plane', 'func': plane},
     },
+    ('N', 1, 'M'): {
+        (('N',), (1,), ('M',)):{'name': '3d-plane', 'func': plane},
+        ((1,), ('N',), ('M',)):{'name': '3d-plane', 'func': plane},
+    },
+    (1, 'N', 'M'): {
+        (('N',), (1,), ('M',)):{'name': '3d-plane', 'func': plane},
+    },
     ('N', 'M', 1): {
-        ((1,),('N',),('M',)):{'name': '3d-plane', 'func': plane},
-        (('N',), (1,),('M',)):{'name': '3d-plane', 'func': plane},
-        (('N',), ('M',),(1,)):{'name': '3d-plane', 'func': plane},
+        ((1,), ('N',), ('M',)):{'name': '3d-plane', 'func': plane},
+        (('N',), (1,), ('M',)):{'name': '3d-plane', 'func': plane},
+        (('N',), ('M',), (1,)):{'name': '3d-plane', 'func': plane},
+        (('M',), ('N',), (1,)):{'name': '3d-plane', 'func': plane},
     },
     ('N', 'M', 3): {
         (('N',), ('M',)):{'name': 'image', 'func': image}
     },
 }
 
+# keep values below size threshold
+size_threshold = 3
 # +
-sizes_available = np.array([1, 'N', 'M', 'L', 'O', 'P', 'Q', 'R', 'S', 'T'], dtype=object)
+sizes_available = np.array(['N', 'M', 'L', 'O', 'P', 'Q', 'R', 'S', 'T'], dtype=object)
 
 def flatten_shapes(shapes):
     return [item for sublist in shapes for item in sublist]
 
+def unordered_unique(a):
+    """return the indices and values of the array in their original order"""
+    indices = []
+    result = []
+    j = 0
+    for i, _ in enumerate(a):
+        if _ not in result:
+            result.append(_)
+        indices.append(result.index(_))
+    return result, indices
+
 def symbolic_shape(*shapes, sizes_available=sizes_available):
     """Convert input shapes to symbolic shapes
-    
+
     Allow values of 1 to pass through
     Results should match input structure
     """
-    _, unique = np.unique(flatten_shapes(shapes), return_inverse=True)
-    if _[0] == 1:
-        result = tuple(sizes_available[unique])
-    elif _[0] == '1':
-        result = tuple(sizes_available[unique])
-    else:
-        # start at N
-        result = tuple(sizes_available[1+unique])
-        
+    flattened = np.array(flatten_shapes(shapes), dtype=object)
+
+    swappable_indices = np.argwhere(flattened > size_threshold).T[0]
+    swappable_vals = flattened[swappable_indices]
+
+    _, unique = unordered_unique(swappable_vals)
+
+    # put results back in the original orray
+    flattened[swappable_indices] = sizes_available[unique]
+
     # result comes out flattened, restructure to match input
     shape_index = 0
     results = []
@@ -671,20 +680,13 @@ def symbolic_shape(*shapes, sizes_available=sizes_available):
         result_shape = []
         for s_ in shape:
             try:
-                result_shape.append(result[shape_index])
+                result_shape.append(flattened[shape_index])
             except IndexError:
                 print('input shapes:', shapes)
-                print('unique shapes:', _, unique)
-                print('result:', result)
-                print('shape_index:', shape_index)
-                print('shape:', s_)
                 raise
-            shape_index+=1
+            shape_index += 1
         results.append(tuple(result_shape))
     return tuple(results)
-    
-
-
 # -
 
 def get_arg_shapes(*args):
