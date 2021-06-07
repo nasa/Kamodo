@@ -1,3 +1,6 @@
+
+# 2021-06-07 18:31:58.228494: clock-in
+
 # 2021-06-02 14:52:38.570656: clock-out
 
 * fixed bugs in plotting
