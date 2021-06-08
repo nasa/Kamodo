@@ -1,3 +1,6 @@
+
+# 2021-06-08 16:47:15.520867: clock-in
+
 # 2021-06-07 19:18:28.125536: clock-out
 
 * geneartor input type
