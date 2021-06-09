@@ -1,3 +1,5 @@
+# 2021-06-09 18:44:17.665337: clock-out: T-2h 
+
 * added currying decorator
 * [currying](https://www.python-course.eu/currying_in_python.php) in python.
 
