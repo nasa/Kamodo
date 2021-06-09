@@ -1,3 +1,5 @@
+* added currying decorator
+* [currying](https://www.python-course.eu/currying_in_python.php) in python.
 
 # 2021-06-09 13:42:15.184948: clock-in: T-15m 
 

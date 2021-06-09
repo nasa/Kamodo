@@ -14,6 +14,7 @@ from .util import serialize, deserialize
 import pandas as pd
 import json
 from .util import LambdaGenerator
+from .util import curry
 
 @kamodofy
 def rho(x=np.array([3, 4, 5])):
@@ -307,9 +308,6 @@ def test_pad_nan():
         array = np.array([[[1], [2], [3]], [[1], [2], [3]]])
         pad_nan(array)
 
-    assert f"cannot pad shape {array.shape}" in str(error)
-
-
 def test_pointlike():
     assert Kamodo(points=squeeze_point).points().shape == (100,)
     assert Kamodo(points=points).points().shape == (1, 100)
@@ -392,5 +390,15 @@ def test_divide_lambdagen():
     lamb2 = LambdaGenerator(((lambda x=np.linspace(1, 5, 10): x**2) for i in range(5)))
     for r in lamb/lamb2:
         r()
+
+
+def test_curry():
+    @curry
+    def arimean(*args):
+        return sum(args) / len(args)
+
+    assert arimean(-2, -1, 0, 1, 2)() == 0
+    assert arimean(-2)(-1)(0)(1)(2)() == 0
+
 
     

@@ -319,16 +319,21 @@ def simulate(state_funcs, **kwargs):
 
 
 def pad_nan(array):
-    if len(array.shape) == 1:
-        # print('padding array {}'.format(array.shape))
-        return np.pad(array.astype(float), (0, 1),
-                      mode='constant', constant_values=np.nan).T
-    elif len(array.shape) == 2:
-        # print('padding array {}'.format(array.shape))
-        return np.pad(array.astype(float), ((0, 1), (0, 0)),
-                      mode='constant', constant_values=np.nan)
-    else:
-        raise NotImplementedError('cannot pad shape {}'.format(array.shape))
+    if isinstance(array, types.GeneratorType):
+        return np.array(list(array))
+    try:
+        if len(array.shape) == 1:
+            # print('padding array {}'.format(array.shape))
+            return np.pad(array.astype(float), (0, 1),
+                          mode='constant', constant_values=np.nan).T
+        elif len(array.shape) == 2:
+            # print('padding array {}'.format(array.shape))
+            return np.pad(array.astype(float), ((0, 1), (0, 0)),
+                          mode='constant', constant_values=np.nan)
+        else:
+            raise NotImplementedError('cannot pad shape {}'.format(array.shape))
+    except:
+        raise NotImplementedError('cannot handle {} of type {}'.format(array, type(array)))
 
 
 def concat_solution(gen, variable):
@@ -338,7 +343,6 @@ def concat_solution(gen, variable):
 
     stacking is vertically for N-d, horizontally for 1-d
     """
-    result = []
     params = defaultdict(list)
     for f in gen:
         for k, v in list(get_defaults(f).items()):
@@ -391,18 +395,22 @@ def gridify(_func=None, order='A', squeeze=True, **defaults):
             indexing = 'xy'
         else:
             indexing = 'ij'
-        
+
         @forge.sign(*signature)
         def wrapped(**kwargs):
-            coordinates = np.meshgrid(*kwargs.values(), indexing = indexing, sparse = False, copy = False)
+            coordinates = np.meshgrid(
+                *kwargs.values(),
+                indexing=indexing,
+                sparse=False,
+                copy=False)
             points = np.column_stack([c.ravel() for c in coordinates])
 
             if squeeze:
                 out_shape = [-1] + list(coordinates[0].shape)
-                return np.squeeze(f(points).reshape(out_shape, order = order))
+                return np.squeeze(f(points).reshape(out_shape, order=order))
             else:
                 out_shape = list(coordinates[0].shape)
-                return f(points).reshape(out_shape, order = order)
+                return f(points).reshape(out_shape, order=order)
 
         wrapped.__name__ = f.__name__
         wrapped.__doc__ = f.__doc__
@@ -1157,6 +1165,23 @@ def set_aspect(fig):
     xmin, xmax, ymin, ymax, zmin, zmax = get_bbox(fig)
     fig.layout.scene.aspectratio=dict(x=xmax-xmin, y=ymax-ymin,z=zmax-zmin)
     return fig
+
+def curry(func):
+    # to keep the name of the curried function:
+    curry.__curried_func_name__ = func.__name__
+    f_args, f_kwargs = [], {}
+    def f(*args, **kwargs):
+        """a curried function"""
+        nonlocal f_args, f_kwargs
+        if args or kwargs:
+            f_args += args
+            f_kwargs.update(kwargs)
+            return f
+        else:
+            result = func(*f_args, *f_kwargs)
+            f_args, f_kwargs = [], {}
+            return result
+    return f
 
 
 
