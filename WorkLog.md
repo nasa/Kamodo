@@ -1,3 +1,6 @@
+
+# 2021-06-09 18:45:08.502957: clock-in
+
 # 2021-06-09 18:44:17.665337: clock-out: T-2h 
 
 * added currying decorator
