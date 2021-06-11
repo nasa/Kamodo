@@ -1,3 +1,4 @@
+* trying out decorator curry
 
 # 2021-06-11 16:05:44.670016: clock-in
 
