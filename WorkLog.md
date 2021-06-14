@@ -1,3 +1,6 @@
+
+# 2021-06-14 13:46:07.459008: clock-in
+
 # 2021-06-11 17:43:46.767514: clock-out
 
 * trying out decorator curry
