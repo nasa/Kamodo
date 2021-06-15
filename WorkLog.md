@@ -1,3 +1,5 @@
+# 2021-06-15 14:39:28.250605: clock-out
+
 * working on partial decorator
 
 # 2021-06-15 13:19:46.744384: clock-in
