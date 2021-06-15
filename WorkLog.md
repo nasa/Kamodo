@@ -1,3 +1,6 @@
+
+# 2021-06-15 13:19:46.744384: clock-in
+
 # 2021-06-15 12:45:11.749450: clock-out
 
 * problems with functools.partial decorator
