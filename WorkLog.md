@@ -1,6 +1,4 @@
-
-# 2021-06-15 12:43:53.208925: clock-in: T-41m 
-
+* problems with functools.partial decorator
 Here is a problem with our curry operator is that we have to unpack all the arguments in order to evaluate
 
 ```python
@@ -14,7 +12,8 @@ def f(x=1,y=2,z=3):
 To return a function of two variables, we are back to partials. It seems that these are separate decorators.
 
 
-# 2021-06-15 11:44:38.010059: clock-in
+# 2021-06-15 12:43:53.208925: clock-in: T-41m 
+
 
 # 2021-06-14 20:23:51.337807: clock-out
 
