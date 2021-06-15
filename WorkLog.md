@@ -1,3 +1,5 @@
+# 2021-06-15 12:45:11.749450: clock-out
+
 * problems with functools.partial decorator
 Here is a problem with our curry operator is that we have to unpack all the arguments in order to evaluate
 
