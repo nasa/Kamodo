@@ -1,3 +1,56 @@
+# 2021-06-14 20:23:51.337807: clock-out
+
+
+### currying decorator - kwargs
+
+What we want is a decorator that returns a stateless function with a new signature like this:
+
+```python
+@curry
+def f(x, y, z):
+    return x + y + z
+
+g = f(2)(3)
+
+assert g(1) == 1 + 2 + 3
+```
+
+
+
+Normal python functions have `args` and `kwargs`:
+
+* `args` are required
+* `kwargs` are defaults
+
+So one way to achieve the above behavior is to convert `args` into `kwargs`. `g(1)` would be equivalent to:
+
+```python
+g = lambda z, x=2, y=3: f(x, y, z)
+g(1)
+```
+
+The problem is - what do we do with the original function defaults.
+
+
+```python
+@curry
+def f(z=3, y=2, x=1):
+    return x + y + z
+
+f(1) == g(1)
+```
+Now currying has no effect. Recall why we are currying in the first place: we want to fix the values of a function so that we can evaluate it over a subset of the original arguments. If we already have defaults, do we really need to curry? We could have our curry operator eliminate the defaults? Or we could have the defaults pass through:
+
+```python
+g = curry(f)
+assert g()()() == f()
+```
+
+This way we aren't losing any information from the original function, but are still allowing it to be called with single arguments.
+
+```python
+assert g()(1)() == f(y=1)
+```
 
 # 2021-06-14 19:31:40.201422: clock-in
 
