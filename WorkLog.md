@@ -1,3 +1,4 @@
+* working on animations
 
 # 2021-06-16 14:45:42.337094: clock-in
 
