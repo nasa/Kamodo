@@ -1,3 +1,6 @@
+
+# 2021-06-16 14:45:42.337094: clock-in
+
 # 2021-06-16 12:16:27.943176: clock-out
 
 * partial generators
