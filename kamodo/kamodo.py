@@ -956,7 +956,9 @@ class Kamodo(UserDict):
         title = self.to_latex([variable], 'inline')
         title_lhs = title.split(' =')[0] + '$'
         title_short = '{}'.format(variable + units)  # something wrong with colorbar latex being vertical
-        titles = dict(title=title, title_lhs=title_lhs, title_short=title_short, units=units, variable=variable)
+        titles = dict(
+            title=title, title_lhs=title_lhs,
+            title_short=title_short, units=units, variable=variable)
         fig = dict()
         chart_type = None
         traces = []
@@ -970,7 +972,8 @@ class Kamodo(UserDict):
         try:
             out_dim, *arg_dims = symbolic_shape(result[variable].shape, *arg_shapes)
         except IndexError:
-            print('could not interpret shapes from variable shape {}'.format(result[variable].shape))
+            print('could not interpret shapes from variable shape {}'.format(
+                result[variable].shape))
             print('argument shapes: ', *arg_shapes)
             raise
 

@@ -282,6 +282,9 @@ def get_defaults(func):
 
     return defaults
 
+def get_args(func):
+    sig = inspect.signature(func)
+    return tuple(sig.parameters.keys())
 
 def cast_0_dim(a, to):
     if a.ndim == 0:
@@ -1167,21 +1170,116 @@ def set_aspect(fig):
     return fig
 
 def curry(func):
+    """currying function
+
+    borrowed from https://www.python-course.eu/currying_in_python.php
+    """
     # to keep the name of the curried function:
+
     curry.__curried_func_name__ = func.__name__
     f_args, f_kwargs = [], {}
+
     def f(*args, **kwargs):
         """a curried function"""
+
         nonlocal f_args, f_kwargs
         if args or kwargs:
             f_args += args
             f_kwargs.update(kwargs)
             return f
         else:
-            result = func(*f_args, *f_kwargs)
+            result = func(*f_args, **f_kwargs)
             f_args, f_kwargs = [], {}
             return result
     return f
 
 
+def construct_signature(*args, **kwargs):
+    """construct a signature
+    usage:
+    
+        @forge.sign(*get_signature('x','y',z=3))
+        def f(*args, **kargs):
+            pass
+    """
+    signature = []
+    for arg in args:
+        signature.append(forge.arg(arg))
+    for k, v in kwargs.items():
+        signature.append(forge.arg(k, default=v))
+    return signature
 
+def partial(_func=None, **partial_kwargs):
+    """A partial function decorator
+
+    Reduces function signature to reflect partially assigned kwargs
+    """
+    verbose = partial_kwargs.pop('verbose', False)
+
+    def decorator_partial(f):
+        orig_args = get_args(f)
+        orig_defaults = get_defaults(f)
+        orig_defaults.update(partial_kwargs)
+        if verbose:
+            print('partial kwargs', partial_kwargs)
+            print('original args:', orig_args)
+            print('new defaults', orig_defaults)
+        
+        
+        # collect only the arguments not assigned by partial
+        sig_defaults = {}
+        sig_args = []
+        for arg in orig_args:
+            if arg in partial_kwargs:
+                continue
+            if arg in orig_defaults:
+                sig_defaults[arg] = orig_defaults[arg]
+            else:
+                sig_args.append(arg)
+        
+        if verbose:
+            print('updated signature:', sig_args, sig_defaults)
+        
+        @forge.sign(*construct_signature(*sig_args, **sig_defaults))
+        def wrapped(*args, **kwargs):
+            """simple wrapper"""
+            kwargs.update(partial_kwargs)
+            if verbose:
+                print('kwargs to pass:', kwargs)
+            return f(*args, **kwargs)
+        
+        if verbose:
+            print('wrapped docs', wrapped.__doc__)
+        wrapped = decorate(wrapped, decorator_wrapper)
+        
+        wrapped.__name__ = f.__name__
+        orig_docs = f.__doc__
+        for k,v in sig_defaults.items():
+            sig_args.append('{}={}'.format(k,v))
+        doc_args = ', '.join(sig_args)
+        rhs_args = []
+        for arg in orig_args:
+            if arg in partial_kwargs:
+                rhs_args.append('{}={}'.format(arg, partial_kwargs[arg]))
+            else:
+                rhs_args.append(arg)
+            
+        doc_orig_args = ', '.join(rhs_args)
+        wrapped.__doc__ = """Calling {fname}({orig_args}) for fixed {partial_keys}:
+        {fname}({doc_args}) = {fname}({orig_args_fixed})\n""".format(
+            orig_args_fixed=doc_orig_args,
+            doc_args=doc_args,
+            fname=f.__name__,
+            orig_args = ', '.join(orig_args),
+            partial_keys=', '.join(partial_kwargs.keys()),
+        )
+        
+        if orig_docs is not None:
+            wrapped.__doc__ += "\n" + f.__doc__
+
+        return wrapped
+
+    if _func is None:
+        return decorator_partial
+    else:
+        return decorator_partial(_func)

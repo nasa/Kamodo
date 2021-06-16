@@ -1,3 +1,4 @@
+* partial decorator passes functionality tests
 
 # 2021-06-15 18:20:52.771686: clock-in
 

@@ -14,7 +14,7 @@ from .util import serialize, deserialize
 import pandas as pd
 import json
 from .util import LambdaGenerator
-from .util import curry
+from .util import curry, partial, get_args
 
 @kamodofy
 def rho(x=np.array([3, 4, 5])):
@@ -391,6 +391,11 @@ def test_divide_lambdagen():
     for r in lamb/lamb2:
         r()
 
+def test_get_args():
+    def f(x, y, z):
+        return x+y+z
+
+    assert get_args(f) == ('x', 'y', 'z')
 
 def test_curry():
     @curry
@@ -399,6 +404,74 @@ def test_curry():
 
     assert arimean(-2, -1, 0, 1, 2)() == 0
     assert arimean(-2)(-1)(0)(1)(2)() == 0
+
+def test_partial_decorator():
+    @partial(z=1, verbose=True)
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    assert f(2,3) == 2+3+1
+    
+
+def test_partial_order():
+    @partial(y=1, verbose=True)
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    assert f(3,4) == 3+1+4
+
+def test_partial_no_kwargs():
+    @partial(verbose=True)
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    assert f(3,4) == 3+4+5
+
+
+def test_partial_inline():
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    g = partial(f, y=5, verbose=True)
+    assert(g(3,4) == 3+5+4)
+
+def test_partial_no_defaults():
+    @partial(x=1, y=2, z=3, verbose=True)
+    def f(x, y, z):
+        return x + y + z
+    assert f() == 1 + 2 + 3
+
+def test_partial_missing_defaults():
+    @partial(x=1, y=2, verbose=True)
+    def f(x,y,z):
+        return x+y+z
+    assert f(3) == 1 + 2 + 3
+
+def test_partial_required_args():
+    """need to make z a required argument"""
+    @partial(x=1, y=2, verbose=True)
+    def f(x,y,z):
+        return x+y+z
+    try:
+        f()
+    except TypeError as m:
+        assert 'missing' in str(m)
+
+def test_partial_docs():
+    @partial(y=2)
+    def f(x, y=3, z=4):
+        """my docs"""
+        return x + y + z
+    
+    assert 'my docs' in f.__doc__
+    assert 'f(x, z=4) = f(x, y=2, z)' in f.__doc__
+
+    @partial(y=2, z=1)
+    def f(x, y=3, z=4):
+        """my docs"""
+        return x + y + z
+
+    assert 'Calling f(x, y, z) for fixed y, z' in f.__doc__
 
 
     
