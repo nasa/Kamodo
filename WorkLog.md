@@ -1,3 +1,4 @@
+* got animations working
 
 # 2021-06-17 12:07:27.656044: clock-in
 
