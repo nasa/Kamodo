@@ -1,3 +1,6 @@
+
+# 2021-06-17 15:12:28.301751: clock-in
+
 # 2021-06-17 12:34:51.152273: clock-out
 
 * got animations working
