@@ -1,3 +1,5 @@
+# 2021-06-17 16:35:09.484743: clock-out
+
 * autoranged frames for 2d plots
 * `pip install kaleido` needed to get frame layouts
 
