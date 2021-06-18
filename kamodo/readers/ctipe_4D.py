@@ -8,7 +8,7 @@ import glob, os
 from kamodo import Kamodo
 from netCDF4 import Dataset
 from datetime import datetime, timezone
-import kamodo.readers.reader_plotutilities as RPlot
+#import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
@@ -241,7 +241,7 @@ class CTIPe(Kamodo):
                                           varname, xvec_dependencies, gridded_int)
         return
     
-    '''----------------------- Plotting code below here --------------------'''
+    """----------------------- Plotting code below here --------------------
 
     def set_plot(self, var, plottype, cutV=10, cutL=0, timerange={},
                  lonrange={}, latrange={}, htrange={}):
@@ -310,3 +310,4 @@ class CTIPe(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
+    """
