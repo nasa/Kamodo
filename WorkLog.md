@@ -1,3 +1,6 @@
+
+# 2021-06-18 14:52:28.603029: clock-in
+
 # 2021-06-18 11:22:00.529644: clock-out
 
 * animating 2d parametric plots
