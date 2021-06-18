@@ -5,7 +5,7 @@ import numpy as np
 from netCDF4 import Dataset
 from datetime import datetime, timezone
 from kamodo import Kamodo
-import kamodo.readers.reader_plotutilities as RPlot
+#import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
@@ -298,7 +298,7 @@ class GITM(Kamodo):
                                           varname, xvec_dependencies, gridded_int)
         return
 
-#begin plotting code -----------------------------------
+"""begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -355,3 +355,4 @@ class GITM(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
+"""
