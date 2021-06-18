@@ -8,6 +8,7 @@ import glob
 import numpy as np
 import time as ti
 from datetime import datetime, timezone
+#from astropy.constants import R_earth
 from netCDF4 import Dataset
 
 swmfie_varnames={"X":['x','km'],"Y":['y','km'],"Z":['z','km'],    #(ignored, given in R_E on a unit sphere)

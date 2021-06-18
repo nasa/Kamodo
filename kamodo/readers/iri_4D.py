@@ -3,7 +3,7 @@ from netCDF4 import Dataset
 import numpy as np
 from datetime import datetime, timedelta, timezone
 import time as ti
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 #variable name in file: [standardized variable name, descriptive term, units]
@@ -111,14 +111,14 @@ class IRI(Kamodo):
         #close netCDF4 files, initialize plotting variables
         self._iri3D.close()
         self._iri2D.close()
-        #self = RPlot.initialize_4D_plot(self)  #initialize 4D plotting variables  
+        self = RPlot.initialize_4D_plot(self)  #initialize 4D plotting variables  
 
     #define and register a 3D variable
     def register_3D_variable(self, units, variable, varname, gridded_int):
         """Registers a 3d interpolator with 3d signature"""
         
         #define and register the interpolators
-        xvec_dependencies = {'time':'s','lat':'deg','lon':'deg'}
+        xvec_dependencies = {'time':'hr','lat':'deg','lon':'deg'}
         self = RU.regdef_3D_interpolators(self, units, variable, self._time, 
                                        self._lat, self._lon, varname, 
                                        xvec_dependencies, gridded_int)
@@ -129,13 +129,12 @@ class IRI(Kamodo):
         """Registers a 4d interpolator with 4d signature"""
         
         #define and register the fast interpolator
-        xvec_dependencies = {'time':'s','height':'km','lat':'deg','lon':'deg'}
+        xvec_dependencies = {'time':'hr','height':'km','lat':'deg','lon':'deg'}
         self = RU.regdef_4D_interpolators(self, units, variable, self._time,
                                           self._height, self._lat, self._lon,
                                           varname, xvec_dependencies, gridded_int)
         return
 
-"""---------------------- begin plotting code ---------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -189,4 +188,3 @@ class IRI(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
-    """

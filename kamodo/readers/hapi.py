@@ -15,6 +15,7 @@ from hapiclient import hapitime2datetime
 import plotly.express as px
 import plotly.graph_objects as go
 
+
 '''Examples:
 server     = 'http://hapi-server.org/servers/SSCWeb/hapi'
 dataset    = 'grace1'

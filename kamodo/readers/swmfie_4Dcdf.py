@@ -10,7 +10,7 @@ import time as ti
 from datetime import datetime, timezone
 from netCDF4 import Dataset
 from kamodo import Kamodo
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 #read 1 day of data from cdf instead of from multiple .tec files
 
@@ -129,7 +129,7 @@ class SWMF_IE(Kamodo):
         #print(gvar_list)
         
         #store coordinate data and Btilt (for documentation)
-        self._time = np.array(cdf_data.variables['time'])
+        self._time = np.array(cdf_data.variables['time'])  #hours since midnight
         self._height = np.array(cdf_data.variables['height'])
         self._lat = np.array(cdf_data.variables['lat'])
         self._lon = np.array(cdf_data.variables['lon'])
@@ -152,7 +152,7 @@ class SWMF_IE(Kamodo):
                                       gridded_int)
         if verbose: print(f'Took {ti.perf_counter()-t_reg:.5f}s to register '+\
                           f'{len(varname_list)} variables.')
-        #self = RPlot.initialize_4D_plot(self)    
+        self = RPlot.initialize_4D_plot(self)  #initialize   
         if verbose: print(f'Took a total of {ti.perf_counter()-t0:.5f}s to kamodofy '+\
                           f'{len(gvar_list)} variables.')
 
@@ -161,13 +161,13 @@ class SWMF_IE(Kamodo):
         """Registers a 3d interpolator with 3d signature"""
         
         #define and register the interpolators
-        xvec_dependencies = {'time':'s','lat':'deg','lon':'deg'}
+        xvec_dependencies = {'time':'hr','lat':'deg','lon':'deg'}
         self = RU.regdef_3D_interpolators(self, units, variable, self._time, 
                                        self._lat, self._lon, varname, 
                                        xvec_dependencies, gridded_int)       
         return 
 
-"""-------------------------begin plotting code -----------------------------------
+#begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -224,4 +224,3 @@ class SWMF_IE(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig        
-    """

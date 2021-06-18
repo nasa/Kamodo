@@ -8,7 +8,7 @@ import glob, os
 from kamodo import Kamodo
 from netCDF4 import Dataset
 from datetime import datetime, timezone
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
@@ -17,7 +17,7 @@ ctipe_varnames = {'density':['rho','kg/m**3'],
                   'temperature':['T','K'],
                   'electron_temperature':['T_e','K'],
                   'ion_temperature':['T_i','K'],
-                  'height':['H','m'],                      
+                  'height':['H_ilev','m'],                      
                   'meridional_neutral_wind':['Vn_lat','m/s'],
                   'zonal_neutral_wind':['Vn_lon','m/s'],
                   'vertical_neutral_wind':['Vn_H','m/s'],
@@ -110,7 +110,7 @@ class CTIPe(Kamodo):
         t = np.array(self._ctipe_density.variables['time'])
         self.datetimes=[datetime.utcfromtimestamp(t[0]).isoformat(sep=' '), 
                         datetime.utcfromtimestamp(t[-1]).isoformat(sep=' ')]  #strings
-        self.filetimes=[t[0], t[-1]]   #timestamps in seconds for matching in wrapper
+        self.filetimes=[t[0], t[-1]]   #timestamps in hours for matching in wrapper
         self.timerange0={'min':self.datetimes[0], 'max':self.datetimes[1],
                             'n':len(t)}     #strings in format = YYYY-MM-DD HH:MM:SS 
         self.timerange = self.timerange0
@@ -153,7 +153,7 @@ class CTIPe(Kamodo):
             variables_requested = [value[0] for key,value in ctipe_varnames.items()]
         
         # add height variable needed to height (not IP-level) interpolatioms
-        if 'H' not in variables_requested: variables_requested.append('H')
+        if 'H_ilev' not in variables_requested: variables_requested.append('H_ilev')
         #print(f'Requested {len(variables_requested)} variables: {variables_requested} \n')
         
         #collect list of ctipe variable name equivalents
@@ -176,7 +176,7 @@ class CTIPe(Kamodo):
                 raise AttributeError(f"{varname} not found in the files' metadata.")  
             
             #set units, initialize variables
-            variable = getattr(self, '_ctipe_'+file_type).variables[varname]#.__array__()  #set variable
+            variable = np.array(getattr(self, '_ctipe_'+file_type).variables[varname])  #set variable
             units = ctipe_varnames[varname][-1]
             if (len(variable.shape) not in [3,4]) or (varname in bad_varnames[file_type]):
                 continue  #if not 3D or 4D or not allowed, skip to next variable
@@ -185,17 +185,17 @@ class CTIPe(Kamodo):
             kamodo_varname=ctipe_varnames[varname][0]  #retreive standardized name
             self.variables[kamodo_varname] = dict(units = units, data = variable)  #register in object
             if len(variable.shape) == 4:  #define and register interpolators for each
-                self.register_4D_variable(units, np.array(variable), kamodo_varname, 
+                self.register_4D_variable(units, variable, kamodo_varname, 
                                           file_type, gridded_int)
             elif len(variable.shape) == 3:
-                self.register_3D_variable(units, np.array(variable), kamodo_varname, 
+                self.register_3D_variable(units, variable, kamodo_varname, 
                                           file_type, gridded_int)
         
         #close netCDF4 files, initialize plotting variables
         self._ctipe_density.close()
         self._ctipe_height.close()
         self._ctipe_neutral.close()
-        #self = RPlot.initialize_4D_plot(self)  #initialize 4D plotting variables         
+        self = RPlot.initialize_4D_plot(self)  #initialize 4D plotting variables         
 
     #define and register a 3D variable
     def register_3D_variable(self, units, variable, varname, file_type, gridded_int):
@@ -204,17 +204,17 @@ class CTIPe(Kamodo):
         #determine coordinate variables by file_type
         if file_type=='density': 
             t, lat, lon = self._time, self._lat, self._lon
-            xvec_dependencies = {'time':'s','lat':'deg','lon':'deg'}
+            xvec_dependencies = {'time':'hr','lat':'deg','lon':'deg'}
         if file_type=='height': 
             t, lat, lon = self._time, self._lat_height, self._lon_height
-            xvec_dependencies = {'time':'s','lat':'deg','lon':'deg'}
+            xvec_dependencies = {'time':'hr','lat':'deg','lon':'deg'}
         if file_type=='neutral':
             if variable.shape[1] == self._elat.shape[0]:
                 t, lat, lon = self._time,self._elat, self._elon  
-                xvec_dependencies = {'time':'s','elat':'deg','elon':'deg'}
+                xvec_dependencies = {'time':'hr','elat':'deg','elon':'deg'}
             else:
                 t, lat, lon = self._time, self._lat_neutral, self._lon_neutral  
-                xvec_dependencies = {'time':'s','lat':'deg','lon':'deg'}        
+                xvec_dependencies = {'time':'hr','lat':'deg','lon':'deg'}        
         
         #define and register the interpolators
         self = RU.regdef_3D_interpolators(self, units, variable, t, lat, lon, 
@@ -228,20 +228,20 @@ class CTIPe(Kamodo):
         #determine coordinate variables by file_type
         if file_type=='density': 
             t, z, lat, lon = self._time, self._ilev, self._lat, self._lon
-            xvec_dependencies = {'time':'s','ilev':'m/m','lat':'deg','lon':'deg'}
+            xvec_dependencies = {'time':'hr','ilev':'m/m','lat':'deg','lon':'deg'}
         if file_type=='height':
             t, z, lat, lon = self._time, self._height, self._lat_height, self._lon_height
-            xvec_dependencies = {'time':'s','height':'km','lat':'deg','lon':'deg'}
+            xvec_dependencies = {'time':'hr','height':'km','lat':'deg','lon':'deg'}
         if file_type=='neutral':
             t, z, lat, lon= self._time, self._ilev_neutral, self._lat_neutral, self._lon_neutral
-            xvec_dependencies = {'time':'s','ilev':'m/m','lat':'deg','lon':'deg'}
+            xvec_dependencies = {'time':'hr','ilev':'m/m','lat':'deg','lon':'deg'}
         
         #define and register the interpolators
         self = RU.regdef_4D_interpolators(self, units, variable, t, z, lat, lon,
                                           varname, xvec_dependencies, gridded_int)
         return
     
-    """----------------------- Plotting code below here --------------------
+    '''----------------------- Plotting code below here --------------------'''
 
     def set_plot(self, var, plottype, cutV=10, cutL=0, timerange={},
                  lonrange={}, latrange={}, htrange={}):
@@ -310,4 +310,3 @@ class CTIPe(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
-    """

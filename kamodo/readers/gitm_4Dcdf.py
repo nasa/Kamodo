@@ -1,10 +1,11 @@
+from os import path
 import time as ti
 import glob
 import numpy as np
 from netCDF4 import Dataset
 from datetime import datetime, timezone
 from kamodo import Kamodo
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
@@ -245,18 +246,17 @@ class GITM(Kamodo):
         #register interpolators for each variable
         varname_list = [key for key in self.variables.keys()]  #store original list b/c gridded interpolators
         for varname in varname_list:
-            if varname in ['TEC','hmF2','NmF2','SolarLocalTime','SolarZenithAngle',
-              'phi_qJoule','phi_q','phi_qEUV','phi_qNOCooling']:
+            if len(self.variables[varname]['data'].shape)==3:
                 #print('3D', varname, self.variables[varname]['data'].shape)
                 self.register_3D_variable(self.variables[varname]['units'], 
                                       self.variables[varname]['data'], varname,
                                       gridded_int)
-            else:
+            elif len(self.variables[varname]['data'].shape)==4:
                 #print('4D', varname, self.variables[varname]['data'].shape)
                 self.register_4D_variable(self.variables[varname]['units'], 
                                       self.variables[varname]['data'], varname,
                                       gridded_int)
-        #self = RPlot.initialize_4D_plot(self)  #initialize 4D plotting variables 
+        self = RPlot.initialize_4D_plot(self)  #initialize 4D plotting variables 
         if verbose: print(f'{len(varname_list)} variables kamodofied in {ti.perf_counter()-t0:.5f}s.')
         
     #define and register a 3D variable-----------------------------------------
@@ -272,7 +272,7 @@ class GITM(Kamodo):
                 break
         
         #define and register the interpolators
-        xvec_dependencies = {'time':'s','lat':'deg','lon':'deg'}
+        xvec_dependencies = {'time':'hr','lat':'deg','lon':'deg'}
         self = RU.regdef_3D_interpolators(self, units, variable, self._time, 
                                        lat, lon, varname, 
                                        xvec_dependencies, gridded_int)       
@@ -292,13 +292,13 @@ class GITM(Kamodo):
                 break
         
         #define and register the interpolators
-        xvec_dependencies = {'time':'s','height':'km','lat':'deg','lon':'deg'}
+        xvec_dependencies = {'time':'hr','height':'km','lat':'deg','lon':'deg'}
         self = RU.regdef_4D_interpolators(self, units, variable, self._time,
                                           height, lat, lon,
                                           varname, xvec_dependencies, gridded_int)
         return
 
-"""------------------------begin plotting code -----------------------------------
+#begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -355,4 +355,3 @@ class GITM(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
-    """
