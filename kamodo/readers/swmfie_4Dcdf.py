@@ -10,7 +10,7 @@ import time as ti
 from datetime import datetime, timezone
 from netCDF4 import Dataset
 from kamodo import Kamodo
-import kamodo.readers.reader_plotutilities as RPlot
+#import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 #read 1 day of data from cdf instead of from multiple .tec files
 
@@ -167,7 +167,7 @@ class SWMF_IE(Kamodo):
                                        xvec_dependencies, gridded_int)       
         return 
 
-#begin plotting code -----------------------------------
+"""begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -224,3 +224,4 @@ class SWMF_IE(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig        
+"""
