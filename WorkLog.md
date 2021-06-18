@@ -1,3 +1,6 @@
+
+# 2021-06-18 10:41:46.096653: clock-in
+
 # 2021-06-17 16:35:09.484743: clock-out
 
 * autoranged frames for 2d plots
