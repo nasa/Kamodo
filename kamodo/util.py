@@ -24,6 +24,7 @@ from inspect import getargspec, getfullargspec
 import inspect
 from sympy.physics import units
 from sympy.physics import units as sympy_units
+from sympy.physics.units.systems.si import dimsys_SI
 import numpy as np
 from sympy import latex, Eq
 from sympy.parsing.latex import parse_latex
@@ -37,6 +38,18 @@ from sympy.physics.units.quantities import Quantity
 from sympy.physics.units import Dimension
 from sympy import nsimplify
 from sympy import Function
+
+import urllib.request, json
+import requests
+
+import base64
+import types
+import forge
+
+from sympy.physics.units import UnitSystem
+from sympy.physics.units import Dimension
+
+
 
 
 def get_unit_quantity(name, base, scale_factor, abbrev=None, unit_system='SI'):
@@ -65,6 +78,8 @@ unit_subs = dict(
     cc=sympy_units.cm**3,
     AU=get_unit_quantity('astronomical unit', 'm', 1.496e+11, 'AU', 'SI'),
     arcsec=get_unit_quantity('arc seconds', 'degrees', 1./3600, '\"', 'SI'),
+    hr = get_unit_quantity('hour','s',3600.,'hr','SI'),
+    angstrom = get_unit_quantity('angstrom','m',0.0000000001, 'A^dot', 'SI')
     )
 
 sympy_units.erg = unit_subs['erg']
@@ -85,6 +100,33 @@ for item in unit_list:
                                                 float(prefix_dict[key].scale_factor),
                                                 abbrev=key+item)
 
+reserved_names = dir(sympy)
+
+
+def get_kamodo_unit_system():
+    """Same as SI but supports anglular frequency"""
+
+    radian = sympy.physics.units.radian
+    degree = sympy.physics.units.degree
+    si_unit_system = UnitSystem.get_unit_system('SI')
+    si_dimension_system = si_unit_system.get_dimension_system()
+
+    angle = Dimension('angle', 'A')
+
+    kamodo_dims = si_dimension_system.extend(
+        new_base_dims=(angle,),
+        new_derived_dims=[Dimension('angular_velocity')],
+        new_dim_deps={Symbol('angular_velocity'): {Symbol('angle'): 1, Symbol('time'): -1}})
+
+    kamodo_units = si_unit_system.extend(
+        (radian,),
+        (radian, degree),
+        dimension_system=kamodo_dims)
+
+    return kamodo_units
+
+
+kamodo_unit_system = get_kamodo_unit_system()
 
 def get_ufunc(expr, variable_map):
     """Numerically optimize expression"""
@@ -168,7 +210,10 @@ def kamodofy(
             hidden_args=hidden_args)
 
         if citation is not None:
-            f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
+            if f.__doc__ is not None:
+                f.__doc__ = f.__doc__ + '\n\ncitation: {}'.format(citation)
+            else:
+                f.__doc__ = 'citation: {}'.format(citation)
         f.update = update
         if data is None:
             try:
@@ -493,7 +538,7 @@ def solve(fprime=None, seeds=None, varname=None, interval=None,
         return decorator_solve(fprime)
 
 
-def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
+def convert_unit_to(expr, target_units, unit_system=kamodo_unit_system, raise_errors=True):
     """
     Same as sympy.convert_to but accepts equations and allows functions of units to pass
 
@@ -550,22 +595,26 @@ def convert_to(expr, target_units, unit_system="SI", raise_errors=True):
 
 
     if hasattr(expr, 'rhs'):
-        return Eq(convert_to(expr.lhs, target_units, unit_system),
-                 convert_to(expr.rhs, target_units, unit_system))
+        return Eq(convert_unit_to(expr.lhs, target_units, unit_system),
+            convert_unit_to(expr.rhs, target_units, unit_system))
     # if type(type(expr)) is UndefinedFunction:
     if is_function(expr):
         # print('undefined input expr:{}'.format(expr))
         return nsimplify(expr, rational=True)
 
     if isinstance(expr, Add):
-        return Add.fromiter(convert_to(i, target_units, unit_system) for i in expr.args)
+        return Add.fromiter(convert_unit_to(i, target_units, unit_system) for i in expr.args)
 
     expr = sympify(expr)
 
     if not isinstance(expr, Quantity) and expr.has(Quantity):
-        expr = expr.replace(
-            lambda x: isinstance(x, Quantity),
-            lambda x: x.convert_to(target_units, unit_system))
+        try:
+            expr = expr.replace(
+                lambda x: isinstance(x, Quantity),
+                lambda x: x.convert_to(target_units, unit_system))
+        except OSError:
+            raise OSError('problem converting {} to {}\n{}'.format(
+                expr, target_units, unit_system))
 
     def get_total_scale_factor(expr):
         if isinstance(expr, Mul):
@@ -631,7 +680,7 @@ def get_expr_unit(expr, unit_registry, verbose=False):
     if isinstance(expr_unit, Add):
         # use the first term
         arg_0 = expr_unit.args[0]
-        convert_to(expr_unit, arg_0)
+        convert_unit_to(expr_unit, arg_0, kamodo_unit_system)
         result = arg_0
     else:
         result = expr_unit
@@ -669,7 +718,10 @@ def replace_args(expr, from_map, to_map):
             to_unit = to_map[arg]
             try:
                 assert get_dimensions(from_unit) == get_dimensions(to_unit)
-                arg_map[arg] = convert_to(arg*to_unit, from_unit)/from_unit
+                arg_map[arg] = convert_unit_to(
+                    arg*to_unit,
+                    from_unit,
+                    kamodo_unit_system)/from_unit
             except:
                 raise NameError('cannot convert from {} to {}'.format(from_unit, to_unit))
     return expr.subs(arg_map)
@@ -732,12 +784,16 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
                         arg_units = get_arg_units(k, unit_registry)
                         if verbose:
                             print('unify: func units:', arg_units)
+                            print('unify: {}->{}'.format(expr.args, k.args))
                         expr_units = {}
-                        for arg, sym in zip(expr.args, k.free_symbols):
+                        for arg, sym in zip(expr.args, k.args):
                             to_unit = arg_units.get(sym)
                             from_unit = get_expr_unit(arg, unit_registry)
                             if (from_unit is not None) and (to_unit is not None):
-                                expr_units[arg] = convert_to(arg*from_unit, to_unit)/to_unit
+                                expr_units[arg] = convert_unit_to(
+                                    arg*from_unit,
+                                    to_unit,
+                                    kamodo_unit_system)/to_unit
                         expr = expr.subs(expr_units)
 
                         if verbose:
@@ -749,18 +805,27 @@ def unify(expr, unit_registry, to_symbol=None, verbose=False):
         to_unit = get_expr_unit(to_symbol, unit_registry, verbose)
         if verbose:
             print('unify: to_unit {}'.format(to_unit))
-        if get_dimensions(expr_unit) == get_dimensions(to_unit):
+        expr_dimensions = get_dimensions(expr_unit)
+        to_dimensions = get_dimensions(to_unit)
+        if expr_dimensions.compare(to_dimensions) == 0:
             if verbose:
                 print('unify: {} [{}] -> to_symbol: {}[{}]'.format(
                     expr, expr_unit, to_symbol, to_unit))
-            expr = convert_to(expr*expr_unit, to_unit)/to_unit
+            expr = convert_unit_to(
+                expr*expr_unit,
+                to_unit,
+                kamodo_unit_system)/to_unit
         else:
             if verbose:
                 print('unify: registry:')
                 for k, v in unit_registry.items():
                     print('unify:\t{} -> {}'.format(k, v))
-            raise NameError('cannot convert {} [{}] to {}[{}]'.format(
-                expr, expr_unit, to_symbol, to_unit))
+                print('compare:{}'.format(expr_dimensions.compare(to_dimensions)))
+                error_msg = 'cannot convert {} [{}] {} to {}[{}] {}'.format(
+                expr, expr_unit, expr_dimensions,
+                to_symbol, to_unit, to_dimensions)
+                print(error_msg)
+            raise NameError(error_msg)
 
     return expr
 
@@ -776,16 +841,25 @@ def get_abbrev(unit):
     return unit
 
 
+def base_dimensions(d):
+    dependencies = dimsys_SI.get_dimensional_dependencies(d)
+    return Mul.fromiter(Pow(Dimension(base), exp_) for base, exp_ in dependencies.items())
+
 def get_dimensions(unit):
     """get the set of basis units"""
     if hasattr(unit, 'dimension'):
-        return unit.dimension
+        base_dims = base_dimensions(unit.dimension)
+        if len(base_dims.args) == 1:
+            return base_dims.args[0]
+        else:
+            return Mul.fromiter([arg.args[0] for arg in base_dimensions(unit.dimension).args])
     if isinstance(unit, Mul):
-        return Mul.fromiter([get_dimensions(arg) for arg in unit.args])
+        terms = [get_dimensions(arg) for arg in unit.args]
+        return Mul.fromiter(terms)
     if isinstance(unit, Pow):
         base, exp = unit.as_base_exp()
         return Pow(get_dimensions(base), exp)
-    return unit
+    return 1
 
 
 def get_base_unit(expr):
@@ -828,4 +902,264 @@ def is_function(expr):
         return True
     return isinstance(type(expr), UndefinedFunction)
 
-reserved_names = dir(sympy)
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+    
+class NumpyArrayEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NumpyArrayEncoder, self).default(obj)
+
+def full_classname(o):
+    module = o.__class__.__module__
+    if module is None or module == str.__class__.__module__:
+        return o.__class__.__name__
+    return module + '.' + o.__class__.__name__
+
+def serialize(obj):
+    if isinstance(obj, (np.ndarray, np.generic)):
+        if isinstance(obj, np.ndarray):
+            return {
+                # '__ndarray__': base64.b64encode(obj.tobytes()),
+                '__ndarray__': obj.tolist(),
+                'dtype': obj.dtype.str,
+                'shape': obj.shape,
+            }
+        elif isinstance(obj, (np.bool_, np.number)):
+            return {
+                # '__npgeneric__': base64.b64encode(obj.tobytes()),
+                '__ndarray__': obj.tolist(),
+                'dtype': obj.dtype.str,
+            }
+    if isinstance(obj, pd.DataFrame):
+        return {
+            '__pddataframe__': obj.values.tolist(),
+            '__index__': serialize(obj.index),
+            'dtype': full_classname(obj),
+        }
+    if isinstance(obj, pd.Index):
+        if isinstance(obj, pd.DatetimeIndex):
+            return {
+                '__datetime__': [_ for _ in map(pd.datetime.isoformat, obj)],
+                'dtype': full_classname(obj),
+            }
+        else:
+            return {
+                '__index__': obj.tolist(),
+                'dtype': full_classname(obj),
+            }
+    if isinstance(obj, pd.Series):
+        return {
+            '__pdseries__': obj.values.tolist(),
+            '__index__': serialize(obj.index),
+            'dtype': full_classname(obj),
+        }
+    if isinstance(obj, set):
+        return {'__set__': list(obj)}
+    if isinstance(obj, tuple):
+        return {'__tuple__': list(obj)}
+    if isinstance(obj, complex):
+        return {'__complex__': obj.__repr__()}
+
+    if isinstance(obj, types.GeneratorType):
+        return {'__lambdagen__': [{
+            'params':{k:serialize(v) for k, v in get_defaults(func).items()},
+            'result':serialize(func())} for func in obj]}
+
+    if isinstance(obj, int):
+        return obj
+
+    # Let the base class default method raise the TypeError
+    raise TypeError('Unable to serialise object of type {}'.format(type(obj)))
+
+def lambdagen(obj):
+    """create a generator of lambda functions"""
+    for func_ in obj['__lambdagen__']:
+        signature = []
+        for arg, arg_default in func_['params'].items():
+            signature.append(forge.arg(
+                arg,
+                default=deserialize(arg_default)))
+        @forge.sign(*signature)
+        def func(*args, **kwargs):
+            """API function"""
+            return deserialize(func_['result'])
+
+        yield kamodofy(func)
+    
+def deserialize(obj):
+    # convert obj into numpy, pandas
+    if isinstance(obj, dict):
+        if '__ndarray__' in obj:
+            # return np.frombuffer(
+            #     base64.b64decode(obj['__ndarray__']),
+            #     dtype=np.dtype(obj['dtype'])
+            # ).reshape(obj['shape'])
+            return np.array(obj['__ndarray__'])
+        if '__npgeneric__' in obj:
+            # return np.frombuffer(
+            #     base64.b64decode(obj['__npgeneric__']),
+            #     dtype=np.dtype(obj['dtype'])
+            # )[0]
+            return np.array(obj['__npgeneric__'])
+        if '__pddataframe__' in obj:
+            return pd.DataFrame(
+                obj['__pddataframe__'],
+                index=deserialize(obj['__index__']))
+        if '__pdseries__' in obj:
+            return pd.Series(
+                obj['__pdseries__'],
+                index=deserialize(obj['__index__']))
+        if '__datetime__' in obj:
+            return pd.to_datetime(obj['__datetime__'])
+        if '__index__' in obj:
+            return pd.Index(obj['__index__'])
+        if '__set__' in obj:
+            return set(obj['__set__'])
+        if '__tuple__' in obj:
+            return tuple(obj['__tuple__'])
+        if '__complex__' in obj:
+            return complex(obj['__complex__'])
+        if '__lambdagen__' in obj:
+            return lambdagen(obj)
+
+    return obj
+
+# over-write the load(s)/dump(s) functions
+def load(*args, **kwargs):
+    kwargs['object_hook'] = deserialize
+    return json.load(*args, **kwargs)
+
+
+def loads(*args, **kwargs):
+    kwargs['object_hook'] = deserialize
+    return json.loads(*args, **kwargs)
+
+
+def dump(*args, **kwargs):
+    kwargs['default'] = serialize
+    return json.dump(*args, **kwargs)
+
+
+def dumps(*args, **kwargs):
+    kwargs['default'] = serialize
+    return json.dumps(*args, **kwargs)
+
+def get_undefined_funcs(expr):
+    """retrieve an expression's undefined functions"""
+    return expr.atoms(sympy.function.AppliedUndef)
+
+def sign_defaults(symbol, expr, composition):
+    '''gets defaults from an expression using composition'''
+    defaults={}
+    for f_ in get_undefined_funcs(expr):
+        # includes {h(f(g)), f(g)}
+        if str(f_) in composition:
+            # ignores h(f(g))
+            f_defaults = get_defaults(composition[str(f_)])
+            # flatten defaults
+            for arg, arg_default in f_defaults.items():
+                defaults[arg] = arg_default
+
+    arg_signatures = []
+    # defaults have to go last, which may conflict with user's ordering
+    for arg in symbol.args:
+        str_arg = str(arg)
+        if str_arg in defaults:
+            arg_default=defaults[str(arg)]
+            arg_signatures.append(forge.arg(str_arg, default=arg_default))
+        else:
+            arg_signatures.append(forge.arg(str_arg))
+
+    # will raise an error if defaults are not last
+    signature = forge.sign(*arg_signatures)
+    return signature
+
+class LambdaGenerator(object):
+    def __init__(self, lambda_generator):
+        """supports simple expressions for manipulating lambda generators"""
+        self._lambda_generator = lambda_generator
+
+    def __add__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                yield lambda: func()+gunc()
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func()+other
+    def __sub__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                yield lambda: func()-gunc()
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func()-other
+    def __mul__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                # what do we do with defaults?
+                yield lambda: func()*gunc()
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func()*other
+    def __truediv__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                # what do we do with defaults?
+                yield lambda: func().__truediv__(gunc())
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func().__truediv__(other)
+    def __floordiv__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                # what do we do with defaults?
+                yield lambda: func().__floordiv__(gunc())
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func().__floordiv__(other)
+    def __pow__(self, other):
+        if isinstance(other, LambdaGenerator):
+            for func, gunc in zip(self._lambda_generator, other._lambda_generator):
+                yield lambda: func().__pow__(gunc())
+        else:
+            for func in self._lambda_generator:
+                yield lambda: func().__pow__(other)
+
+
+def get_bbox(fig):
+    t0 = fig['data'][0]
+    xmin = np.nanmin(t0['x'])
+    xmax = np.nanmax(t0['x'])
+    ymin = np.nanmin(t0['y'])
+    ymax = np.nanmax(t0['y'])
+    zmin = np.nanmin(t0['z'])
+    zmax = np.nanmax(t0['z'])
+    for t in fig['data']:
+        xmin = min(xmin, np.nanmin(t['x']))
+        xmax = max(xmax, np.nanmax(t['x']))
+        ymin = min(ymin, np.nanmin(t['y']))
+        ymax = max(ymax, np.nanmax(t['y']))
+        zmin = min(zmin, np.nanmin(t['z']))
+        zmax = max(zmax, np.nanmax(t['z']))
+    return xmin, xmax, ymin, ymax, zmin, zmax
+
+def set_aspect(fig):
+    """sets aspect ratio of the scene based on bounding box of traces"""
+    fig.layout.scene.aspectmode='manual'
+    xmin, xmax, ymin, ymax, zmin, zmax = get_bbox(fig)
+    fig.layout.scene.aspectratio=dict(x=xmax-xmin, y=ymax-ymin,z=zmax-zmin)
+    return fig
+
+
+
