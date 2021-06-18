@@ -7,14 +7,15 @@ Code to be called from other languages. Retrieves satellite trajectory from HAPI
 executes flythrough of chosen model data.
 All desired model data should be in a single directory.
 """
-#import os
+import os
 import numpy as np
 from kamodo.readers.hapi import HAPI
 from spacepy import coordinates as coord
 from spacepy.time import Ticktock
 from astropy.constants import R_earth
-#from kamodo.satelliteflythrough import FlythroughPlots as FPlot
+from kamodo.satelliteflythrough import FlythroughPlots as FPlot
 from kamodo.satelliteflythrough.wrapper_output import SFdata_tocsv
+import kamodo.satelliteflythrough.wrapper_utilities as U
 
 
 def SatelliteTrajectory(server, dataset, parameters, start, stop, plot_dir='',
@@ -107,14 +108,14 @@ def SatelliteTrajectory(server, dataset, parameters, start, stop, plot_dir='',
         satellite_dict[item] = hapi.variables[item]['data']
         satellite_units[item] = hapi.variables[item]['units']
         
-    '''#generate plot if desired
+    #generate plot if desired
     if plot_dir != '': 
         if not os.path.isdir(plot_dir+'Plots/'): os.mkdir(plot_dir+'Plots/')
         FPlot.Plot4D('Time', satellite_dict['sat_time'], satellite_dict['sat_lat'], 
                      satellite_dict['sat_lon'], satellite_dict['sat_height'],
                      satellite_dict['sat_time'], 's', plot_dir+'Plots/SatelliteTrajectory',
                      'km', plot_close=plot_close, plot_sampling=plot_sampling)
-    '''
+    
     print(f'Attribute/Key names of return dictionary: {satellite_dict.keys()}')
     print(f'Units of variables are: {satellite_units}')        
         
@@ -170,37 +171,23 @@ def SampleTrajectory(start_time, stop_time, plot_dir='', max_lat=65., min_lat=-6
                  'sat_lon': lon, 'sat_height': height, 'sat_lat': lat*lat_scale+lat_offset}   
     
     #generate plot if desired
-    '''if plot_dir != '': 
+    if plot_dir != '': 
         if not os.path.isdir(plot_dir+'Plots/'): os.mkdir(plot_dir+'Plots/')
         FPlot.Plot4D('Time', sample_dict['sat_time'], sample_dict['sat_lat'], 
                      sample_dict['sat_lon'], sample_dict['sat_height'],
                      sample_dict['sat_time'], 's', plot_dir+'Plots/SampleTrajectory',
                      'km', plot_close=plot_close, plot_sampling=plot_sampling)
-    '''
+    
     print(f'Attribute/Key names of return dictionary: {sample_dict.keys()}')
     print('Units are given in the function description. Type: help(SampleTrajectory)')    
     return sample_dict
 
-def _ChooseModelWrapper(model):
-    '''choose and return proper model wrapper'''
-    
-    #as other flythrough codes are written, add more options here
-    if model == 'CTIPe':  #need to add these as part of kamodo
-        from kamodo.satelliteflythrough.CTIPe_wrapper import CTIPe_SatelliteFlythrough as SF
-    elif model == 'GITM':  
-        from kamodo.satelliteflythrough.GITM_wrapper import GITM_SatelliteFlythrough as SF
-    elif model == 'IRI':
-        from kamodo.satelliteflythrough.IRI_wrapper import IRI_SatelliteFlythrough as SF
-    elif model == 'SWMF_IE':
-        from kamodo.satelliteflythrough.SWMFIE_wrapper import SWMFIE_SatelliteFlythrough as SF
-        
-    return SF
 
 #want to enable call of this from C++ for flexibility, so return only one value
 #keep so users can call this if they have their own satellite trajectory data
 def ModelFlythrough(model, file_dir, variable_list, sat_time, sat_height, 
                                  sat_lat, sat_lon, dt=450., plots=False, daily_plots=False, 
-                                 plot_close=True, plot_sampling=5000, verbose=False,
+                                 plot_close=True, plot_sampling=5000, high_res=20., verbose=False,
                                  output=''):  
     '''Call satellite flythrough wrapper specific to the model chosen.
     Parameters:    
@@ -216,6 +203,9 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, sat_height,
         Option to make plots of daily sections: daily_plots (default=False)
         Option to close plots whole flythrough plots: plot_close (default=True)
         Max number of points to include in 2D/3D plots: plot_sampling (default=5000)
+        Accuracy of conversion from height to ilev in meters: high_res
+            (also relevant for variables that depend on pressure level)
+        Name of the data output file: output
     Returns a dictionary with keys: sat_time, sat_height, sat_lat, sat_lon, net_idx,
     and keys naming the requested variables.
         sat_time is an array in seconds since 1970-01-01.
@@ -229,13 +219,13 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, sat_height,
     if isinstance(sat_height, list): sat_height = np.array(sat_height)
     if isinstance(sat_lat, list): sat_lat = np.array(sat_lat)
     if isinstance(sat_lon, list): sat_lon = np.array(sat_lon)
-    
-    wrapper = _ChooseModelWrapper(model)
-    results, results_units = wrapper(file_dir, variable_list, sat_time, sat_height, 
-                                 sat_lat, sat_lon, dt=dt, plots=plots, daily_plots=daily_plots, 
-                                 plot_close=plot_close, plot_sampling=plot_sampling,
-                                 verbose=verbose)  #make this the call for all?
-    
+        
+    results, results_units = U.Model_SatelliteFlythrough(model, file_dir, variable_list, 
+                                sat_time, sat_height, sat_lat, sat_lon, high_res, dt=dt,
+                                plots=plots, daily_plots=daily_plots, 
+                                plot_close=plot_close, plot_sampling=plot_sampling,
+                                verbose=verbose)  
+
     if verbose: 
         print(f'Units from the {model} model by variable name:\n{results_units}')
         print(f'Dictionary key names in results:\n{results.keys()}')
@@ -245,43 +235,12 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, sat_height,
         csv_filename = SFdata_tocsv(output, '', model, results, results_units)
         print(f"Output saved in {csv_filename}.")  #no access to model filenames
     
-    return results  #not sure that than C++ can take more than one return variable
-
-
-def ModelVariables(model='', return_dict=False):
-    '''Give users an option to see what variables are available from any model'''
-    
-    if model == '':  #Give a list of possible values
-        print("Possible models are: 'CTIPe','IRI', 'GITM', and 'SWMF_IE'")
-        return
-    
-    #choose the model-specific function to retrieve the variables
-    if model == 'CTIPe':  #need to add these as part of kamodo
-        from kamodo.satelliteflythrough.CTIPe_wrapper import CTIPeVariables as Var
-    elif model == 'GITM':  
-        from kamodo.satelliteflythrough.GITM_wrapper import GITMVariables as Var
-    elif model == 'IRI':
-        from kamodo.satelliteflythrough.IRI_wrapper import IRIVariables as Var
-    elif model == 'SWMF_IE':
-        from kamodo.satelliteflythrough.SWMFIE_wrapper import SWMFIEVariables as Var
-    
-    #retrieve and print model specific and standardized variable names
-    variable_dict = Var()
-    if return_dict: 
-        return variable_dict
-    else:
-        print('\nThe functions accept the standardized variable names listed below.')
-        print('Units for the chosen variables are printed during the satellite flythrough if available.')
-        print(f'Possible variables for {model} model (description = standard variable name):')
-        print('-----------------------------------------------------------------------------------')
-        for key, value in variable_dict.items(): print(f"{key} : '{value}'")
-        print()
-        return     
+    return results  #not sure that than C++ can take more than one return variable 
 
 def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65., 
                min_lat=-65., lon_perorbit=363., max_height=450., min_height=400., 
                p=0.01, n=2., dt=450., plots=True, daily_plots=False, plot_close=True, 
-               plot_sampling=5000, trajplot_close=True, verbose=False, output=''):
+               plot_sampling=5000, high_res=20., trajplot_close=True, verbose=False, output=''):
     '''
     Master function that executes all functions of flythrough for sample trajectory. 
     Parameters:    
@@ -306,6 +265,9 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
         Option to make plots of daily sections: daily_plots (default=False)
         Option to close plots whole flythrough plots: plot_close (default=True)
         Max number of points to include in 2D/3D plots: plot_sampling (Default=5000)
+        Accuracy of conversion from height to ilev in meters: high_res
+            (also relevant for variables that depend on pressure level)
+        Name of the data output file: output
         Number of seconds between satellite data for sample trajectory: n (default=2)
         trajplot_close = whether to close trajectory plot if generated (default=True)\
         output = filename to write dictionary to (csv for access from any language) (default='')
@@ -335,13 +297,13 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
     results = ModelFlythrough(model, file_dir, variable_list, sat_dict['sat_time'], 
                               sat_dict['sat_height'], sat_dict['sat_lat'], sat_dict['sat_lon'],
                               dt=dt, plots=plots, daily_plots=daily_plots, plot_close=plot_close, 
-                              plot_sampling=plot_sampling, verbose=verbose,
+                              plot_sampling=plot_sampling, high_res=high_res, verbose=verbose,
                               output=output)    
     return results    
 
 def RealFlight(server, dataset, parameters, start, stop, model, file_dir, 
                  variable_list, time_offset=0., dt=450., plots=True, daily_plots=False, 
-                 plot_close=True, plot_sampling=5000, verbose=False, output=''):
+                 plot_close=True, plot_sampling=5000, high_res=20., verbose=False, output=''):
     '''
     Master function that executes all functions of flythrough for real trajectory. 
     Parameters:
@@ -358,6 +320,9 @@ def RealFlight(server, dataset, parameters, start, stop, model, file_dir,
     Option to make plots of daily sections: daily_plots (default=False)
     Option to close plots whole flythrough plots: plot_close (default=True)
     Max number of points to include in 2D/3D plots: plot_sampling (default=5000)
+    Accuracy of conversion from height to ilev in meters: high_res
+        (also relevant for variables that depend on pressure level)
+    Name of the data output file: output
     Number of seconds between satellite data for sample trajectory: n (default=2)
     '''
     #retrieve satellite trajectory from HAPI/CDAWeb
@@ -369,7 +334,7 @@ def RealFlight(server, dataset, parameters, start, stop, model, file_dir,
                               sat_dict['sat_height'], sat_dict['sat_lat'], sat_dict['sat_lon'], 
                               dt=dt, plots=plots, daily_plots=daily_plots, 
                               plot_close=plot_close, plot_sampling=plot_sampling,
-                              output=output)
+                              high_res=high_res, output=output)
     
     #add new data to sat_dict and return
     for key in results.keys():
@@ -379,30 +344,42 @@ def RealFlight(server, dataset, parameters, start, stop, model, file_dir,
 
 
 if __name__=='main':
-    #For use with model test data:
+    #'''For use with model test data:
     server = 'http://hapi-server.org/servers/SSCWeb/hapi'
     dataset = 'grace1'
     parameters = 'X_GEO,Y_GEO,Z_GEO'
-    #start, stop, model, file_dir, variable_list, dataset = '2018-08-01T00:00:00','2018-08-02T00:00:00', \
-    #    'SWMF_IE', 'C:/Users/rringuet/Kamodo_WinDev1/SWMF_IE/', ['Sigma_H'], 'swarma' #good
+    start, stop, model, file_dir, variable_list = '2015-03-18T00:00:00','2015-03-21T00:00:00',\
+        'CTIPe', 'C:/Users/rringuet/Kamodo_WinDev1/CTIPe/', ['T_e'] #good
     #start, stop, model, file_dir, variable_list = '2017-05-28T00:00:00','2017-05-29T00:00:00',\
     #    'IRI', 'C:/Users/rringuet/Kamodo_WinDev1/IRI/', ['T_e']  #good
     #start, stop, model, file_dir, variable_list = '2006-12-13T00:00:00','2006-12-14T00:00:00',\
     #    'GITM', 'C:/Users/rringuet/Kamodo_WinDev1/GITM/', ['rho']  #good
-    start, stop, model, file_dir, variable_list = '2015-03-18T00:00:00','2015-03-21T00:00:00',\
-        'CTIPe', 'C:/Users/rringuet/Kamodo_WinDev1/CTIPe/', ['T_e'] #good
+    #start, stop, model, file_dir, variable_list, dataset = '2018-08-01T00:00:00','2018-08-02T00:00:00', \
+    #    'SWMF_IE', 'C:/Users/rringuet/Kamodo_WinDev1/SWMF_IE/', ['Sigma_H'], 'swarma' #good
+    #start, stop, model, file_dir, variable_list, dataset = '2000-11-15T05:00:00','2000-11-17T10:00:00',\
+    #    'TIEGCM', 'C:/Users/rringuet/Kamodo_WinDev1/TIEGCM/', ['rho'], 'grace1'     !!!not far back enough!!! 
     
     
     sat_dict = RealFlight(server, dataset, parameters, start, stop, model, file_dir, 
                      variable_list, time_offset=0., dt=450., plots=True, daily_plots=False, 
-                     plot_close=False, plot_sampling=5000, verbose=False)
+                     plot_close=False, plot_sampling=5000, high_res=20., verbose=False)
     '''
     results_dict = FakeFlight(1426660000., 1426791280., 'CTIPe',
-                              'C:/Users/rringuet/Kamodo_WinDev1/CTIPe/', ['T_e'])
+                              'C:/Users/rringuet/Kamodo_WinDev1/CTIPe/', ['T_e'], plot_close=False)
+    results_dict = FakeFlight(1495945560.0-30000., 1496014100.0, 'IRI',
+                              'C:/Users/rringuet/Kamodo_WinDev1/IRI/', ['T_e'], plot_close=False)
+    results_dict = FakeFlight(1165968000.0-30000., 1166053801.0+1000., 'GITM',
+                              'C:/Users/rringuet/Kamodo_WinDev1/GITM/', ['rho'], plot_close=False)
+    results_dict = FakeFlight(1533081600.0-30000., 1533167760.0+1000., 'SWMF_IE',
+                              'C:/Users/rringuet/Kamodo_WinDev1/SWMF_IE/', ['Sigma_H'], plot_close=False)
+    results_dict = FakeFlight(974264400.0-300., 974592000.+3000., 'TIEGCM',
+                              'C:/Users/rringuet/Kamodo_WinDev1/TIEGCM/', ['rho'], plot_close=False)
+    
+    
     
     #sample code for plotting cartesian version
     #for real data:
-    FPlot.Plot4Dcar('T_e',sat_dict['sat_time'][sat_dict['net_idx']],
+    FPlot.Plot4Dcar('T_e',sat_dict['sat_time'][sat_dict['net_idx']],1426880700.0
                     sat_dict['sat_lat'][sat_dict['net_idx']],sat_dict['sat_lon'][sat_dict['net_idx']],
                     sat_dict['sat_height'][sat_dict['net_idx']], sat_dict['T_e'], 'K', 
                     'C:/Users/rringuet/Kamodo_WinDev1/CTIPe/Plots/', plot_close=False, 
