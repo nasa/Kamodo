@@ -1,3 +1,4 @@
+* animating 2d parametric plots
 
 # 2021-06-18 10:41:46.096653: clock-in
 
