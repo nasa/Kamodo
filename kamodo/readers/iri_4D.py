@@ -3,7 +3,7 @@ from netCDF4 import Dataset
 import numpy as np
 from datetime import datetime, timedelta, timezone
 import time as ti
-import kamodo.readers.reader_plotutilities as RPlot
+#import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 #variable name in file: [standardized variable name, descriptive term, units]
@@ -134,7 +134,7 @@ class IRI(Kamodo):
                                           self._height, self._lat, self._lon,
                                           varname, xvec_dependencies, gridded_int)
         return
-
+"""
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -188,3 +188,4 @@ class IRI(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
+ """       
