@@ -14,10 +14,8 @@ import numpy as np
 from netCDF4 import Dataset
 from datetime import datetime, timezone, timedelta
 from kamodo import Kamodo
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
-
-
 
 
 ### Make a dict of the possible variable names in TIEGCM
@@ -131,19 +129,45 @@ class TIEGCM(Kamodo):
         if printfiles: 
             print('Files:', self.filename)
         
+        #These lists need to be the standardized variable name to match that above,
+        #not the names from the data file.
+        self.ilev_list = ["rho","H_ilev","H_geopot","N_e","omega","V"]                                                     # index with ilev
+        self.lev_list  = ['T_n','u_n','v_n','psi_O2','psi_O','psi_N2','psi_He','H_lev',
+                     'psi_NO','psi_N4S','T_e','T_i','N_O2plus','N_Oplus','Q_CO2cool',
+                     'Q_NOcool'] # index with lev
+        self.imlev_list = ['H_imlev']
+        
         #translate from standardized variables to names in file
         #remove variables requested that are not in the file
         if len(variables_requested)>0:
             gvar_list = [key for key, value in tiegcm_varnames.items() \
-                             if value[0] in variables_requested]  # file variable names
+                             if value[0] in variables_requested and \
+                                 key in cdf_data.variables.keys()]  # file variable names
+            
+            #check for variables requested but not available
             if len(gvar_list)!=len(variables_requested):
-                err_list = [tiegcm_varnames[key][0] for key in gvar_list \
-                            if key not in list(cdf_data.variables.keys())]
+                err_list = [value[0] for key, value in tiegcm_varnames.items() \
+                             if value[0] in variables_requested and \
+                                 key not in cdf_data.variables.keys()]
                 print('Some requested variables are not available:', err_list)
+            
+            #check that the appropriate height variable is added for the variables requested
+            check_list = [key for key, value in tiegcm_varnames.items()\
+                          if value[0] in self.ilev_list and key in gvar_list]
+            if 'ZG' not in gvar_list and len(check_list)>0: 
+                gvar_list.append('ZG')  #force addition of H for conversion of ilev to H and back
+            check_list = [key for key, value in tiegcm_varnames.items()\
+                          if value[0] in self.lev_list and key in gvar_list]
+            if 'ZGMID' not in gvar_list and len(check_list)>0: 
+                gvar_list.append('ZGMID')
+            check_list = [key for key, value in tiegcm_varnames.items()\
+                          if value[0] in self.imlev_list and key in gvar_list]    
+            if 'ZMAG' not in gvar_list and len(check_list): 
+                gvar_list.append('ZMAG')
         else:
             gvar_list = [key for key in cdf_data.variables.keys() \
-                         if key in tiegcm_varnames.keys() ] 
-        if 'ZG' not in gvar_list: gvar_list.append('ZG')  #force addition of H for conversion of ilev to H and back
+                         if key in tiegcm_varnames.keys()] 
+        
         
         #### Store coordinate data as class attributes    
         self._time = min_to_hrs(time, self.filedate)  #convert to hours since midnight
@@ -232,25 +256,17 @@ class TIEGCM(Kamodo):
     #### Define and register a 4D variable -----------------------------------------
     def register_4D_variable(self, units, variable, varname, gridded_int):
         """Registers a 4d interpolator with 4d signature"""
-        
-        #These lists need to be the standardized variable name to match that above,
-        #not the names from the data file.
-        ilev_list = ["rho","H_ilev","H_geopot","N_e","omega","V"]                                                     # index with ilev
-        lev_list  = ['T_n','u_n','v_n','psi_O2','psi_O','psi_N2','psi_He','H_lev',
-                     'psi_NO','psi_N4S','T_e','T_i','N_O2plus','N_Oplus','Q_CO2cool',
-                     'Q_NOcool'] # index with lev
-        imlev_list = ['H_imlev']
              
         ####  Get the correct coordinates
-        if varname in ilev_list:
+        if varname in self.ilev_list:
             vert_coord = self._ilev
             lat, lon = self._lat, self._lon
             xvec_dependencies = {'time':'hr', 'ilev':'m/m','lat':'deg','lon':'deg'}
-        elif varname in lev_list:
+        elif varname in self.lev_list:
             vert_coord = self._lev
             lat, lon = self._lat, self._lon
             xvec_dependencies = {'time':'hr', 'lev':'m/m','lat':'deg','lon':'deg'}
-        elif varname in imlev_list:
+        elif varname in self.imlev_list:
             vert_coord = self._imlev
             lat, lon = self._mlat, self._mlon
             xvec_dependencies = {'time':'hr', 'imlev':'m/m','mlat':'deg','mlon':'deg'}
@@ -265,7 +281,7 @@ class TIEGCM(Kamodo):
                                           varname, xvec_dependencies, gridded_int)
         return
 
-"""#begin plotting code -----------------------------------
+#begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -333,4 +349,7 @@ class TIEGCM(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig        
-"""
+
+
+
+

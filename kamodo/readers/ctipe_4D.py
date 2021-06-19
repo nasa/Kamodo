@@ -8,7 +8,7 @@ import glob, os
 from kamodo import Kamodo
 from netCDF4 import Dataset
 from datetime import datetime, timezone
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
@@ -69,12 +69,12 @@ def CTIPe_filesearch(filename):
             filename = files[0]  #all three files exist, use them
         else: 
             print('Files not found. Generating...')
-            from kamodo.readers.ctipe_data_wrapper import ctipe_wrap_files as wrap
+            from kamodo.readers.ctipe_tocdf import ctipe_wrap_files as wrap
             filename = wrap(filename)  #produce the wrapped files, returns the new filename
         return filename
     elif not os.path.isfile(filename): #check to make sure the file exists
         print('Files not found. Generating...')
-        from kamodo.readers.ctipe_data_wrapper import ctipe_wrap_files as wrap
+        from kamodo.readers.ctipe_tocdf import ctipe_wrap_files as wrap
         filename = wrap(filename.split('-wrapped')[0]+'.nc')  #produce the wrapped files, returns the new filename   
         return filename
     elif os.path.isfile(filename):  #if file exists, return filename
@@ -118,6 +118,10 @@ class CTIPe(Kamodo):
             return
 
         #pull in remaining datasets from files into kamodo object
+        self.ilev_list = ['rho','T','H_ilev','Vn_lat','Vn_lon','Vn_H','T_n',
+                          'Rmt','N_n','Q_Solar','Q_Joule','Q_radiation',
+                          'N_O','N_O2','N_N2','N_NO','N_NOplus','N_N2plus',
+                          'N_O2plus','N_Nplus','Sigma_P','Sigma_H','Vi_lon','Vi_lat']
         self.modelname = 'CTIPe'
         self._ctipe_height = Dataset(filename_height)  #in meters
         self._ctipe_neutral = Dataset(filename_neutral)
@@ -153,16 +157,19 @@ class CTIPe(Kamodo):
             variables_requested = [value[0] for key,value in ctipe_varnames.items()]
         
         # add height variable needed to height (not IP-level) interpolatioms
-        if 'H_ilev' not in variables_requested: variables_requested.append('H_ilev')
+        check_list = [value[0] for key, value in ctipe_varnames.items()\
+                          if value[0] in self.ilev_list and value[0] in variables_requested]
+        if 'H_ilev' not in variables_requested and len(check_list)>0: 
+            variables_requested.append('H_ilev')
         #print(f'Requested {len(variables_requested)} variables: {variables_requested} \n')
         
         #collect list of ctipe variable name equivalents
         var_names = [key for key, value in ctipe_varnames.items() if value[0] in variables_requested]
         extra_variables = [var for var in variables_requested if var not in 
                      [value[0] for key, value in ctipe_varnames.items()]]
-        if len(extra_variables)>0:   #pull out variables not allowed and error if not empty
-            raise AttributeError("No such variable(s):{}".format(extra_variables))
-
+        if len(extra_variables)>0:   #print statement if some variables not in files
+            print('Some requested variables are not available:', extra_variables)
+        
         #cycle through all variables in one loop
         bad_varnames={'density': ['ZMAG','Rmt','H'], 'height': ['ZMAG'],
                   'neutral': ['ZMAG','electron_density']}   #initialize bad_var dictionary per file_type
@@ -241,7 +248,7 @@ class CTIPe(Kamodo):
                                           varname, xvec_dependencies, gridded_int)
         return
     
-    """----------------------- Plotting code below here --------------------
+    '''----------------------- Plotting code below here --------------------'''
 
     def set_plot(self, var, plottype, cutV=10, cutL=0, timerange={},
                  lonrange={}, latrange={}, htrange={}):
@@ -310,4 +317,3 @@ class CTIPe(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
-    """
