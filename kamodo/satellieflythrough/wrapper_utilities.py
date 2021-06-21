@@ -282,7 +282,18 @@ def CalcIlev2(H, t, height, lat, lon):
     finer_height = H(np.array([[t, ilev, lat, lon] for ilev in sample_ilev]))
     ilev_idx = np.argmin(abs(height-finer_height))
     return sample_ilev[ilev_idx] 
-'''  
+''' 
+
+def IlevCheck(ilev_idx, ilev_array):
+    '''If best matched idx of ilev array at one end, compensate and return altered ilev array.'''
+    
+    dilev = np.diff(ilev_array).min()
+    if ilev_idx==0:  #if closest value at beginning of ilev array, compensate
+        ilev_array = np.insert(ilev_array, 0, ilev_array.min()-dilev)
+    if ilev_idx==len(ilev_array)-1: #if closest value at end of ilev array, compensate
+        ilev_array = np.append(ilev_array, ilev_array.max()+dilev) 
+    return ilev_array
+ 
 def CalcIlev(H, Hunit, t, height, lat, lon, min_ilev, max_ilev, high_res, verbose=True):
     '''Approximate ilev by inverting the chosen height function for one sat point.
     high_res default is 20 meters. (high_res), input height is in meters.'''
@@ -316,28 +327,34 @@ def CalcIlev(H, Hunit, t, height, lat, lon, min_ilev, max_ilev, high_res, verbos
         rough_height = H(np.array([[t, ilev, lat, lon] for ilev in sample_ilev]))*Hconv    
     
     #continue with numerical inversion
-    ilev_range = np.sort(sample_ilev[np.argsort(abs(height-rough_height))[0:2]])  
-    test_ilev = np.linspace(ilev_range[0],ilev_range[1],100,dtype=float) 
+    ilev_idx = np.argsort(abs(height-rough_height))[0] #first value may not be in center of curve
+    sample_ilev = IlevCheck(ilev_idx, sample_ilev)  #compensate if ilev_idx at an end
+    test_ilev = np.linspace(sample_ilev[ilev_idx-1],sample_ilev[ilev_idx+1],100,dtype=float) 
     finer_height = H(np.array([[t, ilev, lat, lon] for ilev in test_ilev]))*Hconv
     
     #loop through process until requested resolution is acheived
-    loop_count=0
-    while abs(height-finer_height).min()>high_res: 
-        ilev_range = np.sort(test_ilev[np.argsort(abs(height-finer_height))[0:2]])
-        test_ilev = np.linspace(ilev_range[0],ilev_range[1],100,dtype=float)
+    loop_count, final_res = 0, abs(height-finer_height).min() #initial_res = abs(height-rough_height).min(),
+    while final_res>high_res: 
+        ilev_idx = np.argsort(abs(height-finer_height))[0]
+        test_ilev = IlevCheck(ilev_idx, test_ilev)  #compensate if ilev_idx at an end
+        test_ilev = np.linspace(test_ilev[ilev_idx-1],test_ilev[ilev_idx+1],100,dtype=float) 
         finer_height = H(np.array([[t, ilev, lat, lon] for ilev in test_ilev]))*Hconv
+        #initial_res = final_res
+        final_res = abs(height-finer_height).min()
         #limit iterations to prevent infinite loops
         loop_count+=1
-        if loop_count>10: break
+        if loop_count>10:# and (final_res-initial_res)/final_res<0.01: 
+            break
     
     #output info for inspection
-    if verbose: 
+    if verbose or loop_count>10: 
         print(f'\nRequested height: {height:.3f} m')
         print(f'Maximum allowed height: {max_height:.3f} m')
         print(f'Maximum presure level allowed for model: {model_ilev_max}')
         if max_ilev>model_ilev_max:
             print(f'Adjusted maximum pressure level: {max_ilev}')
         print(f'Number of loops required to acheive resolution: {loop_count}')
+        #print(f'Last change in resolution: {final_res:.4f} {initial_res:.4f} {t}')
         print(f'Calculated equivalent pressure level: {test_ilev[np.argmin(abs(height-finer_height))]}')
         print(f'Height resolution achieved: {abs(height-finer_height).min():.5f} m\n')
     return [test_ilev[np.argmin(abs(height-finer_height))], abs(height-finer_height).min()]
@@ -366,6 +383,7 @@ def call_CalcIlev(ilev_string, kamodo_object, sat_track, sat_track0, model_sat_t
         #Give user feedback about range of height resolution for height to ilev conversion
         print(f'\nBest height resolution achieved: {height_res.min():.5f} m')
         print(f'Worst height resolution achieved: {height_res.max():.5f} m\n')
+        if height_res.max()>high_res: print('Files:', kamodo_object.filename)
     return sat_track, sat_ilev
 
 def sat_tracks(variable_list, kamodo_object, sat_time, sat_height, sat_lat, sat_lon,
