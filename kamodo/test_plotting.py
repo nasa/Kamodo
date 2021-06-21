@@ -498,10 +498,10 @@ def test_plot_keys():
 
 
 def test_symbolic_shape():
-    assert symbolic_shape((3,1,3)) == (('N', 1, 'N'),)
-    assert symbolic_shape((3,3,3)) == (('N', 'N', 'N'),)
-    assert symbolic_shape((2,1,3)) == (('N', 1, 'M'),)
-    assert symbolic_shape((2,3,4)) == (('N', 'M', 'L'),)
-    assert symbolic_shape((2,3,1)) == (('N', 'M', 1),)
-    assert symbolic_shape((3,4), (4,3), (4,2)) == (('M', 'L'), ('L', 'M'), ('L', 'N'))
+    assert symbolic_shape((3,1,3)) == ((3, 1, 3),)
+    assert symbolic_shape((4,4,4)) == (('N', 'N', 'N'),)
+    assert symbolic_shape((2,1,3)) == ((2, 1, 3),)
+    assert symbolic_shape((4,5,6)) == (('N', 'M', 'L'),)
+    assert symbolic_shape((4,5,1)) == (('N', 'M', 1),)
+    assert symbolic_shape((5, 6), (6, 5), (5, 4)) == (('N', 'M'), ('M', 'N'), ('N', 'L'))
 
