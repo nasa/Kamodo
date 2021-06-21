@@ -14,7 +14,7 @@ import numpy as np
 from netCDF4 import Dataset
 from datetime import datetime, timezone, timedelta
 from kamodo import Kamodo
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
@@ -26,44 +26,44 @@ import kamodo.readers.reader_utilities as RU
 ###    a species i to the total mass density \rho_{total}, and 
 ###    is calculated as \psi_i = \rho_i / \rho_{total}, where 
 ###    \rho_i is the mass density of a constituent species.
-tiegcm_varnames={
+model_varnames={
                  ### 4D Variables, vertical coordinate on midpoint levels (lev)
-                 "ZGMID"    : ["H_lev","cm"],    # geometric height- interpolated to the mid points
-                 "TN"       : ["T_n","K"],          # neutral temperature    
-                 "O2"       : ["psi_O2",""],        # molecular oxygen,   mmr
-                 "O1"       : ["psi_O",""],        # atomic oxygen ,   mmr
-                 "N2"       : ["psi_N2",""],        # molecular nitrogen,mmr
-                 "HE"       : ["psi_He",""],         # helium  ,   mmr
-                 "NO"       : ["psi_NO",""],         # nitric oxide , mmr
-                 "N4S"      : ["psi_N4S",""],        #  N4S ?,mmr
-                 "TE"  : ["T_e","K"],         #  ELECTRON TEMPERATURE,
-                 "TI"  : ["T_i","K"],         #  ION TEMPERATURE
-                 "O2P" : ["N_O2plus","1/cm**3"],  #  O2+ ION
-                 "OP"  : ["N_Oplus","1/cm**3"],    #   O+ ION
-                 "N2N"      : ["psi_N2",""],    # molecular nitrogen (maybe number density),mmr
-                 "CO2_COOL" : ["Q_CO2cool","erg/g/s"],  #  CO2 cooling rates
-                 "NO_COOL"  : ["Q_NOcool","erg/g/s"],      #  NO cooling rates
-                 "UN"  : ["u_n","cm/s"],            #  neutral ZONAL wind (+EAST)
-                 "VN"  : ["v_n","cm/s"],            #  neutral MERIDIONAL wind (+NORTH)
+                 "ZGMID"    : ["H_lev",'4D',"cm"],    # geometric height- interpolated to the mid points
+                 "TN"       : ["T_n",'4D',"K"],          # neutral temperature    
+                 "O2"       : ["psi_O2",'4D',""],        # molecular oxygen,   mmr
+                 "O1"       : ["psi_O",'4D',""],        # atomic oxygen ,   mmr
+                 "N2"       : ["psi_N2",'4D',""],        # molecular nitrogen,mmr
+                 "HE"       : ["psi_He",'4D',""],         # helium  ,   mmr
+                 "NO"       : ["psi_NO",'4D',""],         # nitric oxide , mmr
+                 "N4S"      : ["psi_N4S",'4D',""],        #  N4S ?,mmr
+                 "TE"  : ["T_e",'4D',"K"],         #  ELECTRON TEMPERATURE,
+                 "TI"  : ["T_i",'4D',"K"],         #  ION TEMPERATURE
+                 "O2P" : ["N_O2plus",'4D',"1/cm**3"],  #  O2+ ION
+                 "OP"  : ["N_Oplus",'4D',"1/cm**3"],    #   O+ ION
+                 "N2N"      : ["psi_N2",'4D',""],    # molecular nitrogen (maybe number density),mmr
+                 "CO2_COOL" : ["Q_CO2cool",'4D',"erg/g/s"],  #  CO2 cooling rates
+                 "NO_COOL"  : ["Q_NOcool",'4D',"erg/g/s"],      #  NO cooling rates
+                 "UN"  : ["u_n",'4D',"cm/s"],            #  neutral ZONAL wind (+EAST)
+                 "VN"  : ["v_n",'4D',"cm/s"],            #  neutral MERIDIONAL wind (+NORTH)
                 # 
                 ### 4D Variables, vertical coordinate on interface levels (ilev)
-                 "DEN"      :["rho","g/cm**3"],     # total neutral mass density  
-                 "ZG"       :["H_ilev","cm"],          # geometric height  
-                 "Z"        :["H_geopot","cm"],            # geopotential height (cm)  
-                 "NE"       : ["N_e","1/cm**3"],    #  ELECTRON DENSITY
-                 "OMEGA"    : ["omega","1/s"],      #  VERTICAL MOTION
-                 "POTEN"    : ["V","V"],        #  ELECTRIC POTENTIAL
+                 "DEN"      :["rho",'4D',"g/cm**3"],     # total neutral mass density  
+                 "ZG"       :["H_ilev",'4D',"cm"],          # geometric height  
+                 "Z"        :["H_geopot",'4D',"cm"],            # geopotential height (cm)  
+                 "NE"       : ["N_e",'4D',"1/cm**3"],    #  ELECTRON DENSITY
+                 "OMEGA"    : ["omega",'4D',"1/s"],      #  VERTICAL MOTION
+                 "POTEN"    : ["V",'4D',"V"],        #  ELECTRIC POTENTIAL
                 ### 4D Variables, vertical coordinate on interface mag levels (imlev)
-                 "ZMAG"  : ["H_imlev","cm"],     #  Geopotential Height on Geomagnetic Grid
+                 "ZMAG"  : ["H_imlev",'4D',"cm"],     #  Geopotential Height on Geomagnetic Grid
                 #
                 ### 3D Variables,    (time, lat, lon)
-                 "TEC"  : ["TEC","1/cm**2"],     #  Total Electron Content
-                 "TLBC"  : ["T_nLBC","K"],       #  Lower boundary condition for TN
-                 "ULBC"  : ["u_nLBC","cm/s"],    #  Lower boundary condition for UN
-                 "VLBC"  : ["v_nLBC","cm/s"],    #  Lower boundary condition for VN
-                 "TLBC_NM"  : ["T_nLBCNM",""],  #  Lower boundary condition for TN (TIME N-1)
-                 "ULBC_NM"  : ["u_nLBCNM",""],  #  Lower boundary condition for UN (TIME N-1)
-                 "VLBC_NM"  : ["v_nLBCNM",""],  #  Lower boundary condition for VN (TIME N-1)
+                 "TEC"  : ["TEC",'3D',"1/cm**2"],     #  Total Electron Content
+                 "TLBC"  : ["T_nLBC",'3D',"K"],       #  Lower boundary condition for TN
+                 "ULBC"  : ["u_nLBC",'3D',"cm/s"],    #  Lower boundary condition for UN
+                 "VLBC"  : ["v_nLBC",'3D',"cm/s"],    #  Lower boundary condition for VN
+                 "TLBC_NM"  : ["T_nLBCNM",'3D',""],  #  Lower boundary condition for TN (TIME N-1)
+                 "ULBC_NM"  : ["u_nLBCNM",'3D',""],  #  Lower boundary condition for UN (TIME N-1)
+                 "VLBC_NM"  : ["v_nLBCNM",'3D',""],  #  Lower boundary condition for VN (TIME N-1)
                   }
 
 #####--------------------------------------------------------------------------------------
@@ -99,13 +99,13 @@ def min_to_hrs(time_minutes, date_dt):
 
 ##### --------------------------------------------------------------------------------------
 ###   Construct a TIEGCM class that inherits Kamodo       
-class TIEGCM(Kamodo): 
+class MODEL(Kamodo): 
     def __init__(self, filename, variables_requested=[], runname="noname",
                  filetimes=False, verbose=False, gridded_int=True, printfiles=True,
                  **kwargs):  #filename should include the full path
         
         #### Use a super init so that your class inherits any methods from Kamodo
-        super(TIEGCM, self).__init__()
+        super(MODEL, self).__init__()
 
         #store time information for satellite flythrough layer to choose the right file
         t0 = ti.perf_counter()
@@ -140,33 +140,33 @@ class TIEGCM(Kamodo):
         #translate from standardized variables to names in file
         #remove variables requested that are not in the file
         if len(variables_requested)>0:
-            gvar_list = [key for key, value in tiegcm_varnames.items() \
+            gvar_list = [key for key, value in model_varnames.items() \
                              if value[0] in variables_requested and \
                                  key in cdf_data.variables.keys()]  # file variable names
             
             #check for variables requested but not available
             if len(gvar_list)!=len(variables_requested):
-                err_list = [value[0] for key, value in tiegcm_varnames.items() \
+                err_list = [value[0] for key, value in model_varnames.items() \
                              if value[0] in variables_requested and \
                                  key not in cdf_data.variables.keys()]
                 print('Some requested variables are not available:', err_list)
             
             #check that the appropriate height variable is added for the variables requested
-            check_list = [key for key, value in tiegcm_varnames.items()\
+            check_list = [key for key, value in model_varnames.items()\
                           if value[0] in self.ilev_list and key in gvar_list]
             if 'ZG' not in gvar_list and len(check_list)>0: 
                 gvar_list.append('ZG')  #force addition of H for conversion of ilev to H and back
-            check_list = [key for key, value in tiegcm_varnames.items()\
+            check_list = [key for key, value in model_varnames.items()\
                           if value[0] in self.lev_list and key in gvar_list]
             if 'ZGMID' not in gvar_list and len(check_list)>0: 
                 gvar_list.append('ZGMID')
-            check_list = [key for key, value in tiegcm_varnames.items()\
+            check_list = [key for key, value in model_varnames.items()\
                           if value[0] in self.imlev_list and key in gvar_list]    
             if 'ZMAG' not in gvar_list and len(check_list): 
                 gvar_list.append('ZMAG')
         else:
             gvar_list = [key for key in cdf_data.variables.keys() \
-                         if key in tiegcm_varnames.keys()] 
+                         if key in model_varnames.keys()] 
         
         
         #### Store coordinate data as class attributes    
@@ -187,7 +187,7 @@ class TIEGCM(Kamodo):
         ####     as the variables attributes
         #### This will contain units, dtype, and the data
         #print(gvar_list)
-        self.variables = {tiegcm_varnames[key][0]:{'units':tiegcm_varnames[key][-1], 
+        self.variables = {model_varnames[key][0]:{'units':model_varnames[key][-1], 
                                                    'dtype':np.float32,
                                'data':np.array(cdf_data.variables[key])}\
                           for key in gvar_list}  #store with key = standardized name
@@ -281,7 +281,7 @@ class TIEGCM(Kamodo):
                                           varname, xvec_dependencies, gridded_int)
         return
 
-"""#begin plotting code -----------------------------------
+#begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -349,4 +349,7 @@ class TIEGCM(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig        
-"""
+
+
+
+

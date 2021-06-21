@@ -3,23 +3,23 @@ from netCDF4 import Dataset
 import numpy as np
 from datetime import datetime, timedelta, timezone
 import time as ti
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 #variable name in file: [standardized variable name, descriptive term, units]
-iri_varnames = {'Ne':['N_e','electron_density','1/m**3'], 
-                'Te':['T_e','electron_temperature','K'],
-                'Ti':['T_i','ion_temperature','K'], 
-                'Tn':['T_n','neutral_temperature','K'],
-                'O+':['N_Oplus','atomic_oxygen_ion_density','1/m**3'],
-                'H+':['N_Hplus','atomic_hydrogen_ion_density','1/m**3'],
-                'He+':['N_Heplus','atomic_helium_ion_density','1/m**3'],
-                'O2+':['N_O2plus','molecular_oxygen_ion_density','1/m**3'],
-                'NO+':['N_NOplus','nitric_oxide_ion_density','1/m**3'],
-                'N+':['N_Nplus','atomic_nitrogen_ion_density','1/m**3'],
-                'TEC':['TEC','total_electron_content','10**16/m**2'],
-                'NmF2':['NmF2','max_electron_density','1/m**3'],
-                'HmF2':['HmF2','max_electron_density_height','km']}
+model_varnames = {'Ne':['N_e','electron_density','4D','1/m**3'], 
+                'Te':['T_e','electron_temperature','4D','K'],
+                'Ti':['T_i','ion_temperature','4D','K'], 
+                'Tn':['T_n','neutral_temperature','4D','K'],
+                'O+':['N_Oplus','atomic_oxygen_ion_density','4D','1/m**3'],
+                'H+':['N_Hplus','atomic_hydrogen_ion_density','4D','1/m**3'],
+                'He+':['N_Heplus','atomic_helium_ion_density','4D','1/m**3'],
+                'O2+':['N_O2plus','molecular_oxygen_ion_density','4D','1/m**3'],
+                'NO+':['N_NOplus','nitric_oxide_ion_density','4D','1/m**3'],
+                'N+':['N_Nplus','atomic_nitrogen_ion_density','4D','1/m**3'],
+                'TEC':['TEC','total_electron_content','3D','10**16/m**2'],
+                'NmF2':['NmF2','max_electron_density','3D','1/m**3'],
+                'HmF2':['HmF2','max_electron_density_height','3D','km']}
 
 
 
@@ -28,11 +28,11 @@ iri_varnames = {'Ne':['N_e','electron_density','1/m**3'],
 #filedate is self.filedate from iri object
 #converts to hours since midnight of filedate for plotting
 
-class IRI(Kamodo):
+class MODEL(Kamodo):
     def __init__(self, filename, variables_requested = None, runname = "noname",
                  printfiles=True, filetimes=False, gridded_int=True, **kwargs): #                 time_index=None, time_seconds=None,
         # Prepare model for function registration for the input argument
-        super(IRI, self).__init__(**kwargs)
+        super(MODEL, self).__init__(**kwargs)
 
         #collect filenames
         if '.2D.' in filename:  #require that input filename be for 3D file
@@ -71,16 +71,16 @@ class IRI(Kamodo):
         self._registered = 0
         self.variables={}
         self.runname=runname
-        self.modelname = 'IRI'
+        self.modelname = 'MODEL'
         
         #if variables_requested not given, collect all values from dict above as a list
         if variables_requested is None:
-            variables_requested = [value[0] for key,value in iri_varnames.items()]
+            variables_requested = [value[0] for key,value in model_varnames.items()]
             
         #collect list of iri variable name equivalents
-        var_names = [key for key, value in iri_varnames.items() if value[0] in variables_requested]
+        var_names = [key for key, value in model_varnames.items() if value[0] in variables_requested]
         extra_variables = [var for var in variables_requested if var not in 
-                     [value[0] for key, value in iri_varnames.items()]]
+                     [value[0] for key, value in model_varnames.items()]]
         if len(extra_variables)>0:   #pull out variables not allowed and error if not empty
             print('Some requested variables are not available:', extra_variables)        
         
@@ -96,8 +96,8 @@ class IRI(Kamodo):
             #set variables, units
             variable = np.array(getattr(self, '_iri'+file_type).variables[varname])  #set data        
             if (len(variable.shape) not in [3,4]): continue  #skip anything not 3D or 4D
-            units = iri_varnames[varname][-1]  #units stored as last item in list per varname
-            kamodo_varname = iri_varnames[varname][0]
+            units = model_varnames[varname][-1]  #units stored as last item in list per varname
+            kamodo_varname = model_varnames[varname][0]
             
             #register allowed 3D and 4D variables
             self.variables[kamodo_varname] = dict(units = units, data = variable)  #register in object
@@ -134,7 +134,7 @@ class IRI(Kamodo):
                                           self._height, self._lat, self._lon,
                                           varname, xvec_dependencies, gridded_int)
         return
-"""
+
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -188,4 +188,3 @@ class IRI(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
- """       

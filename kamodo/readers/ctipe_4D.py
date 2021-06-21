@@ -8,48 +8,48 @@ import glob, os
 from kamodo import Kamodo
 from netCDF4 import Dataset
 from datetime import datetime, timezone
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
 # constants and dictionaries
-ctipe_varnames = {'density':['rho','kg/m**3'],
-                  'temperature':['T','K'],
-                  'electron_temperature':['T_e','K'],
-                  'ion_temperature':['T_i','K'],
-                  'height':['H_ilev','m'],                      
-                  'meridional_neutral_wind':['Vn_lat','m/s'],
-                  'zonal_neutral_wind':['Vn_lon','m/s'],
-                  'vertical_neutral_wind':['Vn_H','m/s'],
-                  'neutral_temperature':['T_n','K'],
-                  'mean_molecular_mass':['Rmt','amu'],
-                  'electron_density':['N_e','1/m**3'],
-                  'neutral_density':['N_n','1/m**3'],
-                  'solar_heating':['Q_Solar','J/kg/s'],
-                  'joule_heating':['Q_Joule','J/kg/s'],
-                  'radiation_heat_cool':['Q_radiation','J/kg/s'],
-                  'atomic_oxygen_density':['N_O','1/m**3'],
-                  'molecular_oxygen_density':['N_O2','1/m**3'],
-                  'molecular_nitrogen_density':['N_N2','1/m**3'],
-                  'nitric_oxide_density':['N_NO','1/m**3'],
-                  'nitric_oxide_ion_density':['N_NOplus','1/m**3'],
-                  'molecular_nitrogen_ion_density':['N_N2plus','1/m**3'],  
-                  'molecular_oxygen_ion_density':['N_O2plus','1/m**3'],
-                  'atomic_nitrogen_ion_density':['N_Nplus','1/m**3'],
-                  'atomic_oxygen_ion_density':['N_Oplus','1/m**3'],
-                  'atomic_hydrogen_ion_density':['N_Hplus','1/m**3'],
-                  'pedersen_conductivity':['Sigma_P','S/m'],
-                  'hall_conductivity':['Sigma_H','S/m'],
-                  'zonal_ion_velocity':['Vi_lon','m/s'],
-                  'meridional_ion_velocity':['Vi_lat','m/s'],
-                  'height_integrated_joule_heating':['W_Joule','W/m**2'],
-                  'energy_influx':['Eflux_precip','W/m**2'],
-                  'mean_energy':['Eavg_precip','keV'],
-                  'total_electron_content':['TEC','10**16/m**2'],
-                  'theta_electric_field_at_140km':['E_theta140km','V/m'],
-                  'lambda_electric_field_at_140km':['E_lambda140km','V/m'],
-                  'theta_electric_field_at_300km':['E_theta300km','V/m'],
-                  'lambda_electric_field_at_300km':['E_lambda300km','V/m']}
+model_varnames = {'density':['rho','4D','kg/m**3'],
+                  'temperature':['T','4D','K'],
+                  'electron_temperature':['T_e','4D','K'],
+                  'ion_temperature':['T_i','4D','K'],
+                  'height':['H_ilev','4D','m'],                      
+                  'meridional_neutral_wind':['Vn_lat','4D','m/s'],
+                  'zonal_neutral_wind':['Vn_lon','4D','m/s'],
+                  'vertical_neutral_wind':['Vn_H','4D','m/s'],
+                  'neutral_temperature':['T_n','4D','K'],
+                  'mean_molecular_mass':['Rmt','4D','amu'],
+                  'electron_density':['N_e','4D','1/m**3'],
+                  'neutral_density':['N_n','4D','1/m**3'],
+                  'solar_heating':['Q_Solar','4D','J/kg/s'],
+                  'joule_heating':['Q_Joule','4D','J/kg/s'],
+                  'radiation_heat_cool':['Q_radiation','4D','J/kg/s'],
+                  'atomic_oxygen_density':['N_O','4D','1/m**3'],
+                  'molecular_oxygen_density':['N_O2','4D','1/m**3'],
+                  'molecular_nitrogen_density':['N_N2','4D','1/m**3'],
+                  'nitric_oxide_density':['N_NO','4D','1/m**3'],
+                  'nitric_oxide_ion_density':['N_NOplus','4D','1/m**3'],
+                  'molecular_nitrogen_ion_density':['N_N2plus','4D','1/m**3'],  
+                  'molecular_oxygen_ion_density':['N_O2plus','4D','1/m**3'],
+                  'atomic_nitrogen_ion_density':['N_Nplus','4D','1/m**3'],
+                  'atomic_oxygen_ion_density':['N_Oplus','4D','1/m**3'],
+                  'atomic_hydrogen_ion_density':['N_Hplus','4D','1/m**3'],
+                  'pedersen_conductivity':['Sigma_P','4D','S/m'],
+                  'hall_conductivity':['Sigma_H','4D','S/m'],
+                  'zonal_ion_velocity':['Vi_lon','4D','m/s'],
+                  'meridional_ion_velocity':['Vi_lat','4D','m/s'],
+                  'height_integrated_joule_heating':['W_Joule','3D','W/m**2'],
+                  'energy_influx':['Eflux_precip','3D','W/m**2'],
+                  'mean_energy':['Eavg_precip','3D','keV'],
+                  'total_electron_content':['TEC','3D','10**16/m**2'],
+                  'theta_electric_field_at_140km':['E_theta140km','3D','V/m'],
+                  'lambda_electric_field_at_140km':['E_lambda140km','3D','V/m'],
+                  'theta_electric_field_at_300km':['E_theta300km','3D','V/m'],
+                  'lambda_electric_field_at_300km':['E_lambda300km','3D','V/m']}
 
 
 #convert an array of timestamps to an array of hrs since midnight
@@ -81,7 +81,7 @@ def CTIPe_filesearch(filename):
         return filename
     
 #main class
-class CTIPe(Kamodo):
+class MODEL(Kamodo):
     def __init__(self, filename, variables_requested = None, filetimes=False,
                  runname = "noname", printfiles=True, gridded_int=True, **kwargs):  
                 #date = None, date is in filename, so exclude? (self.date ....)
@@ -90,7 +90,7 @@ class CTIPe(Kamodo):
         # input file name can be one of the 4 files for each day of model outputs
         # YYYYMMDD-plot-[density|height|neutral|plasma].nc files
         # only the density, height and neutral files have data and are read
-        super(CTIPe, self).__init__()   #what does this line do??
+        super(MODEL, self).__init__()   #what does this line do??
         
         filename = CTIPe_filesearch(filename)  #get/convert filename
         filetype_list = ['plot-density-wrapped','plot-height-wrapped',
@@ -146,7 +146,7 @@ class CTIPe(Kamodo):
 
         #initialize variables
         self._registered = 0  
-        super(CTIPe, self).__init__()   #what does this line do???
+        super(MODEL, self).__init__()   #what does this line do???
         self.filename = filename
         self.runname = runname
         self.missing_value = np.NAN
@@ -154,19 +154,19 @@ class CTIPe(Kamodo):
         
         #if variables_requested not given, collect all values from dict above as a list
         if variables_requested is None:
-            variables_requested = [value[0] for key,value in ctipe_varnames.items()]
+            variables_requested = [value[0] for key,value in model_varnames.items()]
         
         # add height variable needed to height (not IP-level) interpolatioms
-        check_list = [value[0] for key, value in ctipe_varnames.items()\
+        check_list = [value[0] for key, value in model_varnames.items()\
                           if value[0] in self.ilev_list and value[0] in variables_requested]
         if 'H_ilev' not in variables_requested and len(check_list)>0: 
             variables_requested.append('H_ilev')
         #print(f'Requested {len(variables_requested)} variables: {variables_requested} \n')
         
         #collect list of ctipe variable name equivalents
-        var_names = [key for key, value in ctipe_varnames.items() if value[0] in variables_requested]
+        var_names = [key for key, value in model_varnames.items() if value[0] in variables_requested]
         extra_variables = [var for var in variables_requested if var not in 
-                     [value[0] for key, value in ctipe_varnames.items()]]
+                     [value[0] for key, value in model_varnames.items()]]
         if len(extra_variables)>0:   #print statement if some variables not in files
             print('Some requested variables are not available:', extra_variables)
         
@@ -184,12 +184,12 @@ class CTIPe(Kamodo):
             
             #set units, initialize variables
             variable = np.array(getattr(self, '_ctipe_'+file_type).variables[varname])  #set variable
-            units = ctipe_varnames[varname][-1]
+            units = model_varnames[varname][-1]
             if (len(variable.shape) not in [3,4]) or (varname in bad_varnames[file_type]):
                 continue  #if not 3D or 4D or not allowed, skip to next variable
             
             #register allowed 3D and 4D variables
-            kamodo_varname=ctipe_varnames[varname][0]  #retreive standardized name
+            kamodo_varname=model_varnames[varname][0]  #retreive standardized name
             self.variables[kamodo_varname] = dict(units = units, data = variable)  #register in object
             if len(variable.shape) == 4:  #define and register interpolators for each
                 self.register_4D_variable(units, variable, kamodo_varname, 
@@ -247,7 +247,7 @@ class CTIPe(Kamodo):
         self = RU.regdef_4D_interpolators(self, units, variable, t, z, lat, lon,
                                           varname, xvec_dependencies, gridded_int)
         return
-"""  
+    
     '''----------------------- Plotting code below here --------------------'''
 
     def set_plot(self, var, plottype, cutV=10, cutL=0, timerange={},
@@ -317,4 +317,3 @@ class CTIPe(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
-"""   

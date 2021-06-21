@@ -1,119 +1,118 @@
-from os import path
 import time as ti
 import glob
 import numpy as np
 from netCDF4 import Dataset
 from datetime import datetime, timezone
 from kamodo import Kamodo
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 
 
 #file_prefix = 'C:/Users/rringuet/Kamodo_WinDev1/GITM/3DLST_t150317'
 #keep for easy access of variable names from satellite flythrough software
-#line for gitm wrapper if data scale isn't important:
-# return {key:[value[0],value[2]] for key, value in gitm_varnames.items()}
+#line for MODEL wrapper if data scale isn't important:
+# return {key:[value[0],value[2]] for key, value in model_varnames.items()}
 #varnames in cdf files are standardized (value[0])
-gitm_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear', ''],
-                 'Ar Mass Density': ['rho_Ar', 'exponential', 'kg/m**3'],
-                 'Methane Mixing Ratio': ['r_CH4', 'linear', ''],
-                 'Conduction': ['k', 'linear', 'W/m/K'],
-                 'EUV Heating': ['Q_EUV', 'linear', 'K per timestep'],
-                 'H Mass Density': ['rho_H', 'exponential', 'kg/m**3'],
-                 'H+ Mass Density': ['rho_Hplus', 'exponential', 'kg/m**3'],
-                 'H2 Mixing Ratio': ['r_H2', 'linear', ''],
-                 'Hydrogen Cyanide Mixing Ratio': ['r_HCN', 'linear', ''],
-                 'He Mass Density': ['rho_He', 'exponential', 'kg/m**3'],
-                 'He+ Mass Density': ['rho_Heplus', 'exponential', 'kg/m**3'],
-                 'Heating Efficiency': ['HeatingEfficiency', 'linear', ''],
-                 'Heat Balance Total': ['HeatBalanceTotal', 'linear', ''],
-                 'N2 Mass Density': ['rho_N2', 'exponential', 'kg/m**3'],
-                 'N2+ Mass Density': ['rho_N2plus', 'exponential', 'kg/m**3'],
-                 'N+ Mass Density': ['rho_Nplus', 'exponential', 'kg/m**3'],
-                 'N(2D) Mass Density': ['rho_N2D', 'exponential', 'kg/m**3'],
-                 'N(2P) Mass Density': ['rho_N2P', 'exponential', 'kg/m**3'],
-                 'N(4S) Mass Density': ['rho_N4S', 'exponential', 'kg/m**3'],
-                 'N2 Mixing Ratio': ['r_N2', 'linear', ''],
-                 'NO Mass Density': ['rho_NO', 'exponential', 'kg/m**3'],
-                 'NO+ Mass Density': ['rho_NOplus', 'exponential', 'kg/m**3'],
-                 'O2 Mass Density': ['rho_O2', 'exponential', 'kg/m**3'],
-                 'O(1D) Mass Density': ['rho_O1D', 'exponential', 'kg/m**3'],
-                 'O2+ Mass Density': ['rho_O2plus', 'exponential', 'kg/m**3'],
-                 'O(2D) Mass Density': ['rho_O2D', 'exponential', '1/m**3'],
-                 'O+(2P) Mass Density': ['rho_Oplus2P', 'exponential', 'kg/m**3'],
-                 'O(3P) Mass Density': ['rho_O3P', 'exponential', 'kg/m**3'],
-                 'O+(4SP) Mass Density': ['rho_Oplus4SP', 'exponential', 'kg/m**3'],
-                 'Radiative Cooling': ['L_Rad', 'linear', ''],
-                 'Neutral Density': ['rho', 'exponential', 'kg/m**3'],
-                 'T_n': ['T_n', 'linear', 'K'],
-                 'vi_east': ['vi_east', 'linear', 'm/s'],
-                 'vi_north': ['vi_north', 'linear', 'm/s'],
-                 'vi_up': ['vi_up', 'linear', 'm/s'],
-                 'vn_east': ['vn_east', 'linear', 'm/s'],
-                 'vn_north': ['vn_north', 'linear', 'm/s'],
-                 'vn_up': ['vn_up', 'linear', 'm/s'],
-                 'v_N2_up': ['v_N2_up', 'linear', 'm/s'],
-                 'v_N(4S)_up': ['v_N4S_up', 'linear', 'm/s'],
-                 'v_N_up': ['v_N_up', 'linear', 'm/s'],
-                 'v_O2_up': ['v_O2_up', 'linear', 'm/s'],
-                 'v_O(3P)_up': ['v_O3P_up', 'linear', 'm/s'],
-                 'v_He_up': ['v_He_up', 'linear', 'm/s'],
-                 '[e-]': ['rho_e', 'linear', '1/m**3'],
-                 'Electron Average Energy': ['ElectronAverageEnergy', 'linear', 'J'],
-                 'T_e': ['T_e', 'linear', 'K'],
-                 'T_i': ['T_i', 'linear', 'K'],
-                 'Solar Zenith Angle': ['SolarZenithAngle', 'linear', 'radians'],
-                 'CO2 Mass Density': ['rho_CO2', 'exponential', 'kg/m**3'],
-                 'DivJu FL': ['DivJuFL', '', ''],
-                 'DivJuAlt': ['DivJuAlt', 'linear', ''],
-                 'Electron Energy Flux': ['ElectronEnergyFlux', 'exponential', 'J/m**2'],
-                 'Field Line Length': ['Field Line Length', 'linear', 'm'],
-                 'sigma_P': ['sigma_P', 'linear', 'S/m'],
-                 'Sigma_P': ['Sigma_P', 'linear', 'S/m'],
-                 'sigma_H': ['sigma_H', 'linear', 'S/m'],
-                 'Potential': ['V', 'linear', 'V'],
-                 'Sigma_H': ['Sigma_H', 'linear', 'S/m'],
-                 'Region 2 Current': ['I_R2', 'linear', 'A/m**2'],
-                 'Region 1 Current': ['I_R1', 'linear', 'A/m**2'],
-                 'Ed1': ['Ed1', 'linear', ''],
-                 'Ed2': ['Ed2', 'linear', ''],
-                 'Solar Local Time': ['SolarLocalTime', 'linear', 'h'],
-                 'Vertical Electric Field': ['E_up', 'linear', 'V/m'],
-                 'Eastward Electric Field': ['E_east', 'linear', 'V/m'],
-                 'Northward Electric Field': ['E_north', 'linear', 'V/m'],
-                 'Electric Field Magnitude': ['E_mag', 'linear', 'V/m'],
-                 'Vertical Magnetic Field': ['B_up', 'linear', 'nT'],
-                 'Eastward Magnetic Field': ['B_east', 'linear', 'nT'],
-                 'Northward Magnetic Field': ['B_north', 'linear', 'nT'],
-                 'Magnetic Field Magnitude': ['B_mag', 'linear', 'nT'],
-                 'Magnetic Latitude': ['MagLat', 'linear', 'deg'],
-                 'Magnetic Longitude': ['MagLon', 'linear', 'deg'],
-                 'g': ['g', 'linear', 'm/s**2'],
-                 'GradP_east (P_i + P_e)': ['GradP_east', 'linear', 'Pa/m'],
-                 'GradP_north (P_i + P_e)': ['GradP_north', 'linear', 'Pa/m'],
-                 'GradP_up (P_i + P_e)': ['GradP_up', 'linear', 'Pa/m'],
-                 'nu_in': ['nu_in', 'linear', '1/s'],
-                 'Chemical Heating Rate': ['ChemicalHeatingRate', 'linear', ''],
-                 'Total Absolute EUV': ['TotalAbsoluteEUV', 'linear', 'K per timestep'],
-                 'O Cooling': ['L_O', 'linear', 'K per timestep'],
-                 'Joule Heating': ['Q_Joule', 'linear', 'K per timestep'],
-                 'Auroral Heating': ['Q_Auroral', 'linear', 'K per timestep'],
-                 'Photoelectron Heating': ['Q_PhotoE', 'linear', 'K per timestep'],
-                 'Eddy Conduction': ['k_eddy', 'linear', ''],
-                 'Adiabatic Eddy Conduction': ['k_adiabaticeddy', 'linear', ''],
-                 'NO Cooling': ['L_NO', 'linear', 'K per timestep'],
-                 'Molecular Conduction': ['k_molecular', 'linear', ''],
-                 'max_electron_density': ['NmF2', 'linear', ''],
-                 'max_electron_density_height': ['hmF2', 'linear', 'km'],
-                 'Vertical TEC': ['TEC', 'linear', '10**16/m**2'],
-                 'HeatFlux_Joule':['phi_qJoule','linear','W/m**2'], 
-                 'HeatFlux':['phi_q','linear','W/m**2'], 
-                 'HeatFlux_EUV':['phi_qEUV','linear','W/m**2'], 
-                 'NO CoolingFlux':['phi_qNOCooling','linear','W/m**2']}
+model_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear','4D', ''],
+                 'Ar Mass Density': ['rho_Ar', 'exponential','4D', 'kg/m**3'],
+                 'Methane Mixing Ratio': ['r_CH4', 'linear','4D', ''],
+                 'Conduction': ['k', 'linear','4D', 'W/m/K'],
+                 'EUV Heating': ['Q_EUV', 'linear','4D', 'K per timestep'],
+                 'H Mass Density': ['rho_H', 'exponential','4D', 'kg/m**3'],
+                 'H+ Mass Density': ['rho_Hplus', 'exponential','4D', 'kg/m**3'],
+                 'H2 Mixing Ratio': ['r_H2', 'linear','4D', ''],
+                 'Hydrogen Cyanide Mixing Ratio': ['r_HCN', 'linear','4D', ''],
+                 'He Mass Density': ['rho_He', 'exponential','4D', 'kg/m**3'],
+                 'He+ Mass Density': ['rho_Heplus', 'exponential','4D', 'kg/m**3'],
+                 'Heating Efficiency': ['HeatingEfficiency', 'linear','4D', ''],
+                 'Heat Balance Total': ['HeatBalanceTotal', 'linear','4D', ''],
+                 'N2 Mass Density': ['rho_N2', 'exponential','4D', 'kg/m**3'],
+                 'N2+ Mass Density': ['rho_N2plus', 'exponential','4D', 'kg/m**3'],
+                 'N+ Mass Density': ['rho_Nplus', 'exponential','4D', 'kg/m**3'],
+                 'N(2D) Mass Density': ['rho_N2D', 'exponential','4D', 'kg/m**3'],
+                 'N(2P) Mass Density': ['rho_N2P', 'exponential','4D', 'kg/m**3'],
+                 'N(4S) Mass Density': ['rho_N4S', 'exponential','4D', 'kg/m**3'],
+                 'N2 Mixing Ratio': ['r_N2', 'linear','4D', ''],
+                 'NO Mass Density': ['rho_NO', 'exponential','4D', 'kg/m**3'],
+                 'NO+ Mass Density': ['rho_NOplus', 'exponential','4D', 'kg/m**3'],
+                 'O2 Mass Density': ['rho_O2', 'exponential','4D', 'kg/m**3'],
+                 'O(1D) Mass Density': ['rho_O1D', 'exponential', '4D','kg/m**3'],
+                 'O2+ Mass Density': ['rho_O2plus', 'exponential','4D', 'kg/m**3'],
+                 'O(2D) Mass Density': ['rho_O2D', 'exponential','4D', '1/m**3'],
+                 'O+(2P) Mass Density': ['rho_Oplus2P', 'exponential','4D', 'kg/m**3'],
+                 'O(3P) Mass Density': ['rho_O3P', 'exponential','4D', 'kg/m**3'],
+                 'O+(4SP) Mass Density': ['rho_Oplus4SP', 'exponential','4D', 'kg/m**3'],
+                 'Radiative Cooling': ['L_Rad', 'linear', '4D',''],
+                 'Neutral Density': ['rho', 'exponential','4D', 'kg/m**3'],
+                 'T_n': ['T_n', 'linear','4D', 'K'],
+                 'vi_east': ['vi_east', 'linear','4D', 'm/s'],
+                 'vi_north': ['vi_north', 'linear','4D', 'm/s'],
+                 'vi_up': ['vi_up', 'linear','4D', 'm/s'],
+                 'vn_east': ['vn_east', 'linear','4D', 'm/s'],
+                 'vn_north': ['vn_north', 'linear','4D', 'm/s'],
+                 'vn_up': ['vn_up', 'linear','4D', 'm/s'],
+                 'v_N2_up': ['v_N2_up', 'linear','4D', 'm/s'],
+                 'v_N(4S)_up': ['v_N4S_up', 'linear','4D', 'm/s'],
+                 'v_N_up': ['v_N_up', 'linear','4D', 'm/s'],
+                 'v_O2_up': ['v_O2_up', 'linear','4D', 'm/s'],
+                 'v_O(3P)_up': ['v_O3P_up', 'linear','4D', 'm/s'],
+                 'v_He_up': ['v_He_up', 'linear','4D', 'm/s'],
+                 '[e-]': ['rho_e', 'linear','4D', '1/m**3'],
+                 'Electron Average Energy': ['ElectronAverageEnergy', 'linear','4D', 'J'],
+                 'T_e': ['T_e', 'linear','4D', 'K'],
+                 'T_i': ['T_i', 'linear','4D', 'K'],
+                 'Solar Zenith Angle': ['SolarZenithAngle', 'linear','3D', 'radians'],
+                 'CO2 Mass Density': ['rho_CO2', 'exponential','4D', 'kg/m**3'],
+                 'DivJu FL': ['DivJuFL', '','4D', ''],
+                 'DivJuAlt': ['DivJuAlt', 'linear','4D', ''],
+                 'Electron Energy Flux': ['ElectronEnergyFlux', 'exponential','4D', 'J/m**2'],
+                 'Field Line Length': ['Field Line Length', 'linear','4D', 'm'],
+                 'sigma_P': ['sigma_P', 'linear','4D', 'S/m'],
+                 'Sigma_P': ['Sigma_P', 'linear','4D', 'S/m'],
+                 'sigma_H': ['sigma_H', 'linear','4D', 'S/m'],
+                 'Potential': ['V', 'linear','4D', 'V'],
+                 'Sigma_H': ['Sigma_H', 'linear','4D', 'S/m'],
+                 'Region 2 Current': ['I_R2', 'linear','4D', 'A/m**2'],
+                 'Region 1 Current': ['I_R1', 'linear','4D', 'A/m**2'],
+                 'Ed1': ['Ed1', 'linear','4D', ''],
+                 'Ed2': ['Ed2', 'linear','4D', ''],
+                 'Solar Local Time': ['SolarLocalTime', 'linear','3D', 'h'],
+                 'Vertical Electric Field': ['E_up', 'linear','4D', 'V/m'],
+                 'Eastward Electric Field': ['E_east', 'linear','4D', 'V/m'],
+                 'Northward Electric Field': ['E_north', 'linear','4D', 'V/m'],
+                 'Electric Field Magnitude': ['E_mag', 'linear','4D', 'V/m'],
+                 'Vertical Magnetic Field': ['B_up', 'linear','4D', 'nT'],
+                 'Eastward Magnetic Field': ['B_east', 'linear','4D', 'nT'],
+                 'Northward Magnetic Field': ['B_north', 'linear','4D', 'nT'],
+                 'Magnetic Field Magnitude': ['B_mag', 'linear','4D', 'nT'],
+                 'Magnetic Latitude': ['MagLat', 'linear','4D', 'deg'],
+                 'Magnetic Longitude': ['MagLon', 'linear','4D', 'deg'],
+                 'g': ['g', 'linear','4D', 'm/s**2'],
+                 'GradP_east (P_i + P_e)': ['GradP_east', 'linear','4D', 'Pa/m'],
+                 'GradP_north (P_i + P_e)': ['GradP_north', 'linear','4D', 'Pa/m'],
+                 'GradP_up (P_i + P_e)': ['GradP_up', 'linear','4D', 'Pa/m'],
+                 'nu_in': ['nu_in', 'linear','4D', '1/s'],
+                 'Chemical Heating Rate': ['ChemicalHeatingRate', 'linear','4D', ''],
+                 'Total Absolute EUV': ['TotalAbsoluteEUV', 'linear','4D', 'K per timestep'],
+                 'O Cooling': ['L_O', 'linear','4D', 'K per timestep'],
+                 'Joule Heating': ['Q_Joule', 'linear','4D', 'K per timestep'],
+                 'Auroral Heating': ['Q_Auroral', 'linear','4D', 'K per timestep'],
+                 'Photoelectron Heating': ['Q_PhotoE', 'linear','4D', 'K per timestep'],
+                 'Eddy Conduction': ['k_eddy', 'linear','4D', ''],
+                 'Adiabatic Eddy Conduction': ['k_adiabaticeddy', 'linear','4D', ''],
+                 'NO Cooling': ['L_NO', 'linear','4D', 'K per timestep'],
+                 'Molecular Conduction': ['k_molecular', 'linear','4D', ''],
+                 'max_electron_density': ['NmF2', 'linear','3D', ''],
+                 'max_electron_density_height': ['hmF2', 'linear','3D', 'km'],
+                 'Vertical TEC': ['TEC', 'linear','3D', '10**16/m**2'],
+                 'HeatFlux_Joule':['phi_qJoule','linear','3D','W/m**2'], 
+                 'HeatFlux':['phi_q','linear','3D','W/m**2'], 
+                 'HeatFlux_EUV':['phi_qEUV','linear','3D','W/m**2'], 
+                 'NO CoolingFlux':['phi_qNOCooling','linear','3D','W/m**2']}
 
 #times from file converted to seconds since midnight of filedate
 #plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
-#filedate is self.filedate from gitm object
+#filedate is self.filedate from MODEL object
 #converts to hours since midnight of filedate for plotting
 #def dtsns_to_hrs(datetime_string, filedate):
 #    '''Get hours since midnight from datetime string including nanoseconds'''
@@ -140,13 +139,13 @@ def dts_to_ts(file_dts):
                                                 ).replace(tzinfo=timezone.utc))
 
 #main class object
-class GITM(Kamodo): 
+class MODEL(Kamodo): 
     def __init__(self, file_prefix, variables_requested=[], runname="noname",
                  filetimes=False, verbose=False, gridded_int=True, printfiles=True,
                  **kwargs): 
         '''filename must be of form "3D***_tYYMMDD" to load all files for one day,
          and must include a complete path to the files'''
-        super(GITM, self).__init__()
+        super(MODEL, self).__init__()
         
         #check for .nc files
         total_files = glob.glob(file_prefix+'*')
@@ -298,7 +297,7 @@ class GITM(Kamodo):
                                           varname, xvec_dependencies, gridded_int)
         return
 
-"""begin plotting code -----------------------------------
+#begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -355,4 +354,3 @@ class GITM(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig
-"""

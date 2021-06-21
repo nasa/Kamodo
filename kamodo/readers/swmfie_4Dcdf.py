@@ -10,24 +10,24 @@ import time as ti
 from datetime import datetime, timezone
 from netCDF4 import Dataset
 from kamodo import Kamodo
-#import kamodo.readers.reader_plotutilities as RPlot
+import kamodo.readers.reader_plotutilities as RPlot
 import kamodo.readers.reader_utilities as RU
 #read 1 day of data from cdf instead of from multiple .tec files
 
 
-swmfie_varnames={"X":['x','km'],"Y":['y','km'],"Z":['z','km'],    #(ignored, given in R_E on a unit sphere)
-                 "Theta":['theta',"deg"],"Psi":['psi',"deg"],     #(used as coordinates)
-                 "Btilt_theta":['theta_Btilt',"deg"], "Btilt_psi":['psi_Btilt',"deg"], 
+model_varnames={"X":['x','1D','km'],"Y":['y','1D','km'],"Z":['z','1D','km'],    #(ignored, given in R_E on a unit sphere)
+                 "Theta":['theta','1D',"deg"],"Psi":['psi','1D',"deg"],     #(used as coordinates)
+                 "Btilt_theta":['theta_Btilt','1D',"deg"], "Btilt_psi":['psi_Btilt','1D',"deg"], 
                  #(added directly to object for documentation purposes)
-                 "SigmaH":['Sigma_H',"S"],"SigmaP":['Sigma_P',"S"],
-                 "E-Flux":['Phi_E',"W/m**2"], "Ave-E":['E_avg','eV'],
-                 "JR":["j_R","mA/m**2"],"PHI":["Phi","kV"],
-                 "Ex":["E_x","mV/m"],"Ey":["E_y","mV/m"],"Ez":["E_z","mV/m"],
-                 "Jx":["j_x","mA/m**2"],"Jy":["j_y","mA/m**2"],"Jz":["j_z","mA/m**2"],
-                 "Ux":['v_x',"km/s"],"Uy":['v_y',"km/s"],"Uz":['v_z',"km/s"],
-                 "JouleHeat":['Q_Joule',"mW/m**2"], "IonNumFlux":['Phi_nion',"1/cm**2/s"],
-                 "RT 1/B":['Binv_RT',"1/T"],"RT Rho":['rho_RT',"amu/cm**3"],"RT P":['P_RT',"Pa"],
-                 "conjugate dLat":['dLat_star',"deg"],"conjugate dLon":['dlon_star',"deg"]}
+                 "SigmaH":['Sigma_H','3D',"S"],"SigmaP":['Sigma_P','3D',"S"],
+                 "E-Flux":['Phi_E','3D',"W/m**2"], "Ave-E":['E_avg','3D','eV'],
+                 "JR":["j_R",'3D',"mA/m**2"],"PHI":["Phi",'3D',"kV"],
+                 "Ex":["E_x",'3D',"mV/m"],"Ey":["E_y",'3D',"mV/m"],"Ez":["E_z",'3D',"mV/m"],
+                 "Jx":["j_x",'3D',"mA/m**2"],"Jy":["j_y",'3D',"mA/m**2"],"Jz":["j_z",'3D',"mA/m**2"],
+                 "Ux":['v_x','3D',"km/s"],"Uy":['v_y','3D',"km/s"],"Uz":['v_z','3D',"km/s"],
+                 "JouleHeat":['Q_Joule','3D',"mW/m**2"], "IonNumFlux":['Phi_nion','3D',"1/cm**2/s"],
+                 "RT 1/B":['Binv_RT','3D',"1/T"],"RT Rho":['rho_RT','3D',"amu/cm**3"],"RT P":['P_RT','3D',"Pa"],
+                 "conjugate dLat":['dLat_star','3D',"deg"],"conjugate dLon":['dlon_star','3D',"deg"]}
                  
  
 '''                
@@ -65,13 +65,13 @@ def dts_to_ts(file_dts):
 #file_patterns = np.unique([file_dir+f.split('/')[-1].split('\\')[-1][:11] for f in files])
 
        
-class SWMF_IE(Kamodo): 
+class MODEL(Kamodo): 
     def __init__(self, file_prefix, variables_requested=[], runname="noname",
                  filetimes=False, verbose=False, gridded_int=True, printfiles=True,
                  **kwargs): 
         '''file_prefix must be of form "3D***_tYYMMDD" to load all files for one day
          and include a complete path to the files'''
-        super(SWMF_IE, self).__init__()
+        super(MODEL, self).__init__()
         
         #check if given .nc file exists. If not, convert files with same prefix to netCDF
         if not path.isfile(file_prefix+'.nc'):
@@ -167,7 +167,7 @@ class SWMF_IE(Kamodo):
                                        xvec_dependencies, gridded_int)       
         return 
 
-"""begin plotting code -----------------------------------
+#begin plotting code -----------------------------------
     def set_plot(self, var, plottype, cutV=400., cutL=0, 
                  timerange={}, lonrange={}, latrange={}, htrange={}):
         '''Set plotting variables for available preset plot types.'''
@@ -224,4 +224,3 @@ class SWMF_IE(Kamodo):
         if test==1: return {} #if plottype requested invalid for variable, do nothing
         fig = self.get_plot(var, colorscale=colorscale, datascale=datascale, ellipse=ellipse)
         return fig        
-"""
