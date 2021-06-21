@@ -1,3 +1,4 @@
+* using squeeze flag
 * fixed test affected by size_threshold
 
 # 2021-06-21 15:46:45.787242: clock-in
