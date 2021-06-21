@@ -11,10 +11,43 @@ import glob
 import numpy as np
 
 
+def Choose_Model(model):
+    '''Returns module specific to the model requested.'''
+    #UPDATE THIS AS MORE MODELS ARE ADDED
+
+    if model == '':  #Give a list of possible values
+        print("Possible models are: 'CTIPe','IRI', 'GITM', 'SWMF_IE', and 'TIEGCM'")
+        return
+    
+    if model=='CTIPe':
+        import kamodo.readers.ctipe_4D as module
+        return module
+    
+    elif model=='IRI':
+        import kamodo.readers.iri_4D as module
+        return module
+    
+    elif model=='GITM':
+        import kamodo.readers.gitm_4Dcdf as module
+        return module
+    
+    elif model=='SWMF_IE':
+        import kamodo.readers.swmfie_4Dcdf as module
+        return module
+    
+    elif model=='TIEGCM':
+        import kamodo.readers.tiegcm_4D as module
+        return module
+    
+    else:
+        raise AttributeError('Model not yet added.')    
+
+
 def FileSearch(model, file_dir):
     '''Returns list of model data files for each model based on the name pattern.
     If only one file per day, or reader knows of the different filenames, then return string.
     Else, return an array of filename patterns.'''
+    #UPDATE THIS AS NEW MODELS ARE ADDED
     
     if model=='CTIPe':
         files = glob.glob(file_dir+'Data/*-plot-density*.nc')  #look for wrapped and original data
@@ -36,61 +69,25 @@ def FileSearch(model, file_dir):
         return file_patterns        
 
     elif model=='TIEGCM':
-        return glob.glob(file_dir+'Data/*.nc')
+        return file_dir+'Data/*.nc'
     
     else:
         raise AttributeError('Model not yet added.')
         
 
 def Model_Reader(model):
-    '''Returns model reader for requested model.'''
+    '''Returns model reader for requested model. Model agnostic.'''
     
-    if model=='CTIPe':
-        from kamodo.readers.ctipe_4D import CTIPe
-        return CTIPe
-    
-    elif model=='IRI':
-        from kamodo.readers.iri_4D import IRI
-        return IRI
-    
-    elif model=='GITM':
-        from kamodo.readers.gitm_4Dcdf import GITM
-        return GITM
-    
-    elif model=='SWMF_IE':
-        from kamodo.readers.swmfie_4Dcdf import SWMF_IE
-        return SWMF_IE
-    
-    elif model=='TIEGCM':
-        from kamodo.readers.tiegcm_4D import TIEGCM
-        return TIEGCM
-    
-    else:
-        raise AttributeError('Model not yet added.')
+    module = Choose_Model(model)
+    return module.MODEL
         
 
 def Model_Variables(model, return_dict=False):
-    '''Returns model variables for requested model.'''
-    
-    if model == '':  #Give a list of possible values
-        print("Possible models are: 'CTIPe','IRI', 'GITM', 'SWMF_IE', and 'TIEGCM'")
-        return
+    '''Returns model variables for requested model. Model agnostic.'''
     
     #choose the model-specific function to retrieve the variables
-    if model=='CTIPe':
-        from kamodo.readers.ctipe_4D import ctipe_varnames as variable_dict
-    
-    elif model=='IRI':
-        from kamodo.readers.iri_4D import iri_varnames as variable_dict
-    
-    elif model=='GITM':
-        from kamodo.readers.gitm_4Dcdf import gitm_varnames as variable_dict
-    
-    elif model=='SWMF_IE':
-        from kamodo.readers.swmfie_4Dcdf import swmfie_varnames as variable_dict
-    
-    elif model=='TIEGCM':
-        from kamodo.readers.tiegcm_4D import tiegcm_varnames as variable_dict
+    module = Choose_Model(model)
+    variable_dict = module.model_varnames
         
     #retrieve and print model specific and standardized variable names
     if return_dict: 
@@ -106,23 +103,9 @@ def Model_Variables(model, return_dict=False):
     
 #saving list of 3D variables for now. Need to move into variable dicts instead.
 def Var_3D(model):
-    '''Return list of model variables that are three-dimensional.'''
+    '''Return list of model variables that are three-dimensional. Model agnostic.'''
     
-    if model=='CTIPe':
-        return ['W_Joule', 'Eflux_precip', 'Eavg_precip', 'TEC', 'E_theta140km',
-       'E_lambda140km', 'E_theta300km', 'E_lambda300km']
-    
-    elif model=='IRI':
-        return ['TEC', 'NmF2', 'HmF2']
-    
-    elif model=='GITM':
-        return ['TEC', 'NmF2', 'hmF2','SolarLocalTime','SolarZenithAngle',
-              'phi_qJoule','phi_q','phi_qEUV','phi_qNOCooling']
-
-    elif model=='SWMF_IE':
-        Var = Model_Variables(model, return_dict=True)
-        return [value[0] for key, value in Var.items() if value[0] not in \
-                ['x','y','z','theta','psi','theta_Btilt', 'psi_Btilt']]
-
-    elif model=='TIEGCM':
-        return ['T_nLBC','u_nLBC','v_nLBC','T_nLBCNM','u_nLBCNM','v_nLBCNM','TEC']
+    #choose the model-specific function to retrieve the 3D variable list
+    module = Choose_Model(model)
+    variable_dict = module.model_varnames    
+    return [value[0] for key, value in variable_dict.items() if value[-2]=='3D']
