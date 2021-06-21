@@ -61,9 +61,9 @@ model_varnames={
                  "TLBC"  : ["T_nLBC",'3D',"K"],       #  Lower boundary condition for TN
                  "ULBC"  : ["u_nLBC",'3D',"cm/s"],    #  Lower boundary condition for UN
                  "VLBC"  : ["v_nLBC",'3D',"cm/s"],    #  Lower boundary condition for VN
-                 "TLBC_NM"  : ["T_nLBCNM",'3D',""],  #  Lower boundary condition for TN (TIME N-1)
-                 "ULBC_NM"  : ["u_nLBCNM",'3D',""],  #  Lower boundary condition for UN (TIME N-1)
-                 "VLBC_NM"  : ["v_nLBCNM",'3D',""],  #  Lower boundary condition for VN (TIME N-1)
+                 "TLBC_NM"  : ["T_nLBCNM",'3D',"K"],  #  Lower boundary condition for TN (TIME N-1)
+                 "ULBC_NM"  : ["u_nLBCNM",'3D',"cm/s"],  #  Lower boundary condition for UN (TIME N-1)
+                 "VLBC_NM"  : ["v_nLBCNM",'3D',"cm/s"],  #  Lower boundary condition for VN (TIME N-1)
                   }
 
 #####--------------------------------------------------------------------------------------
