@@ -1,3 +1,6 @@
+
+# 2021-06-21 13:13:21.460428: clock-in
+
 # 2021-06-21 11:59:53.993441: clock-out
 
 * adding animations - full_figure_for_development takes a long time to run. need a workaround
