@@ -1,3 +1,6 @@
+
+# 2021-06-21 11:35:38.562849: clock-in
+
 # 2021-06-18 15:36:29.661450: clock-out
 
 * got 3d animation working
