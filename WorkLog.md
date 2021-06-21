@@ -1,3 +1,4 @@
+* sped up animations
 
 # 2021-06-21 13:13:21.460428: clock-in
 

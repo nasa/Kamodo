@@ -1151,16 +1151,25 @@ def get_bbox(fig):
     xmax = np.nanmax(t0['x'])
     ymin = np.nanmin(t0['y'])
     ymax = np.nanmax(t0['y'])
-    zmin = np.nanmin(t0['z'])
-    zmax = np.nanmax(t0['z'])
-    for t in fig['data']:
-        xmin = min(xmin, np.nanmin(t['x']))
-        xmax = max(xmax, np.nanmax(t['x']))
-        ymin = min(ymin, np.nanmin(t['y']))
-        ymax = max(ymax, np.nanmax(t['y']))
-        zmin = min(zmin, np.nanmin(t['z']))
-        zmax = max(zmax, np.nanmax(t['z']))
-    return xmin, xmax, ymin, ymax, zmin, zmax
+    if 'z' in t0:
+        zmin = np.nanmin(t0['z'])
+        zmax = np.nanmax(t0['z'])
+        for t in fig['data']:
+            xmin = min(xmin, np.nanmin(t['x']))
+            xmax = max(xmax, np.nanmax(t['x']))
+            ymin = min(ymin, np.nanmin(t['y']))
+            ymax = max(ymax, np.nanmax(t['y']))
+            zmin = min(zmin, np.nanmin(t['z']))
+            zmax = max(zmax, np.nanmax(t['z']))
+        return xmin, xmax, ymin, ymax, zmin, zmax
+    else:
+        for t in fig['data']:
+            xmin = min(xmin, np.nanmin(t['x']))
+            xmax = max(xmax, np.nanmax(t['x']))
+            ymin = min(ymin, np.nanmin(t['y']))
+            ymax = max(ymax, np.nanmax(t['y']))
+        return xmin, xmax, ymin, ymax
+
 
 def set_aspect(fig):
     """sets aspect ratio of the scene based on bounding box of traces"""

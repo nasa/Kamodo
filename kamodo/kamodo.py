@@ -1172,7 +1172,8 @@ def get_figures(func, iterator, verbose=False):
         fig_plot = k.plot(a.__name__)
         if verbose:
             print('calling full_figure_for_development', end=' ')
-        full_fig = fig_plot.full_figure_for_development(warn=False)
+        # full_fig = fig_plot.full_figure_for_development(warn=False)
+        full_fig = fig_plot
         if verbose:
             print('appending {}'.format(a.__name__))
         plots.append(full_fig)
@@ -1181,24 +1182,25 @@ def get_figures(func, iterator, verbose=False):
 def animate(func_, iterator=None, verbose=False):
     defaults = get_defaults(func_)
     if len(defaults) > 1:
-        raise NotImplementedError("Animations with {} args not yet supported".format(len(defaults)))
-    
+        raise NotImplementedError(
+            "Animations with {} args not yet supported".format(len(defaults)))
+
     if iterator is None:
         param, iterator = list(defaults.items())[0]
     else:
         param = list(defaults.keys())[0]
         iterator = list(iterator)
-    
+
     figures = get_figures(func_, iterator, verbose)
-    
+
 #     print(len(figures), ' figures')
-    
+
     axes_ranges = get_ranges(figures)
-    
+
     layout = figures[0]['layout']
     layout.update(axes_ranges)
     # make figure
-    
+
     fig_dict = {
         "data": figures[0]['data'],
         "layout": layout,
