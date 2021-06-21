@@ -1224,8 +1224,7 @@ def partial(_func=None, **partial_kwargs):
             print('partial kwargs', partial_kwargs)
             print('original args:', orig_args)
             print('new defaults', orig_defaults)
-        
-        
+
         # collect only the arguments not assigned by partial
         sig_defaults = {}
         sig_args = []
@@ -1236,10 +1235,10 @@ def partial(_func=None, **partial_kwargs):
                 sig_defaults[arg] = orig_defaults[arg]
             else:
                 sig_args.append(arg)
-        
+
         if verbose:
             print('updated signature:', sig_args, sig_defaults)
-        
+
         @forge.sign(*construct_signature(*sig_args, **sig_defaults))
         def wrapped(*args, **kwargs):
             """simple wrapper"""
@@ -1247,15 +1246,15 @@ def partial(_func=None, **partial_kwargs):
             if verbose:
                 print('kwargs to pass:', kwargs)
             return f(*args, **kwargs)
-        
+
         if verbose:
             print('wrapped docs', wrapped.__doc__)
         wrapped = decorate(wrapped, decorator_wrapper)
-        
+
         wrapped.__name__ = f.__name__
         orig_docs = f.__doc__
-        for k,v in sig_defaults.items():
-            sig_args.append('{}={}'.format(k,v))
+        for k, v in sig_defaults.items():
+            sig_args.append('{}={}'.format(k, v))
         doc_args = ', '.join(sig_args)
         rhs_args = []
         for arg in orig_args:
@@ -1263,7 +1262,7 @@ def partial(_func=None, **partial_kwargs):
                 rhs_args.append('{}={}'.format(arg, partial_kwargs[arg]))
             else:
                 rhs_args.append(arg)
-            
+
         doc_orig_args = ', '.join(rhs_args)
         wrapped.__doc__ = """Calling {fname}({orig_args}) for fixed {partial_keys}:
         {fname}({doc_args}) = {fname}({orig_args_fixed})\n""".format(

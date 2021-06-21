@@ -727,3 +727,42 @@ def get_plot_types_df():
     return plot_types
     
 plot_types = get_plot_types_df()
+
+
+def get_ranges(figures):
+    axes_min = defaultdict(list)
+    axes_max = defaultdict(list)
+    
+    if figures[0]['layout']['xaxis']['range'] is not None:
+        for fig in figures:
+            for axis in 'xaxis', 'yaxis':
+                min_, max_ = fig['layout'][axis]['range']
+                axes_min[axis].append(min_)
+                axes_max[axis].append(max_)
+
+        axes = dict()
+        for axis in 'xaxis', 'yaxis':
+            axes[axis] = dict(autorange=False, range=(min(axes_min[axis]), max(axes_max[axis])))
+    elif figures[0]['layout']['scene']['xaxis']['range'] is not None:
+        for fig in figures:
+            for axis in 'xaxis', 'yaxis', 'zaxis':
+                min_, max_ = fig['layout']['scene'][axis]['range']
+                axes_min[axis].append(min_)
+                axes_max[axis].append(max_)
+
+        axes = dict(scene=dict(aspectmode='manual'))
+        for axis in 'xaxis', 'yaxis', 'zaxis':
+            axes['scene'][axis] = dict(autorange=False, range=(min(axes_min[axis]), max(axes_max[axis])))
+        aspectratio = dict()
+        for _ in 'xyz':
+            min_, max_ = axes['scene'][_+'axis']['range']
+            aspectratio[_] = max_ - min_
+        axes['scene']['aspectratio'] = aspectratio
+        axes['scene']['camera'] = dict(eye={_:axes['scene'][_ + 'axis']['range'][1] for _ in 'xyz'})
+            
+    else:
+        raise NotImplementedError("xaxis not found")
+    return axes
+
+
+

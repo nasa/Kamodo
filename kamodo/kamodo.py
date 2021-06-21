@@ -49,6 +49,7 @@ import plotly.graph_objs as go
 from plotly import figure_factory as ff
 
 from plotting import plot_dict, get_arg_shapes, symbolic_shape
+from plotting import get_ranges
 from util import existing_plot_types
 from util import get_dimensions
 from util import reserved_names
@@ -917,7 +918,17 @@ class Kamodo(UserDict):
                 print('user-supplied args:', list(params.keys()))
         result = eval_func(self[variable], params)
         if isinstance(result, GeneratorType):
-            params = concat_solution(result, variable)
+            if (len(params) == 1) & isinstance(list(params.values())[0], GeneratorType):
+                if self.verbose:
+                    print('found parametric generator')
+                # raise NotImplementedError('Animations not yet supported')
+                params.update({variable: result})
+            else:
+                if self.verbose:
+                    print('evaluate found generator function. Concatonating solutions')
+                    print('generator params:', params)
+
+                params = concat_solution(result, variable)
         else:
             params.update({variable: result})
         return params
@@ -969,6 +980,11 @@ class Kamodo(UserDict):
         arg_arrays = [result[k] for k in result if k not in hidden_args][:-1]
 
         arg_shapes = get_arg_shapes(*arg_arrays)
+
+        if isinstance(result[variable], GeneratorType):
+            # if evaluate returned a generator, then assume animation
+            raise NotImplementedError('Animations not yet supported!')
+
         try:
             out_dim, *arg_dims = symbolic_shape(result[variable].shape, *arg_shapes)
         except IndexError:
@@ -1144,3 +1160,120 @@ def from_kamodo(kobj, **funcs):
     for symbol, func in funcs.items():
         knew[symbol] = func
     return knew
+
+def get_figures(func, iterator, verbose=False):
+    plots = []
+    for a in func(iterator):
+        if verbose:
+            print('registering {}'.format(a.__name__), end=' ')
+        k = Kamodo(**{a.__name__: a})
+        if verbose:
+            print('getting plot for {}'.format(a.__name__), end=' ')
+        fig_plot = k.plot(a.__name__)
+        if verbose:
+            print('calling full_figure_for_development', end=' ')
+        full_fig = fig_plot.full_figure_for_development(warn=False)
+        if verbose:
+            print('appending {}'.format(a.__name__))
+        plots.append(full_fig)
+    return plots
+
+def animate(func_, iterator=None, verbose=False):
+    defaults = get_defaults(func_)
+    if len(defaults) > 1:
+        raise NotImplementedError("Animations with {} args not yet supported".format(len(defaults)))
+    
+    if iterator is None:
+        param, iterator = list(defaults.items())[0]
+    else:
+        param = list(defaults.keys())[0]
+        iterator = list(iterator)
+    
+    figures = get_figures(func_, iterator, verbose)
+    
+#     print(len(figures), ' figures')
+    
+    axes_ranges = get_ranges(figures)
+    
+    layout = figures[0]['layout']
+    layout.update(axes_ranges)
+    # make figure
+    
+    fig_dict = {
+        "data": figures[0]['data'],
+        "layout": layout,
+        "frames": []
+    }
+
+
+    fig_dict["layout"]["updatemenus"] = [
+        {
+            "buttons": [
+                {
+                    "args": [None, {"frame": {"duration": 100, "redraw": True},
+                                    "fromcurrent": True, "transition": {"duration": 100,
+                                                                        "easing": "quadratic-in-out"}}],
+                    "label": "Play",
+                    "method": "animate",
+                },
+                {
+                    "args": [[None], {"frame": {"duration": 0, "redraw": False},
+                                      "mode": "immediate",
+                                      "transition": {"duration": 0}}],
+                    "label": "Pause",
+                    "method": "animate"
+                }
+            ],
+            "direction": "left",
+            "pad": {"r": 10, "t": 87},
+            "showactive": False,
+            "type": "buttons",
+            "x": 0.1,
+            "xanchor": "right",
+            "y": 0,
+            "yanchor": "top"
+        }
+    ]
+
+    sliders_dict = {
+        "active": 0,
+        "yanchor": "top",
+        "xanchor": "left",
+        "currentvalue": {
+            "font": {"size": 20},
+            "prefix": "{}: ".format(param),
+            "visible": True,
+            "xanchor": "right"
+        },
+        "transition": {"duration": 100, "easing": "cubic-in-out"},
+        "pad": {"b": 10, "t": 50},
+        "len": 0.9,
+        "x": 0.1,
+        "y": 0,
+        "steps": []
+    }
+
+    # make frames
+    for p, figure in zip(iterator, figures):
+        frame = {"data": figure['data'],
+                 "name": str(p)}
+#         print(figure['layout']['xaxis']['range'])
+
+        fig_dict["frames"].append(frame)
+        slider_step = {"args": [
+            [p],
+            {"frame": {"duration": 100, "redraw": True},
+             "mode": "immediate",
+             "transition": {"duration": 300}}],
+            "label": '{:.2f}'.format(p),
+            "method": "animate"}
+        sliders_dict["steps"].append(slider_step)
+#     print(len(fig_dict['frames']), ' frames')
+
+#     fig_dict["data"] = fig_dict["data"] + fig_dict["frames"][0]["data"]
+    fig_dict["layout"]["sliders"] = [sliders_dict]
+
+    fig = go.Figure(fig_dict)
+    return fig
+
+
