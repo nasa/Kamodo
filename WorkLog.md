@@ -1,3 +1,4 @@
+* moving animations into plot method
 
 # 2021-06-22 16:30:22.893968: clock-in
 
