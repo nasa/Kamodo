@@ -80,6 +80,8 @@ unit_subs = dict(
     cc=sympy_units.cm**3,
     AU=get_unit_quantity('astronomical unit', 'm', 1.496e+11, 'AU', 'SI'),
     arcsec=get_unit_quantity('arc seconds', 'degrees', 1./3600, '\"', 'SI'),
+    hr = get_unit_quantity('hour','s',3600.,'hr','SI')
+    #TECU = get_unit_quantity('TECU','1/m**2',10**16, 'TECU','SI')
     )
 
 sympy_units.erg = unit_subs['erg']
