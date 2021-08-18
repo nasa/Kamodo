@@ -10,6 +10,17 @@ NOTE: The current logic for variables that depend on imlev slices off self._imle
 
 Remaining tasks:
     - check variable dictionary for proper naming, and use of units in Kamodo
+    
+year = np.array(cdf_data.variables['year'])
+
+mtime = np.array(cdf_data.variables['mtime'])
+
+days, hours, minutes = mtime.T
+
+datetime(year[0],1,1).replace(tzinfo=timezone.utc)+timedelta(days=int(days[0]-1),hours=int(hours[0]),minutes=int(minutes[0]))
+Out[57]: datetime.datetime(2003, 11, 18, 1, 0, tzinfo=datetime.timezone.utc)    
+    
+    
 '''
 from numpy import vectorize
 from datetime import datetime, timezone, timedelta
@@ -90,27 +101,37 @@ def dts_to_ts(file_dts):
     return datetime.timestamp(datetime.strptime(file_dts, '%Y-%m-%d %H:%M:%S'
                                                 ).replace(tzinfo=timezone.utc))
 
-def min_to_dt(time_minutes):  #called by functions below
-    '''Convert minutes since 2000-03-20 00:00:00 to datetime object in UTC'''
+def year_mtime_todt0(year, mtime):  #self.filedate
+    '''Convert year and day to datetime object in UTC at midnight'''
     
-    return datetime(2000,3,20).replace(tzinfo=timezone.utc)+timedelta(minutes=time_minutes)
+    day, hour, minute = mtime  #unpack mtime values
+    return datetime(int(year),1,1).replace(tzinfo=timezone.utc)+\
+        timedelta(days=int(day-1))
         
-def min_to_dts(time_minutes):
-    '''Convert minutes since 2000-03-20 00:00:00 to a datetime string'''
+def year_mtime_todt(year, mtime):
+    '''Convert year and [day,hour,minute] to datetime object in UTC'''
     
-    return datetime.strftime(min_to_dt(time_minutes), '%Y-%m-%d %H:%M:%S')
+    day, hour, minute = mtime  #unpack mtime values
+    return datetime(int(year),1,1).replace(tzinfo=timezone.utc)+\
+        timedelta(days=int(day-1),hours=int(hour),minutes=int(minute))        
+        
+def year_mtime_todts(year, mtime):
+    '''Convert year and mtime to a datetime string'''
+    
+    return datetime.strftime(year_mtime_todt(year, mtime), '%Y-%m-%d %H:%M:%S')
 
-def min_to_date(time_minutes):
-    '''Use minutes since 2000-03-20 00:00:00 to determine the date in the file. Returns a string and a datetime object.'''
+def year_mtime_todate(year, mtime):
+    '''Use year and mtime to determine the date in the file. Returns a datetime object.'''
     
-    date_string = datetime.strftime(min_to_dt(time_minutes), '%Y-%m-%d')  #'YYYY-MM-DD'
+    date_string = datetime.strftime(year_mtime_todt(year, mtime), '%Y-%m-%d')  #'YYYY-MM-DD'
     return datetime.strptime(date_string, '%Y-%m-%d').replace(tzinfo=timezone.utc)
 
 @vectorize
-def min_to_hrs(time_minutes, date_dt):
-    '''Convert  minutes since 2000-03-20 00:00:00 to hours since midnight using predetermined datetime object.'''
+def year_mtime_tohrs(year, day, hour, minute, filedate):
+    '''Convert year and mtime to hours since midnight using predetermined datetime object.'''
     
-    return (min_to_dt(time_minutes)-date_dt).total_seconds()/3600.
+    mtime = [day, hour, minute]
+    return (year_mtime_todt(year, mtime)-filedate).total_seconds()/3600.
 
 def ts_to_hrs(time_val, filedate):
     '''Convert utc timestamp to hours since midnight on filedate.'''
@@ -122,7 +143,7 @@ def MODEL():
     from time import perf_counter
     from os.path import basename
     from numpy import zeros, transpose, array, append, insert, where, unique 
-    from numpy import argmin, NaN, diff, flip, abs
+    from numpy import NaN, diff, flip, abs
     from netCDF4 import Dataset
     from kamodo import Kamodo
     print('KAMODO IMPORTED!')
@@ -142,12 +163,19 @@ def MODEL():
             filename = basename(full_filename)
             file_dir = full_filename.split(filename)[0]            
             cdf_data = Dataset(full_filename, 'r')
-            time = array(cdf_data.variables['time'])  #in minutes since 2000-03-20 00:00:00 UTC
-            self.filedate = min_to_date(time[0])  #datetime object for file date at midnight UTC
-            self.datetimes = [min_to_dts(time_minutes) for time_minutes \
-                              in [time[0], time[-1]]]  #strings in format = YYYY-MM-DD HH:MM:SS
+            
+            #calculate time information
+            year = array(cdf_data.variables['year'])
+            mtime = array(cdf_data.variables['mtime'])
+            day, hour, minute = mtime.T #only matters for the vectorized function
+            self.filedate = year_mtime_todt0(year[0], mtime[0])  #datetime object for file date at midnight UTC
+            self.datetimes = [year_mtime_todts(y, m) for y, m \
+                              in zip([year[0], year[-1]],[mtime[0],mtime[-1]])]  #strings in format = YYYY-MM-DD HH:MM:SS
             self.filetimes=[dts_to_ts(file_dts) for file_dts in self.datetimes]   #timestamps in UTC 
-            self.dt = diff(time).max()*60.  #time is in minutes
+            time = year_mtime_tohrs(year, day, hour, minute, self.filedate)
+            #time = array([year_mtime_tohrs(y, m, self.filedate) for y, m in \
+            #              zip(year, mtime)])  #hours since midnight of self.filedate
+            self.dt = diff(time).max()*3600.  #time is in hours
             
             if filetime and not fulltime: #(used when searching for neighboring files below)
                 return  #return times as is to prevent recursion
@@ -192,8 +220,11 @@ def MODEL():
                         
                         #get kamodo object with same requested variables to add to each array below
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to find closest file.')
-                        short_data = MODEL(min_filename, variables_requested=variables_requested, 
-                                               fulltime=False).short_data
+                        kamodo_neighbor = MODEL(min_filename, variables_requested=variables_requested, 
+                                               fulltime=False)
+                        self.datetimes[0] = kamodo_neighbor.datetimes[1]
+                        self.filetimes[0] = kamodo_neighbor.filetimes[1]
+                        short_data = kamodo_neighbor.short_data
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from previous file.')
                     else:
                         print(f'No earlier file found within {self.dt:.1f}s')
@@ -256,7 +287,7 @@ def MODEL():
             #prepare and return data only for last timestamp
             if not fulltime:  
                 cdf_data.close()
-                variables['time'] = self.filetimes[1]
+                variables['time'] = self.filetimes[1]  #utc timestamp
                 self.short_data = variables
                 return
     
@@ -273,9 +304,9 @@ def MODEL():
             #### Store coordinate data as class attributes   
             if filecheck:  #new_time iis a utc timestamp
                 new_time = ts_to_hrs(short_data['time'], self.filedate)  #new time in hours since midnight
-                self._time = insert(min_to_hrs(time, self.filedate), 0, new_time) #convert to hours since midnight
+                self._time = insert(time, 0, new_time)  #insert new value
             else: 
-                self._time = min_to_hrs(time, self.filedate)
+                self._time = time
                 
             #store coordinates
             lat = array(cdf_data.variables['lat'])  #NOT FULL RANGE IN LATITIUDE!!!

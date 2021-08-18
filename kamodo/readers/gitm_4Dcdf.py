@@ -259,8 +259,12 @@ def MODEL():
                             
                             #get kamodo object with same requested variables to add to each array below
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to find closest file.')
-                            short_data = MODEL(file_dir+min_file_prefix, variables_requested=variables_requested, 
-                                                   fulltime=False).short_data
+                            kamodo_neighbor = MODEL(file_dir+min_file_prefix, 
+                                                    variables_requested=variables_requested, 
+                                                    fulltime=False)
+                            self.datetimes[1] = kamodo_neighbor.datetimes[0]
+                            self.filetimes[1] = kamodo_neighbor.filetimes[0]
+                            short_data = kamodo_neighbor.short_data                            
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                         else:
                             if verbose: print(f'No later file found within {self.dt:.1f}s.')
