@@ -15,6 +15,38 @@ Example calls from the command line:
         after the name of the function in the example above, even if the default
         value is desired
 
+Help on coordinate systems:
+    The resource information on SpacePy's coordinate conversion function is 
+        sparse at best, so the below information has been collected via other
+        resources and our own testing of the function. The data concerning the
+        spherical coordinate systems are collected into a table format for 
+        easier perusal.
+    For cartesian coordinates, all of the input values should be in earth radii (R_E)
+        in order (x, y, z) to work properly.
+    For spherical coordinates, all of the input values should be in order 
+        (longitude, latitude, altitude or radius). The longitude and latitude
+        values should be in degrees, altitude values in kilometers, and radius
+        values in earth radii (R_E) from the Earth's center. All latitude values 
+        should fall between -90 and 90 degrees. The longitude range differs 
+        between the coordinate systems and is given for each in the table below.
+        
+SpacePy 
+Abbrev.   Full Name                       Lon. range     vertical variable
+--------------------------------------------------------------------------
+GDZ    Geodetic (WGS 84)                  (-180, 180)    Altitude (km)
+GEO    Geographic                         (-180, 180)    Radius (R_E)
+GSM    Geocentric Solar Magnetospheric    (-180, 180)    Radius (R_E)
+GSE    Geocentric Solar Ecliptic          (-180, 180)    Radius (R_E)
+SM     Solar Magnetic                     (-180, 180)    Radius (R_E)
+GEI    Geocentric Equatorial Inertial     (-180, 180)    Radius (R_E)
+      (also ECI = Earth-Centered Inertial)
+MAG    Geomagnetic                        (-180, 180)    Radius (R_E)
+SPH    Spherical                            (0, 360)     Radius (R_E)
+RLL    Radius, Latitude, Longitude        (-180, 180)    Radius (R_E)
+
+For descriptions of most of the coordinate systems, see 
+https://sscweb.gsfc.nasa.gov/users_guide/Appendix_C.shtml and it's reference,
+"Geophysical Coordinate Transformations", C.T. Russell, Cosmic Electrodynamics, Vol. 2, pp. 184 - 196, 1971.
 
 """
 import numpy as np
