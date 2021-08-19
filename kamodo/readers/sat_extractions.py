@@ -15,7 +15,8 @@ def ror_get_extraction(server, runID, coord, satellite):
     return file
 
 class SATEXTRACT(Kamodo):
-    def __init__(self, runID, coord, satellite):
+    def __init__(self, runID, coord, satellite, **kwargs):
+        super(SATEXTRACT, self).__init__(**kwargs)
         self.verbose=False
         self.symbol_registry=dict()
         self.signatures=dict()
