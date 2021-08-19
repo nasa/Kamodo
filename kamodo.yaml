@@ -31,6 +31,10 @@ models:
     params:
       f: x**3
       g: y - x
+  mythirdmodel:
+    class: kamodo.test_kamodo.Ktest
+user_model:
+  class: kamodo.test_kamodo.Ktest
 plot_conf:
   animation_opts: null
   auto_open: true

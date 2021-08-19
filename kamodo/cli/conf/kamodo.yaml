@@ -7,6 +7,7 @@ models:
     evaluate: {}
     plot: {}
     fig_layout: {}
+user_model: ${models.mymodel}
 
 config_override: kamodo.yaml
 
@@ -31,5 +32,9 @@ plot_conf:
 gui:
   routes_pathname_prefix: /kamodo/
   external_stylesheets: []
+
+flask:
+  host: '0.0.0.0'
+  port: 5000
 
 verbose: true

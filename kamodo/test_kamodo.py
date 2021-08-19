@@ -13,9 +13,12 @@ import functools
 from sympy import lambdify, sympify
 from kamodo import get_abbrev
 from .util import get_arg_units
-from .util import get_unit_quantity, convert_to
+from .util import get_unit_quantity, convert_unit_to
 from kamodo import from_kamodo, compose
 from sympy import Function
+from kamodo import KamodoAPI
+from .util import serialize, NumpyArrayEncoder
+from .util import get_kamodo_unit_system
 
 import warnings
 
@@ -205,12 +208,18 @@ def test_unit_registry():
 def test_to_latex():
     warnings.simplefilter('error')
     kamodo = Kamodo(f='x**2', verbose=True)
-    assert str(kamodo.to_latex()) == r'\begin{equation}f{\left(x \right)} = x^{2}\end{equation}'
+    assert str(kamodo.to_latex(mode='inline')) == r'$f{\left(x \right)} = x^{2}$'
     kamodo = Kamodo(g='x', verbose=True)
-    assert str(kamodo.to_latex()) == r'\begin{equation}g{\left(x \right)} = x\end{equation}'
+    assert str(kamodo.to_latex(mode='inline')) == r'$g{\left(x \right)} = x$'
     kamodo['f(x[cm])[kg]'] = 'x**2'
     kamodo['g'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'), equation='$x^2$')
     kamodo['h'] = kamodofy(lambda x: x**2, units='kg', arg_units=dict(x='cm'))
+    
+    @kamodofy(units = 'kg/m^3', citation = 'Bob et. al, 2018')
+    def rho(x = np.array([3,4,5]), y = np.array([1,2,3])):
+        """A function that computes density"""
+        return x+y
+    kamodo['rho'] = rho
     kamodo.to_latex()
 
 
@@ -221,15 +230,15 @@ def test_expr_conversion():
 
 def test_get_unit_fail():
     with pytest.raises(NameError):
-        get_unit('unregistered units$')
+        get_unit('unregistered units')
     with pytest.raises(NameError):
         get_unit('runregistered')
 
 def test_get_unit_quantity():
     mykm = get_unit_quantity('mykm', 'km', scale_factor=2)
     mygm = get_unit_quantity('mygm', 'gram', scale_factor=4)
-    assert str(convert_to(mykm, get_unit('m'))) == '2000*meter'
-    assert str(convert_to(mygm, get_unit('kg'))) == 'kilogram/250'
+    assert str(convert_unit_to(mykm, get_unit('m'))) == '2000*meter'
+    assert str(convert_unit_to(mygm, get_unit('kg'))) == 'kilogram/250'
 
 # def test_validate_units():
 #     f, x = symbols('f x')
@@ -268,6 +277,10 @@ def test_unit_composition():
     except:
         print(kamodo.signatures)
         raise
+
+def test_unit_composition_mixed():
+    kamodo = Kamodo('$rho[kg/m^3] = x^3$', '$v[cm/s] = y^2$', verbose=True)
+    kamodo['p[Pa]'] = '$\\rho v^2$'
 
 
 def test_unit_function_composition():
@@ -538,6 +551,8 @@ def test_compose_unit_raises():
 def test_repr_latex():
     kamodo = Kamodo(f='x')
     assert kamodo._repr_latex_() == r'\begin{equation}f{\left(x \right)} = x\end{equation}'
+    kamodo = Kamodo(f=lambda x:x)
+    assert kamodo.f._repr_latex_() == '$f{\\left(x \\right)} = \\lambda{\\left(x \\right)}$'
 
 
 def test_dataframe_detail():
@@ -627,6 +642,7 @@ def test_del_function():
     kamodo = Kamodo(f='x', g='y', h='y', verbose=True)
     del(kamodo.f)
     assert 'f' not in kamodo
+    assert 'f' not in kamodo.signatures
     del(kamodo['g'])
     assert 'g' not in kamodo
     del(kamodo['h(y)'])
@@ -683,3 +699,116 @@ def test_reserved_name():
         return x+y
     with pytest.raises(NotImplementedError):
         kamodo['test'] = test
+
+
+class Ktest(Kamodo):
+    def __init__(self, **kwargs):
+        super(Ktest, self).__init__()
+
+        t_N = pd.date_range('Nov 9, 2018', 'Nov 20, 2018', freq = 'H')
+        @kamodofy(units='kg/m^3')
+        def rho_N(t_N=t_N):
+            t_N = pd.DatetimeIndex(t_N)
+            t_0 = pd.to_datetime('Nov 9, 2018') 
+            try:
+                dt_days = (t_N - t_0).total_seconds()/(24*3600)
+            except TypeError as err_msg:
+                return 'cannot work with {} {}  {}'.format(type(t_N), type(t_N[0]), err_msg)
+
+            result = np.abs(weierstrass(dt_days))
+            return result
+
+        @kamodofy(units='nPa')
+        def p(x=np.linspace(-5, 5, 30)):
+            try:
+                return x**2
+            except TypeError as m:
+                print(m)
+                print(type(x), x[0])
+                raise
+
+        @kamodofy(
+            equation=r"\sum_{n=0}^{500} (1/2)^n cos(3^n \pi x)",
+            citation='https://en.wikipedia.org/wiki/Weierstrass_function'
+            )
+        def weierstrass(x = np.linspace(-2, 2, 1000)):
+            '''
+            Weierstrass  function
+            A continuous non-differentiable 
+            https://en.wikipedia.org/wiki/Weierstrass_function
+            '''
+            nmax = 500
+            n = np.arange(nmax)
+
+            xx, nn = np.meshgrid(x, n)
+            ww = (.5)**nn * np.cos(3**nn*np.pi*xx)
+            return ww.sum(axis=0)
+                
+
+        self['rho_N'] = rho_N
+        self['p'] = p
+        self['Weierstrass'] = weierstrass
+
+
+def test_kamodo_inline_merge():
+    k1 = Kamodo(f='x**2')
+    k2 = Kamodo(g=lambda y: y-1)
+
+    # create a local namespace holding both kamodo objects
+    ns = {'k1':k1, 'k2': k2}
+    k3 = Kamodo(myf = sympify('k1.f(x) + k2.g(y)', locals=ns))
+    assert k3.myf(x=3, y=4) == 3**2 + 4 - 1
+
+def test_default_forwarding():
+    x = np.linspace(-5, 5, 12)
+    
+    def f(x=x):
+        return x**2
+    
+    k = Kamodo(f=f)
+    k['g'] = 'f+2'
+    assert len(k.g()) == 12
+    
+def test_multi_arg_units():
+    kamodo = Kamodo(verbose=True)
+
+    # @kamodofy(units='m', arg_units={'X': 'kg', 'Y':'cm', 'Z': 's'})
+    # def f(X, Y, Z):
+    #     return x*y*z
+
+    kamodo['f(X[kg],Y[cm],Z[s])[m]'] = 'X*Y*Z'
+    kamodo['a[g]'] = 'x'
+    kamodo['b[m]'] = 'y'
+    kamodo['c[ms]'] = 'z**2'
+    kamodo['d(x,y,z)[cm]'] = 'f(a,b,c)'
+
+def test_broken_unit():
+    k = Kamodo()
+    k['f[N]'] = 'x'
+
+    get_unit('newton')
+    get_unit('N')
+
+def test_frequency_composition():
+    @kamodofy(units='rad/s', arg_units={'B':'T', 'n_e':'1/m**3'})
+    def omega_uh1(B, n_e):
+        return np.sqrt(B**2+n_e**2)
+
+
+    kamodo_test = Kamodo(verbose=True)
+    kamodo_test['B_mag'] = kamodofy(lambda B=np.linspace(0.1,1.,10): B, units='nT', arg_units={'B':'nT'})
+    kamodo_test['n_e'] = kamodofy(lambda n=np.linspace(4.,13.,10)*10**19:n, units='1/m**3', arg_units={'n':'1/m**3'})
+    kamodo_test['omega_uh1'] = omega_uh1
+    print(kamodo_test.unit_registry)
+
+    #---------(input)--------
+    kamodo_test['omega_uh1A'] = 'omega_uh1(B_mag, n_e)'
+    kamodo_test.omega_uh1A
+
+
+def test_frequency_units():
+    omega = get_unit('rad')/get_unit('s')
+    freq = get_unit('deg')/get_unit('s')
+    kamodo_units = get_kamodo_unit_system()
+    convert_unit_to(omega, freq, kamodo_units)
+

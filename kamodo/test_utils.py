@@ -10,6 +10,11 @@ from kamodo.util import kamodofy, gridify, sort_symbols, valid_args, eval_func, 
     concat_solution, get_unit_quantity, substr_replace, beautify_latex, arg_to_latex, simulate, pad_nan, \
     pointlike, solve, event, is_function
 
+from .util import serialize, deserialize
+import pandas as pd
+import json
+from .util import LambdaGenerator
+from .util import curry, partial, get_args
 
 @kamodofy
 def rho(x=np.array([3, 4, 5])):
@@ -303,9 +308,6 @@ def test_pad_nan():
         array = np.array([[[1], [2], [3]], [[1], [2], [3]]])
         pad_nan(array)
 
-    assert f"cannot pad shape {array.shape}" in str(error)
-
-
 def test_pointlike():
     assert Kamodo(points=squeeze_point).points().shape == (100,)
     assert Kamodo(points=points).points().shape == (1, 100)
@@ -325,3 +327,151 @@ def test_is_function():
     assert is_function(symbols('g', cls=UndefinedFunction))
     assert not is_function(symbols('x'))
 
+def test_serialize_np():
+    x = np.linspace(-5, 5, 12).reshape((3, 4))
+
+    assert deserialize(serialize(x)).shape == (3, 4)
+    assert deserialize(serialize(x))[0, 0] == -5
+
+
+    x_json = json.dumps(x, default=serialize)
+    x_ = json.loads(x_json, object_hook=deserialize)
+    assert (x_ == x).all()
+
+def test_serialize_pd():
+    t = pd.date_range('Jan 1, 2021', 'Jan 11, 2021', freq='H')
+    
+    t_json = json.dumps(t, default=serialize)
+    t_ = json.loads(t_json, object_hook=deserialize)
+    assert (t_ == t).all()
+
+
+    s = pd.Series(np.linspace(-5, 5, 10), index=list(range(10)))
+    s_json = json.dumps(s, default=serialize)
+    s_ = json.loads(s_json, object_hook=deserialize)
+    assert (s_ == s).all()
+
+    df = pd.DataFrame(np.linspace(-5, 5, 10), index=list(range(10)))
+    df_json = json.dumps(df, default=serialize)
+    df_ = json.loads(df_json, object_hook=deserialize)
+    assert (df_ == df).all().all()
+
+def test_serialize_generator():
+    gen = (lambda x=b: x**2 for b in np.linspace(-5,5,12).reshape((4,3)))
+    # need to reproduce the generator for comparison
+    gen_duplicate = (lambda x=b: x**2 for b in np.linspace(-5,5,12).reshape((4,3)))
+    gen_json = json.dumps(gen, default=serialize)
+    gen_ = json.loads(gen_json, object_hook=deserialize)
+
+    for f, f_ in zip(gen_, gen_duplicate):
+        assert(f() == f_()).all()
+        f_defaults = get_defaults(f)
+        f__defaults = get_defaults(f_)
+        for k, v in f_defaults.items():
+            assert (v == f__defaults[k]).all()
+
+def test_serialize_generator_pd():
+    t = pd.date_range('Jan 1, 2021', 'Jan 11, 2021', freq='H')
+
+    gent = (lambda t=t: (t - t0).total_seconds() for t0 in t[::10])
+
+    for f in deserialize(serialize(gent)):
+        assert len(f()) == len(t)
+    assert f()[-1] == 0
+
+def test_multiply_lambdagen():
+    lamb = LambdaGenerator((lambda x=np.arange(i): x**2 for i in range(5)))
+    lamb2 = LambdaGenerator((lambda x=np.arange(i): x**2 for i in range(5)))
+    for r in lamb*lamb2:
+        r()
+
+def test_divide_lambdagen():
+    lamb = LambdaGenerator(((lambda x=np.linspace(1, 5, 10): x**2) for i in range(5)))
+    lamb2 = LambdaGenerator(((lambda x=np.linspace(1, 5, 10): x**2) for i in range(5)))
+    for r in lamb/lamb2:
+        r()
+
+def test_get_args():
+    def f(x, y, z):
+        return x+y+z
+
+    assert get_args(f) == ('x', 'y', 'z')
+
+def test_curry():
+    @curry
+    def arimean(*args):
+        return sum(args) / len(args)
+
+    assert arimean(-2, -1, 0, 1, 2)() == 0
+    assert arimean(-2)(-1)(0)(1)(2)() == 0
+
+def test_partial_decorator():
+    @partial(z=1, verbose=True)
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    assert f(2,3) == 2+3+1
+    
+
+def test_partial_order():
+    @partial(y=1, verbose=True)
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    assert f(3,4) == 3+1+4
+
+def test_partial_no_kwargs():
+    @partial(verbose=True)
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    assert f(3,4) == 3+4+5
+
+
+def test_partial_inline():
+    def f(x, y=2, z=5):
+        """simple function"""
+        return x + y + z
+    g = partial(f, y=5, verbose=True)
+    assert(g(3,4) == 3+5+4)
+
+def test_partial_no_defaults():
+    @partial(x=1, y=2, z=3, verbose=True)
+    def f(x, y, z):
+        return x + y + z
+    assert f() == 1 + 2 + 3
+
+def test_partial_missing_defaults():
+    @partial(x=1, y=2, verbose=True)
+    def f(x,y,z):
+        return x+y+z
+    assert f(3) == 1 + 2 + 3
+
+def test_partial_required_args():
+    """need to make z a required argument"""
+    @partial(x=1, y=2, verbose=True)
+    def f(x,y,z):
+        return x+y+z
+    try:
+        f()
+    except TypeError as m:
+        assert 'missing' in str(m)
+
+def test_partial_docs():
+    @partial(y=2)
+    def f(x, y=3, z=4):
+        """my docs"""
+        return x + y + z
+    
+    assert 'my docs' in f.__doc__
+    assert 'f(x, z=4) = f(x, y=2, z)' in f.__doc__
+
+    @partial(y=2, z=1)
+    def f(x, y=3, z=4):
+        """my docs"""
+        return x + y + z
+
+    assert 'Calling f(x, y, z) for fixed y, z' in f.__doc__
+
+
+    

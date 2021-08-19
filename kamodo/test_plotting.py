@@ -2,7 +2,7 @@ from kamodo import Kamodo
 import pytest
 import numpy as np
 import pandas as pd
-from .plotting import scatter_plot, line_plot, vector_plot, contour_plot, surface, plane, tri_surface_plot, get_arg_shapes, plot_types, plot_dict
+from .plotting import scatter_plot, line_plot, vector_plot, contour_plot, surface, plane, tri_surface_plot, get_arg_shapes, plot_types, plot_dict, image, symbolic_shape
 
 
 def test_scatter_plot():
@@ -477,6 +477,16 @@ def test_line_plot_3d_line():
     assert chart_type == '3d-line'
     assert layout['title']['text'] == title
 
+def test_image_plot():
+    def img(i=np.arange(33),j=np.arange(35)):
+        ii, jj, kk = np.meshgrid(i,j,[100, 200, 255], indexing='ij')
+        return kk
+
+    kamodo = Kamodo(img=img)
+    results = kamodo.evaluate('img')
+    titles = dict(variable='img', title='mytitle')
+    [trace], chart_type, layout = image(results, titles, True)
+
 
 def test_plot_keys():
     for k in plot_types.to_dict(orient = 'index'):
@@ -485,4 +495,13 @@ def test_plot_keys():
         except KeyError:
             print('could not find', k[0], k[1])
             raise
+
+
+def test_symbolic_shape():
+    assert symbolic_shape((3,1,3)) == ((3, 1, 3),)
+    assert symbolic_shape((4,4,4)) == (('N', 'N', 'N'),)
+    assert symbolic_shape((2,1,3)) == ((2, 1, 3),)
+    assert symbolic_shape((4,5,6)) == (('N', 'M', 'L'),)
+    assert symbolic_shape((4,5,1)) == (('N', 'M', 1),)
+    assert symbolic_shape((5, 6), (6, 5), (5, 4)) == (('N', 'M'), ('M', 'N'), ('N', 'L'))
 

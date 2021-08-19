@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Copyright © 2017 United States Government as represented by the Administrator, National Aeronautics and Space Administration.  
 No Copyright is claimed in the United States under Title 17, U.S. Code.  All Other Rights Reserved.
@@ -8,6 +9,7 @@ from util import arg_to_latex, beautify_latex, cast_0_dim, get_defaults
 from plotly import figure_factory as ff
 import pandas as pd
 from collections import defaultdict
+from util import get_bbox
 
 def scatter_plot(result, titles, verbose = False, **kwargs):
     """Generates a 3d scatter plot
@@ -567,37 +569,126 @@ def tri_surface_plot(result, titles, verbose = False, **kwargs):
             zaxis = dict(title = arg2),))
     return [trace], '3d-surface', layout
 
+def image(result, titles, verbose=False, **kwargs):
+
+    variable = titles['variable']
+    if verbose:
+        print('\t2-d image', result[variable].shape)
+    z = result[variable]
+    title = titles['title']
+    arg0, val0 = list(result.items())[0]
+    arg1, val1 = list(result.items())[1]
+
+    if verbose:
+        print('2 inputs: {} {}, {} {}'.format(arg0, val0.shape, arg1, val1.shape))
+
+    trace = go.Image(z=z)
+    layout = go.Layout(
+        title = title,
+        xaxis = dict(title = '${}$'.format(arg0)),
+        yaxis = dict(title = '${}$'.format(arg1)))
+
+    return [trace], '2d-image', layout
+
+
+# {output.shape : {(input1.shape, input2.shape) : {'name':plot_name, 'func': plot_func}}}
 
 plot_dict = {
     (1,)    :   {(('N','M'), ('N','M'), ('N','M')): {'name': '3d-parametric', 'func': surface}},
     ('N',)  :   {
         (('N',),) : {'name': '1d-line', 'func': line_plot},
-        (('N',),('N',)): {'name': '2d-line-scalar', 'func': line_plot},
-        (('N',),('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},
-        (('N',3),): {'name': '3d scatter', 'func': scatter_plot},},
-    ('N',2) :   {
+        (('N',), ('N',)): {'name': '2d-line-scalar', 'func': line_plot},
+        (('N',), ('N',),('N',)): {'name': '3d-line-scalar', 'func': line_plot},
+        (('N', 3),): {'name': '3d scatter', 'func': scatter_plot},},
+    ('N', 2) :   {
         (('N',),) :{'name': '2d-line', 'func': line_plot},
-        (('N',2),):{'name': '2d-vector', 'func': vector_plot},
+        (('N', 2),):{'name': '2d-vector', 'func': vector_plot},
     },
-    ('N',3) :   {
+    ('N', 3) :   {
         (('N',),) :{'name': '3d-line', 'func': line_plot},
-        (('N',3),):{'name': '3d-vector', 'func': vector_plot},
-        (('M',),('M',),('M',)):{'name': '3d-tri-surface', 'func': tri_surface_plot},
+        (('N', 3),):{'name': '3d-vector', 'func': vector_plot},
+        (('M',), ('M',), ('M',)):{'name': '3d-tri-surface', 'func': tri_surface_plot},
     },
-    ('N','M'):  {
-        (('N',),('M',)) :{'name': '2d-contour', 'func': contour_plot},
-        (('N','M'),('N','M')):{'name': '2d-contour-skew', 'func': contour_plot},
-        (('N','M'), ('N','M'), ('N','M')): {'name': '3d-parametric-scalar', 'func': surface},
-        ((1,),('N','M'),('N','M')):{'name': '3d-plane', 'func': plane},
-        (('N','M'),(1,),('N','M')):{'name': '3d-plane', 'func': plane},
-        (('N','M'),('N','M'),(1,)):{'name': '3d-plane', 'func': plane},
+    ('N', 'N'): {
+        (('N',), ('N',)) :{'name': '2d-contour', 'func': contour_plot},
     },
-    ('N','M',1): {
-        ((1,),('N',),('M',)):{'name': '3d-plane', 'func': plane},
-        (('N',),(1,),('M',)):{'name': '3d-plane', 'func': plane},
-        (('N',),('M',),(1,)):{'name': '3d-plane', 'func': plane},
+    ('N', 'M'):  {
+        (('N',), ('M',)) :{'name': '2d-contour', 'func': contour_plot},
+        (('M',), ('N',)) :{'name': '2d-contour', 'func': contour_plot},
+        (('N', 'M'), ('N','M')):{'name': '2d-contour-skew', 'func': contour_plot},
+        (('N', 'M'), ('N','M'), ('N','M')): {'name': '3d-parametric-scalar', 'func': surface},
+        ((1,), ('N', 'M'),('N','M')):{'name': '3d-plane', 'func': plane},
+        (('N', 'M'), (1,),('N','M')):{'name': '3d-plane', 'func': plane},
+        (('N', 'M'), ('N','M'),(1,)):{'name': '3d-plane', 'func': plane},
+    },
+    ('N', 1, 'M'): {
+        (('N',), (1,), ('M',)):{'name': '3d-plane', 'func': plane},
+        ((1,), ('N',), ('M',)):{'name': '3d-plane', 'func': plane},
+    },
+    (1, 'N', 'M'): {
+        (('N',), (1,), ('M',)):{'name': '3d-plane', 'func': plane},
+    },
+    ('N', 'M', 1): {
+        ((1,), ('N',), ('M',)):{'name': '3d-plane', 'func': plane},
+        (('N',), (1,), ('M',)):{'name': '3d-plane', 'func': plane},
+        (('N',), ('M',), (1,)):{'name': '3d-plane', 'func': plane},
+        (('M',), ('N',), (1,)):{'name': '3d-plane', 'func': plane},
+    },
+    ('N', 'M', 3): {
+        (('N',), ('M',)):{'name': 'image', 'func': image}
     },
 }
+
+# keep values below size threshold
+size_threshold = 3
+# +
+sizes_available = np.array(['N', 'M', 'L', 'O', 'P', 'Q', 'R', 'S', 'T'], dtype=object)
+
+def flatten_shapes(shapes):
+    return [item for sublist in shapes for item in sublist]
+
+def unordered_unique(a):
+    """return the indices and values of the array in their original order"""
+    indices = []
+    result = []
+    j = 0
+    for i, _ in enumerate(a):
+        if _ not in result:
+            result.append(_)
+        indices.append(result.index(_))
+    return result, indices
+
+def symbolic_shape(*shapes, sizes_available=sizes_available):
+    """Convert input shapes to symbolic shapes
+
+    Allow values of 1 to pass through
+    Results should match input structure
+    """
+    flattened = np.array(flatten_shapes(shapes), dtype=object)
+
+    swappable_indices = np.argwhere(flattened > size_threshold).T[0]
+    swappable_vals = flattened[swappable_indices]
+
+    _, unique = unordered_unique(swappable_vals)
+
+    # put results back in the original orray
+    flattened[swappable_indices] = sizes_available[unique]
+
+    # result comes out flattened, restructure to match input
+    shape_index = 0
+    results = []
+    for shape in shapes:
+        result_shape = []
+        for s_ in shape:
+            try:
+                result_shape.append(flattened[shape_index])
+            except IndexError:
+                print('input shapes:', shapes)
+                raise
+            shape_index += 1
+        results.append(tuple(result_shape))
+    return tuple(results)
+# -
 
 def get_arg_shapes(*args):
     shapes = []
@@ -615,101 +706,68 @@ def get_arg_shapes(*args):
     return shapes
 
 
-def get_plot_key(out_shape, *arg_shapes):
-    """Generates a plot key from array shapes"""
-    shapes_match = all([(a == out_shape) for a in list(arg_shapes)])
-    nargs = len(arg_shapes)
-    arg_dims = ''
-    out_dim = None
-    if nargs == 1:
-        if len(out_shape) == 1:
-            out_dim = 'N'
-        else:
-            out_dim = ('N', out_shape[-1])
-    else:
-        if len(out_shape) == 1:
-            if out_shape[0] == 1:
-                out_dim = 1,
+# +
+def func_mod_name(f):
+    return '{}.{}'.format(f.__module__, f.__name__)
+
+def get_plot_types_df():
+    """pack the plot types into a dataframe"""
+    plot_types = dict()
+    for out_shape, v in list(plot_dict.items()):
+        for arg_shapes, v_ in list(v.items()):
+            plot_key = out_shape, arg_shapes
+            if plot_key in plot_types:
+                raise KeyError('plot_key already present {}'.format(plot_key))
+            plot_types[plot_key] = [v_['name'], func_mod_name(v_['func'])]
+    
+    plot_types = pd.DataFrame(plot_types).T
+    
+    plot_types.index.set_names(['out_shape', 'arg_shapes'], inplace = True)
+    
+    plot_types.columns = ['plot_type', 'function']
+    return plot_types
+    
+plot_types = get_plot_types_df()
+
+
+def get_ranges(figures):
+    axes_min = defaultdict(list)
+    axes_max = defaultdict(list)
+
+    axis_names = 'xaxis', 'yaxis', 'zaxis'
+
+
+    for fig in figures:
+        ranges = get_bbox(fig)
+        for i, val in enumerate(ranges):
+            axname = axis_names[i//2]
+            if i%2 == 0:
+                axes_min[axname].append(val)
             else:
-                out_dim = 'N',
-        elif len(out_shape) == 2:
-            if out_shape[-1] == 3:
-                out_dim = 'N', 3
-            else:
-                out_dim = 'N','M'
-        elif len(out_shape) == 3:
-            if 1 in out_shape:
-                out_dim = 'N', 'M', 1
-            else:
-                out_dim = 'N','M','L'
-
-    if out_dim is not None:
-        out_dim = tuple(out_dim)
-    else:
-        raise(NotImplementedError('arg shapes {} not yet supported'.format(arg_shapes)))
-    if shapes_match:
-        arg_dims = tuple(nargs*[out_dim])
-    else:
-        if nargs == 1:
-            if out_dim == ('N',2):
-                if arg_shapes[0][0] == out_shape[0]:
-                    arg_dims = (('N',),)
-            elif out_dim == ('N',3):
-                if arg_shapes[0][0] == out_shape[0]:
-                    arg_dims = (('N',),)
-            elif out_dim == ('N',):
-                if arg_shapes[0] == (out_shape[0], 3):
-                    arg_dims = (('N',3),)
-        elif nargs == 2:
-            if out_dim == ('N','M'):
-                if (arg_shapes[0][0] in out_shape) & (arg_shapes[1][0] in out_shape):
-                    arg_dims = (('N',),('M',))
-        elif nargs == 3:
-            if out_dim == (1,):
-                if len(set(arg_shapes)) == 1:
-                    if len(arg_shapes[0]) == 2:
-                        arg_dims = tuple(3*[('N','M')])
-            elif out_dim == ('N','M'):
-                arg_set = set([1])
-                for arg in arg_shapes:
-                    arg_set.update(set(arg))
-                if arg_set - set(out_shape) == set([1]):
-                    if arg_shapes[0] == (1,):
-                        arg_dims = ((1,), ('N','M'), ('N','M'))
-                    elif arg_shapes[1] == (1,):
-                        arg_dims = (('N','M'),(1,),('N','M',))
-                    elif arg_shapes[2] == (1,):
-                        arg_dims = (('N','M'),('N','M'),(1,))
-            elif out_dim == ('N','M',1):
-                arg_set = set([1])
-                for arg in arg_shapes:
-                    arg_set.update(set(arg))
-                if arg_shapes[0] == (1,):
-                    arg_dims = ((1,), ('N',), ('M',))
-                elif arg_shapes[1] == (1,):
-                    arg_dims = (('N',),(1,),('M',))
-                elif arg_shapes[2] == (1,):
-                    arg_dims = (('N',),('M',),(1,))
-            elif out_dim == ('N', 3):
-                if len(set(arg_shapes)) == 1:
-                    if len(arg_shapes[0]) == 1:
-                        arg_dims = tuple(3*[('M',)])
-                    
-    if arg_dims == '':
-        raise NotImplementedError('No way to handle out_shape {}, with arg shapes:{}'.format(out_shape, arg_shapes))
-    return out_dim, arg_dims
+                axes_max[axname].append(val)
+    for axis in axes_min:
+        axes_min[axis] = min(axes_min[axis])
+        axes_max[axis] = max(axes_max[axis])
 
 
-plot_types = dict()
-for out_shape, v in list(plot_dict.items()):
-    for arg_shapes, v_ in list(v.items()):
-        plot_key = get_plot_key(out_shape, *arg_shapes)
-        if plot_key in plot_types:
-            raise KeyError('plot_key already present {}'.format(plot_key))
-        plot_types[plot_key] = [v_['name'], v_['func']]
+    axes = dict()
+    if len(axes_min) == 2: # 2d
+        for axis in 'xaxis', 'yaxis':
+            axes[axis] = dict(autorange=False,
+                range=(axes_min[axis], axes_max[axis]))
+    else: # 3d
+        axes = dict(scene=dict(aspectmode='manual'))
 
-plot_types = pd.DataFrame(plot_types).T
-plot_types.index.set_names(['out_shape', 'arg_shapes'], inplace = True)
-plot_types.columns = ['plot_type', 'function']
+        for axis in 'xaxis', 'yaxis', 'zaxis':
+            axes['scene'][axis] = dict(autorange=False,
+                range=(axes_min[axis], axes_max[axis]))
+        aspectratio = dict()
+        for _ in 'xyz':
+            min_, max_ = axes['scene'][_+'axis']['range']
+            aspectratio[_] = max_ - min_
+        axes['scene']['aspectratio'] = aspectratio
+        axes['scene']['camera'] = dict(eye={_:axes['scene'][_ + 'axis']['range'][1] for _ in 'xyz'})
+
+    return axes
 
 

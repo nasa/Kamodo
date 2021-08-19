@@ -1,4 +1,711 @@
+# 2021-06-21 16:18:17.807491: clock-out
+
+* using squeeze flag
+* fixed test affected by size_threshold
+
+# 2021-06-21 15:46:45.787242: clock-in
+
+# 2021-06-21 13:55:39.710580: clock-out
+
+* sped up animations
+
+# 2021-06-21 13:13:21.460428: clock-in
+
+# 2021-06-21 11:59:53.993441: clock-out
+
+* adding animations - full_figure_for_development takes a long time to run. need a workaround
+
+# 2021-06-21 11:35:38.562849: clock-in
+
+# 2021-06-18 15:36:29.661450: clock-out
+
+* got 3d animation working
+
+# 2021-06-18 14:52:28.603029: clock-in
+
+# 2021-06-18 11:22:00.529644: clock-out
+
+* animating 2d parametric plots
+
+# 2021-06-18 10:41:46.096653: clock-in
+
+# 2021-06-17 16:35:09.484743: clock-out
+
+* autoranged frames for 2d plots
+* `pip install kaleido` needed to get frame layouts
+
+# 2021-06-17 15:12:28.301751: clock-in
+
+# 2021-06-17 12:34:51.152273: clock-out
+
+* got animations working
+
+# 2021-06-17 12:07:27.656044: clock-in
+
+# 2021-06-16 16:09:33.197304: clock-out
+
+* working on animations
+
+# 2021-06-16 14:45:42.337094: clock-in
+
+# 2021-06-16 12:16:27.943176: clock-out
+
+* partial generators
+
+# 2021-06-16 11:19:26.928668: clock-in
+
+# 2021-06-15 19:42:28.601429: clock-out
+
+* partial decorator passes functionality tests
+
+# 2021-06-15 18:20:52.771686: clock-in
+
+# 2021-06-15 14:39:28.250605: clock-out
+
+* working on partial decorator
+
+# 2021-06-15 13:19:46.744384: clock-in
+
+# 2021-06-15 12:45:11.749450: clock-out
+
+* problems with functools.partial decorator
+Here is a problem with our curry operator is that we have to unpack all the arguments in order to evaluate
+
+```python
+@curry
+def f(x=1,y=2,z=3):
+    return x+y+z
+```
+
+`f(1)` returns a function of `y` instead of `y,z`, but that's how `currying` is [supposed to work](https://en.wikipedia.org/wiki/Currying).
+
+To return a function of two variables, we are back to partials. It seems that these are separate decorators.
+
+
+# 2021-06-15 12:43:53.208925: clock-in: T-41m 
+
+
+# 2021-06-14 20:23:51.337807: clock-out
+
+
+### currying decorator - kwargs
+
+What we want is a decorator that returns a stateless function with a new signature like this:
+
+```python
+@curry
+def f(x, y, z):
+    return x + y + z
+
+g = f(2)(3)
+
+assert g(1) == 1 + 2 + 3
+```
+
+
+
+Normal python functions have `args` and `kwargs`:
+
+* `args` are required
+* `kwargs` are defaults
+
+So one way to achieve the above behavior is to convert `args` into `kwargs`. `g(1)` would be equivalent to:
+
+```python
+g = lambda z, x=2, y=3: f(x, y, z)
+g(1)
+```
+
+The problem is - what do we do with the original function defaults.
+
+
+```python
+@curry
+def f(z=3, y=2, x=1):
+    return x + y + z
+
+f(1) == g(1)
+```
+Now currying has no effect. Recall why we are currying in the first place: we want to fix the values of a function so that we can evaluate it over a subset of the original arguments. If we already have defaults, do we really need to curry? We could have our curry operator eliminate the defaults? Or we could have the defaults pass through:
+
+```python
+g = curry(f)
+assert g()()() == f()
+```
+
+This way we aren't losing any information from the original function, but are still allowing it to be called with single arguments.
+
+```python
+assert g()(1)() == f(y=1)
+```
+
+# 2021-06-14 19:31:40.201422: clock-in
+
+# 2021-06-14 14:02:26.824598: clock-out
+
+
+# 2021-06-14 13:46:07.459008: clock-in
+
+# 2021-06-11 17:43:46.767514: clock-out
+
+* trying out decorator curry
+
+# 2021-06-11 16:05:44.670016: clock-in
+
+# 2021-06-09 18:59:32.741722: clock-out
+
+
+# 2021-06-09 18:45:08.502957: clock-in
+
+# 2021-06-09 18:44:17.665337: clock-out: T-2h 
+
+* added currying decorator
+* [currying](https://www.python-course.eu/currying_in_python.php) in python.
+
+# 2021-06-09 13:42:15.184948: clock-in: T-15m 
+
+# 2021-06-09 10:02:25.693985: clock-out
+
+
+# 2021-06-09 09:40:25.698556: clock-in
+
+# 2021-06-08 19:33:26.008122: clock-out: T-10m 
+
+
+# 2021-06-08 19:07:36.489347: clock-in
+
+# 2021-06-08 18:07:48.196354: clock-out
+
+
+# 2021-06-08 17:58:03.342088: clock-in
+
+# 2021-06-08 17:33:41.236397: clock-out
+
+
+# 2021-06-08 16:47:15.520867: clock-in
+
+# 2021-06-07 19:18:28.125536: clock-out
+
+* geneartor input type
+
+# 2021-06-07 18:31:58.228494: clock-in
+
+# 2021-06-02 14:52:38.570656: clock-out
+
+* fixed bugs in plotting
+
+# 2021-06-02 13:50:08.304688: clock-in
+
+# 2021-06-02 10:00:40.767448: clock-out
+
+* fixing plot bugs
+* there is bug in equation rendering where Kamodo.to_latex returns the function's expression rather than the symbol used in registration.
+
+# 2021-06-02 08:21:21.610958: clock-in
+
+# 2021-06-01 19:41:20.602808: clock-out
+
+
+# 2021-06-01 17:11:13.591391: clock-in
+
+# 2021-06-01 13:52:37.320039: clock-out
+
+* fixing plot key bugs
+
+# 2021-06-01 12:48:58.347646: clock-in
+
+# 2021-05-27 13:10:05.047450: clock-out
+
+* looking at generator arguments
+
+# 2021-05-27 12:40:51.097172: clock-in
+
+# 2021-05-26 12:25:41.791573: clock-out
+
+* issues with slice generation returning empty plot
+
+# 2021-05-26 12:21:26.381522: clock-in
+
+# 2021-05-25 19:47:12.438128: clock-out
+
+* fixing pd.datetime deprecration warning
+
+# 2021-05-25 19:39:05.600086: clock-in: T-20m 
+
+# 2021-05-25 17:39:20.981299: clock-out
+
+* made contour time slider
+
+# 2021-05-25 17:31:43.349647: clock-in: T-30m 
+
+# 2021-05-25 16:42:14.594993: clock-out
+
+
+# 2021-05-25 15:48:09.688171: clock-in
+
+# 2021-05-25 12:52:45.366801: clock-out
+
+* flattening arg shapes in preparation for 4d
+
+# 2021-05-25 12:09:08.836291: clock-in
+
+# 2021-05-24 18:02:15.095789: clock-out
+
+* refactored and added squeeze kwarg to gridify
+* refactoring `@gridify` to use forge
+* something to keep in mind when using forge:
+
+```
+.. warning::
+
+    When supplying previously-created parameters to :func:`~forge.sign`,
+    those parameters will be ordered by their creation order.
+
+    This is because Python implementations prior to ``3.7`` don't
+    guarantee the ordering of keyword-arguments.
+
+    Therefore, it is recommended that when supplying pre-created
+    parameters to :func:`~forge.sign`, you supply them as positional
+    arguments:
+
+
+    .. testcode::
+
+        import forge
+
+        param_b = forge.arg('b')
+        param_a = forge.arg('a')
+
+        @forge.sign(a=param_a, b=param_b)
+        def func1(**kwargs):
+            pass
+
+        @forge.sign(param_a, param_b)
+        def func2(**kwargs):
+            pass
+
+        assert forge.repr_callable(func1) == 'func1(b, a)'
+        assert forge.repr_callable(func2) == 'func2(a, b)'
+
+```
+
+
+# 2021-05-24 16:55:07.640148: clock-in
+
+* differential equations could be written as function decorators applied to boundary conditions.
+* boundary conditions are functions over the simulation domain boundary with nans everywhere else.
+* solutions are returned as functions over the independent variables. 
+
+# 2021-05-21 16:47:38.435955: clock-out
+
+* cleaned up plot key generation
+
+# 2021-05-21 15:24:12.011043: clock-in
+
+# 2021-05-21 13:07:05.626110: clock-out
+
+* simplifying plot key generation
+
+# 2021-05-21 11:12:40.628676: clock-in
+
+look at jupyter book for publication https://jupyterbook.org/intro.html
+
+# 2021-03-31 14:02:27.533428: clock-out
+
+* registered image plot type
+
+# 2021-03-31 13:02:51.467590: clock-in
+
+* made kamodo unit system the default for conversion
+
+# 2021-03-30 18:45:14.238802: clock-out
+
+* working on functional images
+* added angular frequency units
+
+# 2021-03-30 16:16:32.599994: clock-in
+
+# 2021-03-30 13:39:42.776447: clock-out
+
+
+# 2021-03-30 12:21:01.381129: clock-in
+
+# 2021-03-30 12:01:37.303279: clock-out
+
+
+# 2021-03-30 11:11:21.672511: clock-in
+
+# 2021-03-29 18:59:34.366365: clock-out
+
+* adding plasmapy kamodofication bug test
+* fixed bug in parse_expr locals
+* fixed bug with Newton symbol clash
+
+# 2021-03-29 17:01:31.209600: clock-in
+
+# 2021-03-29 16:03:16.457691: clock-out
+
+* getting function has no attribute subs with N - need to check against `_clash` list
+
+# 2021-03-29 15:47:37.025035: clock-in
+
+# 2021-03-29 12:04:33.031396: clock-out
+
+* looking at images
+
+# 2021-03-29 11:16:58.877386: clock-in
+
+# 2021-03-27 14:11:10.779236: clock-out
+
+* fixed example signature
+* fixed workflow
+* fixed bug in get_dimensions preventing certain unit conversions
+
+# 2021-03-27 13:06:31.717147: clock-in
+
+# 2021-03-27 12:52:56.983449: clock-out
+
+
+# 2021-03-27 12:24:11.426813: clock-in
+
+# 2021-03-27 11:58:55.516981: clock-out
+
+* test of pascals failing
+* fixed to_latex rendering
+
+# 2021-03-27 10:42:18.972386: clock-in
+
+# 2021-03-27 10:34:30.659703: clock-out: T-10m 
+
+* cleariving cells
+* fixed to-html
+* adding notebooks list
+* adding Visualization notebook to workflow
+
+# 2021-03-27 09:32:23.833239: clock-in
+
+# 2021-03-24 22:34:04.374828: clock-out
+
+* fixed multi argument unit composition
+
+# 2021-03-24 22:23:10.086953: clock-in
+
+# 2021-03-24 21:42:25.386116: clock-out
+
+* unify expr args not in same order as free_symbols
+* `pytest test_kamodo.py::test_multi_arg_units`
+
+# 2021-03-24 20:42:24.019445: clock-in
+
+# 2021-03-24 18:52:07.659737: clock-out
+
+* added test for multi argument unit composition
+
+# 2021-03-24 18:51:37.128420: clock-in
+
+
+```python
+from sympy.abc import _clash
+{'C': C,
+ 'O': O,
+ 'Q': Q,
+ 'N': N,
+ 'I': I,
+ 'E': E,
+ 'S': S,
+ 'beta': beta,
+ 'zeta': zeta,
+ 'gamma': gamma,
+ 'pi': pi}
+```
+
+# 2021-03-15 10:00:09.146598: clock-out
+
+
+# 2021-03-15 09:59:36.883356: clock-in
+
+# 2021-03-10 16:01:04.687207: clock-out
+
+* adding citations
+* pinning sympy for tests
+
+# 2021-03-10 14:56:13.114546: clock-in: T-8m 
+
+* updating sympy version
+
+# 2021-03-10 12:21:29.440527: clock-out
+
+* related projects
+
+# 2021-03-10 12:20:49.749406: clock-in: T-80m 
+
+# 2021-03-10 11:00:15.169767: clock-out
+
+* fixed latex unit printing
+
+# 2021-03-10 10:38:51.374290: clock-in
+
+# 2021-03-09 20:00:17.427586: clock-out
+
+* fixing latex unit rendering
+
+# 2021-03-09 19:10:48.802378: clock-in
+
+# 2021-03-09 12:35:42.893424: clock-out
+
+* paper updates
+
+# 2021-03-09 10:45:05.148443: clock-in
+
+# 2021-03-08 20:17:26.525866: clock-out: T-70m 
+
+# 2021-03-08 20:16:19.908822: clock-out
+
+
+# 2021-03-08 17:43:02.224210: clock-in
+
+# 2021-03-08 12:01:51.947367: clock-out
+
+
+# 2021-03-08 11:23:30.640450: clock-in
+
+# 2021-03-05 12:13:29.642736: clock-out
+
+* started paper
+
+# 2021-03-05 11:49:41.887072: clock-in
+
+# 2021-02-16 20:33:17.491435: clock-out
+
+* added zoom_test.html
+* adding plot meta, made datetime test query deterministic
+
+# 2021-02-16 20:03:14.752210: clock-in
+
+# 2021-02-15 21:28:41.571728: clock-out
+
+
+# 2021-02-15 20:41:15.499581: clock-in
+
+# 2021-02-14 12:19:44.292293: clock-out: T-20m 
+
+
+# 2021-02-14 10:13:19.121414: clock-in
+
+# 2021-02-13 23:07:16.031488: clock-out
+
+
+# 2021-02-13 22:48:04.844484: clock-in
+
+# 2021-02-13 19:48:22.341859: clock-out
+
+* js rangeslider widget
+
+# 2021-02-13 17:49:49.306768: clock-in
+
+# 2021-02-13 16:33:06.790805: clock-out
+
+
+# 2021-02-13 13:24:50.034083: clock-in
+
+# 2021-02-13 13:24:46.755317: clock-out: T-10m 
+
+
+# 2021-02-13 13:01:49.691331: clock-in
+
+# 2021-02-13 01:36:52.580893: clock-out
+
+* developed slice widget for notebook
+
+# 2021-02-12 22:29:50.872811: clock-in
+
+# 2021-02-12 11:22:44.328681: clock-out
+
+
+# 2021-02-12 10:31:25.170196: clock-in
+
+* adding docs endpoint
+# 2021-02-11 00:41:02.484844: clock-out
+
+* fixed bug in kamodoAPI registering funtions twice
+
+# 2021-02-10 23:11:21.144902: clock-in
+
+# 2021-02-10 22:25:01.426986: clock-out
+
+* function generator operations
+
+# 2021-02-10 19:42:08.114657: clock-in
+
+# 2021-02-09 13:11:09.281176: clock-out
+
+* pushing apembroke/kamodo:0.1
+
+# 2021-02-09 13:05:36.824475: clock-in
+
+# 2021-02-09 13:05:10.883744: clock-out
+
+* allowing function defaults with null args
+* `flask.jsonify` should be used when returning from custom `get` methods
+
+# 2021-02-09 12:50:49.247565: clock-in
+
+# 2021-02-09 10:40:48.036338: clock-out
+
+* need to include in `POST` method the ability to reference global models
+* including user_model in kamodo.yaml, added delete method
+
+# 2021-02-09 09:38:01.649942: clock-in
+
+# 2021-02-09 01:21:34.140453: clock-out
+
+* pinning sympy for api
+* fixed bug in jsonifying user funcs
+
+# 2021-02-08 23:05:27.925457: clock-in
+
+# 2021-02-08 22:57:08.527566: clock-out
+
+
+# 2021-02-08 22:48:42.433467: clock-in
+
+# 2021-02-08 21:26:50.968524: clock-out
+
+* need a way to post changes to variables
+* added user user model endpoints
+how do we determine default user model? - setting this in `kamodo.yaml`
+
+got user endpoints working
+* user models: `kamodo/api/usermodel`
+* global models: `/api/modelA`
+
+
+# 2021-02-08 17:24:04.082408: clock-in
+
+# 2021-02-08 15:36:06.082620: clock-out
+
+* registering custom fields
+* need to deserialize as numpy arrays in combination with object_hook
+
+## developer meeting
+* emmpy - empirical modeling in python (tsygenenko, etc)
+* pypluto
+* ccmc docs have been updated
+
+# 2021-02-08 13:07:56.346344: clock-in
+
+# 2021-02-08 12:05:21.062862: clock-out
+
+* user model endpoints
+
+## user models
+- `/kamodo/usermodelA/api`
+- `/api/servermodelA`
+- `/api/servermodelB`
+
+# 2021-02-08 11:45:28.857313: clock-in
+
+# 2021-02-08 10:38:31.202569: clock-out
+
+
+# 2021-02-08 10:11:35.338486: clock-in
+
+# 2021-02-06 11:37:06.027891: clock-out
+
+* testing post method for user-defined expression
+
+# 2021-02-06 11:01:27.615022: clock-in
+
+# 2021-02-05 13:38:41.602116: clock-out
+
+* prototyping user-defined kamodo objects
+* added default forwarding for expressions
+
+# 2021-02-05 11:10:12.407904: clock-in
+
+* added data endpoint for cached function result
+* installed requests for workflow
+* kamodoAPI only registers units
+* can add data to api to avoid initial call with defaults
+
+# 2021-02-03 12:51:16.021583: clock-out
+
+* serialized lambda generators
+
+# 2021-02-03 12:11:53.187449: clock-in
+
+# 2021-02-03 10:05:23.688588: clock-out
+
+* serializing/deserializing generators - need to forge deserialized signatures? kamodofy?
+* added flask.host and flask.port
+
+# 2021-02-03 09:37:31.803474: clock-in
+
+* test accessing multiple kamodo objects in same namespace
+* fixed index serialization
+
+# 2021-02-02 11:28:10.308687: clock-out
+
+* improved serialization tests
+
+# 2021-02-02 11:16:43.496588: clock-in
+
+# 2021-02-02 09:37:36.981135: clock-out
+
+* removing requests-mock
+* more robust serialization/deserialization
+
+# 2021-02-02 08:43:23.510270: clock-in
+
+# 2021-02-01 19:27:49.355746: clock-out
+
+* resolving serialization issues
+
+# 2021-02-01 17:45:54.355466: clock-in
+
+# 2021-02-01 08:59:03.221914: clock-out
+
+* can use byte swapping and restore endianess https://numpy.org/doc/stable/user/basics.byteswapping.html
+* jaweson https://github.com/someones/jaweson
+
+# 2021-02-01 08:15:47.966367: clock-in
+
+# 2021-01-30 14:13:25.401017: clock-out
+
+trying different serialization methods
+
+binary options:
+* msgpack - binary serialization of numpy https://github.com/lebedov/msgpack-numpy https://github.com/msgpack/msgpack-javascript
+* json and base64 encoding only https://stackoverflow.com/a/30698135
+* bson `from bson.json_util import dumps, loads`
+
+ascii options:
+* pandas build_table_schema https://pandas.pydata.org/pandas-docs/version/0.21.0/generated/pandas.io.json.build_table_schema.html
+* datapackage/table-schema https://github.com/frictionlessdata/datapackage-pipelines-pandas-driver#getting-started
+
+# 2021-01-30 13:03:53.446801: clock-in
+
+* fixed plot title latex
+* added KamodoAPI class
+* overriding models with config
+* fixed datetime api example
+* serialized time series, fixed default plot
+* adding kTest to kamodo.yaml
+* made test object have defaults
+
+# 2021-01-21 23:35:17.186812: clock-out
+
+* updated API.dockerfile
+* added .dockerignore
+* added function-specfic plot resource
+
+# 2021-01-21 23:14:54.363159: clock-in
+
+* added default str json
+* added defaults output
+* added kamodo-serve
 * fixing error msg
+
 # 2021-01-12 16:11:56.285579: clock-out
 
 * checking for reserved names

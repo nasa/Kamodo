@@ -131,7 +131,7 @@ def main(cfg):
     kamodo = compose(**models)
     if cfg.verbose > 0:
         print(kamodo.detail())
-    if cfg.verbose > 1:   
+    if cfg.verbose > 1:
         print(kamodo.to_latex())
 
 

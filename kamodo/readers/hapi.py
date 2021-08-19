@@ -1,6 +1,13 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jun  3 17:11:29 2021
+
+@author: Darren
+Adapted by R Ringuette
+"""
+
 from kamodo import Kamodo, kamodofy
 import numpy as np
-import scipy
 import datetime
 import urllib, json
 # Renamed hapi as PYhapi to avoid name conflict
@@ -8,6 +15,29 @@ from hapiclient import hapi as PYhapi
 from hapiclient import hapitime2datetime
 import plotly.express as px
 import plotly.graph_objects as go
+from astropy.constants import R_earth
+
+
+'''Examples:
+server     = 'http://hapi-server.org/servers/SSCWeb/hapi'
+dataset    = 'grace1'
+parameters = 'X_GEO,Y_GEO,Z_GEO,X_GSE,Y_GSE,Z_GSE'
+start      = '2012-07-07T00:00:00'
+stop       = '2012-07-08T00:00:00'
+hapi = HAPI(server, dataset, parameters, start, stop)
+
+server2 = 'https://cdaweb.gsfc.nasa.gov/hapi'
+dataset2 = 'GOES12_K0_MAG'
+parameters2 = 'B_GSE_c,SC_pos_eo,SC_pos_se'
+start2      = '2008-07-11T00:00:00'
+stop2       = '2008-07-13T00:00:00'
+hapi2 = HAPI(server2, dataset2, parameters2, start2, stop2)
+'''
+
+def hapi_get_parameters(server, dataset):
+    '''return only a list of the possible parameters'''
+    data = hapi_get_info(server, dataset)
+    return [data['parameters'][i]['name'] for i in range(len(data['parameters']))]
 
 def hapi_get_info(server, dataset):
     '''Query for info json return from HAPI server'''
@@ -24,16 +54,17 @@ def hapi_get_date_range(server, dataset):
     return start_date, end_date
 
 class HAPI(Kamodo):
-    def __init__(self, server, dataset, parameters = None, start = None, stop = None, **kwargs):
+    def __init__(self, server, dataset, parameters = None, start = None, stop = None, 
+                 verbose=False, **kwargs):
         super(HAPI, self).__init__(**kwargs)
-        self.verbose=False
+        self.verbose=verbose
         self.symbol_registry=dict()
         self.signatures=dict()
-        self.RE=6.3781E3
+        self.RE=R_earth.value
         self.server = server
         self.dataset = dataset
-        print(' -server: ',server)
-        print(' -dataset: ',dataset)
+        if verbose: print(' -server: ',server)
+        if verbose: print(' -dataset: ',dataset)
         opts       = {'logging': False, 'usecache': False}
         if start is None or stop is None:
             start, stop = hapi_get_date_range(server, dataset)
@@ -50,8 +81,8 @@ class HAPI(Kamodo):
             print("       start: ",start)
             print("         end: ",stop)
         else:
-            print(" -date start: ",start)
-            print("         end: ",stop)
+            if verbose: print(" -date start: ",start)
+            if verbose: print("         end: ",stop)
         self.start=start
         self.stop=stop
         # Get data, meta from the HAPI python client
@@ -87,7 +118,7 @@ class HAPI(Kamodo):
                                                desc=adesc)
         for varname in self.variables:
             units = self.variables[varname]['units']
-            print('... registering ',varname,units)
+            if verbose: print('... registering ',varname,units)
             self.register_variable(varname, units)
         
         # classification of position into coordinates to assist visualizion
@@ -105,7 +136,7 @@ class HAPI(Kamodo):
                 if key in self.possible_coords and direction in self.possible_directions:
                     if key not in self.coords:
                         self.coords[key] = dict(coord=key)
-                        print("... position vector registered in",key)
+                        if verbose: print("... position vector registered in",key)
                     self.coords[key]['size'] = size
                     self.coords[key][direction] = varname
             elif size ==3:
@@ -133,14 +164,14 @@ class HAPI(Kamodo):
                 if key in self.possible_coords:
                     if key not in self.coords:
                         self.coords[key] = dict(coord=key)
-                        print("... position vector registered in",key)
+                        if verbose: print("... position vector registered in",key)
                     self.coords[key]['size'] = size
                     self.coords[key]['x'] = varname
                     self.coords[key]['y'] = varname
                     self.coords[key]['z'] = varname
 
         # Change 'fill' values in data to NaNs
-        self.fill2nan()
+        self.fill2nan(verbose=verbose)
         
     def register_variable(self, varname, units):
         """register variables into Kamodo for this service, HAPI"""
@@ -160,7 +191,7 @@ class HAPI(Kamodo):
                                  citation = "De Zeeuw 2020",
                                  data = None)
 
-    def fill2nan(self):
+    def fill2nan(self, verbose=False):
         '''
         Replaces fill value in data with NaN.
         '''
@@ -171,7 +202,7 @@ class HAPI(Kamodo):
                 mask = data==float(fill)
                 nbad = np.count_nonzero(mask)
                 if nbad > 0:
-                    print("Found",nbad,"fill values, replacing with NaN for variable",
+                    if verbose: print("Found",nbad,"fill values, replacing with NaN for variable",
                           varname,"of size",data.size)
                 data[mask]=np.nan
                 self.variables[varname]['data'] = data
@@ -298,4 +329,3 @@ class HAPI(Kamodo):
 
         print('ERROR, reached end of get_plot without any action taken.')
         return
-
