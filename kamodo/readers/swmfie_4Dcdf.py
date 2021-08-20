@@ -78,7 +78,7 @@ def MODEL():
     from time import perf_counter
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from kamodo.readers.reader_utilities import regdef_3D_interpolators    
        
     class MODEL(Kamodo): 

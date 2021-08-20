@@ -30,7 +30,7 @@ def ts_to_hrs(time_val, filedate):
 #converts to hours since midnight of filedate for plotting
 def MODEL():
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from netCDF4 import Dataset
     from os.path import basename
     from numpy import array, transpose, NaN, unique, append, zeros, abs, diff, where

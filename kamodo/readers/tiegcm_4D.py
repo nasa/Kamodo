@@ -146,7 +146,7 @@ def MODEL():
     from numpy import NaN, diff, flip, abs
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from kamodo.readers.reader_utilities import regdef_3D_interpolators, regdef_4D_interpolators    
     
     class MODEL(Kamodo): 

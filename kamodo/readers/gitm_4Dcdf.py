@@ -146,7 +146,7 @@ def MODEL():
     from numpy import array, unique, NaN, diff, abs, append, zeros, where
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from kamodo.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators    
 
     #main class object
