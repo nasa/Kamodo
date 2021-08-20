@@ -210,7 +210,6 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
                                 coord_type, coord_grid, high_res,
                                 verbose=verbose)  
     
-    print('Done.\n')
     if verbose: 
         print(f'Units from the {model} model by variable name:\n{results_units}')
         print(f'Dictionary key names in results:\n{results.keys()}')

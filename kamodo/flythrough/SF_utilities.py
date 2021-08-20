@@ -516,7 +516,8 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
     coord_dict = coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, coord_grid)
     
     #perform flythroughs
-    print('Interpolating data...')
+    print('Interpolating through model data...',end="")
+    interp_time = perf_counter()
     for key in coord_dict.keys():
         #interpolate requested data for each day. FlyAway is specific to each wrapper
         #reader, file_name, variable_list, sat_time in hrs, c1, c2, c3, z_unit, z_dependencies, high_res
@@ -537,6 +538,7 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
         #collect interpolated data into the same dictionary
         for var in newvar_list:  #sort and combine arrays for the same variable
             results_dict[var] = concatenate(tuple([results[var] for results in list_results]))
+    print(f'done in {perf_counter()-interp_time:.5f} s.')
 
     return results_dict
 
@@ -546,7 +548,7 @@ def Prepare_Files(model, file_dir, call_type='normal'):
     #Determine possible file patterns. Create wrapped files if needed.
     file_patterns = MW.FileSearch(model, file_dir, call_type=call_type)
     times = check_timescsv(file_patterns, model, call_type=call_type)  #reader creates converted files if DNE
-    print('Files prepared for run.')
+    #print('Files prepared for run.')
     return 
 
 #----------Code below is for Single Satellite Flythrough software--------------------------------
