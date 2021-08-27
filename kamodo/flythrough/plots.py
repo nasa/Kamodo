@@ -11,9 +11,10 @@ from astropy.constants import R_earth
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from plotly.offline import iplot
-from kamodo.flythrough.utils import ConvertCoord
+import kamodo
+from flythrough.utils import ConvertCoord
 
-def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
+def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
               displayplot=True,type='3D',body='black',divfile='',htmlfile=''):
     """New 4D plotting for satellite trajectories using plotly by Darren De Zeeuw
     
@@ -21,9 +22,9 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
     
     var: string of variable name
     time: time formatted as a timestamp in UTC
-    lat: latitude in deg
-    lon: longitude in deg
-    alt: altitude in km
+    c1: latitude  or X
+    c2: longitude or Y
+    c3: altitude  or Z
     vard: data of variable var, same size array as positions
     varu: string of variable var units
     inCoordName: string for incoming coordinate system.  GDZ, GEO, GSM, GSE, SM, GEI, MAG, RLL
@@ -44,9 +45,15 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
 
     REkm = (R_earth.value/1000.)
 
+    import kamodo.flythrough.model_wrapper as MW
+    coord_names=MW.coord_names(inCoordName,inCoordType)
+    coord_units=MW.coord_units(inCoordName,inCoordType)
+    if inCoordType=='sph':
+        for key in coord_names.keys(): coord_names[key]=coord_names[key][:3]
+
     if type == "3D":
         #Convert incoming coordinates into plot coordinages (cartesian)
-        xx,yy,zz,units = ConvertCoord(time,lon,lat,alt,inCoordName,inCoordType,plotCoord,'car')
+        xx,yy,zz,units = ConvertCoord(time,c1,c2,c3,inCoordName,inCoordType,plotCoord,'car')
 
         # Create dictionary block to pass to plotting with selected options
         plot_dict=dict(
@@ -58,17 +65,14 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
                 vars = dict(
                     x = dict(units=units[0], data=xx),
                     y = dict(units=units[1], data=yy),
-                    z = dict(units=units[2], data=zz),
-                    Lat = dict(units='deg', data=lat),
-                    Lon = dict(units='deg', data=lon),
-                    Alt = dict(units='km', data=alt),
+                    z = dict(units=units[2], data=zz)
                 ),
                 position_variables = ["x", "y", "z"],     # three variables to use for position
             ),
             options = dict(
                 position_units = "R_E", # possible values: R_E, km, ""
                 var = var,            # variable to use for colorscale
-                hover_vars = ["Lat", "Lon", "Alt"],     # other information for hoverinfo display
+                hover_vars = [],     # other information for hoverinfo display
                 quiver = False,         # logical value to display or hide quivers
                 quiver_scale = 0.1,     # length scale of quivers
                 quiver_skip = 0,        # points to skip between displaying quivers
@@ -82,6 +86,10 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
         )
         # Fixed position variables already included, now add passed in variable to dictionary
         plot_dict['Sat1']['vars'][var]=dict(units=varu, data=vard)
+        plot_dict['Sat1']['vars'][coord_names['c1']]=dict(units=coord_units['c1'], data=c1)
+        plot_dict['Sat1']['vars'][coord_names['c2']]=dict(units=coord_units['c2'], data=c2)
+        plot_dict['Sat1']['vars'][coord_names['c3']]=dict(units=coord_units['c3'], data=c3)
+        plot_dict['options']['hover_vars']=[coord_names['c1'],coord_names['c2'],coord_names['c3']]
 
         # Execute creation and display of figure
         fig=custom3Dsat(plot_dict,vbose=0)
@@ -95,10 +103,6 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
             iplot(fig)
 
     if type == "1D" or type == "2D" or type == "2DLT":
-        #Convert incoming coordinates into GDZ sph
-        xx,yy,zz,units = ConvertCoord(time,lon,lat,alt,inCoordName,inCoordType,'GDZ','sph')
-        xx[xx<0.] += 360.
-
         # Create dictionary block to pass to plotting with selected options
         plot_dict=dict(
             title = 'Satellite extraction from model: '+model,  # Displayed title for plot, can use <br> for new lines
@@ -106,23 +110,24 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
             Sat1 = dict(
                 display_name = "",
                 time = dict(format='timestamp', data=time),  # possible formats: datetime, timestamp (assumes UTC)
-                vars = dict(
-                    Lon = dict(units=units[0], data=xx),
-                    Lat = dict(units=units[1], data=yy),
-                    Alt = dict(units=units[2], data=zz),
-                ),
-                position_variables = ["Lon", "Lat", "Alt"],     # three variables to use for position
+                vars = dict(),
+                position_variables = [],     # three variables to use for position
             ),
             options = dict(
                 position_units = "", # possible values: R_E, km, ""
                 var = var,            # variable to use for colorscale
-                hover_vars = ["Lon", "Lat", "Alt"],     # other information for hoverinfo display
+                hover_vars = [],     # other information for hoverinfo display
                 groupby = groupby,        # possible values: all, day, hour, minute, N (integer, show N values at a time)
                                     #   orbitE (break at equator crossing S->N), orbitM (break at prime meridian crossing)
             ),
         )
         # Fixed position variables already included, now add passed in variable to dictionary
         plot_dict['Sat1']['vars'][var]=dict(units=varu, data=vard)
+        plot_dict['Sat1']['vars'][coord_names['c1']]=dict(units=coord_units['c1'], data=c1)
+        plot_dict['Sat1']['vars'][coord_names['c2']]=dict(units=coord_units['c2'], data=c2)
+        plot_dict['Sat1']['vars'][coord_names['c3']]=dict(units=coord_units['c3'], data=c3)
+        plot_dict['Sat1']['position_variables']=[coord_names['c1'],coord_names['c2'],coord_names['c3']]
+        plot_dict['options']['hover_vars']=[coord_names['c1'],coord_names['c2'],coord_names['c3']]
 
         # Execute creation and display of figure
         if type == "1D":
@@ -731,22 +736,22 @@ def custom1Dsat(datad, vbose=1):
 
         for i in range(Nhv):
             tmpv=datad['options']['hover_vars'][i]
+            tmpu=datad[sat]['vars'][tmpv]['units']
             fig1.add_trace(go.Scatter(x=localdt[sat], y=datad[sat]['vars'][tmpv]['data'], name=tmpv,
                                       mode='lines', line= dict(shape='linear', color='black'),
                                       hovertemplate=tmpv+': %{y:.4g}<br>%{x}<extra></extra>',
                                      ),
                            row=(i+2), col=1)
-            tmpu=""
-            if tmpv == "Alt":
-                tmpu=" [km]"
+#            if tmpv == "Alt":
+#                tmpu=" [km]"
             if tmpv == "Lon":
-                tmpu=" [deg]"
+#                tmpu=" [deg]"
                 fig1.update_yaxes(tick0=0., dtick=90., row=(i+2), col=1)
             if tmpv == "Lat":
-                tmpu=" [deg]"
+#                tmpu=" [deg]"
                 fig1.update_yaxes(tick0=0., dtick=30., row=(i+2), col=1)
             ya='yaxis'+str(i+2)
-            ys="dict(text='<b>"+tmpv+"</b>"+tmpu+"',font=dict(size=12))"
+            ys="dict(text='<b>"+tmpv+"</b> ["+tmpu+"]',font=dict(size=12))"
             fig1['layout'][ya]['title']=eval(ys)
 
         fig1.update_layout(height=600, width=800, title_text=txttop, showlegend = False,)
