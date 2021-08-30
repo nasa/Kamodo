@@ -85,7 +85,7 @@ def MODEL():
                 from glob import glob
                 
                 file_pattern = file_dir+'IRI.3D.*.nc' #returns a string for iri
-                files = glob(file_pattern)
+                files = sorted(glob(file_pattern))
                 filenames = unique([basename(f) for f in files])
                 
                 #find closest file by utc timestamp

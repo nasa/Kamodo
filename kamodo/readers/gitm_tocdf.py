@@ -665,7 +665,7 @@ def GITMbin_toCDF(file_prefix):
     '''Collect data from all files found with file_prefix into one netCDF4 file'''
     
     ftic=perf_counter()
-    files = glob(file_prefix+'*.bin')  #collect files
+    files = sorted(glob(file_prefix+'*.bin'))  #collect files
     print(f'Converting {len(files)} files to netCDF4.')
     
     #initialize values from first file (date, data, etc)
