@@ -10,28 +10,28 @@ from numpy import vectorize
 #read 1 day of data from cdf instead of from multiple .tec files
 
 
-model_varnames={"Sigma_H":['Sigma_H','variable description',0,'SPH','sph',['time','lon','lat'],"S"],
-                "Sigma_P":['Sigma_P','variable description',1,'SPH','sph',['time','lon','lat'],"S"],
-                 "Phi_E":['Phi_E','variable description',2,'SPH','sph',['time','lon','lat'],"W/m**2"], 
-                 "AveE_avgE":['E_avg','variable description',3,'SPH','sph',['time','lon','lat'],'eV'],
-                 "j_R":["j_R",'variable description',4,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "Phi":["Phi",'variable description',5,'SPH','sph',['time','lon','lat'],"kV"],
-                 "E_x":["E_x",'variable description',6,'SPH','sph',['time','lon','lat'],"mV/m"],
-                 "E_y":["E_y",'variable description',7,'SPH','sph',['time','lon','lat'],"mV/m"],
-                 "E_z":["E_z",'variable description',8,'SPH','sph',['time','lon','lat'],"mV/m"],
-                 "j_x":["j_x",'variable description',9,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_y":["j_y",'variable description',10,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_z":["j_z",'variable description',11,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "v_x":['v_x','variable description',12,'SPH','sph',['time','lon','lat'],"km/s"],
-                 "v_y":['v_y','variable description',13,'SPH','sph',['time','lon','lat'],"km/s"],
-                 "v_z":['v_z','variable description',14,'SPH','sph',['time','lon','lat'],"km/s"],
-                 "Q_Joule":['Q_Joule','variable description',15,'SPH','sph',['time','lon','lat'],"mW/m**2"], 
-                 "Phi_nion":['Phi_nion','variable description',16,'SPH','sph',['time','lon','lat'],"1/cm**2/s"],
-                 "Binv_RT":['Binv_RT','variable description',17,'SPH','sph',['time','lon','lat'],"1/T"],
-                 "rho_RT":['rho_RT','variable description',18,'SPH','sph',['time','lon','lat'],"amu/cm**3"],
-                 "P_RT":['P_RT','variable description',19,'SPH','sph',['time','lon','lat'],"Pa"],
-                 "dLat_star":['dLat_star','variable description',20,'SPH','sph',['time','lon','lat'],"deg"],
-                 "dlon_star":['dlon_star','variable description',21,'SPH','sph',['time','lon','lat'],"deg"]}
+model_varnames={"Sigma_H":['Sigma_H','variable description',0,'SM','sph',['time','lon','lat'],"S"],
+                "Sigma_P":['Sigma_P','variable description',1,'SM','sph',['time','lon','lat'],"S"],
+                 "Phi_E":['Phi_E','variable description',2,'SM','sph',['time','lon','lat'],"W/m**2"], 
+                 "AveE_avgE":['E_avg','variable description',3,'SM','sph',['time','lon','lat'],'eV'],
+                 "j_R":["j_R",'variable description',4,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "Phi":["Phi",'variable description',5,'SM','sph',['time','lon','lat'],"kV"],
+                 "E_x":["E_x",'variable description',6,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_y":["E_y",'variable description',7,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_z":["E_z",'variable description',8,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "j_x":["j_x",'variable description',9,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_y":["j_y",'variable description',10,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_z":["j_z",'variable description',11,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "v_x":['v_x','variable description',12,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_y":['v_y','variable description',13,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_z":['v_z','variable description',14,'SM','sph',['time','lon','lat'],"km/s"],
+                 "Q_Joule":['Q_Joule','variable description',15,'SM','sph',['time','lon','lat'],"mW/m**2"], 
+                 "Phi_nion":['Phi_nion','variable description',16,'SM','sph',['time','lon','lat'],"1/cm**2/s"],
+                 "Binv_RT":['Binv_RT','variable description',17,'SM','sph',['time','lon','lat'],"1/T"],
+                 "rho_RT":['rho_RT','variable description',18,'SM','sph',['time','lon','lat'],"amu/cm**3"],
+                 "P_RT":['P_RT','variable description',19,'SM','sph',['time','lon','lat'],"Pa"],
+                 "dLat_star":['dLat_star','variable description',20,'SM','sph',['time','lon','lat'],"deg"],
+                 "dlon_star":['dlon_star','variable description',21,'SM','sph',['time','lon','lat'],"deg"]}
                  
  
 '''                
@@ -135,7 +135,7 @@ def MODEL():
                 #find other files with same pattern
                 from glob import glob
                 
-                files = glob(file_dir+'i_e*')
+                files = sorted(glob(file_dir+'i_e*'))
                 if day_flag: 
                     file_prefixes = unique([basename(f)[:11] for f in files\
                                             if '.nc' not in basename(f)])
