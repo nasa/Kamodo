@@ -16,6 +16,9 @@ from hapiclient import hapitime2datetime
 import plotly.express as px
 import plotly.graph_objects as go
 from astropy.constants import R_earth
+import pandas as pd
+from pandas import DatetimeIndex
+from collections.abc import Iterable
 
 
 '''Examples:
@@ -54,7 +57,8 @@ def hapi_get_date_range(server, dataset):
     return start_date, end_date
 
 class HAPI(Kamodo):
-    def __init__(self, server, dataset, parameters = None, start = None, stop = None, 
+    def __init__(self, server, dataset, parameters = None, start = None, stop = None,
+                register_components=True,
                  verbose=False, **kwargs):
         super(HAPI, self).__init__(**kwargs)
         self.verbose=verbose
@@ -92,7 +96,7 @@ class HAPI(Kamodo):
         self.startDate = meta['startDate']
         self.stopDate = meta['stopDate']
         # Convert binary time array into datetime
-        self.dtarray = hapitime2datetime(data['Time'])
+        self.dtarray = pd.to_datetime(hapitime2datetime(data['Time']))
         self.tsarray = np.array([d.timestamp() for d in self.dtarray])
         self.variables=dict()
         for metaparam in self.meta['parameters']:
@@ -173,23 +177,83 @@ class HAPI(Kamodo):
         # Change 'fill' values in data to NaNs
         self.fill2nan(verbose=verbose)
         
+        if register_components:
+            self.register_components()
+
     def register_variable(self, varname, units):
         """register variables into Kamodo for this service, HAPI"""
+        data =  self.variables[varname]['data']
+        times = self.dtarray
 
-        def interpolate(timestamp):  
-            data =  self.variables[varname]['data']
-            return np.interp(timestamp,self.tsarray,data)
+        if self.verbose:
+            print('{} shape {}'.format(varname, data.shape))
+
+        isvector = False
+
+        if data.shape[1] > 1:
+            isvector = True
+            ser = pd.DataFrame(data, index=pd.DatetimeIndex(times))
+        else:
+            ser = pd.Series(data, index=pd.DatetimeIndex(times))
+
+        def interpolate(t=times):
+            ts = t
+            isiterable = isinstance(t, Iterable)
+
+            if isinstance(ts, DatetimeIndex):
+                pass
+            elif isinstance(ts, float):
+                ts = pd.to_datetime([ts], utc=True, unit='s')
+            elif isiterable:
+                if isinstance(ts[0], float):
+                    ts = pd.to_datetime(ts, utc=True, unit='s')
+                ts = DatetimeIndex(ts)
+            else:
+                raise NotImplementedError(ts)
+            
+            ser_ = ser.reindex(ser.index.union(ts))
+            ser_interpolated = ser_.interpolate(method='time')
+            result = ser_interpolated.reindex(ts)
+            if isiterable:
+                return result.values
+            else:
+                return result.values[0]
 
         # store the interpolator
         self.variables[varname]['interpolator'] = interpolate
 
         # update docstring for this variable
-        interpolate.__doc__ = "A function that returns {} in [{}].".format(varname,units)
+        for _ in self.meta['parameters']:
+            if _['name'] == 'B_GSE_c':
+                interpolate.__doc__ = "{} in [{}].".format(_['description'], units)
 
         self[varname] = kamodofy(interpolate, 
                                  units = units, 
                                  citation = "De Zeeuw 2020",
                                  data = None)
+
+
+    def register_hat(self, component_id, direction):
+        @kamodofy
+        def component(xvec):
+            return xvec[:, component_id]
+
+        self['{}hat'.format(direction)] = component
+
+    def register_components(self):
+        for i, _ in enumerate(self.possible_directions):
+            self.register_hat(i, _)
+
+        for param in self.meta['parameters']:
+            if param.get('size', [1])[-1] > 1:
+                var_orig = param['name']
+                var_split = var_orig.split('_')
+                var_base = var_split[0]
+                var_end = '_'.join(var_split[1:])
+                for component in self.possible_directions:
+                    var_hat = '{}hat'.format(component)
+                    var_name = '{}_{}__{}'.format(var_base, component, var_end)
+                    self[var_name] = '{}({})'.format(var_hat, var_orig)
 
     def fill2nan(self, verbose=False):
         '''

@@ -165,6 +165,10 @@ class SATEXTRACT(Kamodo):
 
         ser = pd.Series(data, index=pd.DatetimeIndex(times))
 
+
+        @kamodofy(units = units, 
+                  citation = "De Zeeuw 2020",
+                  data = None)
         def interpolate(t=times):
             ts = t
             isiterable = isinstance(t, Iterable)
@@ -187,7 +191,7 @@ class SATEXTRACT(Kamodo):
                 return result.values
             else:
                 return result.values[0]
-                
+
         # store the interpolator
         self.variables[varname]['interpolator'] = interpolate
 
@@ -195,10 +199,7 @@ class SATEXTRACT(Kamodo):
         interpolate.__doc__ = "A function that returns {} in [{}].".format(varname,units)
 
         var_reg = '{}__{}'.format(varname, self.coordinates)
-        self[var_reg] = kamodofy(interpolate, 
-                                 units = units, 
-                                 citation = "De Zeeuw 2020",
-                                 data = None)
+        self[var_reg] = interpolate
 
     def fill2nan(self):
         '''
