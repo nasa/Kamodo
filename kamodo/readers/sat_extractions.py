@@ -6,6 +6,10 @@ from datetime import timezone
 import urllib
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
+from pandas import DatetimeIndex
+from collections.abc import Iterable
+
 
 def ror_get_extraction(server, runID, coord, satellite):
     '''Query for file contents from server'''
@@ -17,11 +21,11 @@ def ror_get_extraction(server, runID, coord, satellite):
 class SATEXTRACT(Kamodo):
     def __init__(self, runID, coord, satellite, **kwargs):
         super(SATEXTRACT, self).__init__(**kwargs)
-        self.verbose=False
-        self.symbol_registry=dict()
-        self.signatures=dict()
+        self.verbose=False # overrides kwarg
+        self.symbol_registry=dict() # wipes any user-defined symbols
+        self.signatures=dict() # wipes any user-defined signatures
         self.RE=6.3781E3
-        self.server = "https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR/"
+        self.server = "https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR/" # should be set by keyword
         self.runID = runID
         self.coordinates = coord
         self.satellite = satellite
@@ -133,7 +137,8 @@ class SATEXTRACT(Kamodo):
                 times.append(dd)
                 for s in parts[6:]:
                     arrays.append(float(s))
-        self.dtarray=np.array([dd for dd in times])
+        # self.dtarray=np.array([dd for dd in times])
+        self.dtarray = pd.to_datetime(times)
         self.tsarray = np.array([d.timestamp() for d in self.dtarray])
         
         nvar=len(vars)
@@ -155,17 +160,42 @@ class SATEXTRACT(Kamodo):
     def register_variable(self, varname, units):
         """register variables into Kamodo for this service, CCMC ROR satellite extractions"""
 
-        def interpolate(timestamp):  
-            data =  self.variables[varname]['data']
-            return np.interp(timestamp,self.tsarray,data)
+        data =  self.variables[varname]['data']
+        times = self.dtarray
 
+        ser = pd.Series(data, index=pd.DatetimeIndex(times))
+
+        def interpolate(t=times):
+            ts = t
+            isiterable = isinstance(t, Iterable)
+
+            if isinstance(ts, DatetimeIndex):
+                pass
+            elif isinstance(ts, float):
+                ts = pd.to_datetime([ts], utc=True, unit='s')
+            elif isiterable:
+                if isinstance(ts[0], float):
+                    ts = pd.to_datetime(ts, utc=True, unit='s')
+                ts = DatetimeIndex(ts)
+            else:
+                raise NotImplementedError(ts)
+            
+            ser_ = ser.reindex(ser.index.union(ts))
+            ser_interpolated = ser_.interpolate(method='time')
+            result = ser_interpolated.reindex(ts)
+            if isiterable:
+                return result.values
+            else:
+                return result.values[0]
+                
         # store the interpolator
         self.variables[varname]['interpolator'] = interpolate
 
         # update docstring for this variable
         interpolate.__doc__ = "A function that returns {} in [{}].".format(varname,units)
 
-        self[varname] = kamodofy(interpolate, 
+        var_reg = '{}__{}'.format(varname, self.coordinates)
+        self[var_reg] = kamodofy(interpolate, 
                                  units = units, 
                                  citation = "De Zeeuw 2020",
                                  data = None)

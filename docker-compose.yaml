@@ -1,0 +1,37 @@
+version: "3.7"
+
+services:
+  hapi-dev:
+    image: ccmc/hapi
+    ports:
+      - "8881:8888"
+    command:
+      - jupyter
+      - notebook
+      - ./docs/notebooks/CCMC_Satellite-Extractions.ipynb
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /kamodo
+    working_dir: /kamodo
+  hapi-orig: # don't mount latest
+    image: ccmc/hapi
+    ports:
+      - "8888:8888"
+    command:
+      - jupyter
+      - notebook
+      - .
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+    # volumes:
+    #   - type: bind
+    #     source: ${PWD}
+    #     target: /kamodo
+    working_dir: /kamodo
