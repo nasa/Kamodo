@@ -6,7 +6,7 @@ Created on Mon May 17 18:53:35 2021
 """
 from datetime import datetime, timezone
 from numpy import vectorize
-
+from os.path import isfile, basename
 #read 1 day of data from cdf instead of from multiple .tec files
 
 
@@ -52,7 +52,7 @@ def dts_to_hrs(datetime_string, filedate):
 def filename_to_dts(filename, string_date):
     '''Get datetime string in format "YYYY-MM-SS HH:mm:SS" from filename'''
     
-    mmhhss = filename.split('/')[-1].split('\\')[-1][12:18]
+    mmhhss = basename(filename)[12:18]
     return string_date+' '+mmhhss[:2]+':'+mmhhss[2:4]+':'+mmhhss[4:] 
 
 def dts_to_ts(file_dts):
@@ -73,7 +73,6 @@ def ts_to_hrs(time_val, filedate):
 #files = glob.glob(file_dir+'i_e*.tec')  #for wrapper, this and the next line
 #file_patterns = unique([file_dir+f.split('/')[-1].split('\\')[-1][:11] for f in files])
 def MODEL():
-    from os.path import isfile, basename
     from numpy import array, NaN, abs, unique, append, zeros, diff, where, insert, flip
     from time import perf_counter
     from netCDF4 import Dataset
@@ -250,9 +249,7 @@ def MODEL():
                 
             #store coordinate data
             #self._radius = array(cdf_data.variables['radius'])
-            lat = array(cdf_data.variables['lat'])  #NOT FULL RANGE IN LATITIUDE!!!
-            lat = insert(lat, 0, lat[0]-diff(lat).max())  #insert a grid point at beginning 
-            self._lat = append(lat, lat[-1]+diff(lat).max())   #and at the end            
+            self._lat = array(cdf_data.variables['lat'])  
             self._lon = array(cdf_data.variables['lon'])
             cdf_data.close()
             if verbose: print(f'Took {perf_counter()-t0:.6f}s to read in data')
@@ -278,18 +275,6 @@ def MODEL():
                               f'{len(varname_list)} variables.')
             if verbose: print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy '+\
                               f'{len(gvar_list)} variables.')
-
-        def wrap_3Dlat(self, varname, variable):
-            '''Wraps the data array in latitude (0=-2, -1=1)'''
-        
-            shape_list = list(variable.shape)  #e.g. time, lat, lon -> time, lon, lat!!!
-            shape_list[2]+=2  #need two more places in latitude
-            tmp_arr = zeros(shape_list)  #array to set-up wrapped data in
-            tmp_arr[:,:,1:-1]=variable  #copy data into grid
-            tmp_arr[:,:,0] = flip(tmp_arr[:,:,-2],axis=1)  #wrap in latitude...
-            tmp_arr[:,:,-1] = flip(tmp_arr[:,:,1],axis=1)  #reverse past poles           
-            self.variables[varname]['data'] = tmp_arr
-            return tmp_arr  
         
         #define and register a 3D variable-----------------------------------------
         def register_3D_variable(self, units, variable, varname, gridded_int):
@@ -297,8 +282,7 @@ def MODEL():
             
             #define and register the interpolators
             xvec_dependencies = {'time':'hr','lon':'deg','lat':'deg'}
-            wrapped_data = self.wrap_3Dlat(varname, variable)
-            self = regdef_3D_interpolators(self, units, wrapped_data, self._time, 
+            self = regdef_3D_interpolators(self, units, variable, self._time, 
                                            self._lon, self._lat, varname, 
                                            xvec_dependencies, gridded_int)       
             return 
