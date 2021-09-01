@@ -8,6 +8,7 @@ from glob import glob
 import numpy as np
 from time import perf_counter
 from datetime import datetime, timezone
+from os.path import basename
 #from astropy.constants import R_earth
 from netCDF4 import Dataset
 
@@ -44,7 +45,7 @@ def dts_to_hrs(datetime_string, filedate):
 def filename_to_dts(filename, string_date):
     '''Get datetime string in format "YYYY-MM-SS HH:mm:SS" from filename'''
     
-    mmhhss = filename.split('/')[-1].split('\\')[-1][12:18]
+    mmhhss = basename(filename)[12:18]
     return string_date+' '+mmhhss[:2]+':'+mmhhss[2:4]+':'+mmhhss[4:] 
 
 def dts_to_ts(file_dts):
@@ -145,7 +146,7 @@ def _read_SWMFIE(file_prefix, verbose=False):
     
     #establish time attributes first for file searching
     files = glob(file_prefix+'*.tec')   #take one day of data
-    file_datestr = file_prefix.split('/')[-1].split('\\')[-1][3:11]
+    file_datestr = basename(file_prefix)[3:11]
     string_date = file_datestr[:4]+'-'+file_datestr[4:6]+'-'+file_datestr[6:8]  #'YYYY-MM-DD' 
     print('CONVERTER:', file_prefix, file_datestr, string_date)
     filedate = datetime.strptime(string_date+' 00:00:00', \
