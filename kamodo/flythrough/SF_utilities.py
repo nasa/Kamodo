@@ -85,7 +85,7 @@ def day_files(file_pattern, model, call_type):
         files, times = glob(file_pattern), {}
         
     #collect only time information from files for full time range
-    reader = MW.Model_Reader()
+    reader = MW.Model_Reader(model)
     for f in files:
         k = reader(f, variables_requested=[], filetime=True, fulltime=True, printfiles=False)
         if hasattr(k, 'conversion_test'): 
@@ -287,7 +287,7 @@ def CalcIlev(H, Hunit, t, c1_val, c2_val, height, ilev_grid, z_unit, high_res, v
     if height>max_height:
         if verbose: print('Given height is above pressure level. Returning max possible pressure level instead')
         return ilev_grid.max(), abs(height-max_height)
-    
+
     #continue with numerical inversion
     ilev_idx = argsort(npabs(height-rough_height))[0] #first value may not be in center of curve
     if ilev_idx==len(ilev_grid)-1: ilev_idx-=1  #use end instead to avoid errors
