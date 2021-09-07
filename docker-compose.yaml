@@ -1,6 +1,35 @@
 version: "3.7"
 
 services:
+  kamodo:
+    image: ccmc/kamodo
+    ports:
+      - "8888:8888"
+    command:
+      - jupyter
+      - notebook
+      - /kamodo
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+  kamodo-dev:
+    image: ccmc/kamodo
+    ports:
+      - "8889:8888"
+    command:
+      - jupyter
+      - notebook
+      - /kamodo
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /kamodo
+    working_dir: /kamodo
   hapi-dev:
     image: ccmc/hapi
     ports:
@@ -21,7 +50,7 @@ services:
   hapi-orig: # don't mount latest
     image: ccmc/hapi
     ports:
-      - "8888:8888"
+      - "8889:8888"
     command:
       - jupyter
       - notebook
