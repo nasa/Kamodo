@@ -146,7 +146,7 @@ def MODEL():
     from numpy import array, unique, NaN, diff, abs, append, zeros, where
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from kamodo.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators    
 
     #main class object
@@ -164,7 +164,7 @@ def MODEL():
             #check for prepared .nc files
             file_prefix = basename(full_file_prefix)
             file_dir = full_file_prefix.split(file_prefix)[0]
-            total_files = glob(file_dir+file_prefix+'*')
+            total_files = sorted(glob(file_dir+file_prefix+'*'))
             if len(file_prefix.split('_')[-1])==2:  #asking for hourly files (looping)
                 self.patterns = unique([basename(f)[:16] for f in total_files \
                                         if basename(f)[13:16]!='.nc' and \
@@ -217,7 +217,7 @@ def MODEL():
             if fulltime:  #add boundary time (default value)
                 t_search = perf_counter()
                 #find other files with same pattern
-                files = glob(file_dir+'*')
+                files = sorted(glob(file_dir+'*'))
                 if day_tag:  #perform task with day files
                     file_prefixes = unique(['*'+basename(f)[7:13] for f in files\
                                             if 'GITM' not in basename(f) and \

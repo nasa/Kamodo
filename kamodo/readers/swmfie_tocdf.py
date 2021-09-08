@@ -8,6 +8,7 @@ from glob import glob
 import numpy as np
 from time import perf_counter
 from datetime import datetime, timezone
+from os.path import basename
 #from astropy.constants import R_earth
 from netCDF4 import Dataset
 
@@ -44,7 +45,7 @@ def dts_to_hrs(datetime_string, filedate):
 def filename_to_dts(filename, string_date):
     '''Get datetime string in format "YYYY-MM-SS HH:mm:SS" from filename'''
     
-    mmhhss = filename.split('/')[-1].split('\\')[-1][12:18]
+    mmhhss = basename(filename)[12:18]
     return string_date+' '+mmhhss[:2]+':'+mmhhss[2:4]+':'+mmhhss[4:] 
 
 def dts_to_ts(file_dts):
@@ -131,7 +132,8 @@ def read_SWMFIE_data(filename, header):
     nLatA, nLon = np.unique(data1[:,3]).size, np.unique(data1[:,4]).size    
     data = np.concatenate((np.reshape(data1,(nLon,nLatA,len(header['variable_list']))),
                            np.reshape(data2,(nLon,nLatA,len(header['variable_list'])))),
-                          axis=1)[:,::-1,:]
+                          axis=1)[:,::-1,:]  #leave since grids are identical in N/S hemispheres
+    
     return {swmfie_varnames[header['variable_list'][i]][0]:np.transpose(data[:,:,i],[1,0]) for i in \
                      range(len(header['variable_list']))}, theta_Btilt      
     
@@ -144,7 +146,7 @@ def _read_SWMFIE(file_prefix, verbose=False):
     
     #establish time attributes first for file searching
     files = glob(file_prefix+'*.tec')   #take one day of data
-    file_datestr = file_prefix.split('/')[-1].split('\\')[-1][3:11]
+    file_datestr = basename(file_prefix)[3:11]
     string_date = file_datestr[:4]+'-'+file_datestr[4:6]+'-'+file_datestr[6:8]  #'YYYY-MM-DD' 
     print('CONVERTER:', file_prefix, file_datestr, string_date)
     filedate = datetime.strptime(string_date+' 00:00:00', \
@@ -169,12 +171,15 @@ def _read_SWMFIE(file_prefix, verbose=False):
     
     #collect coordinates and intialize data storage from first file
     data, Btilt = read_SWMFIE_data(files[0], file_header)
-    lon, lat = np.unique(data['psi']), np.unique(data['theta'])-90.
-    lat = np.insert(lat, np.where(lat==0.)[0], 0.)
+    lon, lat0 = np.unique(data['psi']), np.unique(data['theta'])-90.
+    lon -= 180 #shifting longitude to be in range -180 to 180 for SM coordinates
+    lat0 = np.insert(lat0, np.where(lat0==0.)[0], 0.)
     #interpolator requires unique ascending values, offset two zero values by 0.0001
-    lat[np.where(lat==0.)[0]] = -0.0001, 0.0001
+    lat0[np.where(lat0==0.)[0]] = -0.0001, 0.0001
+    lat = np.insert(lat0,0,-90.)
+    lat = np.append(lat,90.)  #add values for poles for wrapping
     #height = np.array([R_earth.value/1000.])
-    radius = np.array([1.])
+    radius = np.array([1.])  #placeholder value of one earth radius
     #data is 2D (lon, lat) with time, so no height
     theta_Btilt = [Btilt]   #to append more values later
     psi_Btilt = np.repeat(0., len(files))   #this value is always zero
@@ -184,6 +189,10 @@ def _read_SWMFIE(file_prefix, verbose=False):
                  if value[0] in gvar_list}
     variables = {key:[[data[key]]] for key in gvar_list}
 
+    #determine where to split arrays in longitude
+    lon_idx = min(np.where(lon>0)[0])
+    #print(lon.size, lon_idx, lon.size%2)    
+
     #add data for other files
     if verbose: print(f'Reading {len(files)} files...')
     for f in files[1:]: 
@@ -191,10 +200,35 @@ def _read_SWMFIE(file_prefix, verbose=False):
         theta_Btilt.append(Btilt)
         for var_key in variables: 
             variables[var_key].append([data[var_key]])
+            
     #convert to arrays
     theta_Btilt = np.array(theta_Btilt, dtype=float)
     for var_key in variables:
         variables[var_key] = np.concatenate(tuple(variables[var_key]))
+        new_data = np.transpose(variables[var_key], (0,2,1))   #(t,lat,lon) -> (t,lon,lat)
+        #print(var_key, new_data.shape)
+        
+        #original longitude range is from 0 to 360, moving data to be from -180 to 180 instead
+        #without changing the longitude reference point
+        tmp = np.zeros(new_data.shape)
+        tmp[:,:lon_idx-lon.size%2,:] = new_data[:,lon_idx:,:]
+        tmp[:,lon_idx-lon.size%2:,:] = new_data[:,:lon_idx,:]
+        
+        #wrap latitude for scalar variables (all to be treated as scalars)
+        new_shape = list(tmp.shape)
+        new_shape[2]+=2  #one value on each end
+        tmp2 = np.zeros(new_shape)
+        tmp2[:,:,1:-1] = tmp
+        # put in top values
+        top = np.mean(tmp2[:,:,1],axis=1)  #same shape as time axis
+        new_top = np.broadcast_to(top, (new_shape[1],new_shape[0])).T
+        tmp2[:,:,0] = new_top
+        #same for bottom, reusing variable names
+        top = np.mean(tmp2[:,:,-2],axis=1)  #same shape as time axis
+        new_top = np.broadcast_to(top, (new_shape[1],new_shape[0])).T
+        tmp2[:,:,-1] = new_top        
+        variables[var_key] = tmp2  #store result
+        
     coords = {'time':time, 'radius':radius, 'lat':lat, 'lon':lon}
     variables['theta_Btilt'], variables['psi_Btilt'] = theta_Btilt, psi_Btilt
     var_units['theta_Btilt'], var_units['psi_Btilt'] = 'deg','deg'
@@ -224,7 +258,7 @@ def _toCDF(filename, files, coords, variables, var_units, filedate):
     for variable_name in variables.keys(): 
         if len(variables[variable_name].shape)==3:
             new_var = data_out.createVariable(variable_name, np.float64, ('time','lon','lat'))
-            new_data = np.transpose(variables[variable_name], (0,2,1))   #(t,lat,lon) -> (t,lon,lat)
+            new_data = variables[variable_name]
         elif variable_name in var_1D:
             new_var = data_out.createVariable(variable_name, np.float64, ('time'))
             new_data = variables[variable_name]

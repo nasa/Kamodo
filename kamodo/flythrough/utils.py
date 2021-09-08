@@ -120,7 +120,7 @@ def ConvertCoord(inTime,c1,c2,c3,inCoord,inType,outCoord,outType):
             outUnits[i]='R_E'
 
     toc = time.perf_counter()
-    print('Converted from:',inCoord,inType,'to:',outCoord,outType,outUnits,'in',"{:0.4f}".format(toc-tic),'seconds.')
+    print('Converted from ',inCoord,inType,'to:',outCoord,outType,outUnits,'in',"{:0.4f}".format(toc-tic),'seconds.')
 
     return xx,yy,zz,outUnits
 
