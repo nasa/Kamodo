@@ -363,79 +363,86 @@ def MODEL():
             shape_list[1]+=1  #need one more place in longitude
             tmp_arr = zeros(shape_list)  #array to set-up wrapped data in
             tmp_arr[0:,:-1,1:-1]=variable  #copy data into grid
-            tmp_arr[:,-1,1:-1] = variable[:,0,:]  #wrap in longitude first
             
             #wrapping in latitude for scalar variables
             # put in top values
-            top = mean(tmp_arr[:,:,1],axis=1)  #same shape as time axis
-            new_top = broadcast_to(top, (shape_list[1],shape_list[0])).T
-            tmp_arr[:,:,0] = new_top
+            top = mean(tmp_arr[:,:-1,1],axis=1)  #same shape as time axis
+            tmp_arr[:,:-1,0] = broadcast_to(top, (shape_list[1]-1,shape_list[0])).T
             #same for bottom, reusing variable names
-            top = mean(tmp_arr[:,:,-2],axis=1)  #same shape as time axis
-            new_top = broadcast_to(top, (shape_list[1],shape_list[0])).T
-            tmp_arr[:,:,-1] = new_top                    
+            top = mean(tmp_arr[:,:-1,-2],axis=1)  #same shape as time axis
+            tmp_arr[:,:-1,-1] = broadcast_to(top, (shape_list[1]-1,shape_list[0])).T
+            
+            #wrap in longitude after to prevent double counting in average
+            tmp_arr[:,-1,:] = variable[:,0,:]  
             self.variables[varname]['data'] = tmp_arr  #store result
             return tmp_arr        
-    
-        def vec_mag(self, data):
-            '''Given an array dependent on longitude, find the net vector magnitude.'''
- 
-            x_sum = sum([val*cos(long/nppi) for val, long in zip(data, self._lon[:-1]+180.)]) 
-            y_sum = sum([val*sin(long/nppi) for val, long in zip(data, self._lon[:-1]+180.)])
-            val = sqrt(x_sum**2+y_sum**2)
-            return repeat(val, self._lon.size)
     
         def wrap_4Dlatlon(self, varname, variable):
             '''Wraps the data array in longitude (-180=180), and latitude (0=-2, -1=1)'''
         
-            shape_list = list(variable.shape)  #e.g. time, ilev, lat, lon -> time, lon, lat, ilev!!!
+            shape_list = list(variable.shape)  #time, lon, lat, ilev
             shape_list[2]+=2  #need two more places in latitude
             shape_list[1]+=1  #need one more place in longitude
             tmp_arr = zeros(shape_list)  #array to set-up wrapped data in
             tmp_arr[:,:-1,1:-1,:] = variable  #copy data into grid
-            tmp_arr[:,-1,1:-1,:] = variable[:,0,:,:]  #wrap in longitude first
             
-            #wrapping in latitude for scalar variables
+            #wrapping in latitude for scalar and cartesian/radial variables
             if varname not in ['u_n','v_n','u_iExB','v_iExB']:
                 #print('Calculating scalar sum for', varname)
                 # put in top values
-                top = mean(tmp_arr[:,:,1,:],axis=1)  #average over longitudes
-                new_top = broadcast_to(top, (shape_list[1],shape_list[0],shape_list[3]))
-                new_top = transpose(new_top, (1,0,2))
-                tmp_arr[:,:,0,:] = new_top
+                top = mean(tmp_arr[:,:-1,1,:],axis=1)  #average over longitudes
+                tmp_arr[:,:-1,0,:] = transpose(broadcast_to(top, (shape_list[1]-1,shape_list[0],
+                                                       shape_list[3])), (1,0,2))
                 #same for bottom, reusing variable names
-                top = mean(tmp_arr[:,:,-2,:],axis=1)  #average over longitudes
-                new_top = broadcast_to(top, (shape_list[1],shape_list[0],shape_list[3]))
-                new_top = transpose(new_top, (1,0,2))
-                tmp_arr[:,:,-1,:] = new_top             
+                top = mean(tmp_arr[:,:-1,-2,:],axis=1)  #average over longitudes
+                tmp_arr[:,:-1,-1,:] = transpose(broadcast_to(top, (shape_list[1]-1,shape_list[0],
+                                                      shape_list[3])), (1,0,2))
             #wrapping in latitude for relevant vector variables
             elif varname in ['u_n','v_n','u_iExB','v_iExB']:
                 #print('Calculating vector sum for', varname)
                 #calculate net vector magnitude for top
-                top = tmp_arr[:,:-1,1,:]  #cut off wrapped longitude value, at pole
-                lon_arr = transpose(broadcast_to(self._lon[:-1], (shape_list[0],
-                                            shape_list[3], shape_list[1]-1)), (0,2,1))
-                xval = sum(top*cos((lon_arr+180.)/nppi), axis=1)  #same shape as
-                yval = sum(top*sin((lon_arr+180.)/nppi), axis=1)  #time and vertical
-                val = sqrt(xval**2+yval**2)
-                val_arr = transpose(broadcast_to(val, (shape_list[1]-1,shape_list[0],
-                                                       shape_list[3])), (1,0,2))
-                tmp_arr[:,:-1,0,:] = val_arr
-                tmp_arr[:,-1,0,:] = val_arr[:,0,:]  #wrap value in longitude
+                tmp_arr[:,:-1,0,:] = self.vector_average4D(tmp_arr[:,:-1,1,:], 
+                                                      shape_list, varname, self._lat[0])
                 #repeat for bottom
-                top = tmp_arr[:,:-1,-2,:]  #cut off wrapped longitude value, at pole
-                lon_arr = transpose(broadcast_to(self._lon[:-1], (shape_list[0],
-                                            shape_list[3], shape_list[1]-1)), (0,2,1))
-                xval = sum(top*cos((lon_arr+180.)/nppi), axis=1)  #same shape as
-                yval = sum(top*sin((lon_arr+180.)/nppi), axis=1)  #time and vertical
-                val = sqrt(xval**2+yval**2)
-                val_arr = transpose(broadcast_to(val, (shape_list[1]-1,shape_list[0],
-                                                       shape_list[3])), (1,0,2))
-                tmp_arr[:,:-1,-1,:] = val_arr
-                tmp_arr[:,-1,-1,:] = val_arr[:,0,:]  #wrap value in longitude                
+                tmp_arr[:,:-1,-1,:] = self.vector_average4D(tmp_arr[:,:-1,-2,:],
+                                                      shape_list, varname, self._lat[-1])
+            tmp_arr[:,-1,:,:] = tmp_arr[:,0,:,:]  #wrap value in longitude                
             self.variables[varname]['data'] = tmp_arr  #store result
             return tmp_arr
-                    
+
+        def vector_average4D(self, top, shape_list, varname, latval):
+            '''find vector average at pole for array with shape (time, lon, height)'''
+        
+            #find net x and y components, final array shapes are time, lon, and height/ilev
+            lon_arr = transpose(broadcast_to(self._lon[:-1], (shape_list[0],
+                                        shape_list[3], shape_list[1]-1)), (0,2,1))      
+            #need to put 'old' shape at end in broadcast_to call ^
+            xval = sum(top*cos((lon_arr+180.)*nppi/180.), axis=1)  #same shape as
+            yval = sum(top*sin((lon_arr+180.)*nppi/180.), axis=1)  #time and vertical 
+            xarr = transpose(broadcast_to(xval, (shape_list[1]-1,shape_list[0], 
+                                                 shape_list[3])), (1,0,2))
+            yarr = transpose(broadcast_to(yval, (shape_list[1]-1,shape_list[0], 
+                                                 shape_list[3])), (1,0,2))
+
+            #convert to proper unit vector (see wiki on spherical coordinates)
+            if 'u' in varname:  #Zonal / east components -> convert to psi_hat vector (longitude)
+                # -xsin(psi)+ycos(psi), psi = longitude (0 to 360)
+                new_top = -xarr*sin((lon_arr+180.)*nppi/180.)+yarr*cos((lon_arr+180.)*nppi/180.)
+            elif 'v' in varname:  #meridional/north -> convert to theta_hat vector (latitude)
+                # xcos(psi)cos(theta)+ysin(psi)cos(theta),  sin(theta) is always zero at the poles
+                # theta = latitude (0 to 180), psi = longitude (0 to 360)
+                new_top = xarr*cos((lon_arr+180.)*nppi/180.)*cos((90.-latval)*nppi/180.)+\
+                    yarr*sin((lon_arr+180.)*nppi/180.)*cos((90.-latval)*nppi/180.)
+            
+            #flip around so values match longitude location (to keep zero reference point true)
+            zero_idx = min(where(self._lon>=0.)[0])  #find splitting index
+            top = zeros((shape_list[0],shape_list[1]-1,shape_list[3]))  #empty array for destination
+            div = (shape_list[1]-1)%2  #deal with even or odd number of non-wrapped longitude elements
+            #print(shape_list[1]-1, zero_idx, div)
+            top[:,:zero_idx-div,:] = new_top[:,zero_idx:,:]  #move last half to first half
+            top[:,zero_idx-div:,:] = new_top[:,:zero_idx,:]  #and vice versa
+            return top
+        
         ##### Define and register a 3D variable -----------------------------------------
         def register_3D_variable(self, units, variable, varname, gridded_int):
             """Registers a 3d interpolator with 3d signature"""
