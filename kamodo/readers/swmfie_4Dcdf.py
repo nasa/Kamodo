@@ -6,32 +6,32 @@ Created on Mon May 17 18:53:35 2021
 """
 from datetime import datetime, timezone
 from numpy import vectorize
-
+from os.path import isfile, basename
 #read 1 day of data from cdf instead of from multiple .tec files
 
 
-model_varnames={"Sigma_H":['Sigma_H','variable description',0,'SPH','sph',['time','lon','lat'],"S"],
-                "Sigma_P":['Sigma_P','variable description',1,'SPH','sph',['time','lon','lat'],"S"],
-                 "Phi_E":['Phi_E','variable description',2,'SPH','sph',['time','lon','lat'],"W/m**2"], 
-                 "AveE_avgE":['E_avg','variable description',3,'SPH','sph',['time','lon','lat'],'eV'],
-                 "j_R":["j_R",'variable description',4,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "Phi":["Phi",'variable description',5,'SPH','sph',['time','lon','lat'],"kV"],
-                 "E_x":["E_x",'variable description',6,'SPH','sph',['time','lon','lat'],"mV/m"],
-                 "E_y":["E_y",'variable description',7,'SPH','sph',['time','lon','lat'],"mV/m"],
-                 "E_z":["E_z",'variable description',8,'SPH','sph',['time','lon','lat'],"mV/m"],
-                 "j_x":["j_x",'variable description',9,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_y":["j_y",'variable description',10,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_z":["j_z",'variable description',11,'SPH','sph',['time','lon','lat'],"muA/m**2"],
-                 "v_x":['v_x','variable description',12,'SPH','sph',['time','lon','lat'],"km/s"],
-                 "v_y":['v_y','variable description',13,'SPH','sph',['time','lon','lat'],"km/s"],
-                 "v_z":['v_z','variable description',14,'SPH','sph',['time','lon','lat'],"km/s"],
-                 "Q_Joule":['Q_Joule','variable description',15,'SPH','sph',['time','lon','lat'],"mW/m**2"], 
-                 "Phi_nion":['Phi_nion','variable description',16,'SPH','sph',['time','lon','lat'],"1/cm**2/s"],
-                 "Binv_RT":['Binv_RT','variable description',17,'SPH','sph',['time','lon','lat'],"1/T"],
-                 "rho_RT":['rho_RT','variable description',18,'SPH','sph',['time','lon','lat'],"amu/cm**3"],
-                 "P_RT":['P_RT','variable description',19,'SPH','sph',['time','lon','lat'],"Pa"],
-                 "dLat_star":['dLat_star','variable description',20,'SPH','sph',['time','lon','lat'],"deg"],
-                 "dlon_star":['dlon_star','variable description',21,'SPH','sph',['time','lon','lat'],"deg"]}
+model_varnames={"Sigma_H":['Sigma_H','variable description',0,'SM','sph',['time','lon','lat'],"S"],
+                "Sigma_P":['Sigma_P','variable description',1,'SM','sph',['time','lon','lat'],"S"],
+                 "Phi_E":['Phi_E','variable description',2,'SM','sph',['time','lon','lat'],"W/m**2"], 
+                 "AveE_avgE":['E_avg','variable description',3,'SM','sph',['time','lon','lat'],'eV'],
+                 "j_R":["j_R",'variable description',4,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "Phi":["Phi",'variable description',5,'SM','sph',['time','lon','lat'],"kV"],
+                 "E_x":["E_x",'variable description',6,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_y":["E_y",'variable description',7,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_z":["E_z",'variable description',8,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "j_x":["j_x",'variable description',9,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_y":["j_y",'variable description',10,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_z":["j_z",'variable description',11,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "v_x":['v_x','variable description',12,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_y":['v_y','variable description',13,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_z":['v_z','variable description',14,'SM','sph',['time','lon','lat'],"km/s"],
+                 "Q_Joule":['Q_Joule','variable description',15,'SM','sph',['time','lon','lat'],"mW/m**2"], 
+                 "Phi_nion":['Phi_nion','variable description',16,'SM','sph',['time','lon','lat'],"1/cm**2/s"],
+                 "Binv_RT":['Binv_RT','variable description',17,'SM','sph',['time','lon','lat'],"1/T"],
+                 "rho_RT":['rho_RT','variable description',18,'SM','sph',['time','lon','lat'],"amu/cm**3"],
+                 "P_RT":['P_RT','variable description',19,'SM','sph',['time','lon','lat'],"Pa"],
+                 "dLat_star":['dLat_star','variable description',20,'SM','sph',['time','lon','lat'],"deg"],
+                 "dlon_star":['dlon_star','variable description',21,'SM','sph',['time','lon','lat'],"deg"]}
                  
  
 '''                
@@ -52,7 +52,7 @@ def dts_to_hrs(datetime_string, filedate):
 def filename_to_dts(filename, string_date):
     '''Get datetime string in format "YYYY-MM-SS HH:mm:SS" from filename'''
     
-    mmhhss = filename.split('/')[-1].split('\\')[-1][12:18]
+    mmhhss = basename(filename)[12:18]
     return string_date+' '+mmhhss[:2]+':'+mmhhss[2:4]+':'+mmhhss[4:] 
 
 def dts_to_ts(file_dts):
@@ -73,12 +73,11 @@ def ts_to_hrs(time_val, filedate):
 #files = glob.glob(file_dir+'i_e*.tec')  #for wrapper, this and the next line
 #file_patterns = unique([file_dir+f.split('/')[-1].split('\\')[-1][:11] for f in files])
 def MODEL():
-    from os.path import isfile, basename
     from numpy import array, NaN, abs, unique, append, zeros, diff, where, insert, flip
     from time import perf_counter
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from kamodo.readers.reader_utilities import regdef_3D_interpolators    
        
     class MODEL(Kamodo): 
@@ -135,7 +134,7 @@ def MODEL():
                 #find other files with same pattern
                 from glob import glob
                 
-                files = glob(file_dir+'i_e*')
+                files = sorted(glob(file_dir+'i_e*'))
                 if day_flag: 
                     file_prefixes = unique([basename(f)[:11] for f in files\
                                             if '.nc' not in basename(f)])
@@ -250,9 +249,7 @@ def MODEL():
                 
             #store coordinate data
             #self._radius = array(cdf_data.variables['radius'])
-            lat = array(cdf_data.variables['lat'])  #NOT FULL RANGE IN LATITIUDE!!!
-            lat = insert(lat, 0, lat[0]-diff(lat).max())  #insert a grid point at beginning 
-            self._lat = append(lat, lat[-1]+diff(lat).max())   #and at the end            
+            self._lat = array(cdf_data.variables['lat'])  
             self._lon = array(cdf_data.variables['lon'])
             cdf_data.close()
             if verbose: print(f'Took {perf_counter()-t0:.6f}s to read in data')
@@ -278,18 +275,6 @@ def MODEL():
                               f'{len(varname_list)} variables.')
             if verbose: print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy '+\
                               f'{len(gvar_list)} variables.')
-
-        def wrap_3Dlat(self, varname, variable):
-            '''Wraps the data array in latitude (0=-2, -1=1)'''
-        
-            shape_list = list(variable.shape)  #e.g. time, lat, lon -> time, lon, lat!!!
-            shape_list[2]+=2  #need two more places in latitude
-            tmp_arr = zeros(shape_list)  #array to set-up wrapped data in
-            tmp_arr[:,:,1:-1]=variable  #copy data into grid
-            tmp_arr[:,:,0] = flip(tmp_arr[:,:,-2],axis=1)  #wrap in latitude...
-            tmp_arr[:,:,-1] = flip(tmp_arr[:,:,1],axis=1)  #reverse past poles           
-            self.variables[varname]['data'] = tmp_arr
-            return tmp_arr  
         
         #define and register a 3D variable-----------------------------------------
         def register_3D_variable(self, units, variable, varname, gridded_int):
@@ -297,8 +282,7 @@ def MODEL():
             
             #define and register the interpolators
             xvec_dependencies = {'time':'hr','lon':'deg','lat':'deg'}
-            wrapped_data = self.wrap_3Dlat(varname, variable)
-            self = regdef_3D_interpolators(self, units, wrapped_data, self._time, 
+            self = regdef_3D_interpolators(self, units, variable, self._time, 
                                            self._lon, self._lat, varname, 
                                            xvec_dependencies, gridded_int)       
             return 

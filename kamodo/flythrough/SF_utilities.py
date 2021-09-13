@@ -85,7 +85,7 @@ def day_files(file_pattern, model, call_type):
         files, times = glob(file_pattern), {}
         
     #collect only time information from files for full time range
-    reader = MW.Model_Reader()
+    reader = MW.Model_Reader(model)
     for f in files:
         k = reader(f, variables_requested=[], filetime=True, fulltime=True, printfiles=False)
         if hasattr(k, 'conversion_test'): 
@@ -287,7 +287,7 @@ def CalcIlev(H, Hunit, t, c1_val, c2_val, height, ilev_grid, z_unit, high_res, v
     if height>max_height:
         if verbose: print('Given height is above pressure level. Returning max possible pressure level instead')
         return ilev_grid.max(), abs(height-max_height)
-    
+
     #continue with numerical inversion
     ilev_idx = argsort(npabs(height-rough_height))[0] #first value may not be in center of curve
     if ilev_idx==len(ilev_grid)-1: ilev_idx-=1  #use end instead to avoid errors
@@ -367,12 +367,13 @@ def sat_tracks(variable_list, kamodo_object, sat_time, c1, c2, c3, z_unit,
             sat_time,c1,c2,c3)]
         for ilev_string in ilev_list:
             if ilev_string in z_dependencies.keys():
-                #add new track type to dictionary
-                sat_ilev = call_CalcIlev(ilev_string, kamodo_object, sat_track0, 
-                                         z_unit, high_res)    
-                sat_track[ilev_string]=[[t, c1_val, c2_val, ilev_val] for \
-                                        t, c1_val, c2_val, ilev_val in zip(
-                    sat_time,c1,c2,sat_ilev)]
+                if len(z_dependencies[ilev_string])>0:  #ignore empty lists
+                    #add new track type to dictionary
+                    sat_ilev = call_CalcIlev(ilev_string, kamodo_object, sat_track0, 
+                                             z_unit, high_res)    
+                    sat_track[ilev_string]=[[t, c1_val, c2_val, ilev_val] for \
+                                            t, c1_val, c2_val, ilev_val in zip(
+                        sat_time,c1,c2,sat_ilev)]
                 if verbose: print(f'{ilev_string} track added')              
         if verbose: print(f'Conversion took {perf_counter()-start} s for {len(sat_time)} positions.')
     
@@ -386,8 +387,13 @@ def Model_FlyAway(reader, filename, variable_list, sat_time, c1, c2, c3,
     var_list = variable_list.copy()  #save copy before it gets altered by the reader
     kamodo_object = reader(filename, variables_requested=variable_list, gridded_int=False)
     
+    #remove requested variables not found in data from variable list and z_dependencies
+    newvar_list = [var for var in var_list if var in kamodo_object.variables.keys()]
+    z_dependencies = {key:[var for var in value if var in newvar_list] \
+                      for key, value in z_dependencies.items()}
+    
     #create satellite tracks of types needed based on vertical dependencies
-    sat_track = sat_tracks(variable_list, kamodo_object, sat_time, c1, c2, c3,
+    sat_track = sat_tracks(newvar_list, kamodo_object, sat_time, c1, c2, c3,
                            z_unit, z_dependencies, high_res, verbose=verbose)
 
     #retrieve interpolator and interpolate data for each variable, using track 
@@ -398,7 +404,7 @@ def Model_FlyAway(reader, filename, variable_list, sat_time, c1, c2, c3,
     
     results = {var: kamodo_object[var](sat_track[[key for key, value in \
                                              z_dependencies.items() if var in value][0]])\
-               for var in var_list}
+               for var in newvar_list}
     
     return results
 
@@ -516,7 +522,9 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
     coord_dict = coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, coord_grid)
     
     #perform flythroughs
-    print('Interpolating data...')
+    print('Interpolating through model data...',end="")
+    #print(coord_dict['GDZ,sph'][0], coord_dict['GDZ,sph'][5])
+    interp_time = perf_counter()
     for key in coord_dict.keys():
         #interpolate requested data for each day. FlyAway is specific to each wrapper
         #reader, file_name, variable_list, sat_time in hrs, c1, c2, c3, z_unit, z_dependencies, high_res
@@ -537,6 +545,7 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
         #collect interpolated data into the same dictionary
         for var in newvar_list:  #sort and combine arrays for the same variable
             results_dict[var] = concatenate(tuple([results[var] for results in list_results]))
+    print(f'done in {perf_counter()-interp_time:.5f} s.')
 
     return results_dict
 
@@ -546,7 +555,7 @@ def Prepare_Files(model, file_dir, call_type='normal'):
     #Determine possible file patterns. Create wrapped files if needed.
     file_patterns = MW.FileSearch(model, file_dir, call_type=call_type)
     times = check_timescsv(file_patterns, model, call_type=call_type)  #reader creates converted files if DNE
-    print('Files prepared for run.')
+    #print('Files prepared for run.')
     return 
 
 #----------Code below is for Single Satellite Flythrough software--------------------------------

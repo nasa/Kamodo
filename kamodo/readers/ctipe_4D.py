@@ -62,7 +62,7 @@ def MODEL():
     from time import perf_counter
     from os.path import isfile, basename
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from netCDF4 import Dataset 
     from kamodo.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators
     
@@ -121,7 +121,7 @@ def MODEL():
                 from glob import glob
                 
                 file_pattern = file_dir+'*.nc' #returns a string for tiegcm
-                files = glob(file_pattern)
+                files = sorted(glob(file_pattern))
                 prefix_list = unique([basename(f)[:10] for f in files \
                                             if 'CTIPe' not in basename(f)])
                 

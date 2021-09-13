@@ -2,7 +2,7 @@
 TIEGCM Kamodo reader, adapted to new structure for satellite flythrough software
 Initial version - Asher Pembroke (?)
 Initial version of model_varnames contributed by Zachary Waldron
-New code: Rebecca Ringuette (June-July 2021)
+New code: Rebecca Ringuette (June 2021 and on)
 
 NOTE: The current logic for variables that depend on imlev slices off self._imlev coordinate
     This only works because there is one variable that depends on imlev: H_imlev
@@ -10,15 +10,6 @@ NOTE: The current logic for variables that depend on imlev slices off self._imle
 
 Remaining tasks:
     - check variable dictionary for proper naming, and use of units in Kamodo
-    
-year = np.array(cdf_data.variables['year'])
-
-mtime = np.array(cdf_data.variables['mtime'])
-
-days, hours, minutes = mtime.T
-
-datetime(year[0],1,1).replace(tzinfo=timezone.utc)+timedelta(days=int(days[0]-1),hours=int(hours[0]),minutes=int(minutes[0]))
-Out[57]: datetime.datetime(2003, 11, 18, 1, 0, tzinfo=datetime.timezone.utc)    
     
     
 '''
@@ -143,10 +134,11 @@ def MODEL():
     from time import perf_counter
     from os.path import basename
     from numpy import zeros, transpose, array, append, insert, where, unique 
-    from numpy import NaN, diff, flip, abs
+    from numpy import NaN, diff, abs, mean, broadcast_to, cos, sin, repeat, sqrt, sum
+    from numpy import pi as nppi
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    print('KAMODO IMPORTED!')
+    #print('KAMODO IMPORTED!')
     from kamodo.readers.reader_utilities import regdef_3D_interpolators, regdef_4D_interpolators    
     
     class MODEL(Kamodo): 
@@ -192,7 +184,7 @@ def MODEL():
                 from glob import glob
                 
                 file_pattern = file_dir+'s*.nc' #returns a string for tiegcm
-                files = glob(file_pattern)
+                files = sorted(glob(file_pattern))
                 filenames = unique([basename(f) for f in files])
                 
                 #find closest file by utc timestamp
@@ -278,7 +270,7 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
                                  key not in avoid_list]
-    
+
             # Store the requested variables into a dictionary 
             variables = {model_varnames[key][0]:{'units':model_varnames[key][-1], 
                                'data':array(cdf_data.variables[key])}\
@@ -310,8 +302,8 @@ def MODEL():
                 
             #store coordinates
             lat = array(cdf_data.variables['lat'])  #NOT FULL RANGE IN LATITIUDE!!!
-            lat = insert(lat, 0, lat[0]-diff(lat).min())  #insert a grid point at beginning (before -87.5)
-            self._lat = append(lat, lat[-1]+diff(lat).min())   #and at the end (after 87.5)
+            lat = insert(lat, 0, -90)  #insert a grid point at beginning (before -87.5)
+            self._lat = append(lat, 90.)   #and at the end (after 87.5)
             lon = array(cdf_data.variables['lon'])  #NOT WRAPPED IN LONGITUDE!!!!!
             self._lon = append(lon, 180.)  #add 180. to end of array            
             self._ilev = array(cdf_data.variables['lev'])
@@ -362,35 +354,95 @@ def MODEL():
                               f'{len(varname_list)} variables.')
             if verbose: print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy '+\
                               f'{len(varname_list)} variables.')
-    
+  
         def wrap_3Dlatlon(self, varname, variable):
-            '''Wraps the data array in longitude (-180=180), and latitude (0=-2, -1=1)'''
+            '''Wraps the data array in longitude (-180=180), and latitude'''
         
             shape_list = list(variable.shape)  #e.g. time, lat, lon -> time, lon, lat!!!
             shape_list[2]+=2  #need two more places in latitude
             shape_list[1]+=1  #need one more place in longitude
             tmp_arr = zeros(shape_list)  #array to set-up wrapped data in
             tmp_arr[0:,:-1,1:-1]=variable  #copy data into grid
-            tmp_arr[:,-1,1:-1] = variable[:,0,:]  #wrap in longitude first
-            tmp_arr[:,:,0] = flip(tmp_arr[:,:,1],axis=1)  #wrap in latitude...
-            tmp_arr[:,:,-1] = flip(tmp_arr[:,:,-2],axis=1)  #reverse past poles           
-            self.variables[varname]['data'] = tmp_arr
+            
+            #wrapping in latitude for scalar variables
+            # put in top values
+            top = mean(tmp_arr[:,:-1,1],axis=1)  #same shape as time axis
+            tmp_arr[:,:-1,0] = broadcast_to(top, (shape_list[1]-1,shape_list[0])).T
+            #same for bottom, reusing variable names
+            top = mean(tmp_arr[:,:-1,-2],axis=1)  #same shape as time axis
+            tmp_arr[:,:-1,-1] = broadcast_to(top, (shape_list[1]-1,shape_list[0])).T
+            
+            #wrap in longitude after to prevent double counting in average
+            tmp_arr[:,-1,:] = variable[:,0,:]  
+            self.variables[varname]['data'] = tmp_arr  #store result
             return tmp_arr        
     
         def wrap_4Dlatlon(self, varname, variable):
             '''Wraps the data array in longitude (-180=180), and latitude (0=-2, -1=1)'''
         
-            shape_list = list(variable.shape)  #e.g. time, ilev, lat, lon -> time, lon, lat, ilev!!!
+            shape_list = list(variable.shape)  #time, lon, lat, ilev
             shape_list[2]+=2  #need two more places in latitude
             shape_list[1]+=1  #need one more place in longitude
             tmp_arr = zeros(shape_list)  #array to set-up wrapped data in
-            tmp_arr[:,:-1,1:-1,:]=variable  #copy data into grid
-            tmp_arr[:,-1,1:-1,:] = variable[:,0,:,:]  #wrap in longitude first
-            tmp_arr[:,:,0,:] = flip(tmp_arr[:,:,-2,:],axis=1)  #wrap in latitude...
-            tmp_arr[:,:,-1,:] = flip(tmp_arr[:,:,1,:],axis=1)  #reverse past poles  
-            self.variables[varname]['data'] = tmp_arr
+            tmp_arr[:,:-1,1:-1,:] = variable  #copy data into grid
+            
+            #wrapping in latitude for scalar and cartesian/radial variables
+            if varname not in ['u_n','v_n','u_iExB','v_iExB']:
+                #print('Calculating scalar sum for', varname)
+                # put in top values
+                top = mean(tmp_arr[:,:-1,1,:],axis=1)  #average over longitudes
+                tmp_arr[:,:-1,0,:] = transpose(broadcast_to(top, (shape_list[1]-1,shape_list[0],
+                                                       shape_list[3])), (1,0,2))
+                #same for bottom, reusing variable names
+                top = mean(tmp_arr[:,:-1,-2,:],axis=1)  #average over longitudes
+                tmp_arr[:,:-1,-1,:] = transpose(broadcast_to(top, (shape_list[1]-1,shape_list[0],
+                                                      shape_list[3])), (1,0,2))
+            #wrapping in latitude for relevant vector variables
+            elif varname in ['u_n','v_n','u_iExB','v_iExB']:
+                #print('Calculating vector sum for', varname)
+                #calculate net vector magnitude for top
+                tmp_arr[:,:-1,0,:] = self.vector_average4D(tmp_arr[:,:-1,1,:], 
+                                                      shape_list, varname, self._lat[0])
+                #repeat for bottom
+                tmp_arr[:,:-1,-1,:] = self.vector_average4D(tmp_arr[:,:-1,-2,:],
+                                                      shape_list, varname, self._lat[-1])
+            tmp_arr[:,-1,:,:] = tmp_arr[:,0,:,:]  #wrap value in longitude                
+            self.variables[varname]['data'] = tmp_arr  #store result
             return tmp_arr
-                    
+
+        def vector_average4D(self, top, shape_list, varname, latval):
+            '''find vector average at pole for array with shape (time, lon, height)'''
+        
+            #find net x and y components, final array shapes are time, lon, and height/ilev
+            lon_arr = transpose(broadcast_to(self._lon[:-1], (shape_list[0],
+                                        shape_list[3], shape_list[1]-1)), (0,2,1))      
+            #need to put 'old' shape at end in broadcast_to call ^
+            xval = sum(top*cos((lon_arr+180.)*nppi/180.), axis=1)  #same shape as
+            yval = sum(top*sin((lon_arr+180.)*nppi/180.), axis=1)  #time and vertical 
+            xarr = transpose(broadcast_to(xval, (shape_list[1]-1,shape_list[0], 
+                                                 shape_list[3])), (1,0,2))
+            yarr = transpose(broadcast_to(yval, (shape_list[1]-1,shape_list[0], 
+                                                 shape_list[3])), (1,0,2))
+
+            #convert to proper unit vector (see wiki on spherical coordinates)
+            if 'u' in varname:  #Zonal / east components -> convert to psi_hat vector (longitude)
+                # -xsin(psi)+ycos(psi), psi = longitude (0 to 360)
+                new_top = -xarr*sin((lon_arr+180.)*nppi/180.)+yarr*cos((lon_arr+180.)*nppi/180.)
+            elif 'v' in varname:  #meridional/north -> convert to theta_hat vector (latitude)
+                # xcos(psi)cos(theta)+ysin(psi)cos(theta),  sin(theta) is always zero at the poles
+                # theta = latitude (0 to 180), psi = longitude (0 to 360)
+                new_top = xarr*cos((lon_arr+180.)*nppi/180.)*cos((90.-latval)*nppi/180.)+\
+                    yarr*sin((lon_arr+180.)*nppi/180.)*cos((90.-latval)*nppi/180.)
+            
+            #flip around so values match longitude location (to keep zero reference point true)
+            zero_idx = min(where(self._lon>=0.)[0])  #find splitting index
+            top = zeros((shape_list[0],shape_list[1]-1,shape_list[3]))  #empty array for destination
+            div = (shape_list[1]-1)%2  #deal with even or odd number of non-wrapped longitude elements
+            #print(shape_list[1]-1, zero_idx, div)
+            top[:,:zero_idx-div,:] = new_top[:,zero_idx:,:]  #move last half to first half
+            top[:,zero_idx-div:,:] = new_top[:,:zero_idx,:]  #and vice versa
+            return top
+        
         ##### Define and register a 3D variable -----------------------------------------
         def register_3D_variable(self, units, variable, varname, gridded_int):
             """Registers a 3d interpolator with 3d signature"""
