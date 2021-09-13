@@ -37,7 +37,7 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     __Optional variables__
     
     displayplot: logical to show/hide displayed plot (may want false when saving htmlfile)
-    type: string for choice of plot type, values: 3D, 1D, 2D, 2DLT, 2DPN
+    type: string for choice of plot type, values: 3D, 1D, 2D, 2DLT, 2DPN, 2DPS
     body: string for choice of 3D inner body, values: black, earth (only GEO), none
     divfile: string with filename to save a html div file of the plot
     htmlfile: string with filename to save a full html file of the plot
@@ -51,7 +51,7 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     if inCoordType=='sph':
         for key in coord_names.keys(): coord_names[key]=coord_names[key][:3]
 
-    if type == "3D" or type == "2DPN":
+    if type == "3D" or type == "2DPN" or type == "2DPS":
         #Convert incoming coordinates into plot coordinages (cartesian)
         xx,yy,zz,units = ConvertCoord(time,c1,c2,c3,inCoordName,inCoordType,plotCoord,'car')
 
@@ -96,7 +96,9 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
         if type == "3D":
             fig=custom3Dsat(plot_dict,vbose=0)
         elif type == "2DPN":
-            fig=custom2Dpolar(plot_dict,vbose=0)
+            fig=custom2Dpolar(plot_dict,'N',vbose=0)
+        elif type == "2DPS":
+            fig=custom2Dpolar(plot_dict,'S',vbose=0)
         if divfile != '':
             print('-saving html div file: ',divfile)
             fig.write_html(divfile,full_html=False)
@@ -676,13 +678,14 @@ iplot(fig)
 
 # ===============================================================================================
 # ===============================================================================================
-def custom2Dpolar(datad, vbose=1):
+def custom2Dpolar(datad, NS, vbose=1):
     """
     This function creates a custom 2D polar view satellite plot, returning a plotly figure object.
    
     Parameters
     ----------
     datad: This is a data dictionary with the data used to create the plot
+    NS: string for plot type, 'N' or 'S' (any non 'S' will be considered 'N')
     vbose: Optional verbosity value, 0 will only print out warnings and errors. Default is 1.
     
     Returns
@@ -766,7 +769,10 @@ def custom2Dpolar(datad, vbose=1):
             localtimestring[sat]=np.array(["point "+str(i+1) for i in range(sPts)])
 
         # Compute mask to restrict all data in trace
-        maskz = datad[sat]['vars']['z']['data'] >= 0.
+        if NS == 'S':
+            maskz = datad[sat]['vars']['z']['data'] <= 0.
+        else:
+            maskz = datad[sat]['vars']['z']['data'] >= 0.
 
         # Find global contour min/max
         if var == "time":
@@ -862,7 +868,10 @@ def custom2Dpolar(datad, vbose=1):
         frame = {"data": [], "name": date}
         for sat in datad['sats']:
             # Compute mask to restrict all data in trace
-            maskz = datad[sat]['vars']['z']['data'] >= 0.
+            if NS == 'S':
+                maskz = datad[sat]['vars']['z']['data'] <= 0.
+            else:
+                maskz = datad[sat]['vars']['z']['data'] >= 0.
 
             x=datad[sat]['vars'][datad[sat]['position_variables'][0]]['data']
             y=datad[sat]['vars'][datad[sat]['position_variables'][1]]['data']
@@ -969,7 +978,10 @@ def custom2Dpolar(datad, vbose=1):
                 sc=1./REkm
 
             # Compute mask to restrict all data in trace
-            maskz = z >= 0.
+            if NS == 'S':
+                maskz = z <= 0.
+            else:
+                maskz = z >= 0.
 
             xx=np.concatenate([x,x])
             yy=np.concatenate([y,y])
@@ -1048,7 +1060,10 @@ def custom2Dpolar(datad, vbose=1):
     fig_dict["layout"]["scene_aspectmode"] = "data"
     fig_dict["layout"]["xaxis"] = {'title': {'text': '<b>X</b> ['+scale+']'}}
     fig_dict["layout"]["yaxis"] = {'title': {'text': '<b>Y</b> ['+scale+']'}}
-    fig_dict["layout"]["title_text"] = txttop+'<br>Northern Hemisphere'
+    if NS == 'S':
+        fig_dict["layout"]["title_text"] = txttop+'<br>Southern Hemisphere'
+    else:
+        fig_dict["layout"]["title_text"] = txttop+'<br>Northern Hemisphere'
     fig_dict["layout"]["showlegend"] = False
     fig_dict["layout"]["scene_camera"] = dict(center=dict(x=0, y=0, z=0))
     fig_dict["layout"]["hoverlabel_align"] = 'right'
