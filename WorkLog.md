@@ -1,4 +1,6 @@
+* installing kamodo in editable mode
 * building from source
+
 # 2021-06-23 11:56:51.629840: clock-out
 
 
