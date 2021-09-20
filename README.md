@@ -1,3 +1,9 @@
+# About this repo
+
+This is a fork of `ccmc/rebeccaringuette`. The goal is to fully kamodofied containers so that they are ready for production.
+
+Eventually, this repo will include kamodo-core as a submodule, in order to keep it consistent with ongoing improvements to the kamodo-core.
+
 # Kamodo
 
 [![codecov](https://codecov.io/gh/asherp/Kamodo/branch/master/graph/badge.svg?token=W1B3L19REF)](https://codecov.io/gh/asherp/Kamodo)
