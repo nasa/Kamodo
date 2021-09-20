@@ -121,7 +121,7 @@ def MODEL():
                 from glob import glob
                 
                 file_pattern = file_dir+'*.nc' #returns a string for tiegcm
-                files = glob(file_pattern)
+                files = sorted(glob(file_pattern))
                 prefix_list = unique([basename(f)[:10] for f in files \
                                             if 'CTIPe' not in basename(f)])
                 

@@ -194,12 +194,6 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     #convert integer coordinate names or grids to strings
     coord_type, coord_grid = U.MW.convert_coordnames(coord_type, coord_grid)
     
-    #retrieve coordinate and results units
-    coord_units = U.MW.coord_units(coord_type, coord_grid)
-    results_units = U.MW.Var_units(model, variable_list)    
-    for key in coord_units: results_units[key] = coord_units[key]
-    print(results_units)
-    
     #prepare files for run
     U.Prepare_Files(model, file_dir)
     
@@ -209,6 +203,16 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
                                 sat_time, c1, c2, c3, 
                                 coord_type, coord_grid, high_res,
                                 verbose=verbose)  
+    
+    
+    #remove requested variables not found in the data
+    var_list = [key for key in results.keys() if key not in ['utc_time','c1','c2','c3','net_idx']]
+    
+    #retrieve coordinate and results units
+    coord_units = U.MW.coord_units(coord_type, coord_grid)
+    results_units = U.MW.Var_units(model, var_list)    
+    for key in coord_units: results_units[key] = coord_units[key]
+    print(results_units)    
     
     if verbose: 
         print(f'Units from the {model} model by variable name:\n{results_units}')
@@ -236,7 +240,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         #generate and save plots without displaying
         from kamodo.flythrough.plots import SatPlot4D
         #presentation options: all, day, hour, minute, N, orbitE, orbitM
-        for var in variable_list:
+        for var in var_list:
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],results['c3'],
                       results[var],results_units[var],
                       coord_type, coord_grid, 'GEO','all',model,body='black', 
