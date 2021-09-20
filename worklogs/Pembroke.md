@@ -1,3 +1,6 @@
+
+### 2021-09-20 16:54:31.143729: clock-in
+
 ### 2021-09-20 11:50:02.590611: clock-out
 
 * about section, created worklogs
