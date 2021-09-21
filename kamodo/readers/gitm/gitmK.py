@@ -5,6 +5,8 @@ import plotly
 import spacepy
 import os
 import time
+import datetime
+from datetime import timezone
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
@@ -28,6 +30,7 @@ class GITM(Kamodo):
                  runname = "noname",
                  debug = 1,
                  **kwargs):
+        super(GITM, self).__init__(**kwargs)
         # Start timer
         tic = time.perf_counter()
         
@@ -47,8 +50,18 @@ class GITM(Kamodo):
         gData = gold.GitmBin(filename)
         self.gData = gData
         
-        # Get time
+        # Get time. The time string read in is echoed back out, but datetime value and
+        #   timestamp value should be in UTC.
         self.time = gData['time']
+        self.dtvalue = datetime.datetime(int(self.time.strftime("%Y")),
+                                         int(self.time.strftime("%m")),
+                                         int(self.time.strftime("%d")),
+                                         int(self.time.strftime("%H")),
+                                         int(self.time.strftime("%M")),
+                                         int(self.time.strftime("%S")),
+                                         int(self.time.strftime("%f")),
+                                         tzinfo=datetime.timezone.utc)
+        self.tsvalue = self.dtvalue.timestamp()
         if self.debug > 0:
             print('... simulation time = ',self.time)
             print('... raw data array size = ',gData['Altitude'].shape)
@@ -201,7 +214,7 @@ class GITM(Kamodo):
         txtbot = "Model: GITM v" + str(self.codeversion) + ",  Run: " + self.runname
         units=self.variables[var]['units']
         txtbar = var + " [" + units + "]"
-        time=self.time.strftime("%Y/%m/%d %H:%M:%S UT")
+        time=self.dtvalue.strftime("%Y/%m/%d %H:%M:%S UT")
 
         if plottype == "2D-alt":
             # Check if altitude entered is valid

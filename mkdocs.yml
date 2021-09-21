@@ -8,7 +8,6 @@ nav:
 - Syntax: notebooks/Syntax.ipynb
 - Kamodofying Models: notebooks/Kamodofying_Models.ipynb
 - Field Integration: notebooks/FieldIntegration.ipynb
-- CDF Support: notebooks/CDFReader.ipynb
 - Kameleon: notebooks/kameleon-kamodo.ipynb
 - TIEGCM: notebooks/TIEGCM.ipynb
 - CommandLine: notebooks/CommandLineInterface.ipynb
