@@ -1,3 +1,5 @@
+### 2021-09-21 12:48:14.222004: clock-out
+
 * comparing with kamodo-core, both have psi/ensemble branch
 * the goal is to remove readers from kamodo-core and remove kamodo from ccmc. Need to make sure we're not losing any work
 
