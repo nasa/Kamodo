@@ -1,3 +1,4 @@
+* excising kamodo-core
 
 ### 2021-09-21 12:48:14.222004: clock-out
 
