@@ -1,3 +1,4 @@
+* setting up kamodo-core external dependency
 
 ### 2021-09-22 21:13:40.439579: clock-in
 
