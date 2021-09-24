@@ -1,3 +1,5 @@
+### 2021-09-24 13:55:25.263620: clock-out
+
 * pushing version number
 * renaming to kamodo_ccmc
 
