@@ -1,1 +1,1 @@
-recursive-include kamodo *.yaml
+recursive-include kamodo_ccmc *.yaml

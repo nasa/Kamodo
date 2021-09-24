@@ -1,3 +1,4 @@
+* renaming to kamodo_ccmc
 
 ### 2021-09-24 13:38:01.588680: clock-in
 
