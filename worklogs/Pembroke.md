@@ -1,3 +1,6 @@
+
+### 2021-09-24 13:38:01.588680: clock-in
+
 ### 2021-09-23 15:58:06.326216: clock-out
 
 * cannot install kamodo-core as dependency
