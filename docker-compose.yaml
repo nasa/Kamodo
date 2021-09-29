@@ -24,8 +24,8 @@ services:
         target: /kamodo_ccmc
     ports:
       - "8889:8888"
-  hapi: # ccmc readers with hapi dependencies
-    image: ccmc/hapi
+  sat: # ccmc readers with hapi dependencies
+    image: ccmc/sat
     ports:
       - "8881:8888"
     build: 

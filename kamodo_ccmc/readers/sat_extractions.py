@@ -14,18 +14,24 @@ from collections.abc import Iterable
 def ror_get_extraction(server, runID, coord, satellite):
     '''Query for file contents from server'''
     query = '{}/{}/{}/{}_{}.txt'.format(server, runID, satellite, coord, satellite)
+    print(query)
     response = urllib.request.urlopen(query)
     file = response.read()
     return file
 
 class SATEXTRACT(Kamodo):
-    def __init__(self, runID, coord, satellite, **kwargs):
+    def __init__(self,
+            runID, # ccmc runs-on-request run id
+            coord, # coordinate system
+            satellite, # satellite
+            server="https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR/",
+            **kwargs):
         super(SATEXTRACT, self).__init__(**kwargs)
         self.verbose=False # overrides kwarg
-        self.symbol_registry=dict() # wipes any user-defined symbols
-        self.signatures=dict() # wipes any user-defined signatures
+        # self.symbol_registry=dict() # wipes any user-defined symbols
+        # self.signatures=dict() # wipes any user-defined signatures
         self.RE=6.3781E3
-        self.server = "https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR/" # should be set by keyword
+        self.server = server # should be set by keyword
         self.runID = runID
         self.coordinates = coord
         self.satellite = satellite

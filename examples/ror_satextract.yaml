@@ -1,0 +1,19 @@
+config_override: satextract.yaml
+gui:
+  external_stylesheets: []
+  routes_pathname_prefix: /kamodo/
+kamodo_output: kamodo_output
+models:
+  BATSRUS_GOES12:
+    class: kamodo_ccmc.readers.sat_extractions.SATEXTRACT
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      runID: 6687
+      coord: GSE
+      satellite: GOES-12
+    plot:
+      B_x__GSE:
+      B_y__GSE:
+      B_z__GSE:

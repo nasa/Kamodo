@@ -1,3 +1,4 @@
+* ccmc run sat extraction yaml, sat service
 
 ### 2021-09-29 16:31:08.648994: clock-in
 
