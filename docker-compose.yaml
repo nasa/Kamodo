@@ -44,20 +44,3 @@ services:
         source: ${PWD}
         target: /kamodo_ccmc
     working_dir: /kamodo_ccmc
-  hapi-orig: # don't mount latest
-    image: ccmc/hapi
-    ports:
-      - "8889:8888"
-    command:
-      - jupyter
-      - notebook
-      - .
-      - --port=8888
-      - --no-browser
-      - --ip=0.0.0.0
-      - --allow-root
-    # volumes:
-    #   - type: bind
-    #     source: ${PWD}
-    #     target: /kamodo
-    working_dir: /kamodo

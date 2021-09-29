@@ -1,0 +1,34 @@
+config_override: hapi.yaml
+gui:
+  external_stylesheets: []
+  routes_pathname_prefix: /kamodo/
+kamodo_output: kamodo_output
+models:
+  GOES12:
+    class: kamodo_ccmc.readers.hapi.HAPI
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      server: https://cdaweb.gsfc.nasa.gov/hapi
+      dataset: GOES12_K0_MAG
+      parameters: B_GSE_c,SC_pos_eo,SC_pos_se # comma squished str
+      start: 2008-07-11T00:00:00
+      stop: 2008-07-13T00:00:00
+    plot:
+      SC_pos_eo:
+plot_conf:
+  animation_opts: null
+  auto_open: true
+  auto_play: true
+  config: null
+  filename: temp-plot.html
+  image: null
+  image_filename: plot_image
+  include_mathjax: cdn
+  include_plotlyjs: cdn
+  link_text: Export to plot.ly
+  output_type: file
+  show_link: false
+  validate: true
+verbose: true

@@ -1,3 +1,4 @@
+* hapi config example
 
 ### 2021-09-29 09:44:01.022734: clock-in
 
