@@ -23,7 +23,7 @@ cnofs
 htmlcov
 
 # kamodo runs
-*kamodo-output
+*kamodo_output
 
 site
 outputs
