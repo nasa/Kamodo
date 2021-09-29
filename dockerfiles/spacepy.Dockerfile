@@ -1,7 +1,7 @@
 # Borrowed from https://github.com/xbonnin
 # https://github.com/spacepy/spacepy/issues/530#issuecomment-859653900
 
-FROM ccmc/kamodo:dev
+FROM ccmc/kamodo_ccmc
 
 RUN apt-get update
 RUN apt-get install -y gfortran make

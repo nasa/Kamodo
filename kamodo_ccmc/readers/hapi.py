@@ -189,12 +189,14 @@ class HAPI(Kamodo):
             print('{} shape {}'.format(varname, data.shape))
 
         isvector = False
-
-        if data.shape[1] > 1:
-            isvector = True
-            ser = pd.DataFrame(data, index=pd.DatetimeIndex(times))
-        else:
-            ser = pd.Series(data, index=pd.DatetimeIndex(times))
+        try:
+            if len(data.shape) > 1:
+                isvector = True
+                ser = pd.DataFrame(data, index=pd.DatetimeIndex(times))
+            else:
+                ser = pd.Series(data, index=pd.DatetimeIndex(times))
+        except:
+            raise NotImplementedError('data issue: {}'.format(data.shape))
 
         def interpolate(t=times):
             ts = t

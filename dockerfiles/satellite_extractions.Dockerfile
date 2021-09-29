@@ -1,4 +1,4 @@
-FROM ccmc/kamodo
+FROM ccmc/kamodo_ccmc
 
 
 RUN pip install 'git+https://github.com/hapi-server/client-python' --upgrade

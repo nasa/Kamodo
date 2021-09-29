@@ -1,8 +1,8 @@
 version: "3.7"
 
 services:
-  kamodo:
-    image: ccmc/kamodo
+  kamodo: # core kamodo only
+    image: ensemble/kamodo
     ports:
       - "8888:8888"
     command:
@@ -13,27 +13,24 @@ services:
       - --no-browser
       - --ip=0.0.0.0
       - --allow-root
-  kamodo-dev:
-    image: ccmc/kamodo
-    ports:
-      - "8889:8888"
-    command:
-      - jupyter
-      - notebook
-      - /kamodo
-      - --port=8888
-      - --no-browser
-      - --ip=0.0.0.0
-      - --allow-root
+  kamodo-ccmc: # ccmc readers
+    image: ccmc/kamodo_ccmc
+    build:
+      context: .
+      dockerfile: dockerfiles/kamodo_ccmc_readers.Dockerfile
     volumes:
       - type: bind
         source: ${PWD}
-        target: /kamodo
-    working_dir: /kamodo
-  hapi-dev:
+        target: /kamodo_ccmc
+    ports:
+      - "8889:8888"
+  hapi-dev: # ccmc readers with hapi dependencies
     image: ccmc/hapi
     ports:
       - "8881:8888"
+    build: 
+      context: .
+      dockerfile: dockerfiles/satellite_extractions.Dockerfile
     command:
       - jupyter
       - notebook
@@ -45,8 +42,8 @@ services:
     volumes:
       - type: bind
         source: ${PWD}
-        target: /kamodo
-    working_dir: /kamodo
+        target: /kamodo_ccmc
+    working_dir: /kamodo_ccmc
   hapi-orig: # don't mount latest
     image: ccmc/hapi
     ports:

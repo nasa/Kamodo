@@ -1,3 +1,4 @@
+* hapi reader working with kamodo core
 
 ### 2021-09-28 20:50:43.605017: clock-in
 
