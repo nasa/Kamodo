@@ -15,7 +15,7 @@ import kamodo
 from flythrough.utils import ConvertCoord
 
 def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
-              displayplot=True,type='3D',body='black',divfile='',htmlfile=''):
+              displayplot=True,returnfig=False,type='3D',body='black',zoom=False,divfile='',htmlfile=''):
     """New 4D plotting for satellite trajectories using plotly by Darren De Zeeuw
     
     __Required variables__
@@ -37,8 +37,10 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     __Optional variables__
     
     displayplot: logical to show/hide displayed plot (may want false when saving htmlfile)
+    returnfig: logical to return figure object for further modification, will override displayplot if True
     type: string for choice of plot type, values: 3D, 1D, 2D, 2DLT, 2DPN, 2DPS
     body: string for choice of 3D inner body, values: black, earth (only GEO), none
+    zoom: logical to show zoomed in view for polar plots
     divfile: string with filename to save a html div file of the plot
     htmlfile: string with filename to save a full html file of the plot
     """
@@ -96,17 +98,20 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
         if type == "3D":
             fig=custom3Dsat(plot_dict,vbose=0)
         elif type == "2DPN":
-            fig=custom2Dpolar(plot_dict,'N',vbose=0)
+            fig=custom2Dpolar(plot_dict,'N',zoom=zoom,vbose=0)
         elif type == "2DPS":
-            fig=custom2Dpolar(plot_dict,'S',vbose=0)
+            fig=custom2Dpolar(plot_dict,'S',zoom=zoom,vbose=0)
         if divfile != '':
             print('-saving html div file: ',divfile)
             fig.write_html(divfile,full_html=False)
         if htmlfile != '':
             print('-saving full html file: ',htmlfile)
             fig.write_html(htmlfile,full_html=True)
-        if displayplot:
-            iplot(fig)
+        if returnfig:
+            return fig
+        else:
+            if displayplot:
+                iplot(fig)
 
     if type == "1D" or type == "2D" or type == "2DLT":
         # Create dictionary block to pass to plotting with selected options
@@ -150,8 +155,11 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
         if htmlfile != '':
             print('-saving full html file: ',htmlfile)
             fig.write_html(htmlfile,full_html=True)
-        if displayplot:
-            iplot(fig)
+        if returnfig:
+            return fig
+        else:
+            if displayplot:
+                iplot(fig)
 
 
 # ===============================================================================================
@@ -672,13 +680,13 @@ iplot(fig)
     if vbose > 0:
         print(f"Total time creating figure object: {toc - tic:0.4f} seconds")
 
-    fig3 = go.Figure(fig_dict)
+    fig = go.Figure(fig_dict)
 
-    return fig3
+    return fig
 
 # ===============================================================================================
 # ===============================================================================================
-def custom2Dpolar(datad, NS, vbose=1):
+def custom2Dpolar(datad, NS, zoom=False, vbose=1):
     """
     This function creates a custom 2D polar view satellite plot, returning a plotly figure object.
    
@@ -686,6 +694,7 @@ def custom2Dpolar(datad, NS, vbose=1):
     ----------
     datad: This is a data dictionary with the data used to create the plot
     NS: string for plot type, 'N' or 'S' (any non 'S' will be considered 'N')
+    zoom: logical to zoom to just > 50 degrees lat or show all
     vbose: Optional verbosity value, 0 will only print out warnings and errors. Default is 1.
     
     Returns
@@ -1096,25 +1105,25 @@ def custom2Dpolar(datad, NS, vbose=1):
             }
         ]
 
-    fig2 = go.Figure(fig_dict)
+    fig = go.Figure(fig_dict)
 
     # 
+    c80=np.sin(((90.-80.)/90.)*np.pi/2.)
+    c70=np.sin(((90.-70.)/90.)*np.pi/2.)
+    c60=np.sin(((90.-60.)/90.)*np.pi/2.)
+    c50=np.sin(((90.-50.)/90.)*np.pi/2.)
+    c40=np.sin(((90.-40.)/90.)*np.pi/2.)
+    c30=np.sin(((90.-30.)/90.)*np.pi/2.)
+    c20=np.sin(((90.-20.)/90.)*np.pi/2.)
+    c10=np.sin(((90.-10.)/90.)*np.pi/2.)
+    c00=1.0
+    c00d=c00/np.sqrt(2.)
+
     if body == "lines" and coord == "GEO":
-        fig2.update_xaxes(showgrid=False,scaleanchor='y')
-        fig2.update_yaxes(showgrid=False)
+        fig.update_xaxes(showgrid=False,scaleanchor='y')
+        fig.update_yaxes(showgrid=False)
 
-        c80=np.sin(((90.-80.)/90.)*np.pi/2.)
-        c70=np.sin(((90.-70.)/90.)*np.pi/2.)
-        c60=np.sin(((90.-60.)/90.)*np.pi/2.)
-        c50=np.sin(((90.-50.)/90.)*np.pi/2.)
-        c40=np.sin(((90.-40.)/90.)*np.pi/2.)
-        c30=np.sin(((90.-30.)/90.)*np.pi/2.)
-        c20=np.sin(((90.-20.)/90.)*np.pi/2.)
-        c10=np.sin(((90.-10.)/90.)*np.pi/2.)
-        c00=1.0
-        c00d=c00/np.sqrt(2.)
-
-        fig2.update_layout(
+        fig.update_layout(
             paper_bgcolor='white',
             plot_bgcolor='white',
             shapes=[
@@ -1156,14 +1165,9 @@ def custom2Dpolar(datad, NS, vbose=1):
         )
 
     else:
-        fig2.update_xaxes(scaleanchor='y')
+        fig.update_xaxes(scaleanchor='y')
 
-        c60=np.sin(((90.-60.)/90.)*np.pi/2.)
-        c30=np.sin(((90.-30.)/90.)*np.pi/2.)
-        c00=1.0
-        c00d=c00/np.sqrt(2.)
-
-        fig2.update_layout(
+        fig.update_layout(
             paper_bgcolor='white',
             plot_bgcolor='white',
             shapes=[
@@ -1190,12 +1194,46 @@ def custom2Dpolar(datad, NS, vbose=1):
             ],
         )
 
+    if NS == 'S':
+        fig.update_xaxes(autorange="reversed")
+        if zoom:
+            fig.update_xaxes(range=[c50, -c50])
+            fig.update_yaxes(range=[-c50, c50])
+    else:
+        if zoom:
+            fig.update_xaxes(range=[-c50, c50])
+            fig.update_yaxes(range=[-c50, c50])
+        
+    if coord == 'GEO':
+        # CCMC is blocking image pulls directly from add_layout_image but copying
+        #   the file locally to /tmp and loading with PIL allows it to be used.
+        from PIL import Image
+        import urllib.request
+        if NS == 'S':
+            urllib.request.urlretrieve(
+                'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole.png',
+                "/tmp/TMP.png")
+            localIMG = Image.open("/tmp/TMP.png")
+            fig.add_layout_image(
+                dict(source=localIMG,xref="x", yref="y", x=1, y=1, sizex=2, sizey=2,
+                     sizing="stretch", opacity=0.5, layer="below")
+            )
+        else:
+            urllib.request.urlretrieve(
+                'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole.png',
+                "/tmp/TMP.png")
+            localIMG = Image.open("/tmp/TMP.png")
+            fig.add_layout_image(
+                dict(source=localIMG,xref="x", yref="y", x=-1, y=1, sizex=2, sizey=2,
+                     sizing="stretch", opacity=0.5, layer="below")
+            )
+
     # end timer                                                                               
     toc = time.perf_counter()
     if vbose > 0:
         print(f"Total time creating figure object: {toc - tic:0.4f} seconds")
 
-    return fig2
+    return fig
 
 # ===============================================================================================
 # ===============================================================================================
@@ -1253,20 +1291,20 @@ def custom1Dsat(datad, vbose=1):
         else:
             c=datad[sat]['vars'][var]['data']
 
-        fig1 = make_subplots(rows=(Nhv+1), cols=1, shared_xaxes=True, vertical_spacing=0.04)
+        fig = make_subplots(rows=(Nhv+1), cols=1, shared_xaxes=True, vertical_spacing=0.04)
 
-        fig1.add_trace(go.Scatter(x=localdt[sat], y=c, name=var,
+        fig.add_trace(go.Scatter(x=localdt[sat], y=c, name=var,
                                   mode='lines', line= dict(shape='linear', color='black'),
                                   hovertemplate=var+': %{y:.4g}<br>%{x}<extra></extra>',
                                 ),
                        row=1, col=1)
-        fig1.update_yaxes(title_text='<b>'+var+'</b><br>['+varu+']', exponentformat='e', row=1, col=1)
-        fig1.update_layout(yaxis=dict(title=dict(font=dict(size=12))))
+        fig.update_yaxes(title_text='<b>'+var+'</b><br>['+varu+']', exponentformat='e', row=1, col=1)
+        fig.update_layout(yaxis=dict(title=dict(font=dict(size=12))))
 
         for i in range(Nhv):
             tmpv=datad['options']['hover_vars'][i]
             tmpu=datad[sat]['vars'][tmpv]['units']
-            fig1.add_trace(go.Scatter(x=localdt[sat], y=datad[sat]['vars'][tmpv]['data'], name=tmpv,
+            fig.add_trace(go.Scatter(x=localdt[sat], y=datad[sat]['vars'][tmpv]['data'], name=tmpv,
                                       mode='lines', line= dict(shape='linear', color='black'),
                                       hovertemplate=tmpv+': %{y:.4g}<br>%{x}<extra></extra>',
                                      ),
@@ -1275,17 +1313,17 @@ def custom1Dsat(datad, vbose=1):
 #                tmpu=" [km]"
             if tmpv == "Lon":
 #                tmpu=" [deg]"
-                fig1.update_yaxes(tick0=0., dtick=90., row=(i+2), col=1)
+                fig.update_yaxes(tick0=0., dtick=90., row=(i+2), col=1)
             if tmpv == "Lat":
 #                tmpu=" [deg]"
-                fig1.update_yaxes(tick0=0., dtick=30., row=(i+2), col=1)
+                fig.update_yaxes(tick0=0., dtick=30., row=(i+2), col=1)
             ya='yaxis'+str(i+2)
             ys="dict(text='<b>"+tmpv+"</b> ["+tmpu+"]',font=dict(size=12))"
-            fig1['layout'][ya]['title']=eval(ys)
+            fig['layout'][ya]['title']=eval(ys)
 
-        fig1.update_layout(height=600, width=800, title_text=txttop, showlegend = False,)
+        fig.update_layout(height=600, width=800, title_text=txttop, showlegend = False,)
 
-    return fig1
+    return fig
 
 # ===============================================================================================
 # ===============================================================================================
@@ -1664,7 +1702,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
     if vbose > 0:
         print(f"Total time creating figure object: {toc - tic:0.4f} seconds")
 
-    fig2 = go.Figure(fig_dict)
-    return fig2
+    fig = go.Figure(fig_dict)
+    return fig
 
 # %%
