@@ -130,6 +130,8 @@ class HAPI(Kamodo):
         self.possible_directions=('x','y','z')
         self.coords=dict()
         for varname in self.variables:
+            if '_' not in varname:
+                continue
             size = self.variables[varname]['size']
             desc = self.variables[varname]['desc']
             if size == 1:

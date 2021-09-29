@@ -1,3 +1,4 @@
+* added dmsp, mms1 examples
 * misspelling
 * ignore kamodo-output
 
