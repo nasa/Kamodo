@@ -1,3 +1,4 @@
+* ignore kamodo-output
 
 ### 2021-09-29 13:10:37.541569: clock-in
 

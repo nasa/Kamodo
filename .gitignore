@@ -110,3 +110,7 @@ outputs/
 # hourly
 hourly.yaml
 hourly-outputs/
+
+# kamodo
+kamodo-output/
+
