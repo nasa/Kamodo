@@ -1,3 +1,6 @@
+
+### 2021-09-29 16:31:08.648994: clock-in
+
 ### 2021-09-29 14:48:09.491269: clock-out
 
 * added dmsp, mms1 examples
