@@ -1,3 +1,6 @@
+
+### 2021-09-29 09:44:01.022734: clock-in
+
 ### 2021-09-28 21:58:52.401596: clock-out
 
 * hapi reader working with kamodo core
