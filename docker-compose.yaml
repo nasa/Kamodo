@@ -24,11 +24,12 @@ services:
         target: /kamodo_ccmc
     ports:
       - "8889:8888"
+
   sat: # ccmc readers with hapi dependencies
     image: ccmc/sat
     ports:
       - "8881:8888"
-    build: 
+    build:
       context: .
       dockerfile: dockerfiles/satellite_extractions.Dockerfile
     command:
@@ -44,3 +45,24 @@ services:
         source: ${PWD}
         target: /kamodo_ccmc
     working_dir: /kamodo_ccmc
+  spacepy: # spacepy dependent readers
+    image: ccmc/spacepy
+    ports:
+      - "8882:8888"
+    build:
+      context: .
+      dockerfile: dockerfiles/spacepy.Dockerfile
+    command:
+      - jupyter
+      - notebook
+      - ./docs/notebooks
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /kamodo_ccmc
+    working_dir: /kamodo_ccmc
+

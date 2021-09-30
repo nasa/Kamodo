@@ -11,11 +11,12 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
 from kamodo.kamodo import Kamodo, kamodofy
-from kamodo import readers
+from kamodo import gridify
+from kamodo_ccmc import readers
 
-from kamodo.readers.gitm import gitm as gold
-from kamodo.readers.gitm import gitm_alt_plots as gap
-from kamodo.readers.gitm import gitm_plot_rout as gpr
+from kamodo_ccmc.readers.gitm import gitm as gold
+from kamodo_ccmc.readers.gitm import gitm_alt_plots as gap
+from kamodo_ccmc.readers.gitm import gitm_plot_rout as gpr
 
 def kamodofy_names(name, name_maps):
     """replaces all substrings in name with those given by name_maps"""
@@ -29,6 +30,7 @@ class GITM(Kamodo):
                  runpath = "./", 
                  runname = "noname",
                  debug = 1,
+                 gridified = False,
                  **kwargs):
         super(GITM, self).__init__(**kwargs)
         # Start timer
@@ -75,6 +77,10 @@ class GITM(Kamodo):
         self.alt = np.unique(gData[self.altkey])
         self.altmin = np.min(self.alt)
         self.altmax = np.max(self.alt)
+
+        # whether to gridify
+        self.gridified = gridified
+
         if self.debug > 0:
             print('... range of altitudes is ',self.altmin,' to ',self.altmax,' meters.')
         
@@ -179,6 +185,12 @@ class GITM(Kamodo):
 
         def interpolate(xvec):  
             return self.variables[varname]['interpolator'](xvec)
+
+        if self.gridified:
+            interpolate = gridify(interpolate, squeeze=True,
+                lon=np.array(ilon),
+                lat=np.array(ilat),
+                alt=np.array(ialt))
 
         # update docstring for this variable
         interpolate.__doc__ = "A function that returns {} in [{}].".format(varname,units)
