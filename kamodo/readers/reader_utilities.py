@@ -20,29 +20,22 @@ def define_3d_interpolator(units,variable,t,lon,lat):
     
     rgi = RegularGridInterpolator((t, lon, lat),
                                   variable, bounds_error = False, fill_value=NaN)
-    @kamodofy(units = units, data = variable)
+    @kamodofy(units=units, data=variable)
     def interpolator(xvec):
         """Interpolates 3d variable without a grid"""
         return rgi(xvec)
     return interpolator
 
-def define_3d_gridded_interpolator(units,variable,t,lon,lat,xvec_dependencies):
+def define_3d_gridded_interpolator(units,variable,t,lon,lat,xvec_dependencies, 
+                                   function):
     '''Define interpolators for 3D variables uniformly, gridded version'''
 
-    rgi = RegularGridInterpolator((t, lon, lat), 
-                                  variable, bounds_error = False, fill_value=NaN)  
     if 'Elat' in xvec_dependencies.keys():
-        @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-        @gridify(time = t, Elon = lon, Elat = lat)
-        def interpolator_grid(xvec):
-            """Interpolates 3d variable into a grid"""
-            return rgi(xvec)
+        interpolator_grid = kamodofy(gridify(function, time = t, Elon = lon, Elat = lat), 
+                                     units=units, data=variable, arg_units=xvec_dependencies)         
     else:
-        @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-        @gridify(time = t, lon = lon, lat = lat)
-        def interpolator_grid(xvec):
-            """Interpolates 3d variable into a grid"""
-            return rgi(xvec)
+        interpolator_grid = kamodofy(gridify(function, time = t, lon = lon, lat = lat), 
+                                     units=units, data=variable, arg_units=xvec_dependencies)          
     return interpolator_grid 
 
 def define_4d_interpolator(units,variable,t,lon,lat,ht):
@@ -50,53 +43,36 @@ def define_4d_interpolator(units,variable,t,lon,lat,ht):
     rgi = RegularGridInterpolator((t, lon, lat, ht), 
                                   variable, bounds_error = False, fill_value=NaN)
     
-    @kamodofy(units = units, data = variable)
+    @kamodofy(units=units, data=variable)
     def interpolator(xvec):
         """Interpolates 4d variable without a grid"""
         return rgi(xvec)
     return interpolator
 
-def define_4d_gridded_interpolator(units,variable,t,lon,lat,ht,xvec_dependencies):
+def define_4d_gridded_interpolator(units,variable,t,lon,lat,ht,xvec_dependencies,
+                                   function):
 
-    rgi = RegularGridInterpolator((t, lon, lat, ht), 
-                                  variable, bounds_error = False, fill_value=NaN) 
+    #rgi = RegularGridInterpolator((t, lon, lat, ht), 
+    #                              variable, bounds_error = False, fill_value=NaN) 
     if 'ilev' in xvec_dependencies.keys():
-        @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-        @gridify(time = t, lon=lon, lat = lat, ilev = ht)
-        def interpolator_grid(xvec):
-            """Interpolates 3d variable into a grid"""
-            return rgi(xvec)
+        interpolator_grid = kamodofy(gridify(function, time=t, lon=lon, lat=lat, ilev=ht), 
+                                     units=units, data=variable, arg_units=xvec_dependencies)        
     elif 'ilev1' in xvec_dependencies.keys():
-        @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-        @gridify(time = t, lon=lon, lat = lat, ilev1 = ht)
-        def interpolator_grid(xvec):
-            """Interpolates 3d variable into a grid"""
-            return rgi(xvec)
+        interpolator_grid = kamodofy(gridify(function, time=t, lon=lon, lat=lat, ilev1=ht), 
+                                     units=units, data=variable, arg_units=xvec_dependencies)         
     elif 'milev' in xvec_dependencies.keys():
         if 'mlat' in xvec_dependencies.keys() and 'mlon' in xvec_dependencies.keys():
-            @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-            @gridify(time = t, mlon=lon, mlat = lat, milev = ht)
-            def interpolator_grid(xvec):
-                """Interpolates 3d variable into a grid"""
-                return rgi(xvec)
+            interpolator_grid = kamodofy(gridify(function, time = t, mlon=lon, mlat = lat, milev = ht), 
+                                         units=units, data=variable, arg_units=xvec_dependencies)             
         else:   #not used yet by any model *******************************
-            @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-            @gridify(time = t, lon=lon, lat = lat, milev = ht)
-            def interpolator_grid(xvec):
-                """Interpolates 3d variable into a grid"""
-                return rgi(xvec)   
+            interpolator_grid = kamodofy(gridify(function, time = t, lon=lon, lat = lat, milev = ht), 
+                                         units=units, data=variable, arg_units=xvec_dependencies)           
     elif 'radius' in xvec_dependencies.keys():
-        @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-        @gridify(time = t, lon=lon, lat = lat,  radius = ht)
-        def interpolator_grid(xvec):
-            """Interpolates 3d variable into a grid"""
-            return rgi(xvec)         
+        interpolator_grid = kamodofy(gridify(function, time = t, lon=lon, lat = lat,  radius = ht), 
+                                     units=units, data=variable, arg_units=xvec_dependencies)        
     else:
-        @kamodofy(units = units, data = variable, arg_units=xvec_dependencies)
-        @gridify(time = t, lon=lon, lat = lat,  height = ht)
-        def interpolator_grid(xvec):
-            """Interpolates 3d variable into a grid"""
-            return rgi(xvec)        
+        interpolator_grid = kamodofy(gridify(function, time = t, lon=lon, lat = lat,  height = ht), 
+                                     units=units, data=variable, arg_units=xvec_dependencies)          
     return interpolator_grid 
 
 def register_interpolator(kamodo_object, varname, interpolator, xvec_dependencies):
@@ -119,7 +95,8 @@ def regdef_3D_interpolators(kamodo_object, units, variable, t, lon, lat, varname
     if gridded_int:
         kamodo_object.variables[varname+'_ijk'] = dict(units = units, data = variable) 
         gridded_interpolator = define_3d_gridded_interpolator(units,variable,t,
-                                                              lon,lat,xvec_dependencies)
+                                                              lon,lat,xvec_dependencies,
+                                                              interpolator)
         kamodo_object = register_interpolator(kamodo_object, varname+'_ijk', 
                                                  gridded_interpolator, xvec_dependencies)
     return kamodo_object
@@ -136,7 +113,8 @@ def regdef_4D_interpolators(kamodo_object, units, variable, t, lon, lat, z, varn
     if gridded_int:
         kamodo_object.variables[varname+'_ijk'] = dict(units = units, data = variable) 
         gridded_interpolator = define_4d_gridded_interpolator(units,variable,t,lon,
-                                                              lat,z,xvec_dependencies)
+                                                              lat,z,xvec_dependencies,
+                                                              interpolator)
         kamodo_object = register_interpolator(kamodo_object, varname+'_ijk', 
                                                  gridded_interpolator, xvec_dependencies)
     return kamodo_object

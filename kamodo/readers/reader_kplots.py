@@ -37,11 +37,15 @@ def grid3D(kamodo_object, varname, time, c1, c2):
 
 def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
     '''Use Kamodo's native plotting to generate 2D plot.
-    Possible plot types are LonLat, LatH, LonH, TimeLat, TimeLon, and TimeH.
+    t, lon, lat, and h also double as t, x, y, and z for cartesian inputs.
+    Possible plot types are LonLat, LatH, LonH, TimeLat, TimeLon, and TimeH for
+        spherical coordinates; and TimeX, TimeY, TimeX, XY, XZ, and YZ for
+        cartesian coordinates.
     If the variable depends on 4 dimensions, h should be given.
     If a LonLat plot is requested, then the function expects a single value
         (integer, float, float32, or float64) for t and h (if h is given).
-        In this case, lon and lat should be 1D arrays or flat lists.
+        In this case, lon and lat should be 1D arrays or flat lists. Similar 
+        data formatting is required for coordinates not plotted for all plot types.
     If the variable depends on height, then a value or array should be given for h.
     '''
     
@@ -65,17 +69,21 @@ def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
         
     #convert inputs to arrays
     t = convert_to_array(t)
-    lon = convert_to_array(lon)
-    lat = convert_to_array(lat)
-    h = convert_to_array(h)
+    lon = convert_to_array(lon)  #doubles as x
+    lat = convert_to_array(lat)  #doubles as y
+    h = convert_to_array(h)  #doubles as z
     
     #create printing message for heading of plot    
     #print(varname, plottype, units, gridified, vert)
     if t.shape[0]==1: t_message = f'Time slice at {t[0]:.3f} hrs. '
     else: t_message=''
-    if lon.shape[0]==1: lon_message = f'Longitude slice at {lon[0]:.3f} deg. '
+    if lon.shape[0]==1: 
+        if 'z' in vert: lon_message = f'X slice at {lon[0]:.3f} R_E. '
+        else: lon_message = f'Longitude slice at {lon[0]:.3f} deg. '
     else: lon_message=''
-    if lat.shape[0]==1: lat_message = f'Latitude slice at {lat[0]:.3f} deg. '
+    if lat.shape[0]==1: 
+        if 'z' in vert: f'Y slice at {lat[0]:.3f} R_E. '
+        else: lat_message = f'Latitude slice at {lat[0]:.3f} deg. '
     else: lat_message=''
     if vert=='none': 
         h_message = ''
@@ -85,6 +93,7 @@ def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
         if vert in ['ilev','ilev1','milev']: h_message = f'Pressure level slice at {h[0]}.'
         elif vert=='height': h_message = f'Height slice at {h[0]:.3f} km.'
         elif vert=='radius': h_message = f'Radius slice at {h[0]:.7f} R_E.'
+        elif 'z' in vert: f'Z slice at {h[0]:.7f} R_E.'
     print(t_message+lon_message+lat_message+h_message)    
     
     #create 2D kamodo function for plotting desired plottype with given function
@@ -358,7 +367,60 @@ def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
                 return plot_kamodo.plot(LatH=dict(mlat=lat,milev=h)) 
             elif vert=='none':
                 raise AttributeError('Variable does not depend on height.')
-    
+
+        #cartesian plots
+        elif plottype=='TimeX':
+            arg_units={'time':'hr',coord_list[1]:xvec[coord_list[1]]}  #'X':'R_E'
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(y=lat,z=h)
+            def pfunc(time, x, y, z):
+                return getattr(kamodo_object, varname)(time=time,x=x,y=y,z=z)
+            plot_kamodo['TimeX'] = pfunc  
+            return plot_kamodo.plot(TimeX=dict(time=t,x=lon))              
+        elif plottype=='TimeY':
+            arg_units={'time':'hr',coord_list[2]:xvec[coord_list[2]]}  #'X':'R_E'
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(x=lon,z=h)
+            def pfunc(time, x, y, z):
+                return getattr(kamodo_object, varname)(time=time,x=x,y=y,z=z)
+            plot_kamodo['TimeY'] = pfunc  
+            return plot_kamodo.plot(TimeY=dict(time=t,y=lat))       
+        elif plottype=='TimeZ':
+            arg_units={'time':'hr',coord_list[3]:xvec[coord_list[3]]}  #'X':'R_E'
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(x=lon,y=lat)
+            def pfunc(time, x, y, z):
+                return getattr(kamodo_object, varname)(time=time,x=x,y=y,z=z)
+            plot_kamodo['TimeZ'] = pfunc  
+            return plot_kamodo.plot(TimeZ=dict(time=t,z=h))       
+        elif plottype=='XY':
+            arg_units = {coord_list[1]:xvec[coord_list[1]], 
+                         coord_list[2]:xvec[coord_list[2]]}  #e.g. {'x':'R_E','y':'R_E'}
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(time=t,z=h)
+            def pfunc(time, x, y, z):
+                return getattr(kamodo_object, varname)(time=time,x=x,y=y,z=z)
+            plot_kamodo['XY'] = pfunc  
+            return plot_kamodo.plot(XY=dict(x=lon,y=lat))       
+        elif plottype=='XZ':
+            arg_units = {coord_list[1]:xvec[coord_list[1]], 
+                         coord_list[3]:xvec[coord_list[3]]}  #e.g. {'x':'R_E','z':'R_E'}
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(time=t,y=lat)
+            def pfunc(time, x, y, z):
+                return getattr(kamodo_object, varname)(time=time,x=x,y=y,z=z)
+            plot_kamodo['XZ'] = pfunc  
+            return plot_kamodo.plot(XZ=dict(x=lon,z=h))       
+        elif plottype=='YZ':
+            arg_units = {coord_list[2]:xvec[coord_list[2]], 
+                         coord_list[3]:xvec[coord_list[3]]}  #e.g. {'y':'R_E','z':'R_E'}
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(time=t,x=lon)
+            def pfunc(time, x, y, z):
+                return getattr(kamodo_object, varname)(time=time,x=x,y=y,z=z)
+            plot_kamodo['YZ'] = pfunc  
+            return plot_kamodo.plot(YZ=dict(y=lat,z=h))   
+        
     else:  #logic for plotting with not gridified function-----------------------------------------------------
         #LonLat plots
         if plottype=='LonLat':
@@ -665,4 +727,62 @@ def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
                 return plot_kamodo.plot(LatH=dict(mlat=lat,milev=h)) 
             elif vert=='none':
                 raise AttributeError('Variable does not depend on height.')
-   
+
+        #cartesian plots
+        elif plottype=='TimeX':
+            arg_units={'time':'hr',coord_list[1]:xvec[coord_list[1]]}  #'X':'R_E'
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(y=lat,z=h)
+            def pfunc(time, x, y, z):
+                data = grid4D(kamodo_object, varname, time, x, y, z)
+                return reshape(data,(time.shape[0],x.shape[0]))                 
+            plot_kamodo['TimeX'] = pfunc  
+            return plot_kamodo.plot(TimeX=dict(time=t,x=lon))              
+        elif plottype=='TimeY':
+            arg_units={'time':'hr',coord_list[2]:xvec[coord_list[2]]}  #'X':'R_E'
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(x=lon,z=h)
+            def pfunc(time, x, y, z):
+                data = grid4D(kamodo_object, varname, time, x, y, z)
+                return reshape(data,(time.shape[0],y.shape[0]))  
+            plot_kamodo['TimeY'] = pfunc  
+            return plot_kamodo.plot(TimeY=dict(time=t,y=lat))       
+        elif plottype=='TimeZ':
+            arg_units={'time':'hr',coord_list[3]:xvec[coord_list[3]]}  #'X':'R_E'
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(x=lon,y=lat)
+            def pfunc(time, x, y, z):
+                data = grid4D(kamodo_object, varname, time, x, y, z)
+                return reshape(data,(time.shape[0],z.shape[0]))  
+            plot_kamodo['TimeZ'] = pfunc  
+            return plot_kamodo.plot(TimeZ=dict(time=t,z=h))       
+        elif plottype=='XY':
+            arg_units = {coord_list[1]:xvec[coord_list[1]], 
+                         coord_list[2]:xvec[coord_list[2]]}  #e.g. {'x':'R_E','y':'R_E'}
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(time=t,z=h)
+            def pfunc(time, x, y, z):
+                data = grid4D(kamodo_object, varname, time, x, y, z)
+                return reshape(data,(x.shape[0],y.shape[0]))  
+            plot_kamodo['XY'] = pfunc  
+            return plot_kamodo.plot(XY=dict(x=lon,y=lat))       
+        elif plottype=='XZ':
+            arg_units = {coord_list[1]:xvec[coord_list[1]], 
+                         coord_list[3]:xvec[coord_list[3]]}  #e.g. {'x':'R_E','z':'R_E'}
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(time=t,y=lat)
+            def pfunc(time, x, y, z):
+                data = grid4D(kamodo_object, varname, time, x, y, z)
+                return reshape(data,(x.shape[0],z.shape[0]))  
+            plot_kamodo['XZ'] = pfunc  
+            return plot_kamodo.plot(XZ=dict(x=lon,z=h))       
+        elif plottype=='YZ':
+            arg_units = {coord_list[2]:xvec[coord_list[2]], 
+                         coord_list[3]:xvec[coord_list[3]]}  #e.g. {'y':'R_E','z':'R_E'}
+            @kamodofy(units=units, arg_units=arg_units)
+            @partial(time=t,x=lon)
+            def pfunc(time, x, y, z):
+                data = grid4D(kamodo_object, varname, time, x, y, z)
+                return reshape(data,(y.shape[0],z.shape[0]))  
+            plot_kamodo['YZ'] = pfunc  
+            return plot_kamodo.plot(YZ=dict(y=lat,z=h))     
