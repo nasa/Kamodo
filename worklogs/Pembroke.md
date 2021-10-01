@@ -1,3 +1,4 @@
+* added gitm example
 
 ### 2021-10-01 15:46:36.120136: clock-in
 

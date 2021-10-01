@@ -31,6 +31,9 @@ class GITM(Kamodo):
                  runname = "noname",
                  debug = 1,
                  gridified = False,
+                 squeeze = False,
+                 order = 'A', # A, C for ij
+                 alt_norm = 1,
                  **kwargs):
         super(GITM, self).__init__(**kwargs)
         # Start timer
@@ -78,8 +81,11 @@ class GITM(Kamodo):
         self.altmin = np.min(self.alt)
         self.altmax = np.max(self.alt)
 
-        # whether to gridify
+        # affects gridify
         self.gridified = gridified
+        self.squeeze = squeeze
+        self.order = order
+        self.alt_norm = alt_norm
 
         if self.debug > 0:
             print('... range of altitudes is ',self.altmin,' to ',self.altmax,' meters.')
@@ -177,7 +183,7 @@ class GITM(Kamodo):
 
         ilon = self.lon
         ilat = self.lat
-        ialt = self.alt
+        ialt = self.alt/self.alt_norm
         interpolator = self.get_grid_interpolator(ilon, ilat, ialt, varname)
 
         # store the interpolator
@@ -187,7 +193,7 @@ class GITM(Kamodo):
             return self.variables[varname]['interpolator'](xvec)
 
         if self.gridified:
-            interpolate = gridify(interpolate, squeeze=True,
+            interpolate = gridify(interpolate, order=self.order, squeeze=self.squeeze,
                 lon=np.array(ilon),
                 lat=np.array(ilat),
                 alt=np.array(ialt))
