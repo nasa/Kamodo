@@ -606,7 +606,7 @@ def GitmBin(filename, flag_2D, verbose=False):
     # Load the GITM data        
     coords, variables, attrs = _read(varlist, attrs)
     if not flag_2D:
-        print('Calculating 2D variables...')
+        #print('Calculating 2D variables...')
         variables = calc_tec(coords, attrs, variables, verbose=verbose)
         variables = calc_2dion(coords, attrs, variables, verbose=verbose)
     var_dict = append_units(variables)
