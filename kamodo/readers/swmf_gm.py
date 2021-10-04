@@ -648,8 +648,8 @@ class SWMF_GM(Kamodo):
             #Nplot = Nplot +1
 
             # Add in R=3 sphere
-            dataXYZ = pd.read_csv('http://vmr.engin.umich.edu/dbg/sphereXYZ.csv')
-            dataIJK = pd.read_csv('http://vmr.engin.umich.edu/dbg/sphereIJK.csv')
+            dataXYZ = pd.read_csv('https://ccmc.gsfc.nasa.gov/Kamodo/demo/sphereXYZ.csv')
+            dataIJK = pd.read_csv('https://ccmc.gsfc.nasa.gov/Kamodo/demo/sphereIJK.csv')
             fig.add_mesh3d()
             fig.data[Nplot].x = dataXYZ['x']*3.
             fig.data[Nplot].y = dataXYZ['y']*3.
