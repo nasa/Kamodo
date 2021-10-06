@@ -1,3 +1,6 @@
+### 2021-10-06 12:16:47.509434: clock-out
+
+* Need sample data to test flythrough
 * flythrough service
 * adding netcdf4
 * refactored kamodo import
