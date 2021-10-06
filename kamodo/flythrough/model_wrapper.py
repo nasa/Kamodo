@@ -48,7 +48,7 @@ from numpy import unique
 from os.path import basename
 
 
-model_dict = {0:'CTIPe', 1:'GITM', 2:'IRI', 3:'SWMF_IE', 4:'TIEGCM'}
+model_dict = {0:'CTIPe', 1:'GITM', 2:'IRI', 3:'SWMF_IE', 4:'TIEGCM', 5:'OpenGGCM_GM'}
 
 def convert_model_string(model_int):
     '''Converts numerical model reference to string.'''
@@ -88,6 +88,10 @@ def Choose_Model(model):
     
     elif model=='TIEGCM':
         import kamodo.readers.tiegcm_4D as module
+        return module
+
+    elif model=='OpenGGCM_GM':
+        import kamodo.readers.openggcm_gm_4Dcdf as module
         return module
     
     else:
@@ -133,6 +137,12 @@ def FileSearch(model, file_dir, call_type='normal'):
 
     elif model=='TIEGCM':
         return file_dir+'s*.nc'
+    
+    elif model=='OpenGGCM_GM':
+        files = sorted(glob(file_dir+'*.nc'))
+        file_patterns = unique([file_dir+basename(f).split('3df_')[0]+'3df_'+f.split('3df_')[1][:13]\
+                                            for f in files])  #hourly files only  
+        return file_patterns
     
     else:
         raise AttributeError('Model not yet added.')
