@@ -23,6 +23,8 @@ WORKDIR /
 RUN git clone https://github.com/asherp/spacepy.git
 WORKDIR /spacepy
 
+# install netcdf4
+RUN conda install netCDF4
 
 RUN python setup.py install
 
