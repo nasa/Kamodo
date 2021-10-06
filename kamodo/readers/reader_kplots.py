@@ -82,7 +82,7 @@ def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
         else: lon_message = f'Longitude slice at {lon[0]:.3f} deg. '
     else: lon_message=''
     if lat.shape[0]==1: 
-        if 'z' in vert: f'Y slice at {lat[0]:.3f} R_E. '
+        if 'z' in vert: lat_message = f'Y slice at {lat[0]:.3f} R_E. '
         else: lat_message = f'Latitude slice at {lat[0]:.3f} deg. '
     else: lat_message=''
     if vert=='none': 
@@ -93,7 +93,7 @@ def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
         if vert in ['ilev','ilev1','milev']: h_message = f'Pressure level slice at {h[0]}.'
         elif vert=='height': h_message = f'Height slice at {h[0]:.3f} km.'
         elif vert=='radius': h_message = f'Radius slice at {h[0]:.7f} R_E.'
-        elif 'z' in vert: f'Z slice at {h[0]:.7f} R_E.'
+        elif 'z' in vert: h_message = f'Z slice at {h[0]:.7f} R_E.'
     print(t_message+lon_message+lat_message+h_message)    
     
     #create 2D kamodo function for plotting desired plottype with given function
@@ -735,7 +735,7 @@ def plot2D(kamodo_object, varname, plottype, t, lon, lat, h=-1):
             @partial(y=lat,z=h)
             def pfunc(time, x, y, z):
                 data = grid4D(kamodo_object, varname, time, x, y, z)
-                return reshape(data,(time.shape[0],x.shape[0]))                 
+                return reshape(data,(x.shape[0],time.shape[0])).T                 
             plot_kamodo['TimeX'] = pfunc  
             return plot_kamodo.plot(TimeX=dict(time=t,x=lon))              
         elif plottype=='TimeY':
