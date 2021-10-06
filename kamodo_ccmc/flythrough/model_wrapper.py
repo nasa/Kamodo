@@ -71,23 +71,23 @@ def Choose_Model(model):
     model = convert_model_string(model)  #convert to string
     
     if model=='CTIPe':
-        import kamodo.readers.ctipe_4D as module
+        import kamodo_ccmc.readers.ctipe_4D as module
         return module
     
     elif model=='IRI':
-        import kamodo.readers.iri_4D as module
+        import kamodo_ccmc.readers.iri_4D as module
         return module
     
     elif model=='GITM':
-        import kamodo.readers.gitm_4Dcdf as module
+        import kamodo_ccmc.readers.gitm_4Dcdf as module
         return module
     
     elif model=='SWMF_IE':
-        import kamodo.readers.swmfie_4Dcdf as module
+        import kamodo_ccmc.readers.swmfie_4Dcdf as module
         return module
     
     elif model=='TIEGCM':
-        import kamodo.readers.tiegcm_4D as module
+        import kamodo_ccmc.readers.tiegcm_4D as module
         return module
     
     else:

@@ -97,7 +97,7 @@ https://sscweb.gsfc.nasa.gov/users_guide/Appendix_C.shtml and it's reference,
 from time import perf_counter
 t0=perf_counter()
 from numpy import array
-from kamodo.flythrough.SF_utilities import Prepare_Files, Single_FlyAway, MW
+from kamodo_ccmc.flythrough.SF_utilities import Prepare_Files, Single_FlyAway, MW
 
 
 def Prerun(model, file_dir, verbose=True):
