@@ -47,13 +47,16 @@ class SWMF_GM(Kamodo):
         self.vars = vars
         units = mhd.meta['header'].split("_", 1)[0].strip().split(" ")
         units = units[3:]
-        # var = vars[0]
-        # unit = units[vars.index(var)]
-        # self.nvars = mhd.meta['nvar']
         print('... found',self.nvars,'variables')
         self.var = vars[0]
         for var in vars:
-            self.variables[var] = dict(units = units[vars.index(var)], data = np.array(mhd[var], dtype=np.float32) )
+            unit=units[vars.index(var)].replace(
+                "Mp/cc","1/cm**3").replace(
+                "m3","m**3").replace(
+                "m2","m**2").replace(
+                "uA","muA").replace(
+                "--","")
+            self.variables[var] = dict(units = unit, data = np.array(mhd[var], dtype=np.float32) )
         
         # Pull start_time from the DatabaseInfo file (if it exists), then add simulated time from file metadata
         if path.isfile(runpath+runname+'/DatabaseInfo'):
