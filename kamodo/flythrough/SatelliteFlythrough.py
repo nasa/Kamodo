@@ -204,6 +204,11 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     if isinstance(c1, list): c1 = np.array(c1)
     if isinstance(c2, list): c2 = np.array(c2)
     if isinstance(c3, list): c3 = np.array(c3)
+    
+    #give error if unknown output type given BEFORE running flythrough
+    if output_type not in ['cdf4','csv','txt','', ' ']:  #allow empty strings
+        raise AttributeError('Output file type not recognized. Must be one of'+\
+                            ' cdf4, csv, or txt.')    
         
     #if model is given as an integer, then convert to a string
     model = U.MW.convert_model_string(model)
@@ -247,11 +252,14 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         
         #perform output type desired
         if output_type=='csv':
-            output_filename = WO.SFdata_tocsv(output_name, '', model, results, results_units)
+            output_filename = WO.SFdata_tocsv(output_name, '', model, results, 
+                                              results_units, coord_type, coord_grid)
         elif output_type=='cdf4':
-            output_filename= WO.SFdata_tocdf(output_name, '', model, results, results_units)
+            output_filename= WO.SFdata_tocdf(output_name, '', model, results, 
+                                             results_units, coord_type, coord_grid)
         elif output_type=='txt':
-            output_filename = WO.SFdata_toascii(output_name, '', model, results, results_units)
+            output_filename = WO.SFdata_toascii(output_name, '', model, results, 
+                                                results_units, coord_type, coord_grid)
         print(f"Output saved in {output_filename}.")  #no access to model filenames
         
     if plot_output!='':
@@ -269,7 +277,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         if plot_coord in ['SPH','RLL']:
             raise AttributeError('Plots can only be requested in coordinate '+\
                                  'grids where cartesian coordinates are supported.'+\
-                                 " The 'SPH' and 'RLL' coordinate systems are "+
+                                 " The 'SPH' and 'RLL' coordinate systems "+
                                  ' do not support cartesian grids so are not allowed.')
         
         #generate and save plots without displaying
@@ -396,7 +404,7 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
     
     #retrieve satellite trajectory from HAPI/CDAWeb
     sat_dict, coord_type, coord_grid = SatelliteTrajectory(dataset, start, stop, 
-                                   coord_type, verbose=verbose)
+                                   coord_type=coord_type, verbose=verbose)
     #call satellite flythrough code
     results = ModelFlythrough(model, file_dir, variable_list, sat_dict['sat_time'], 
                               sat_dict['c1'], sat_dict['c2'], sat_dict['c3'],
@@ -406,7 +414,7 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
     return results    
 
 
-def MyFlight(traj_file, file_type, coord_type, coord_grid, model, file_dir, 
+def MyFlight(traj_file, file_type, model, file_dir, 
              variable_list, output_type='', output_name='', plot_output='', 
              plot_coord='GEO', high_res=20., verbose=False):
     '''Read in a trajectory from a file, then fly through the model data selected.
@@ -451,13 +459,16 @@ def MyFlight(traj_file, file_type, coord_type, coord_grid, model, file_dir,
             the screen.
     '''
 
-    #read in trajectory from file into dictionary
+    #read in trajectory from file into dictionary, including metadata
     if file_type=='cdf4':
         traj_data = WO.SFcdf_reader(traj_file)
     elif file_type=='csv':
         traj_data=WO.SFcsv_reader(traj_file)
     elif file_type=='txt':
         traj_data=WO.SFascii_reader(traj_file)
+    else:
+        raise AttributeError('File type not recognized. Must be one of'+\
+                            ' cdf4, csv, or txt.')
         
     #figure out key for time data
     for key in traj_data:
@@ -468,7 +479,8 @@ def MyFlight(traj_file, file_type, coord_type, coord_grid, model, file_dir,
     #call satellite flythrough code
     results = ModelFlythrough(model, file_dir, variable_list, traj_data[time_key]['data'], 
                               traj_data['c1']['data'], traj_data['c2']['data'], 
-                              traj_data['c3']['data'], coord_type, coord_grid, 
+                              traj_data['c3']['data'], traj_data['metadata']['coord_type'], 
+                              traj_data['metadata']['coord_grid'], 
                               output_type=output_type, output_name=output_name, 
                               plot_output=plot_output, plot_coord=plot_coord, 
                               high_res=high_res, verbose=verbose)      
@@ -569,37 +581,28 @@ if __name__=='__main__':
 
         elif argv[1]=='MyFlight':  #gather variables and call MyFlight
             traj_file = argv[2]
-            file_type = argv[3]
+            file_type = argv[3]            
             if len(argv[4])==1:
-                coord_type = int(argv[4])
+                model = int(argv[4])
             else:
-                coord_type = argv[4]
-            if len(argv[5])==1:
-                coord_grid = int(argv[5])
-            else:
-                coord_grid = argv[5]                
-            if len(argv[6])==1:
-                model = int(argv[6])
-            else:
-                model = argv[6]
-            file_dir = argv[7]
-            temp_str = argv[8][1:-1].replace("'","").replace(' ','').replace('"','')
+                model = argv[4]
+            file_dir = argv[5]
+            temp_str = argv[6][1:-1].replace("'","").replace(' ','').replace('"','')
             variable_list = temp_str.split(',')   #['rho','N_n']              
-            output_type = argv[9]
-            output_name= argv[10]
-            plot_output = argv[11]
-            plot_coord = argv[12]
-            high_res = float(argv[13])
+            output_type = argv[7]
+            output_name= argv[8]
+            plot_output = argv[9]
+            plot_coord = argv[10]
+            high_res = float(argv[11])
             
             #check inputs
             print(f'\ntraj_file: {traj_file}, \nfile_type: {file_type},'+\
-                  f'\ncoord_type: {coord_type}, \ncoord_grid: {coord_grid},'+\
                   f'\nmodel: {model}, \nfile_dir: {file_dir},'+\
                   f'\nvariable_list: {variable_list}, \noutput_type: {output_type},'+\
                   f'\noutput_name: {output_name}, \nplot_output: {plot_output}, '+\
                   f'\nplot_coord: {plot_coord}, \nhigh_res: {high_res}\n')
             
-            results = MyFlight(traj_file, file_type, coord_type, coord_grid, 
+            results = MyFlight(traj_file, file_type,  
                                model, file_dir, variable_list, output_type=output_type, 
                                output_name=output_name, plot_output=plot_output, 
                                plot_coord=plot_coord, high_res=high_res)
