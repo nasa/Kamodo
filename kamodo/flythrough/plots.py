@@ -116,7 +116,7 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     if type == "1D" or type == "2D" or type == "2DLT":
         # Create dictionary block to pass to plotting with selected options
         plot_dict=dict(
-            title = 'Satellite extraction from model: '+model,  # Displayed title for plot, can use <br> for new lines
+            title = 'Satellite extraction from model: '+model+"<br>"+plotCoord+" coordinates",  # Displayed title for plot, can use <br> for new lines
             sats = ["Sat1"],            # Array of satellites to include in plot
             Sat1 = dict(
                 display_name = "",
@@ -743,6 +743,21 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
     else:
         coord = ""
 
+    # Precompute circle radius for various latitudes
+    c80=np.sin(((90.-80.)/90.)*np.pi/2.)
+    c70=np.sin(((90.-70.)/90.)*np.pi/2.)
+    c60=np.sin(((90.-60.)/90.)*np.pi/2.)
+    c50=np.sin(((90.-50.)/90.)*np.pi/2.)
+    c40=np.sin(((90.-40.)/90.)*np.pi/2.)
+    c30=np.sin(((90.-30.)/90.)*np.pi/2.)
+    c20=np.sin(((90.-20.)/90.)*np.pi/2.)
+    c10=np.sin(((90.-10.)/90.)*np.pi/2.)
+    c00=1.0
+    c50sq=c50**2
+    # Now compute diagonal line on circle positions
+    c00d=c00/np.sqrt(2.)
+    c50d=c50/np.sqrt(2.)
+
     # set initial values used later, including loop over all sats
     xmin=0.
     xmax=0.
@@ -782,14 +797,20 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
             maskz = datad[sat]['vars']['z']['data'] <= 0.
         else:
             maskz = datad[sat]['vars']['z']['data'] >= 0.
+        if zoom:
+            rr = datad[sat]['vars']['x']['data']**2 + datad[sat]['vars']['y']['data']**2
+            maskzoom = rr <= c50sq
+            mask = maskz & maskzoom
+        else:
+            mask = maskz
 
         # Find global contour min/max
         if var == "time":
             c=localts[sat]
         else:
             c=datad[sat]['vars'][var]['data']
-        cmin=min(cmin,min(c[maskz]))
-        cmax=max(cmax,max(c[maskz]))
+        cmin=min(cmin,min(c[mask]))
+        cmax=max(cmax,max(c[mask]))
 
         # Create array of possible 'groupby' value
         if groupby == "day":
@@ -881,6 +902,12 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
                 maskz = datad[sat]['vars']['z']['data'] <= 0.
             else:
                 maskz = datad[sat]['vars']['z']['data'] >= 0.
+            if zoom:
+                rr = datad[sat]['vars']['x']['data']**2 + datad[sat]['vars']['y']['data']**2
+                maskzoom = rr <= c50sq
+                mask = maskz & maskzoom
+            else:
+                mask = maskz
 
             x=datad[sat]['vars'][datad[sat]['position_variables'][0]]['data']
             y=datad[sat]['vars'][datad[sat]['position_variables'][1]]['data']
@@ -899,17 +926,16 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
 
             # Update position min/max values
             if date == ugroup[0]:
-                xmin=min(xmin,min(x[maskz]*sc))
-                xmax=max(xmax,max(x[maskz]*sc))
-                ymin=min(ymin,min(y[maskz]*sc))
-                ymax=max(ymax,max(y[maskz]*sc))
-                zmin=min(zmin,min(z[maskz]*sc))
-                zmax=max(zmax,max(z[maskz]*sc))
+                xmin=min(xmin,min(x[mask]*sc))
+                xmax=max(xmax,max(x[mask]*sc))
+                ymin=min(ymin,min(y[mask]*sc))
+                ymax=max(ymax,max(y[mask]*sc))
+                zmin=min(zmin,min(z[mask]*sc))
+                zmax=max(zmax,max(z[mask]*sc))
 
             # Compute mask to restrict all data in trace
-            mask = date == agroup[sat]
-            #fullmask = mask
-            fullmask = maskz & mask
+            maskd = date == agroup[sat]
+            fullmask = mask & maskd
             
             # Create hover information, including extras passed in.
             Nhv = len(datad['options']['hover_vars'])
@@ -929,23 +955,38 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
                 Ndv+=1
             cd=np.asarray(cd).T
             dateline="%{customdata[0]}<br>"
-            
-            # Build data block with fullmask
-            data_dict = {
-                "type": "scatter",
-                "name": date,
-                "x": list(x[fullmask]*sc), "y": list(y[fullmask]*sc),
-                "mode": "markers",
-                "marker": {
-                    "size": 4, "cmin": cmin, "cmax": cmax, "color": list(c[fullmask]),
-                    "showscale": True, "colorscale": colorscale,
-                    "colorbar": { "title": "<b>"+var+"</b><br>["+varu+"]", "tickformat": ".3g" }
-                },
-                "customdata": cd,
-                "hovertemplate": "<b>"+datad[sat]['display_name']+"</b>"+
+
+            if np.sum(fullmask) < 1:
+                # Build data block with one fake point so that it looks the same
+                data_dict = {
+                    "type": "scatter",
+                    "name": date,
+                    "x": [0.], "y": [0.],
+                    "mode": "markers",
+                    "marker": {
+                        "size": 1, "cmin": cmin, "cmax": cmax, "color": [cmin],
+                        "showscale": True, "colorscale": colorscale,
+                        "colorbar": { "title": "<b>"+var+"</b><br>["+varu+"]", "tickformat": ".3g" }
+                    },
+                    "hovertemplate": "No points in "+date+"<extra></extra>",
+                }
+            else:
+                # Build data block with fullmask
+                data_dict = {
+                    "type": "scatter",
+                    "name": date,
+                    "x": list(x[fullmask]*sc), "y": list(y[fullmask]*sc),
+                    "mode": "markers",
+                    "marker": {
+                        "size": 4, "cmin": cmin, "cmax": cmax, "color": list(c[fullmask]),
+                        "showscale": True, "colorscale": colorscale,
+                        "colorbar": { "title": "<b>"+var+"</b><br>["+varu+"]", "tickformat": ".3g" }
+                    },
+                    "customdata": cd,
+                    "hovertemplate": "<b>"+datad[sat]['display_name']+"</b>"+
                     "<br>X: %{x:.4f} "+scale+"<br>Y: %{y:.4f} "+scale+"<br>"+
                     qline+varline+dateline+"<extra></extra>",
-            }
+                }
 
             # If time is colorbar variable, hide labels by selecting ticks out of range
             if var == "time":
@@ -991,18 +1032,24 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
                 maskz = z <= 0.
             else:
                 maskz = z >= 0.
+            if zoom:
+                rr = x**2 + y**2
+                maskzoom = rr <= c50sq
+                mask = maskz & maskzoom
+            else:
+                mask = maskz
 
             xx=np.concatenate([x,x])
             yy=np.concatenate([y,y])
             # Build new position array, element by element
             j=0
-            for i in range(len(maskz)):
-                if maskz[i]:
+            for i in range(len(mask)):
+                if mask[i]:
                     xx[j]=x[i]*sc
                     yy[j]=y[i]*sc
                     j+=1
-                    if i+1 < len(maskz):
-                        if not maskz[i+1]:
+                    if i+1 < len(mask):
+                        if not mask[i+1]:
                             xx[j]=None
                             yy[j]=None
                             j+=1
@@ -1021,58 +1068,34 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
             fig_dict["data"].append(data_dict)
 
     # 2DP===============================================================================================  CCC
-    ticE = time.perf_counter()
-    if body == "earth" and coord == "GEO":
-        dataXYZ = pd.read_csv('https://ccmc.gsfc.nasa.gov/ungrouped/GM_IM/EarthXYZ.csv')
-        dataIJK = pd.read_csv('https://ccmc.gsfc.nasa.gov/ungrouped/GM_IM/EarthIJKRGB.csv')
-        if scale == "km":
-            dataXYZ *= REkm
-        color=np.array(["rgb("+str(dataIJK['r'][i])+","+str(dataIJK['g'][i])+","+str(dataIJK['b'][i])+")" \
-                        for i in range(len(dataIJK['r']))])
-        # Need to reverse x,y from file to be in proper GEO coords (180 degree rotation)
-        xe=-dataXYZ['x']
-        ye=-dataXYZ['y']
-        ze= dataXYZ['z']
-        # Build data block
-        data_dict = {
-            "type": "mesh3d",
-            "name": '1 R_E sphere',
-            "x": np.append(xe,(xmin,xmax)),
-            "y": np.append(ye,(ymin,ymax)),
-            "z": np.append(ze,(zmin,zmax)),
-            "i": dataIJK['i'],
-            "j": dataIJK['j'],
-            "k": dataIJK['k'],
-            "facecolor": color,
-            "hovertemplate": "Earth<extra></extra>",
-        }
-        # Put in main data block
-        fig_dict["data"].append(data_dict)
-    else:
-        # Build data block
-        data_dict = {
-            "type": "scatter",
-            "name": "positions", "x": [xmin,xmax], "y": [ymin,ymax],
-            "mode": "markers", "marker": {"size": 1},
-            "hoverinfo": "none",
-        }
-        # Put into main data block
-        fig_dict["data"].append(data_dict)
-    tocE = time.perf_counter()
-    if vbose > 0:
-        print(f"  -time loading Earth: {tocE - ticE:0.4f} seconds")
+    # Build body data block
+    data_dict = {
+        "type": "scatter",
+        "name": "positions", "x": [xmin,xmax], "y": [ymin,ymax],
+        "mode": "markers", "marker": {"size": 1},
+        "hoverinfo": "none",
+    }
+    # Put into main data block
+    fig_dict["data"].append(data_dict)
 
     # 2DP===============================================================================================  DDD
     # Set layout values
     fig_dict["layout"]["height"] = 600
     fig_dict["layout"]["width"] = 600
     fig_dict["layout"]["scene_aspectmode"] = "data"
-    fig_dict["layout"]["xaxis"] = {'title': {'text': '<b>X</b> ['+scale+']'}}
-    fig_dict["layout"]["yaxis"] = {'title': {'text': '<b>Y</b> ['+scale+']'}}
+    fig_dict["layout"]["xaxis"] = {'visible': False, 'showticklabels': False}
+    fig_dict["layout"]["yaxis"] = {'visible': False, 'showticklabels': False}
     if NS == 'S':
-        fig_dict["layout"]["title_text"] = txttop+'<br>Southern Hemisphere'
+        if zoom:
+            txttop2 = '<br>Southern Hemisphere to 50 degrees'
+        else:
+            txttop2 = '<br>Southern Hemisphere'
     else:
-        fig_dict["layout"]["title_text"] = txttop+'<br>Northern Hemisphere'
+        if zoom:
+            txttop2 = '<br>Northern Hemisphere to 50 degrees'
+        else:
+            txttop2 = '<br>Northern Hemisphere'
+    fig_dict["layout"]["title_text"] = txttop+txttop2
     fig_dict["layout"]["showlegend"] = False
     fig_dict["layout"]["scene_camera"] = dict(center=dict(x=0, y=0, z=0))
     fig_dict["layout"]["hoverlabel_align"] = 'right'
@@ -1107,102 +1130,124 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
 
     fig = go.Figure(fig_dict)
 
-    # 
-    c80=np.sin(((90.-80.)/90.)*np.pi/2.)
-    c70=np.sin(((90.-70.)/90.)*np.pi/2.)
-    c60=np.sin(((90.-60.)/90.)*np.pi/2.)
-    c50=np.sin(((90.-50.)/90.)*np.pi/2.)
-    c40=np.sin(((90.-40.)/90.)*np.pi/2.)
-    c30=np.sin(((90.-30.)/90.)*np.pi/2.)
-    c20=np.sin(((90.-20.)/90.)*np.pi/2.)
-    c10=np.sin(((90.-10.)/90.)*np.pi/2.)
-    c00=1.0
-    c00d=c00/np.sqrt(2.)
+    fig.update_xaxes(showgrid=False,scaleanchor='y')
+    fig.update_yaxes(showgrid=False)
+    fig.update_layout(
+        paper_bgcolor='white',
+        plot_bgcolor='white',
+        margin=dict(l=10,b=10),
+    )
 
     if body == "lines" and coord == "GEO":
-        fig.update_xaxes(showgrid=False,scaleanchor='y')
-        fig.update_yaxes(showgrid=False)
-
-        fig.update_layout(
-            paper_bgcolor='white',
-            plot_bgcolor='white',
-            shapes=[
-                dict(type="circle", line=dict(color="black", width=1, dash="dash"),
-                     xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80),
-                dict(type="circle", line=dict(color="black", width=1, dash="dot"),
-                     xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70),
-                dict(type="circle", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
-                dict(type="circle", line=dict(color="black", width=1, dash="dash"),
-                     xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50),
-                dict(type="circle", line=dict(color="black", width=1, dash="dot"),
-                     xref="x", yref="y", x0=-c40, y0=-c40, x1=c40, y1=c40),
-                dict(type="circle", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c30, y0=-c30, x1=c30, y1=c30),
-                dict(type="circle", line=dict(color="black", width=1, dash="dash"),
-                     xref="x", yref="y", x0=-c20, y0=-c20, x1=c20, y1=c20),
-                dict(type="circle", line=dict(color="black", width=1, dash="dot"),
-                     xref="x", yref="y", x0=-c10, y0=-c10, x1=c10, y1=c10),
-                dict(type="circle", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c00, y0=-c00, x1=c00, y1=c00),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c00, y0=0., x1=c00, y1=0.),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=0., y0=-c00, x1=0., y1=c00),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c00d, y0=-c00d, x1=c00d, y1=c00d),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c00d, y0=c00d, x1=c00d, y1=-c00d),
-            ],
-            annotations=[
-                dict(text="60", x=-0.04, y=-(c60+0.03), showarrow=False, 
-                     xref="x", yref="y", font=dict(size=8)),
-                dict(text="30", x=-0.04, y=-(c30+0.03), showarrow=False, 
-                     xref="x", yref="y", font=dict(size=8)),
-                #dict(text="0", x=1.0, y=0.5, showarrow=False, textangle=90,
-                #     xref="paper", yref="paper", font=dict(size=10)),
-            ],
-        )
+        if zoom:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=c50d, x1=c50d, y1=-c50d),
+                ],
+            )
+        else:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1, dash="dash"),
+                         xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dot"),
+                         xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dash"),
+                         xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dot"),
+                         xref="x", yref="y", x0=-c40, y0=-c40, x1=c40, y1=c40),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c30, y0=-c30, x1=c30, y1=c30),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dash"),
+                         xref="x", yref="y", x0=-c20, y0=-c20, x1=c20, y1=c20),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dot"),
+                         xref="x", yref="y", x0=-c10, y0=-c10, x1=c10, y1=c10),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00, y0=-c00, x1=c00, y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00, y0=0., x1=c00, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c00, x1=0., y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=-c00d, x1=c00d, y1=c00d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=c00d, x1=c00d, y1=-c00d),
+                ],
+                annotations=[
+                    dict(text="60", x=-0.04, y=-(c60+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                    dict(text="30", x=-0.04, y=-(c30+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                ],
+            )
 
     else:
-        fig.update_xaxes(scaleanchor='y')
-
-        fig.update_layout(
-            paper_bgcolor='white',
-            plot_bgcolor='white',
-            shapes=[
-                dict(type="circle", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
-                dict(type="circle", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c30, y0=-c30, x1=c30, y1=c30),
-                dict(type="circle", line=dict(color="black", width=2),
-                     xref="x", yref="y", x0=-c00, y0=-c00, x1=c00, y1=c00),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c00, y0=0., x1=c00, y1=0.),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=0., y0=-c00, x1=0., y1=c00),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c00d, y0=-c00d, x1=c00d, y1=c00d),
-                dict(type="line", line=dict(color="black", width=1),
-                     xref="x", yref="y", x0=-c00d, y0=c00d, x1=c00d, y1=-c00d),
-            ],
-            annotations=[
-                dict(text="60", x=-0.04, y=-(c60+0.03), showarrow=False, 
-                     xref="x", yref="y", font=dict(size=8)),
-                dict(text="30", x=-0.04, y=-(c30+0.03), showarrow=False, 
-                     xref="x", yref="y", font=dict(size=8)),
-            ],
-        )
+        if zoom:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=c50d, x1=c50d, y1=-c50d),
+                ],
+            )            
+        else:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c30, y0=-c30, x1=c30, y1=c30),
+                    dict(type="circle", line=dict(color="black", width=2),
+                         xref="x", yref="y", x0=-c00, y0=-c00, x1=c00, y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00, y0=0., x1=c00, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c00, x1=0., y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=-c00d, x1=c00d, y1=c00d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=c00d, x1=c00d, y1=-c00d),
+                ],
+                annotations=[
+                    dict(text="60", x=-0.04, y=-(c60+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                    dict(text="30", x=-0.04, y=-(c30+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                ],
+            )
 
     if NS == 'S':
         fig.update_xaxes(autorange="reversed")
-        if zoom:
-            fig.update_xaxes(range=[c50, -c50])
-            fig.update_yaxes(range=[-c50, c50])
-    else:
-        if zoom:
-            fig.update_xaxes(range=[-c50, c50])
-            fig.update_yaxes(range=[-c50, c50])
         
     if coord == 'GEO':
         # CCMC is blocking image pulls directly from add_layout_image but copying
@@ -1210,23 +1255,43 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
         from PIL import Image
         import urllib.request
         if NS == 'S':
-            urllib.request.urlretrieve(
-                'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole.png',
-                "/tmp/TMP.png")
-            localIMG = Image.open("/tmp/TMP.png")
-            fig.add_layout_image(
-                dict(source=localIMG,xref="x", yref="y", x=1, y=1, sizex=2, sizey=2,
-                     sizing="stretch", opacity=0.5, layer="below")
-            )
+            if zoom:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole50.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=c50, y=c50, sizex=2*c50, sizey=2*c50,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
+            else:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=1, y=1, sizex=2, sizey=2,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
         else:
-            urllib.request.urlretrieve(
-                'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole.png',
-                "/tmp/TMP.png")
-            localIMG = Image.open("/tmp/TMP.png")
-            fig.add_layout_image(
-                dict(source=localIMG,xref="x", yref="y", x=-1, y=1, sizex=2, sizey=2,
-                     sizing="stretch", opacity=0.5, layer="below")
-            )
+            if zoom:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole50.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=-c50, y=c50, sizex=2*c50, sizey=2*c50,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
+            else:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=-1, y=1, sizex=2, sizey=2,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
 
     # end timer                                                                               
     toc = time.perf_counter()
