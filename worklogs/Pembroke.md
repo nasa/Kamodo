@@ -1,3 +1,6 @@
+
+### 2021-10-18 10:57:21.083223: clock-in
+
 ### 2021-10-06 12:16:47.509434: clock-out
 
 * Need sample data to test flythrough
