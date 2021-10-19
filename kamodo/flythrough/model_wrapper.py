@@ -91,7 +91,7 @@ def Choose_Model(model):
         return module
 
     elif model=='OpenGGCM_GM':
-        import kamodo.readers.openggcm_gm_4Dcdf as module
+        import kamodo.readers.openggcm_gm_4Dcdf_xarray as module
         return module
     
     else:
