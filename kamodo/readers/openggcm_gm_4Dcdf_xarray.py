@@ -23,8 +23,8 @@ model_varnames={
     'resis':['eta','resistivity',13,'GSE','car',['time','x','y','z'],'m**2/s'],
     'pp':['P_plasma','plasma pressure',14,'GSE','car',['time','x','y','z'],'pPa'],
     'xjx':['J_x','x component of current density',15,'GSE','car',['time','x','y','z'],'muA/m**2'],
-    'xjy':['J_y','y component of current density',15,'GSE','car',['time','x','y','z'],'muA/m**2'],
-    'xjz':['J_z','z component of current density',15,'GSE','car',['time','x','y','z'],'muA/m**2'],
+    'xjy':['J_y','y component of current density',16,'GSE','car',['time','x','y','z'],'muA/m**2'],
+    'xjz':['J_z','z component of current density',17,'GSE','car',['time','x','y','z'],'muA/m**2'],
     #add current density components here
 }
 
@@ -45,17 +45,12 @@ def hrs_to_ts(hrs, filedate):
 #sample file name: 'D:/OpenGGCM_GM/Data/Yihua_1/Yihua_Zheng_090721_1.3df_2015-10-16_12.nc'
 #main function/class definition
 def MODEL():
-    from numpy import array, NaN, diff, where, sqrt, sum, expand_dims
+    from numpy import array, NaN, diff, sqrt, sum, expand_dims, zeros
     from time import perf_counter
-    #from netCDF4 import Dataset
     import xarray, dask
     from os.path import isfile
-    #from glob import glob
     from kamodo import Kamodo, kamodofy
-    #from kamodo.readers.reader_utilities import regdef_4D_interpolators
     from kamodo.readers.reader_utilities import register_interpolator, define_4d_gridded_interpolator
-    #from scipy.interpolate import RegularGridInterpolator
-    #print('KAMODO IMPORTED!')
     
     class MODEL(Kamodo):
         '''OpenGGCM_GM magnetosphere reader'''
@@ -64,10 +59,6 @@ def MODEL():
                      fulltime=True, missing_value=NaN, **kwargs):
             super(MODEL, self).__init__()
             t0=perf_counter() # profiling time stamp
-            
-            #separate file directory from file name
-            #file_prefix = basename(full_file_prefix)  # runname.3df.ssss
-            #file_dir = full_file_prefix.split(file_prefix)[0]
             
             #convert files to netcdf4 if needed
             nc_file = full_file_prefix+'.nc'  # input file name: file_dir/YYYY-MM-DD_HH.nc
@@ -84,13 +75,10 @@ def MODEL():
             #data are time-wrapped in files. This logic prevents the flythrough from breaking from this decision.
             #cdf_data.added_time_at_beginning and cdf_data.added_time_at_end = 0 if not, 1 if yes
             cdf_data = xarray.open_dataset(nc_file, chunks={'time':5})
-            if not fulltime:  #use unwrapped time values
-                if cdf_data.added_time_at_end:  #skip added time at end
-                    t = cdf_data.variables['_time'].values[cdf_data.added_time_at_beginning:-1]
-                else:  #no skipping needed
-                    t = cdf_data.variables['_time'].values[cdf_data.added_time_at_beginning:]
+            if not fulltime and cdf_data.added_time_at_end:  #use unwrapped time values
+                t = cdf_data.variables['_time'].values[:-1]  #skip added time at end
             else: #need wrapped time array for interpolation
-                t = t = cdf_data.variables['_time'].values
+                t = cdf_data.variables['_time'].values
             self._time = t
 
             #establish time attributes first
@@ -101,7 +89,6 @@ def MODEL():
             self.datetimes=[datetime.utcfromtimestamp(hrs_to_ts(t[0], self.filedate)).isoformat(sep=' '),
                             datetime.utcfromtimestamp(hrs_to_ts(t[-1], self.filedate)).isoformat(sep=' ')]
             self.filetimes=[hrs_to_ts(t[0], self.filedate), hrs_to_ts(t[-1], self.filedate)]   #timestamps for matching in wrapper
-            #print(self.filedate, self.datetimes, self.filetimes, full_file_prefix)
 
             #return time information only for flythrough
             if filetime: 
@@ -149,8 +136,6 @@ def MODEL():
             #store variables
             self.near_Earth_boundary_radius = cdf_data.near_Earth_boundary_radius
             self.near_Earth_boundary_radius_unit = cdf_data.near_Earth_boundary_radius_units
-            #print('Inner boundary radius:', self.near_Earth_boundary_radius, 
-            #      self.near_Earth_boundary_radius_unit)  #should be 2.5 R_E
             self.missing_value = NaN
             self.verbose = verbose
             self.filename = cdf_data.file.split(',')
@@ -196,13 +181,19 @@ def MODEL():
             for grid in grid_list:
                 setattr(self, grid, getattr(cdf_data, grid).values)  #store coordinate data
             cdf_data.close()  #done with file
-            #if verbose: print(f'Took {perf_counter()-t0:.6f}s to read in data')
     
             #register interpolators for each variable
             varname_list, self.variables = [key for key in variables.keys()], {}  #store original list b/c gridded interpolators
             t_reg = perf_counter()
             for varname in varname_list:  #all are 3D variables
-                print('Functionalizing', varname)
+                #make dimension names uniform for easier interpolation later
+                dim_names, dims_dict = list(variables[varname]['data'].dims), {}
+                dims_dict[dim_names[0]], dims_dict[dim_names[1]] = 'time', 'x'
+                dims_dict[dim_names[2]], dims_dict[dim_names[3]] = 'y', 'z'
+                variables[varname]['data'] = variables[varname]['data'].rename(
+                    **dims_dict)
+                
+                #store and register data                
                 self.variables[varname] = dict(units = variables[varname]['units'], 
                                                data = variables[varname]['data'])     #not saving data to decrease memory demand      
                 self.register_variable(self.variables[varname]['units'], 
@@ -218,9 +209,12 @@ def MODEL():
         def register_variable(self, units, variable, varname, gridded_int):
             x_, y_, z_ = self.get_grid(varname) # variable may have different grid positions in the staggered grid of the model
             xvec_dependencies = {'time':'hr','x':'R_E','y':'R_E','z':'R_E'}
+            
+            #variable is a DataArray object with a built-in interpolator, add coordinates
+            variable = variable.assign_coords({'time':self._time,'x':x_,'y':y_,'z':z_})
 
-            self = self.custom_interp(units, variable, self._time, x_, y_, z_ , 
-                                      varname, xvec_dependencies, gridded_int)   #regdef_4D_interpolators     
+            self = self.custom_interp(units, variable, varname, xvec_dependencies, 
+                                      gridded_int)   #regdef_4D_interpolators     
             return
         
         def get_grid(self, varname):
@@ -241,13 +235,10 @@ def MODEL():
             else: # (default) positions on plasma grid
                 return self._x, self._y, self._z     
             
-        def custom_interp(self, units, variable, t, x, y, z, varname, 
+        def custom_interp(self, units, variable, varname, 
                           xvec_dependencies, gridded_int):
             '''define interpolator based on xarray's except need inner boundary limit.
             Decrease memory demand by not saving data arrays.'''
-
-            #variable is a DataArray object with a built-in interpolator, add coordinates
-            variable = variable.assign_coords(time=t,x=x,y=y,z=z)
 
             @kamodofy(units=units, data=variable)
             def interpolator(xvec):  #xvec = [[t1,x1,y1,z1],[t2,x2,y2,z2],...]
@@ -257,27 +248,28 @@ def MODEL():
                 xvec_arr = array(xvec)
                 if len(xvec_arr.shape)==1: xvec_arr = expand_dims(xvec_arr, 0)
                 r = sqrt(sum(xvec_arr[:,1:]**2, axis=1))  #calculate radius 1D array
-                #print(perf_counter()-t0)  #next line is the slow line
-                result = array([float(variable.interp(time=xvec_i[0], x=xvec_i[1], y=xvec_i[2],
-                                       z=xvec_i[3]).values) for xvec_i in xvec_arr])
+                result = zeros(len(r))  #option 2, not much time diff from option 1
+                for i in range(len(r)):
+                    if r[i]>self.near_Earth_boundary_radius:
+                        result[i] = float(variable.interp(time=xvec_arr[i][0], x=xvec_arr[i][1], 
+                                                          y=xvec_arr[i][2], z=xvec_arr[i][3]).values)
+                    else: 
+                        result[i] = NaN
                 print(f'Took {perf_counter()-t0:.3f} s for {len(xvec)} positions.')
-                return where(r>self.near_Earth_boundary_radius, result, NaN)
-                #return interpolator if true, NaN if false
+                return result
             
-            self = register_interpolator(self, varname, interpolator, 
-                                                     xvec_dependencies)
+            self = register_interpolator(self, varname, interpolator, xvec_dependencies)
             
             #define and register the gridded interpolator if desired
             if gridded_int:
                 self.variables[varname+'_ijk'] = dict(units = units, data = {}) 
-                gridded_interpolator = define_4d_gridded_interpolator(units,{},t,x,
-                                                                      y,z,xvec_dependencies,
-                                                                      interpolator)
+                gridded_interpolator = define_4d_gridded_interpolator(units,variable,
+                                    variable.time, variable.x, variable.y, variable.z,
+                                    xvec_dependencies, interpolator)
                 self = register_interpolator(self, varname+'_ijk', 
                                                          gridded_interpolator, 
                                                          xvec_dependencies)
             return            
-                    
         
     return MODEL
         
