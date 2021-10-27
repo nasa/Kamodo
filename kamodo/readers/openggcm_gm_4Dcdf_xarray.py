@@ -50,7 +50,7 @@ def MODEL():
     import xarray, dask
     from os.path import isfile
     from kamodo import Kamodo, kamodofy
-    from kamodo.readers.reader_utilities import register_interpolator, define_4d_gridded_interpolator
+    from kamodo_ccmc.readers.reader_utilities import register_interpolator, define_4d_gridded_interpolator
     
     class MODEL(Kamodo):
         '''OpenGGCM_GM magnetosphere reader'''
@@ -66,7 +66,7 @@ def MODEL():
                 self.conversion_test = True  #default value
             else:  #file not prepared, prepare it
                 try:  #I don't have the file converter, so leave in try/except for now
-                    from openggcm_to_cdf import openggcm_combine_magnetosphere_files as gmconv
+                    from kamodo_ccmc.readers.openggcm_to_cdf import openggcm_combine_magnetosphere_files as gmconv
                     self.conversion_test = gmconv(full_file_prefix)
                     #should return a boolean (True is successful, False if not)
                 except:
