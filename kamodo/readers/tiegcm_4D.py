@@ -139,7 +139,7 @@ def MODEL():
     from netCDF4 import Dataset
     from kamodo import Kamodo
     #print('KAMODO IMPORTED!')
-    from kamodo.readers.reader_utilities import regdef_3D_interpolators, regdef_4D_interpolators    
+    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators, regdef_4D_interpolators    
     
     class MODEL(Kamodo): 
         '''TIEGCM model data reader.'''
