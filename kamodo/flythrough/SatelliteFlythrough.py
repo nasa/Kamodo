@@ -51,8 +51,8 @@ https://sscweb.gsfc.nasa.gov/users_guide/Appendix_C.shtml and it's reference,
 """
 import numpy as np
 from os.path import basename
-import kamodo.flythrough.wrapper_output as WO
-import kamodo.flythrough.SF_utilities as U
+import kamodo_ccmc.flythrough.wrapper_output as WO
+import kamodo_ccmc.flythrough.SF_utilities as U
 
 
 def SatelliteTrajectory(dataset, start_ts, stop_ts, coord_type='GEO',
@@ -68,7 +68,7 @@ def SatelliteTrajectory(dataset, start_ts, stop_ts, coord_type='GEO',
     
     Coordinates are retrieved on a cartesian grid.
     '''
-    from kamodo.readers.hapi import HAPI
+    from kamodo_ccmc.readers.hapi import HAPI
 
 
     #convert from utc timestamps to isoformt
@@ -281,7 +281,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
                                  ' do not support cartesian grids so are not allowed.')
         
         #generate and save plots without displaying
-        from kamodo.flythrough.plots import SatPlot4D
+        from kamodo_ccmc.flythrough.plots import SatPlot4D
         #presentation options: all, day, hour, minute, N, orbitE, orbitM
         for var in var_list:
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],results['c3'],
