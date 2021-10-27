@@ -11,7 +11,7 @@ from astropy.constants import R_earth
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from plotly.offline import iplot
-from kamodo.flythrough.utils import ConvertCoord
+from kamodo_ccmc.flythrough.utils import ConvertCoord
 
 def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
               displayplot=True,type='3D',body='black',divfile='',htmlfile=''):
