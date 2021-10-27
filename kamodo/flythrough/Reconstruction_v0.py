@@ -59,9 +59,9 @@ import time as ti
 from csv import DictReader
 from datetime import datetime, timezone 
 from kamodo import Kamodo, kamodofy, gridify
-import kamodo.flythrough.SatelliteFlythrough as SF
+import kamodo_ccmc.flythrough.SatelliteFlythrough as SF
 from scipy.interpolate import RegularGridInterpolator
-import kamodo.flythrough.model_wrapper as MW
+import kamodo_ccmc.flythrough.model_wrapper as MW
 
 
 def read_Bobs_sattraj(file_dir):
@@ -219,7 +219,7 @@ class RECON(Kamodo):
         a ring of data around the Earth. Reconstructions will be better achieved
         in spherical coordinates for these scenarios. To easily switch between
         coordinate systems, from GSE cartesian to GEO spherical, for example:
-            from kamodo.flythrough.utils import ConvertCoord
+            from kamodo_ccmc.flythrough.utils import ConvertCoord
             lon, lat, radius, units = ConvertCoord(utc_time,x,y,z,
                           'GSE','car','GEO','sph')
         See the flythrough documentation for more details on this function.
@@ -414,7 +414,7 @@ class RECON(Kamodo):
             #retrieve local times through SM coordinate conversion
             print('Filtering constellation trajectories on day/night option '+\
                   f'using GSE cartesian coordinates for {fly_t.size} locations...')
-            from kamodo.flythrough.utils import ConvertCoord
+            from kamodo_ccmc.flythrough.utils import ConvertCoord
             c1_MAG, c2_MAG, c3_MAG, units = ConvertCoord(fly_t, fly_c1, fly_c2, fly_c3,
                                                          self.coord_type, 
                                                          self.coord_grid,
@@ -751,7 +751,7 @@ class RECON(Kamodo):
             #retrieve local times through SM coordinate conversion
             print('Filtering model orbit slices on day/night option using GSE '+\
                   f'cartesian coordinates for {model_t.size} locations...')
-            from kamodo.flythrough.utils import ConvertCoord
+            from kamodo_ccmc.flythrough.utils import ConvertCoord
             c1_MAG, c2_MAG, c3_MAG, units = ConvertCoord(model_t, model_c1,
                                                          model_c2, model_c3, 
                                                          self.coord_type, 
