@@ -36,7 +36,7 @@ def MODEL():
     from numpy import array, transpose, NaN, unique, append, zeros, abs, diff, where
     from time import perf_counter
     from astropy.constants import R_earth
-    from kamodo.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators
+    from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators
 
     class MODEL(Kamodo):
         '''IRI model data reader.'''
