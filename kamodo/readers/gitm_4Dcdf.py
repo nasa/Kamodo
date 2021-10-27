@@ -147,7 +147,7 @@ def MODEL():
     from netCDF4 import Dataset
     from kamodo import Kamodo
     #print('KAMODO IMPORTED!')
-    from kamodo.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators    
+    from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators    
 
     #main class object
     class MODEL(Kamodo): 
@@ -186,7 +186,7 @@ def MODEL():
                 #print(self.patterns, flag_2D)
             
                 #convert
-                from kamodo.readers.gitm_tocdf import GITMbin_toCDF as toCDF
+                from kamodo_ccmc.readers.gitm_tocdf import GITMbin_toCDF as toCDF
                 test = [toCDF(file_dir+p, flag_2D) for p in self.patterns]  #get/convert files with given prefix
                 if sum(test)!=len(self.patterns): 
                     self.conversion_test = False
