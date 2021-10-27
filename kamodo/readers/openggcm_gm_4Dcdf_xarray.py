@@ -45,7 +45,7 @@ def hrs_to_ts(hrs, filedate):
 #sample file name: 'D:/OpenGGCM_GM/Data/Yihua_1/Yihua_Zheng_090721_1.3df_2015-10-16_12.nc'
 #main function/class definition
 def MODEL():
-    from numpy import array, NaN, diff, sqrt, sum, expand_dims, zeros
+    from numpy import array, NaN, diff, sqrt, sum, expand_dims, zeros, where
     from time import perf_counter
     import xarray, dask
     from os.path import isfile
@@ -74,7 +74,7 @@ def MODEL():
 
             #data are time-wrapped in files. This logic prevents the flythrough from breaking from this decision.
             #cdf_data.added_time_at_beginning and cdf_data.added_time_at_end = 0 if not, 1 if yes
-            cdf_data = xarray.open_dataset(nc_file, chunks={'time':5})
+            cdf_data = xarray.open_dataset(nc_file, chunks={'time':100,'x':100,'y':100,'z':100})
             if not fulltime and cdf_data.added_time_at_end:  #use unwrapped time values
                 t = cdf_data.variables['_time'].values[:-1]  #skip added time at end
             else: #need wrapped time array for interpolation
@@ -262,10 +262,18 @@ def MODEL():
             
             #define and register the gridded interpolator if desired
             if gridded_int:
-                self.variables[varname+'_ijk'] = dict(units = units, data = {}) 
-                gridded_interpolator = define_4d_gridded_interpolator(units,variable,
-                                    variable.time, variable.x, variable.y, variable.z,
-                                    xvec_dependencies, interpolator)
+                self.variables[varname+'_ijk'] = dict(units = units, data = variable) 
+                
+                @kamodofy(units=units, data={}, arg_units=xvec_dependencies)
+                def gridded_interpolator(time, x, y, z):  
+                    """Interpolates 4d variable on a grid"""
+                    
+                    t0 = perf_counter()
+                    time, x, y, z = array(time), array(x), array(y), array(z)
+                    r = sqrt(x**2+y**2+z**2)
+                    return where(r>self.near_Earth_boundary_radius, 
+                                 variable.interp(time=time, x=x, y=y, z=z).values, NaN)
+
                 self = register_interpolator(self, varname+'_ijk', 
                                                          gridded_interpolator, 
                                                          xvec_dependencies)
