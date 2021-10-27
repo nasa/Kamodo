@@ -18,8 +18,8 @@ from numpy import abs as npabs
 from time import perf_counter
 from os.path import basename, isfile
 from datetime import datetime, timedelta, timezone
-import kamodo.flythrough.model_wrapper as MW
-from kamodo.flythrough.utils import ConvertCoord
+import kamodo_ccmc.flythrough.model_wrapper as MW
+from kamodo_ccmc.flythrough.utils import ConvertCoord
 from astropy.constants import R_earth  #to convert from radius to height in CalcIlev
 
 
