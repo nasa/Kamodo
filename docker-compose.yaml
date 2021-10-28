@@ -1,0 +1,89 @@
+version: "3.7"
+
+services:
+  kamodo: # core kamodo only
+    image: ensemble/kamodo
+    ports:
+      - "8888:8888"
+    command:
+      - jupyter
+      - notebook
+      - /kamodo
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+  kamodo-ccmc: # ccmc readers
+    image: ccmc/kamodo_ccmc
+    build:
+      context: .
+      dockerfile: dockerfiles/kamodo_ccmc_readers.Dockerfile
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /kamodo_ccmc
+    ports:
+      - "8889:8888"
+
+  sat: # ccmc readers with hapi dependencies
+    image: ccmc/sat
+    ports:
+      - "8881:8888"
+    build:
+      context: .
+      dockerfile: dockerfiles/satellite_extractions.Dockerfile
+    command:
+      - jupyter
+      - notebook
+      - ./docs/notebooks/CCMC_Satellite-Extractions.ipynb
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /kamodo_ccmc
+    working_dir: /kamodo_ccmc
+  spacepy: # spacepy dependent readers
+    image: ccmc/spacepy
+    ports:
+      - "8882:8888"
+    build:
+      context: .
+      dockerfile: dockerfiles/spacepy.Dockerfile
+    command:
+      - jupyter
+      - notebook
+      - ./docs/notebooks
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /kamodo_ccmc
+    working_dir: /kamodo_ccmc
+  flythrough:
+    image: ccmc/spacepy
+    ports:
+      - "8883:8888"
+    build:
+      context: .
+      dockerfile: dockerfiles/spacepy.Dockerfile
+    command:
+      - jupyter
+      - notebook
+      - ./notebooks
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /kamodo_ccmc
+    working_dir: /kamodo_ccmc
+
+

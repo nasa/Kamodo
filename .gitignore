@@ -106,3 +106,11 @@ venv.bak/
 # command line outputs
 cli/outputs/
 outputs/
+
+# hourly
+hourly.yaml
+hourly-outputs/
+
+# kamodo
+kamodo_output/
+

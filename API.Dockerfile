@@ -3,6 +3,8 @@
 FROM continuumio/miniconda3:latest
 LABEL maintainer "Asher Pembroke <apembroke@predsci.com>"
 
+RUN conda install python=3.7
+
 # RUN conda install jupyter
 RUN pip install antlr4-python3-runtime
 
@@ -25,12 +27,13 @@ ADD . /kamodo
 # RUN git clone https://github.com/asherp/kamodo.git
 RUN pip install -e kamodo
 
+RUN conda install jupyter
 
 WORKDIR kamodo
 
-CMD ["kamodo-serve"]
+# CMD ["kamodo-serve"]
 
-# CMD ["jupyter", "notebook", "./docs/notebooks", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+CMD ["jupyter", "notebook", "./docs/notebooks", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
 
 #####
 # For Jupyter notebook interaction, use:

@@ -1,0 +1,21 @@
+config_override: gitm.yaml
+gui:
+  external_stylesheets: []
+  routes_pathname_prefix: /kamodo/
+kamodo_output: kamodo_output
+models:
+  GITM:
+    class: kamodo_ccmc.readers.gitm.gitmK.GITM
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      filename: /tmp/3DLST_t150317_175800.bin
+      runpath: .
+      runname: test
+      gridified: True
+      alt_norm: 400000
+    plot:
+      rho:
+        alt:
+          - 1

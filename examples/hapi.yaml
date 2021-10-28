@@ -1,0 +1,80 @@
+config_override: hapi.yaml
+gui:
+  external_stylesheets: []
+  routes_pathname_prefix: /kamodo/
+kamodo_output: kamodo_output
+models:
+  GOES12:
+    class: kamodo_ccmc.readers.hapi.HAPI
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      server: https://cdaweb.gsfc.nasa.gov/hapi
+      dataset: GOES12_K0_MAG
+      parameters: B_GSE_c,SC_pos_eo,SC_pos_se # comma squished str
+      start: 2008-07-11T00:00:00
+      stop: 2008-07-13T00:00:00
+    plot:
+      SC_pos_eo:
+  GRACE:
+    class: kamodo_ccmc.readers.hapi.HAPI
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      server: http://hapi-server.org/servers/SSCWeb/hapi
+      dataset: grace1
+      parameters: X_GEO,Y_GEO,Z_GEO,X_GSE,Y_GSE,Z_GSE # comma squished str
+      start: 2012-07-07T00:00:00
+      stop: 2012-07-08T00:00:00
+    plot:
+      X_GEO:
+      Y_GEO:
+      Z_GEO:
+  DMSP:
+    class: kamodo_ccmc.readers.hapi.HAPI
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      server: https://cdaweb.gsfc.nasa.gov/hapi
+      dataset: DMSP-F16_SSIES-3_THERMAL-PLASMA
+      parameters: vx,vy,vz
+      start: 2012-07-07T00:00:00
+      stop: 2012-07-08T00:00:00
+    plot:
+      vx:
+      vy:
+      vz:
+  MMS1:
+    class: kamodo_ccmc.readers.hapi.HAPI
+    evaluate: {}
+    fig_layout:
+      autosize: true
+    params:
+      server: https://cdaweb.gsfc.nasa.gov/hapi
+      dataset: MMS1_MEC_SRVY_L2_EPHT89D
+      parameters: mms1_mec_bsc_gsm
+      start: 2021-08-26T01:59:59.000000Z
+      stop: 2021-08-26T23:59:59.000000Z
+    plot:
+      mms1_x__mec_bsc_gsm:
+      mms1_y__mec_bsc_gsm:
+      mms1_z__mec_bsc_gsm:
+
+plot_conf:
+  animation_opts: null
+  auto_open: true
+  auto_play: true
+  config: null
+  filename: temp-plot.html
+  image: null
+  image_filename: plot_image
+  include_mathjax: cdn
+  include_plotlyjs: cdn
+  link_text: Export to plot.ly
+  output_type: file
+  show_link: false
+  validate: true
+verbose: true
