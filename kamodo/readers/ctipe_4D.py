@@ -66,7 +66,7 @@ def MODEL():
     from kamodo import Kamodo
     #print('KAMODO IMPORTED!')
     from netCDF4 import Dataset 
-    from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators
+    from kamodo.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators
     
     #main class
     class MODEL(Kamodo):
@@ -86,7 +86,7 @@ def MODEL():
                 cdf_file = full_file_prefix+'.nc'  # input file name: file_dir/YYYY-MM-DD.nc
                 self.conversion_test = True
             else:  #file not prepared, prepare it
-                from kamodo_ccmc.readers.ctipe_tocdf import ctipe_combine_files
+                from ctipe_tocdf import ctipe_combine_files
                 cdf_file = ctipe_combine_files(full_file_prefix)
                 self.conversion_test = True
             

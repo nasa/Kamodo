@@ -78,7 +78,7 @@ def MODEL():
     from netCDF4 import Dataset
     from kamodo import Kamodo
     #print('KAMODO IMPORTED!')
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators    
+    from kamodo.readers.reader_utilities import regdef_3D_interpolators    
        
     class MODEL(Kamodo): 
         def __init__(self, full_file_prefix, variables_requested=[], runname="noname",
@@ -92,7 +92,7 @@ def MODEL():
             file_prefix = basename(full_file_prefix)
             file_dir = full_file_prefix.split(file_prefix)[0]   
             if not isfile(full_file_prefix+'.nc'):
-                from kamodo_ccmc.readers.swmfie_tocdf import convertSWMFIE_toCDF
+                from kamodo.readers.swmfie_tocdf import convertSWMFIE_toCDF
                 test = convertSWMFIE_toCDF(full_file_prefix)  
                 if not test: 
                     self.conversion_test = test  #only needed for 1 file/time cases

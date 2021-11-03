@@ -148,7 +148,7 @@ def _read_SWMFIE(file_prefix, verbose=False):
     files = glob(file_prefix+'*.tec')   #take one day of data
     file_datestr = basename(file_prefix)[3:11]
     string_date = file_datestr[:4]+'-'+file_datestr[4:6]+'-'+file_datestr[6:8]  #'YYYY-MM-DD' 
-    print('CONVERTER:', file_prefix, file_datestr, string_date)
+    #print('CONVERTER:', file_prefix, file_datestr, string_date)
     filedate = datetime.strptime(string_date+' 00:00:00', \
                                       '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc) #dt object
 
@@ -188,6 +188,7 @@ def _read_SWMFIE(file_prefix, verbose=False):
     var_units = {value[0]:value[-1] for key, value in swmfie_varnames.items() \
                  if value[0] in gvar_list}
     variables = {key:[[data[key]]] for key in gvar_list}
+    #print(variables.keys())
 
     #determine where to split arrays in longitude
     lon_idx = min(np.where(lon>0)[0])
@@ -228,6 +229,7 @@ def _read_SWMFIE(file_prefix, verbose=False):
         new_top = np.broadcast_to(top, (new_shape[1],new_shape[0])).T
         tmp2[:,:,-1] = new_top        
         variables[var_key] = tmp2  #store result
+        #print(var_key, 'retrieved.')
         
     coords = {'time':time, 'radius':radius, 'lat':lat, 'lon':lon}
     variables['theta_Btilt'], variables['psi_Btilt'] = theta_Btilt, psi_Btilt
@@ -262,8 +264,11 @@ def _toCDF(filename, files, coords, variables, var_units, filedate):
         elif variable_name in var_1D:
             new_var = data_out.createVariable(variable_name, np.float64, ('time'))
             new_data = variables[variable_name]
+        else: 
+            continue
         new_var[:] = new_data  #store data in variable
-        new_var.units = var_units[variable_name]        
+        new_var.units = var_units[variable_name]   
+        #print(variable_name, 'stored in cdf.')
         
     #close file
     data_out.close()     
