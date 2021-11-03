@@ -89,7 +89,6 @@ def MODEL():
                 from kamodo_ccmc.readers.ctipe_tocdf import ctipe_combine_files
                 cdf_file = ctipe_combine_files(full_file_prefix)
                 self.conversion_test = True
-                return 
             
             #establish time attributes first
             cdf_data = Dataset(cdf_file, 'r')
