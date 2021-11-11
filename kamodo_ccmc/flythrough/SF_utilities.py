@@ -405,7 +405,7 @@ def Model_FlyAway(reader, filename, variable_list, sat_time, c1, c2, c3,
     results = {var: kamodo_object[var](sat_track[[key for key, value in \
                                              z_dependencies.items() if var in value][0]])\
                for var in newvar_list}
-    
+    del kamodo_object   #save memory
     return results
 
 def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, coord_grid):

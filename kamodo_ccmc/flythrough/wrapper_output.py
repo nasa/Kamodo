@@ -5,6 +5,7 @@ Created on Fri May 14 21:41:24 2021
 @author: rringuet
 
 routines to output satellite flythrough time series into various file formats
+Oct 12, 2021: adding coordinate system to metadata of each file (in and out)
 """
 import numpy as np
 
@@ -16,10 +17,13 @@ def SFcdf_reader(filename):
     cdf_dict = {key:{'units':cdf_data.variables[key].units, 'data':np.array(cdf_data.variables[key])} \
                 for key in cdf_data.variables.keys()}
     cdf_dict['metadata'] = {'model_files': cdf_data.modelfile, 
-                            'model_used': cdf_data.model}  #add metadata
+                            'model_used': cdf_data.model,
+                            'coord_type': cdf_data.coord_type,
+                            'coord_grid': cdf_data.coord_grid}  #add metadata
     return cdf_dict
 
-def SFdata_tocdf(filename, model_filename, model_name, results_dict, results_units):
+def SFdata_tocdf(filename, model_filename, model_name, results_dict, results_units,
+                 coord_type, coord_grid):
     '''Write satellite flythrough time series data to a netCDF4 file'''
     
     from netCDF4 import Dataset    
@@ -29,6 +33,8 @@ def SFdata_tocdf(filename, model_filename, model_name, results_dict, results_uni
     data_out = Dataset(filename+'.nc', 'w', format='NETCDF4')
     data_out.modelfile = model_filename
     data_out.model = model_name
+    data_out.coord_type = coord_type
+    data_out.coord_grid = coord_grid
     
     #store time dimension
     for key in results_dict:
@@ -58,6 +64,7 @@ def SFcsv_reader(filename, delimiter=','):
     #sort out header
     model_files = next(csv_reader)
     model_used = next(csv_reader)
+    coord_info = next(csv_reader)
     variable_keys = next(csv_reader)
     variable_keys[0] = variable_keys[0][1:]  #cut out # from first name
     variable_units = next(csv_reader)
@@ -84,11 +91,15 @@ def SFcsv_reader(filename, delimiter=','):
             data_dict[key]['data'] = np.array(data_dict[key]['data'],dtype=float)
     
     #add metadata
-    data_dict['metadata'] = {'model_files':model_files[1].strip(), 'model_used':model_used[1].strip()}
+    data_dict['metadata'] = {'model_files': model_files[1].strip(), 
+                             'model_used': model_used[1].strip(),
+                             'coord_type': coord_info[1].strip(),
+                             'coord_grid': coord_info[2].strip()}
     
     return data_dict
 
-def SFdata_tocsv(filename, model_filename, model_name, results_dict, results_units):
+def SFdata_tocsv(filename, model_filename, model_name, results_dict, results_units,
+                 coord_type, coord_grid):
     '''Write satellite flythrough time series data to a csv file'''
     
     #get key name for time information
@@ -104,6 +115,7 @@ def SFdata_tocsv(filename, model_filename, model_name, results_dict, results_uni
     else:
         data_out.write('#Model files used:,'+''.join([f+',' for f in model_filename]))
     data_out.write(f'\n#Model used:, {model_name}')
+    data_out.write(f'\n#Coordinates:, {coord_type}, {coord_grid}')
     data_out.write('\n#'+''.join([key+',' for key in results_dict.keys()]))  #key order in results_dict is better
     data_out.write('\n#'+''.join(['['+results_units[key]+'],' for key in results_dict.keys()]))
     for i in range(len(results_dict[time_key])):
@@ -117,8 +129,9 @@ def SFascii_reader(filename):
     return SFcsv_reader(filename, delimiter='\t')
     
 
-def SFdata_toascii(filename, model_filename, model_name, results_dict, results_units):
-    '''Write satellite flythrough time series data to a csv file'''
+def SFdata_toascii(filename, model_filename, model_name, results_dict, results_units,
+                   coord_type, coord_grid):
+    '''Write satellite flythrough time series data to a txt file'''
 
     #get key name for time information
     for key in results_dict:
@@ -133,6 +146,7 @@ def SFdata_toascii(filename, model_filename, model_name, results_dict, results_u
     else:
         data_out.write('#Model files used:\t'+''.join([f+'\t' for f in model_filename]))
     data_out.write(f'\n#Model used:\t {model_name}')
+    data_out.write(f'\n#Coordinates:\t {coord_type}\t {coord_grid}')
     data_out.write('\n#'+''.join([key+'\t' for key in results_dict.keys()]))  #key order in results_dict is better
     data_out.write('\n#'+''.join(['['+results_units[key]+']\t' for key in results_dict.keys()]))
     for i in range(len(results_dict[time_key])):

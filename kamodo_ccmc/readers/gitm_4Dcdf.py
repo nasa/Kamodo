@@ -179,8 +179,15 @@ def MODEL():
             #if .nc files not there, create then
             self.conversion_test=True  #default value
             if len(self.patterns)!=n_ncfiles:  #then need to create .nc files for each pattern   
+                #determine of calc of 2D variables is necessary
+                if sum(['2D' in p for p in self.patterns])>0: 
+                    flag_2D=True  #2D files found, will not calc 2D variables
+                else: flag_2D=False  #calc will occur
+                #print(self.patterns, flag_2D)
+            
+                #convert
                 from kamodo_ccmc.readers.gitm_tocdf import GITMbin_toCDF as toCDF
-                test = [toCDF(file_dir+p) for p in self.patterns]  #get/convert files with given prefix
+                test = [toCDF(file_dir+p, flag_2D) for p in self.patterns]  #get/convert files with given prefix
                 if sum(test)!=len(self.patterns): 
                     self.conversion_test = False
                     return   #if file conversion fails, return
@@ -286,6 +293,7 @@ def MODEL():
             self.varfiles = {}  #store which variable came from which file for easier association with coords
             self.err_list = []
             self.modelname = 'GITM'
+            self.variables={}
             
             #perform initial check on variables_requested list
             if len(variables_requested)>0 and fulltime:
@@ -300,10 +308,11 @@ def MODEL():
                 self.filename.extend(files)
                 
                 #store coordinates, time is always the same between files
-                setattr(self, '_time'+str(i), array(cdf_data.variables['time'])) #in deg
+                setattr(self, '_time'+str(i), array(cdf_data.variables['time'])) #in hr
                 setattr(self, '_lat'+str(i), array(cdf_data.variables['lat'])) #in deg
                 setattr(self, '_lon'+str(i), array(cdf_data.variables['lon'])) #in deg
-                setattr(self, '_radius'+str(i), array(cdf_data.variables['radius'])) #in km
+                if '2D' not in self.patterns[i]:
+                    setattr(self, '_radius'+str(i), array(cdf_data.variables['radius'])) #in km
             
                 #check var_list for variables not possible in this file set
                 if len(variables_requested)>0:
@@ -318,27 +327,26 @@ def MODEL():
                 else:
                     gvar_list = [key for key in model_varnames.keys() \
                                  if key in cdf_data.variables.keys()]
-                self.varfiles[str(i)] = [model_varnames[key][0] for key in gvar_list]  #store which file these variables came from
+                self.varfiles[self.patterns[i]] = [model_varnames[key][0] for key in gvar_list]  #store which file these variables came from
             
                 # Store variable data, units from netCDF file.
                 variables = {model_varnames[key][0]:{'units':cdf_data.variables[key].units,
                                             'data':array(cdf_data.variables[key])} \
                                   for key in gvar_list}
+                for key in variables.keys(): self.variables[key] = variables[key]
                 cdf_data.close()
-                #NOTE: this overwrites the TEC data from the 2D files with the calculated TEC data from the 3D files
     
             #prepare and return data only for last timestamp
             if not fulltime:  
-                variables['time'] = self.filetimes[0]
+                self.variables['time'] = self.filetimes[0]
                 for i in range(len(self.patterns)):
-                    variables['time'+str(i)] = hrs_to_ts(getattr(self, '_time'+str(i))[0], self.filedate)
-                self.short_data = variables
+                    self.variables['time'+str(i)] = hrs_to_ts(getattr(self, '_time'+str(i))[0], self.filedate)
+                self.short_data = self.variables
                 return   
     
             #remove successful variables from err_list
             self.err_list = list(unique(self.err_list))
-            for item in self.err_list:
-                if item in variables.keys(): self.err_list.remove(item)
+            self.err_list = [item for item in self.err_list if item not in self.variables.keys()]
             if len(self.err_list)>0:
                 print('Some requested variables are not available in the files found:\n', \
                       self.patterns, self.err_list)
@@ -364,33 +372,33 @@ def MODEL():
                 
             #register interpolators for each variable
             t_reg = perf_counter()
-            varname_list, self.variables = [key for key in variables.keys()], {}  #store original list b/c gridded interpolators
+            varname_list = [key for key in self.variables.keys()]  #store original list b/c gridded interpolators
             for varname in varname_list:
-                if len(variables[varname]['data'].shape)==3:
+                if len(self.variables[varname]['data'].shape)==3:
                     if filecheck:  #if neighbor found
                         #append data for last time stamp, transpose and register
-                        data_shape = list(variables[varname]['data'].shape)
+                        data_shape = list(self.variables[varname]['data'].shape)
                         data_shape[0]+=1  #add space for time
                         new_data = zeros(data_shape)                
-                        new_data[:-1,:,:] = variables[varname]['data']  #put in current data
+                        new_data[:-1,:,:] = self.variables[varname]['data']  #put in current data
                         new_data[-1,:,:] = short_data[varname]['data'][0,:,:]  #add in data for additional time
                     else:
-                        new_data = variables[varname]['data']
-                    self.variables[varname] = dict(units = variables[varname]['units'], data = new_data)
+                        new_data = self.variables[varname]['data']
+                    self.variables[varname]['data'] = new_data
                     self.register_3D_variable(self.variables[varname]['units'], 
                                           self.variables[varname]['data'], varname,
                                           gridded_int)
-                elif len(variables[varname]['data'].shape)==4:
+                elif len(self.variables[varname]['data'].shape)==4:
                     if filecheck:
                         #append data for last time stamp, transpose and register
-                        data_shape = list(variables[varname]['data'].shape)
+                        data_shape = list(self.variables[varname]['data'].shape)
                         data_shape[0]+=1  #add space for time
                         new_data = zeros(data_shape)
-                        new_data[:-1,:,:,:] = variables[varname]['data']  #put in current data
+                        new_data[:-1,:,:,:] = self.variables[varname]['data']  #put in current data
                         new_data[-1,:,:,:] = short_data[varname]['data'][0,:,:,:]   #add in data for additional time                
                     else:
-                        new_data = variables[varname]['data']
-                    self.variables[varname] = dict(units = variables[varname]['units'], data = new_data)
+                        new_data = self.variables[varname]['data']
+                    self.variables[varname]['data'] = new_data
                     self.register_4D_variable(self.variables[varname]['units'], 
                                           self.variables[varname]['data'], varname,
                                           gridded_int)
@@ -404,8 +412,8 @@ def MODEL():
             """Registers a 3d interpolator with 3d signature"""
             
             #determine which file the variable came from
-            for i in range(len(self.patterns)-1,-1,-1):  #go in reverse to account for overwritten variables
-                if varname in self.varfiles[str(i)]:
+            for i in range(len(self.patterns)-1,-1,-1):  
+                if varname in self.varfiles[self.patterns[i]]:
                     time = getattr(self, '_time'+str(i))
                     lat = getattr(self, '_lat'+str(i))  #get the correct coordinates
                     lon = getattr(self, '_lon'+str(i))
@@ -424,15 +432,14 @@ def MODEL():
             """Registers a 4d interpolator with 4d signature"""
     
             #determine which file the variable came from
-            for i in range(len(self.patterns)-1,-1,-1):  #go in reverse to account for overwritten variables
-                if varname in self.varfiles[str(i)]:
+            for i in range(len(self.patterns)-1,-1,-1):  
+                if varname in self.varfiles[self.patterns[i]]:
                     time = getattr(self, '_time'+str(i))
                     lat = getattr(self, '_lat'+str(i))  #get the correct coordinates
                     lon = getattr(self, '_lon'+str(i))
                     radius = getattr(self, '_radius'+str(i))
                     #print(varname, self.patterns[i])
                     break
-                else: print(varname, self.patterns[i])
             
             #define and register the interpolators
             xvec_dependencies = {'time':'hr','lon':'deg','lat':'deg','radius':'R_E'}

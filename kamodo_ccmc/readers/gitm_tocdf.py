@@ -583,7 +583,7 @@ def calc_2dion(coords, attrs, variables, verbose=False):
 
 
 #class GitmBin():   #doesn't like being called as a class from a kamodo class object
-def GitmBin(filename, verbose=False):
+def GitmBin(filename, flag_2D, verbose=False):
     '''
     Object to open, manipulate and visualize 1-3 dimensional GITM output
     stored in binary format.  Object inherits from spacepy.pybats.PbData; see
@@ -605,8 +605,10 @@ def GitmBin(filename, verbose=False):
 
     # Load the GITM data        
     coords, variables, attrs = _read(varlist, attrs)
-    variables = calc_tec(coords, attrs, variables, verbose=verbose)
-    variables = calc_2dion(coords, attrs, variables, verbose=verbose)
+    if not flag_2D:
+        #print('Calculating 2D variables...')
+        variables = calc_tec(coords, attrs, variables, verbose=verbose)
+        variables = calc_2dion(coords, attrs, variables, verbose=verbose)
     var_dict = append_units(variables)
     return filename, coords, variables, var_dict, attrs
 
@@ -620,8 +622,9 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
     data_out.version = attrs['version']
     data_out.endian = attrs['endian']
     data_out.filedate = attrs['filedate']
-    for dim in coords.keys():  #check that the datatype works correctly when opening the file******
+    for dim in coords.keys():  #register dimensions
         if dim=='height': continue  #skip height
+        if coords[dim].size==1: continue  #skip radius for 2D variables
         new_dim = data_out.createDimension(dim, coords[dim].size)  #create dimension
         new_var = data_out.createVariable(dim, np.float64, dim)  #create variable
         new_var[:] = coords[dim]  #store data for dimension in variable
@@ -637,6 +640,8 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
     #print(coords['time'].shape, coords['lon'].shape, coords['lat'].shape, coords['radius'].shape)
     for variable_name in variables.keys():  
         new_name = gitm_varnames[var_dict[variable_name][0]][0]
+        if 1 in variables[variable_name].shape: #remove dimensions of 1 for 2D data
+            variables[variable_name] = np.squeeze(variables[variable_name])
         #print(variable_name, variables[variable_name].shape)
         if len(variables[variable_name].shape)==4:
             #print('4D')
@@ -661,28 +666,35 @@ def dts_to_hrs(datetime_string, filedate):
     return (datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)\
             -filedate).total_seconds()/3600.
         
-def GITMbin_toCDF(file_prefix):
+def GITMbin_toCDF(file_prefix, flag_2D=False):
     '''Collect data from all files found with file_prefix into one netCDF4 file'''
+    #If flag_2D is False, then 2D files are not present and 2D variables will be calculated
+    #Takes much longer if False.
+    
+    from os.path import basename
     
     ftic=perf_counter()
     files = sorted(glob(file_prefix+'*.bin'))  #collect files
+    if len(files)==0:
+        return False
     print(f'Converting {len(files)} files to netCDF4.')
     
     #initialize values from first file (date, data, etc)
-    file_dt_str = file_prefix.split('_t')[-1].split('_')[0]  #keep only YYMMDD for date
+    file_name = basename(file_prefix)
+    file_dt_str = file_name.split('_t')[-1].split('_')[0]  #keep only YYMMDD for date
     if int(file_dt_str[:2])>60:  #later than 1960
         string_date = '19'+file_dt_str[:2]+'-'+file_dt_str[2:4]+'-'+file_dt_str[4:6]
     else:
         string_date = '20'+file_dt_str[:2]+'-'+file_dt_str[2:4]+'-'+file_dt_str[4:6]
     filedate = datetime.strptime(string_date+' 00:00:00', \
                                       '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc) #dt object
-    filename, coords, variables, var_dict, attrs = GitmBin(files[0])
+    filename, coords, variables, var_dict, attrs = GitmBin(files[0], flag_2D) #first file data
     time = [attrs['time'][:19]]  #accurate to the sec
     master_variables = {key:[[value]] for key, value in variables.items()}
     
     #add data from remaining files
     for f in files[1:]:
-        filename, coordsN, variables, var_dictN, attrsN = GitmBin(f)
+        filename, coordsN, variables, var_dictN, attrsN = GitmBin(f, flag_2D)
         time.append(attrsN['time'][:19])  #accurate to the sec
         for var in master_variables.keys():
             master_variables[var].append([variables[var]])

@@ -117,7 +117,7 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
             as a percentage of the min_height value: p =  (default=0.01).  
         n: the time cadence of the sample trajectory generated (default = 2 seconds)
     Returns a dictionary with keys: sat_time, c1, c2, and c3.
-        sat_time is an array in seconds since 1970-01-01.
+        sat_time is an array in UTC seconds since 1970-01-01.
         (c1,c2,c3) = (lon, lat, alt) in (deg,deg,km) in the 'GDZ', 'sph' 
         coordinate system in SpacePy.
     '''
@@ -146,7 +146,7 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
     
     print(f'Attribute/Key names of return dictionary: {sample_dict.keys()}')
     print('(c1,c2,c3) = (lon, lat, alt) in (deg,deg,km) in the GDZ, sph coordinate system.'+\
-          'sat_time contains the utc timestamps.')    
+          '\nsat_time contains the utc timestamps.')    
     return sample_dict, 'GDZ', 'sph'
 
 
@@ -154,7 +154,8 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
 #keep so users can call this if they have their own satellite trajectory data
 def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3, 
                     coord_type, coord_grid, high_res=20., verbose=False, 
-                    csv_output='', plot_output=''):  
+                    output_type='', output_name='', plot_output='', 
+                    plot_coord='GEO'):  
     '''Call satellite flythrough wrapper specific to the model chosen.
     Parameters:   
     ------------
@@ -171,12 +172,31 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     coord_grid: either 'car' or 'sph' (0 or 1). Note that not all combinations 
         make sense (e.g. 'SPH' and 'car') and are not allowed.    
     high_res: the accuracy of the conversion from radius or altitude to pressure
-        level. Ignore if no conversion is needed for the variable(s) selected.        
-    csv_output: complete path pluts filename (without the .csv) for the file to
+        level. Ignore if no conversion is needed for the variable(s) selected. 
+    output_type: One of 'csv' for comma separated output, 'cdf4' for a netCDF4 
+        output file, or 'txt' for a tab-separated text file.
+    output_name: complete path with filename (without the extension) for the file to
         write the results to.
     plot_output: complete path pluts file naming convention (without the .html)
         for the file to write the plots to.
-    verbose: Set to true to be overwhelmed with information.        
+    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
+        integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
+        system the plot will be generated in. Only plots in cartesian coordinates
+        systems are supported, so 'SPH' and 'RLL' are not accepted. Default is 
+        'GEO'.
+    verbose: Set to true to be overwhelmed with information.     
+    
+    Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
+        - utc_time is an array in UTC seconds since 1970-01-01 of the given
+            timestamps with any occuring outside of the model data removed.
+        - 'c1', 'c2', and 'c3' are arrays of the given coordinate values for each 
+            surviving timestamp
+        - 'net_idx' is the original index value of the surviving timestamps. 
+            This is kept for easier comparison with the original dataset.
+        - additional keys are included for each variable and label an array of the
+            values of the indicated variable for each time+spatial coordinate given
+        - The units of each array in the returned dictionary are printed to 
+            the screen.
     ''' 
 
     #if input types are lists, correct to be numpy arrays (important for calling from C++)
@@ -184,6 +204,11 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     if isinstance(c1, list): c1 = np.array(c1)
     if isinstance(c2, list): c2 = np.array(c2)
     if isinstance(c3, list): c3 = np.array(c3)
+    
+    #give error if unknown output type given BEFORE running flythrough
+    if output_type not in ['cdf4','csv','txt','', ' ']:  #allow empty strings
+        raise AttributeError('Output file type not recognized. Must be one of'+\
+                            ' cdf4, csv, or txt.')    
         
     #if model is given as an integer, then convert to a string
     model = U.MW.convert_model_string(model)
@@ -219,13 +244,23 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         print(f'Dictionary key names in results:\n{results.keys()}')
         print('The units of the trajectory variables are unchanged from the inputs.')
         
-    if csv_output!='':
+    if output_type!='':
         #correct input filename
-        if model not in basename(csv_output):
-            file_dir = csv_output.split(basename(csv_output))[0]
-            csv_output = file_dir+model+'_'+basename(csv_output)
-        csv_filename = WO.SFdata_tocsv(csv_output, '', model, results, results_units)
-        print(f"Output saved in {csv_filename}.")  #no access to model filenames
+        if model not in basename(output_name):
+            file_dir = output_name.split(basename(output_name))[0]
+            output_name = file_dir+model+'_'+basename(output_name)
+        
+        #perform output type desired
+        if output_type=='csv':
+            output_filename = WO.SFdata_tocsv(output_name, '', model, results, 
+                                              results_units, coord_type, coord_grid)
+        elif output_type=='cdf4':
+            output_filename= WO.SFdata_tocdf(output_name, '', model, results, 
+                                             results_units, coord_type, coord_grid)
+        elif output_type=='txt':
+            output_filename = WO.SFdata_toascii(output_name, '', model, results, 
+                                                results_units, coord_type, coord_grid)
+        print(f"Output saved in {output_filename}.")  #no access to model filenames
         
     if plot_output!='':
         print('Generating interactive plots...')
@@ -237,25 +272,33 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
             file_dir+=model+'_'     
         file_prefix+='_'            
         
+        #check plot_coord variable, convert from integer and prevent plotting errors
+        plot_coord, plot_grid = U.MW.convert_coordnames(plot_coord, 'car')
+        if plot_coord in ['SPH','RLL']:
+            raise AttributeError('Plots can only be requested in coordinate '+\
+                                 'grids where cartesian coordinates are supported.'+\
+                                 " The 'SPH' and 'RLL' coordinate systems "+
+                                 ' do not support cartesian grids so are not allowed.')
+        
         #generate and save plots without displaying
         from kamodo_ccmc.flythrough.plots import SatPlot4D
         #presentation options: all, day, hour, minute, N, orbitE, orbitM
         for var in var_list:
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],results['c3'],
                       results[var],results_units[var],
-                      coord_type, coord_grid, 'GEO','all',model,body='black', 
+                      coord_type, coord_grid, plot_coord,'all',model,body='black', 
                       divfile=file_dir+file_prefix+var+'_3D.html', displayplot=False)
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],
                       results['c3'],results[var],results_units[var],
-                  coord_type, coord_grid, 'GEO','all',model,type='1D',
+                  coord_type, coord_grid, plot_coord,'all',model,type='1D',
                   divfile=file_dir+file_prefix+var+'_1D.html', displayplot=False)
     
     return results  #not sure that than C++ can take more than one return variable 
 
 def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65., 
                min_lat=-65., lon_perorbit=363., max_height=450., min_height=400., 
-               p=0.01, n=2., high_res=20., verbose=False, csv_output='',
-               plot_output=''):
+               p=0.01, n=2., high_res=20., verbose=False, output_type='',
+               output_name='', plot_output='', plot_coord='GEO'):
     '''Generates a sample trajectory and then flies that trajectory through the 
     model data chosen.
      
@@ -277,10 +320,29 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
         n: the time cadence of the sample trajectory generated (default = 2 seconds)
         high_res: the resolution of the height conversion to pressure level
             in units of km
-        csv_output: complete path pluts filename (without the .csv) for the file to
+        output_type: One of 'csv' for comma separated output, 'cdf4' for a netCDF4 
+            output file, or 'txt' for a tab-separated text file.
+        output_name: complete path with filename (without the extension) for the file to
             write the results to.
         plot_output: complete path pluts file naming convention (without the .html)
             for the file to write the plots to.
+        plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
+            integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
+            system the plot will be generated in. Only plots in cartesian coordinates
+            systems are supported, so 'SPH' and 'RLL' are not accepted. Default is 
+            'GEO'.
+            
+    Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
+    - utc_time is an array in UTC seconds since 1970-01-01 of the generated
+        timestamps with any occuring outside of the model data removed.
+    - 'c1', 'c2', and 'c3' are arrays of the given coordinate values for each 
+        surviving timestamp
+    - 'net_idx' is the original index value of the surviving timestamps. 
+        This is kept for easier comparison with the original dataset.
+    - additional keys are included for each variable and label an array of the
+        values of the indicated variable for each time+spatial coordinate given
+    - The units of each array in the returned dictionary are printed to 
+        the screen.
 
     ''' 
     
@@ -293,12 +355,14 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
     results = ModelFlythrough(model, file_dir, variable_list, sat_dict['sat_time'], 
                               sat_dict['c1'], sat_dict['c2'], sat_dict['c3'],
                               coord_type, coord_grid, high_res=high_res,
-                              verbose=verbose, csv_output=csv_output,
-                              plot_output=plot_output)    
+                              verbose=verbose, output_type=output_type, 
+                              output_name=output_name, plot_output=plot_output,
+                              plot_coord=plot_coord)    
     return results    
 
 def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type='GEO',
-               csv_output='', plot_output='', high_res=20., verbose=False):
+               output_type='', output_name='', plot_output='', plot_coord='GEO',
+               high_res=20., verbose=False):
     '''
     Retrieves the trajectory for the satellite requested and then flies that
     trajectory through the model data requested.
@@ -310,56 +374,101 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
     file_dir: complete path to where model data files are stored
     variable_list: List of standardized variable names. Corresponding integers 
         are allowed. See model variable output for details.
-    csv_output: complete path pluts filename (without the .csv) for the file to
+    output_type: One of 'csv' for comma separated output, 'cdf4' for a netCDF4 
+        output file, or 'txt' for a tab-separated text file.
+    output_name: complete path with filename (without the extension) for the file to
         write the results to.
     plot_output: complete path pluts file naming convention (without the .html)
         for the file to write the plots to.
     high_res: the accuracy of the conversion from radius or altitude to pressure
         level. Ignore if no conversion is needed for the variable(s) selected.
+    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
+        integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
+        system the plot will be generated in. Only plots in cartesian coordinates
+        systems are supported, so 'SPH' and 'RLL' are not accepted. Default is 
+        'GEO'.        
     verbose: Set to true to be overwhelmed with information.
+    
+    Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
+        - utc_time is an array in UTC seconds since 1970-01-01 of the satellite
+            timestamps with any occuring outside of the model data removed.
+        - 'c1', 'c2', and 'c3' are arrays of the given coordinate values for each 
+            surviving timestamp
+        - 'net_idx' is the original index value of the surviving timestamps. 
+            This is kept for easier comparison with the original dataset.
+        - additional keys are included for each variable and label an array of the
+            values of the indicated variable for each time+spatial coordinate given
+        - The units of each array in the returned dictionary are printed to 
+            the screen.
     '''
+    
     #retrieve satellite trajectory from HAPI/CDAWeb
     sat_dict, coord_type, coord_grid = SatelliteTrajectory(dataset, start, stop, 
-                                   coord_type, verbose=verbose)
+                                   coord_type=coord_type, verbose=verbose)
     #call satellite flythrough code
     results = ModelFlythrough(model, file_dir, variable_list, sat_dict['sat_time'], 
                               sat_dict['c1'], sat_dict['c2'], sat_dict['c3'],
-                              coord_type, coord_grid, csv_output=csv_output,
-                              plot_output=plot_output, high_res=high_res, 
-                              verbose=verbose)  
+                              coord_type, coord_grid, output_type=output_type,
+                              output_name=output_name, plot_output=plot_output, 
+                              plot_coord=plot_coord, high_res=high_res, verbose=verbose)  
     return results    
 
 
-def MyFlight(traj_file, file_type, coord_type, coord_grid, model, file_dir, variable_list,
-               csv_output='', plot_output='', high_res=20., verbose=False):
+def MyFlight(traj_file, file_type, model, file_dir, 
+             variable_list, output_type='', output_name='', plot_output='', 
+             plot_coord='GEO', high_res=20., verbose=False):
     '''Read in a trajectory from a file, then fly through the model data selected.
     
     traj_file: complete path and filename for file containing trajectory data.
-    file_type: one of 'cdf', 'csv', or 'ascii' of the format required
+    file_type: one of 'cdf4' for netCDF4 files, 'csv' for comma-separated files, 
+        or 'txt' for a tab-separated text file. Indicates the format of the input
+        trajectory file. 
     coord_type: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', 'SPH', 'RLL'
         integers also allowed with 'GDZ'=0 and so on
     coord_grid: either 'car' or 'sph' (0 or 1). Note that not all combinations 
-        make sense (e.g. 'SPH' and 'car') and are not allowed.
+        make sense (e.g. 'SPH' with 'car') and are not allowed.
     model: 'CTIPe', 'IRI', ...  
     file_dir: complete path to model data files
     variable_list: List of standardized variable names. Corresponding integers 
         are allowed. See model variable output for details.
-    csv_output: complete path pluts filename (without the .csv) for the file to
+    output_type: One of 'csv' for comma separated output, 'cdf4' for a netCDF4 
+        output file, or 'txt' for a tab-separated text file.
+    output_name: complete path with filename (without the extension) for the file to
         write the results to.
     plot_output: complete path pluts file naming convention (without the .html)
         for the file to write the plots to.
     high_res: the accuracy of the conversion from radius or altitude to pressure
         level. Ignore if no conversion is needed for the variable(s) selected.
+    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
+        integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
+        system the plot will be generated in. Only plots in cartesian coordinates
+        systems are supported, so 'SPH' and 'RLL' are not accepted. Default is 
+        'GEO'.        
     verbose: Set to true to be overwhelmed with information.
+    
+    Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
+        - utc_time is an array in UTC seconds since 1970-01-01 of the given
+            timestamps with any occuring outside of the model data removed.
+        - 'c1', 'c2', and 'c3' are arrays of the given coordinate values for each 
+            surviving timestamp
+        - 'net_idx' is the original index value of the surviving timestamps. 
+            This is kept for easier comparison with the original dataset.
+        - additional keys are included for each variable and label an array of the
+            values of the indicated variable for each time+spatial coordinate given
+        - The units of each array in the returned dictionary are printed to 
+            the screen.
     '''
 
-    #read in trajectory from file into dictionary
-    if file_type=='cdf':
+    #read in trajectory from file into dictionary, including metadata
+    if file_type=='cdf4':
         traj_data = WO.SFcdf_reader(traj_file)
     elif file_type=='csv':
         traj_data=WO.SFcsv_reader(traj_file)
-    elif file_type=='ascii':
+    elif file_type=='txt':
         traj_data=WO.SFascii_reader(traj_file)
+    else:
+        raise AttributeError('File type not recognized. Must be one of'+\
+                            ' cdf4, csv, or txt.')
         
     #figure out key for time data
     for key in traj_data:
@@ -370,8 +479,10 @@ def MyFlight(traj_file, file_type, coord_type, coord_grid, model, file_dir, vari
     #call satellite flythrough code
     results = ModelFlythrough(model, file_dir, variable_list, traj_data[time_key]['data'], 
                               traj_data['c1']['data'], traj_data['c2']['data'], 
-                              traj_data['c3']['data'], coord_type, coord_grid, 
-                              csv_output=csv_output, plot_output=plot_output, 
+                              traj_data['c3']['data'], traj_data['metadata']['coord_type'], 
+                              traj_data['metadata']['coord_grid'], 
+                              output_type=output_type, output_name=output_name, 
+                              plot_output=plot_output, plot_coord=plot_coord, 
                               high_res=high_res, verbose=verbose)      
         
     return results
@@ -412,21 +523,27 @@ if __name__=='__main__':
             p = float(argv[12])
             n = float(argv[13])
             high_res = float(argv[14])
-            csv_output = argv[15]
-            plot_output = argv[16]
+            output_type = argv[15]
+            output_name = argv[16]
+            plot_output = argv[17]
+            plot_coord = argv[18]
             
             #check input
             print(f'\nstart_time: {start_time}, \nstop_time: {stop_time},'+\
                   f'\nmodel: {model}, \nfile_dir: {file_dir},'+\
-                  f'\nvariable_list: {variable_list}, \nmax_lat: {max_lat}, \nmin_lat: {min_lat},'+\
-                  f'\nlon_perorbit: {lon_perorbit}, \nmax_height: {max_height}, \nmin_height {min_height},'+\
-                  f'\np: {p}, n: {n}, \ncsv_output: {csv_output}, \nplot_output: {plot_output}\n')
+                  f'\nvariable_list: {variable_list}, \nmax_lat: {max_lat}, '+\
+                  f'\nmin_lat: {min_lat}, \nlon_perorbit: {lon_perorbit}, '+\
+                  f'\nmax_height: {max_height}, \nmin_height {min_height},'+\
+                  f'\np: {p}, n: {n}, \noutput_type: {output_type}, '+\
+                  f'\noutput_name: {output_name}, \nplot_output: {plot_output}\n'+\
+                  f'\nplot_coord: {plot_coord}')
 
             results = FakeFlight(start_time, stop_time, model, file_dir, variable_list, 
                                  max_lat=max_lat, min_lat=min_lat, lon_perorbit=lon_perorbit, 
                                  max_height=max_height, min_height=min_height,
                                  p=p, n=n, high_res=high_res, verbose=False, 
-                                 csv_output=csv_output, plot_output=plot_output)
+                                 output_type=output_type, output_name=output_name,
+                                 plot_output=plot_output, plot_coord=plot_coord)
 
         elif argv[1]=='RealFlight':  #gather variables and call RealFlight
             dataset = argv[2]
@@ -443,53 +560,52 @@ if __name__=='__main__':
                 coord_type = int(argv[8])
             else:
                 coord_type = argv[8]
-            csv_output = argv[9]
-            plot_output = argv[10]
-            high_res = float(argv[11])            
+            output_type = argv[9]
+            output_name = argv[10]
+            plot_output = argv[11]
+            plot_coord = argv[12]
+            high_res = float(argv[13])            
             
             #check input
             print(f'\ndataset: {dataset}, \nstart: {start}, \nstop: {stop},'+\
                   f'\nmodel: {model}, \nfile_dir: {file_dir},'+\
                   f'\nvariable_list: {variable_list}, \ncoord_type: {coord_type},'+\
-                  f'\ncsv_output: {csv_output}, \nplot_output: {plot_output},'+\
+                  f'\noutput_type: {output_type}, \noutput_name: {output_name}, '+\
+                  f'\nplot_output: {plot_output}, \nplot_coord: {plot_coord}, '+\
                   f'\nhigh_res: {high_res}\n')
 
             results = RealFlight(dataset, start, stop, model, file_dir, variable_list, 
-                                 coord_type=coord_type, csv_output=csv_output, 
-                                 plot_output=plot_output, high_res=high_res)
+                                 coord_type=coord_type, output_type=output_type, 
+                                 output_name=output_name, plot_output=plot_output, 
+                                 plot_coord=plot_coord, high_res=high_res)
 
         elif argv[1]=='MyFlight':  #gather variables and call MyFlight
             traj_file = argv[2]
-            file_type = argv[3]
+            file_type = argv[3]            
             if len(argv[4])==1:
-                coord_type = int(argv[4])
+                model = int(argv[4])
             else:
-                coord_type = argv[4]
-            if len(argv[5])==1:
-                coord_grid = int(argv[5])
-            else:
-                coord_grid = argv[5]                
-            if len(argv[6])==1:
-                model = int(argv[6])
-            else:
-                model = argv[6]
-            file_dir = argv[7]
-            temp_str = argv[8][1:-1].replace("'","").replace(' ','').replace('"','')
+                model = argv[4]
+            file_dir = argv[5]
+            temp_str = argv[6][1:-1].replace("'","").replace(' ','').replace('"','')
             variable_list = temp_str.split(',')   #['rho','N_n']              
-            csv_output = argv[9]
-            plot_output = argv[10]
+            output_type = argv[7]
+            output_name= argv[8]
+            plot_output = argv[9]
+            plot_coord = argv[10]
             high_res = float(argv[11])
             
             #check inputs
             print(f'\ntraj_file: {traj_file}, \nfile_type: {file_type},'+\
-                  f'\ncoord_type: {coord_type}, \ncoord_grid: {coord_grid},'+\
                   f'\nmodel: {model}, \nfile_dir: {file_dir},'+\
-                  f'\nvariable_list: {variable_list}, \ncsv_output: {csv_output},'+\
-                  f'\nplot_output: {plot_output}, \nhigh_res: {high_res}\n')
+                  f'\nvariable_list: {variable_list}, \noutput_type: {output_type},'+\
+                  f'\noutput_name: {output_name}, \nplot_output: {plot_output}, '+\
+                  f'\nplot_coord: {plot_coord}, \nhigh_res: {high_res}\n')
             
-            results = MyFlight(traj_file, file_type, coord_type, coord_grid, 
-                               model, file_dir, variable_list, csv_output=csv_output, 
-                               plot_output=plot_output, high_res=high_res)
+            results = MyFlight(traj_file, file_type,  
+                               model, file_dir, variable_list, output_type=output_type, 
+                               output_name=output_name, plot_output=plot_output, 
+                               plot_coord=plot_coord, high_res=high_res)
         else:
             print('Call signature not recognized.')
     else:

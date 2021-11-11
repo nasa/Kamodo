@@ -1,4 +1,6 @@
 '''
+Spatial-only interpolation form: Lutz Raestatter
+Modified from spatial-only interpolation into this form: Rebecca Ringuette
 Kamodofication of the CTIPe model output
 '''
 
@@ -14,39 +16,39 @@ model_varnames = {'rho':['rho','variable description',0,'SPH_plev','sph',['time'
                   'T_e':['T_e','variable description',2,'SPH','sph',['time','lon','lat','radius'],'K'],
                   'T_i':['T_i','variable description',3,'SPH','sph',['time','lon','lat','radius'],'K'],
                   'H_ilev':['H_ilev','variable description',4,'SPH_plev','sph',['time','lon','lat','ilev'],'m'], 
-                  'H_lev':['H_ilev1','variable description',4,'SPH_plev','sph',['time','lon','lat','ilev1'],'m'],                      
-                  'Vn_lat':['Vn_lat','variable description',5,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'Vn_lon':['Vn_lon','variable description',6,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'Vn_H':['Vn_H','variable description',7,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'T_n':['T_n','variable description',8,'SPH_plev','sph',['time','lon','lat','ilev'],'K'],
-                  'Rmt':['Rmt','variable description',9,'SPH_plev','sph',['time','lon','lat','ilev1'],'amu'],
-                  'N_e':['N_e','variable description',10,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                  'N_n':['N_n','variable description',11,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'Q_Solar':['Q_Solar','variable description',12,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
-                  'Q_Joule':['Q_Joule','variable description',13,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
-                  'Q_radiation':['Q_radiation','variable description',14,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
-                  'N_O':['N_O','variable description',15,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_O2':['N_O2','variable description',16,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_N2':['N_N2','variable description',17,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_NO':['N_NO','variable description',18,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_NOplus':['N_NOplus','variable description',19,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_N2plus':['N_N2plus','variable description',20,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],  
-                  'N_O2plus':['N_O2plus','variable description',21,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_Nplus':['N_Nplus','variable description',22,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_Oplus':['N_Oplus','variable description',23,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                  'N_Hplus':['N_Hplus','variable description',24,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                  'Sigma_P':['Sigma_P','variable description',25,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
-                  'Sigma_H':['Sigma_H','variable description',26,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
-                  'Vi_lon':['Vi_lon','variable description',27,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'Vi_lat':['Vi_lat','variable description',28,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'W_Joule':['W_Joule','variable description',29,'SPH','sph',['time','lon','lat'],'W/m**2'],
-                  'Eflux_precip':['Eflux_precip','variable description',30,'SPH','sph',['time','lon','lat'],'W/m**2'],
-                  'Eavg_precip':['Eavg_precip','variable description',31,'SPH','sph',['time','lon','lat'],'keV'],
-                  'TEC':['TEC','variable description',32,'SPH','sph',['time','lon','lat'],'1/m**2'], #'10**16/m**2'
-                  'E_theta140km':['E_theta140km','variable description',33,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
-                  'E_lambda140km':['E_lambda140km','variable description',34,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
-                  'E_theta300km':['E_theta300km','variable description',35,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
-                  'E_lambda300km':['E_lambda300km','variable description',36,'SPH_E','sph',['time','Elon','Elat'],'V/m']}
+                  'H_lev':['H_ilev1','variable description',5,'SPH_plev','sph',['time','lon','lat','ilev1'],'m'],                      
+                  'Vn_lat':['Vn_lat','variable description',6,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'Vn_lon':['Vn_lon','variable description',7,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'Vn_H':['Vn_H','variable description',8,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'T_n':['T_n','variable description',9,'SPH_plev','sph',['time','lon','lat','ilev'],'K'],
+                  'Rmt':['Rmt','variable description',10,'SPH_plev','sph',['time','lon','lat','ilev1'],'amu'],
+                  'N_e':['N_e','variable description',11,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                  'N_n':['N_n','variable description',12,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'Q_Solar':['Q_Solar','variable description',13,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
+                  'Q_Joule':['Q_Joule','variable description',14,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
+                  'Q_radiation':['Q_radiation','variable description',15,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
+                  'N_O':['N_O','variable description',16,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_O2':['N_O2','variable description',17,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_N2':['N_N2','variable description',18,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_NO':['N_NO','variable description',19,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_NOplus':['N_NOplus','variable description',20,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_N2plus':['N_N2plus','variable description',21,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],  
+                  'N_O2plus':['N_O2plus','variable description',22,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_Nplus':['N_Nplus','variable description',23,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_Oplus':['N_Oplus','variable description',24,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                  'N_Hplus':['N_Hplus','variable description',25,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                  'Sigma_P':['Sigma_P','variable description',26,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
+                  'Sigma_H':['Sigma_H','variable description',27,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
+                  'Vi_lon':['Vi_lon','variable description',28,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'Vi_lat':['Vi_lat','variable description',29,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'W_Joule':['W_Joule','variable description',30,'SPH','sph',['time','lon','lat'],'W/m**2'],
+                  'Eflux_precip':['Eflux_precip','variable description',31,'SPH','sph',['time','lon','lat'],'W/m**2'],
+                  'Eavg_precip':['Eavg_precip','variable description',32,'SPH','sph',['time','lon','lat'],'keV'],
+                  'TEC':['TEC','variable description',33,'SPH','sph',['time','lon','lat'],'1/m**2'], #'10**16/m**2'
+                  'E_theta140km':['E_theta140km','variable description',34,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
+                  'E_lambda140km':['E_lambda140km','variable description',35,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
+                  'E_theta300km':['E_theta300km','variable description',36,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
+                  'E_lambda300km':['E_lambda300km','variable description',37,'SPH_E','sph',['time','Elon','Elat'],'V/m']}
 
 
 #convert an array of timestamps to an array of hrs since midnight
@@ -72,7 +74,6 @@ def MODEL():
         def __init__(self, full_file_prefix, variables_requested = [], filetime=False,
                      runname = "noname", printfiles=False, gridded_int=True, 
                      fulltime=True, verbose=False, **kwargs):  
-    
             
             # only the density, height and neutral files are combined
             super(MODEL, self).__init__()   
@@ -85,13 +86,9 @@ def MODEL():
                 cdf_file = full_file_prefix+'.nc'  # input file name: file_dir/YYYY-MM-DD.nc
                 self.conversion_test = True
             else:  #file not prepared, prepare it
-                try:
-                    from ctipe_tocdf import ctipe_combine_files
-                    cdf_file = ctipe_combine_files(full_file_prefix)
-                    self.conversion_test = True
-                except:
-                    self.conversion_test = False
-                    return 
+                from kamodo_ccmc.readers.ctipe_tocdf import ctipe_combine_files
+                cdf_file = ctipe_combine_files(full_file_prefix)
+                self.conversion_test = True
             
             #establish time attributes first
             cdf_data = Dataset(cdf_file, 'r')
