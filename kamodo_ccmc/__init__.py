@@ -6,5 +6,5 @@ import kamodo # get installed kamodo
 # insert Kamodo class into kamodo namespace
 from kamodo.kamodo import Kamodo
 
-import readers
-import flythrough
+#import readers
+#import flythrough
