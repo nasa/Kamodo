@@ -1,1 +1,1 @@
-recursive-include kamodo_ccmc *.yaml
+recursive-include kamodo_ccmc *.yaml *.py *.js *.css *.ico *.png *__init__.py
