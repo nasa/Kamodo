@@ -23,7 +23,7 @@ model_varnames = {'rho':['rho','variable description',0,'SPH_plev','sph',['time'
                   'T_n':['T_n','variable description',9,'SPH_plev','sph',['time','lon','lat','ilev'],'K'],
                   'Rmt':['Rmt','variable description',10,'SPH_plev','sph',['time','lon','lat','ilev1'],'amu'],
                   'N_e':['N_e','variable description',11,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                  'N_n':['N_n','variable description',12,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  #'N_n':['N_n','variable description',12,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
                   'Q_Solar':['Q_Solar','variable description',13,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
                   'Q_Joule':['Q_Joule','variable description',14,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
                   'Q_radiation':['Q_radiation','variable description',15,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
