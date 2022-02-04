@@ -11,24 +11,26 @@ from astropy.constants import R_earth
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from plotly.offline import iplot
-from kamodo_ccmc.flythrough.utils import ConvertCoord
+import kamodo
+from flythrough.utils import ConvertCoord
 
-def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
-              displayplot=True,type='3D',body='black',divfile='',htmlfile=''):
+def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
+              displayplot=True,returnfig=False,type='3D',body='black',zoom=False,divfile='',htmlfile='',
+              plotCoordType1D='car'):
     """New 4D plotting for satellite trajectories using plotly by Darren De Zeeuw
     
     __Required variables__
     
     var: string of variable name
     time: time formatted as a timestamp in UTC
-    lat: latitude in deg
-    lon: longitude in deg
-    alt: altitude in km
+    c1: latitude  or X
+    c2: longitude or Y
+    c3: altitude  or Z
     vard: data of variable var, same size array as positions
     varu: string of variable var units
     inCoordName: string for incoming coordinate system.  GDZ, GEO, GSM, GSE, SM, GEI, MAG, RLL
     inCoordType: string for incoming coordinate type.  car, sph
-    plotCoord: string for coordinate system used in 3D plot. Assumes cartesian type.
+    plotCoord: string for coordinate system used in 3D plot. Assumes car for 3D and Polar, sph otherwise.
     groupby: grouping of data for animation, values include
         all, day, hour, minute, N, orbitE, orbitM
     model: string of name of model the data was extracted from
@@ -36,93 +38,126 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
     __Optional variables__
     
     displayplot: logical to show/hide displayed plot (may want false when saving htmlfile)
-    type: string for choice of plot type, values: 3D, 1D, 2D, 2DLT
+    returnfig: logical to return figure object for further modification, will override displayplot if True
+    type: string for choice of plot type, values: 3D, 1D, 2D, 2DLT, 2DPN, 2DPS
     body: string for choice of 3D inner body, values: black, earth (only GEO), none
+    zoom: logical to show zoomed in view for polar plots
     divfile: string with filename to save a html div file of the plot
     htmlfile: string with filename to save a full html file of the plot
+    plotCoordType1D: string for displayed coordinate type for 1D plots.  car, sph
     """
 
     REkm = (R_earth.value/1000.)
 
-    if type == "3D":
+    import kamodo.flythrough.model_wrapper as MW
+    iC_names=MW.coord_names(inCoordName,inCoordType)
+    iC_units=MW.coord_units(inCoordName,inCoordType)
+    if inCoordType=='sph':
+        for key in iC_names.keys(): iC_names[key]=iC_names[key][:3]
+    oC_names=MW.coord_names(plotCoord,plotCoordType1D)
+    if plotCoordType1D=='sph':
+        for key in oC_names.keys(): oC_names[key]=oC_names[key][:3]
+    else:
+        for key in oC_names.keys(): oC_names[key]=oC_names[key][:1]
+
+    if type == "3D" or type == "2DPN" or type == "2DPS":
         #Convert incoming coordinates into plot coordinages (cartesian)
-        xx,yy,zz,units = ConvertCoord(time,lon,lat,alt,inCoordName,inCoordType,plotCoord,'car')
+        xx,yy,zz,units = ConvertCoord(time,c1,c2,c3,inCoordName,inCoordType,plotCoord,'car')
 
         # Create dictionary block to pass to plotting with selected options
         plot_dict=dict(
-            title = 'Satellite extraction from model: '+model+"<br>"+plotCoord+" coordinates",  # Displayed title for plot, can use <br> for new lines
-            sats = ["Sat1"],            # Array of satellites to include in plot
+            title = 'Satellite extraction from model: '+model+"<br>"+plotCoord+" coordinates",
+            sats = ["Sat1"],
             Sat1 = dict(
                 display_name = "",
-                time = dict(format='timestamp', data=time),  # possible formats: datetime, timestamp (assumes UTC)
+                time = dict(format='timestamp', data=time),
                 vars = dict(
-                    x = dict(units=units[0], data=xx),
-                    y = dict(units=units[1], data=yy),
-                    z = dict(units=units[2], data=zz),
-                    Lat = dict(units='deg', data=lat),
-                    Lon = dict(units='deg', data=lon),
-                    Alt = dict(units='km', data=alt),
+                    x = dict(units=units[0], data=xx, coord=plotCoord),
+                    y = dict(units=units[1], data=yy, coord=plotCoord),
+                    z = dict(units=units[2], data=zz, coord=plotCoord)
                 ),
-                position_variables = ["x", "y", "z"],     # three variables to use for position
+                position_variables = ["x", "y", "z"],
             ),
             options = dict(
-                position_units = "R_E", # possible values: R_E, km, ""
-                var = var,            # variable to use for colorscale
-                hover_vars = ["Lat", "Lon", "Alt"],     # other information for hoverinfo display
-                quiver = False,         # logical value to display or hide quivers
-                quiver_scale = 0.1,     # length scale of quivers
-                quiver_skip = 0,        # points to skip between displaying quivers
-                groupby = groupby,        # possible values: all, day, hour, minute, N (integer, show N values at a time)
-                                    #   orbitE (break at equator crossing S->N), orbitM (break at prime meridian crossing)
-                body = body,         # possible values: black, earth, and any other value is no body
-                colorscale = "Viridis", # named colorscale
-                REkm = REkm,  # Earth radius in km
-                coord = coord,  # Coordinate system of plot
+                position_units = "R_E",
+                var = var,
+                hover_vars = [],
+                quiver = False,
+                quiver_scale = 0.1,
+                quiver_skip = 0,
+                groupby = groupby,
+                body = body,
+                colorscale = "Viridis",
+                REkm = REkm,
+                coord = plotCoord,
             ),
         )
         # Fixed position variables already included, now add passed in variable to dictionary
-        plot_dict['Sat1']['vars'][var]=dict(units=varu, data=vard)
+        plot_dict['Sat1']['vars'][var]=dict(units=varu, data=vard, coord=plotCoord)
+        plot_dict['Sat1']['vars'][iC_names['c1']]=dict(units=iC_units['c1'], data=c1, coord=inCoordName)
+        plot_dict['Sat1']['vars'][iC_names['c2']]=dict(units=iC_units['c2'], data=c2, coord=inCoordName)
+        plot_dict['Sat1']['vars'][iC_names['c3']]=dict(units=iC_units['c3'], data=c3, coord=inCoordName)
+        if plotCoord != inCoordName:
+            plot_dict['options']['hover_vars']=[iC_names['c1'],iC_names['c2'],iC_names['c3']]
 
         # Execute creation and display of figure
-        fig=custom3Dsat(plot_dict,vbose=0)
+        if type == "3D":
+            fig=custom3Dsat(plot_dict,vbose=0)
+        elif type == "2DPN":
+            fig=custom2Dpolar(plot_dict,'N',zoom=zoom,vbose=0)
+        elif type == "2DPS":
+            fig=custom2Dpolar(plot_dict,'S',zoom=zoom,vbose=0)
         if divfile != '':
             print('-saving html div file: ',divfile)
             fig.write_html(divfile,full_html=False)
         if htmlfile != '':
             print('-saving full html file: ',htmlfile)
             fig.write_html(htmlfile,full_html=True)
-        if displayplot:
-            iplot(fig)
+        if returnfig:
+            return fig
+        else:
+            if displayplot:
+                iplot(fig)
 
     if type == "1D" or type == "2D" or type == "2DLT":
-        #Convert incoming coordinates into GDZ sph
-        xx,yy,zz,units = ConvertCoord(time,lon,lat,alt,inCoordName,inCoordType,'GDZ','sph')
-        xx[xx<0.] += 360.
+        newCoord = False
+        if type is "1D" and ( inCoordName != plotCoord or inCoordType != plotCoordType1D):
+            #Convert incoming coordinates into plot coordinages (cartesian)
+            xx,yy,zz,units = ConvertCoord(time,c1,c2,c3,inCoordName,inCoordType,plotCoord,plotCoordType1D)
+            newCoord = True
 
         # Create dictionary block to pass to plotting with selected options
         plot_dict=dict(
-            title = 'Satellite extraction from model: '+model,  # Displayed title for plot, can use <br> for new lines
-            sats = ["Sat1"],            # Array of satellites to include in plot
+            title = 'Satellite extraction from model: '+model+"<br>"+plotCoord+" coordinates",
+            sats = ["Sat1"],
             Sat1 = dict(
                 display_name = "",
-                time = dict(format='timestamp', data=time),  # possible formats: datetime, timestamp (assumes UTC)
-                vars = dict(
-                    Lon = dict(units=units[0], data=xx),
-                    Lat = dict(units=units[1], data=yy),
-                    Alt = dict(units=units[2], data=zz),
-                ),
-                position_variables = ["Lon", "Lat", "Alt"],     # three variables to use for position
+                time = dict(format='timestamp', data=time),
+                vars = dict(),
+                position_variables = [],
             ),
             options = dict(
-                position_units = "", # possible values: R_E, km, ""
-                var = var,            # variable to use for colorscale
-                hover_vars = ["Lon", "Lat", "Alt"],     # other information for hoverinfo display
-                groupby = groupby,        # possible values: all, day, hour, minute, N (integer, show N values at a time)
-                                    #   orbitE (break at equator crossing S->N), orbitM (break at prime meridian crossing)
+                position_units = "",
+                var = var,
+                hover_vars = [],
+                groupby = groupby,
+                coord = plotCoord,
             ),
         )
         # Fixed position variables already included, now add passed in variable to dictionary
-        plot_dict['Sat1']['vars'][var]=dict(units=varu, data=vard)
+        plot_dict['Sat1']['vars'][var]=dict(units=varu, data=vard, coord=plotCoord)
+        if newCoord:
+            plot_dict['Sat1']['vars'][oC_names['c1']]=dict(units=units[0], data=xx, coord=plotCoord)
+            plot_dict['Sat1']['vars'][oC_names['c2']]=dict(units=units[1], data=yy, coord=plotCoord)
+            plot_dict['Sat1']['vars'][oC_names['c3']]=dict(units=units[2], data=zz, coord=plotCoord)
+            plot_dict['Sat1']['position_variables']=[oC_names['c1'],oC_names['c2'],oC_names['c3']]
+            plot_dict['options']['hover_vars']=[oC_names['c1'],oC_names['c2'],oC_names['c3']]
+        else:
+            plot_dict['Sat1']['vars'][iC_names['c1']]=dict(units=iC_units['c1'], data=c1, coord=inCoordName)
+            plot_dict['Sat1']['vars'][iC_names['c2']]=dict(units=iC_units['c2'], data=c2, coord=inCoordName)
+            plot_dict['Sat1']['vars'][iC_names['c3']]=dict(units=iC_units['c3'], data=c3, coord=inCoordName)
+            plot_dict['Sat1']['position_variables']=[iC_names['c1'],iC_names['c2'],iC_names['c3']]
+            plot_dict['options']['hover_vars']=[iC_names['c1'],iC_names['c2'],iC_names['c3']]
 
         # Execute creation and display of figure
         if type == "1D":
@@ -138,8 +173,11 @@ def SatPlot4D(var,time,lon,lat,alt,vard,varu,inCoordName,inCoordType,plotCoord,g
         if htmlfile != '':
             print('-saving full html file: ',htmlfile)
             fig.write_html(htmlfile,full_html=True)
-        if displayplot:
-            iplot(fig)
+        if returnfig:
+            return fig
+        else:
+            if displayplot:
+                iplot(fig)
 
 
 # ===============================================================================================
@@ -359,7 +397,7 @@ iplot(fig)
         "hoverinfo": "none",
     }
 
-    # ===============================================================================================  AAA
+    # 3D===============================================================================================  AAA
     # make figure dictionary pieces
     fig_dict = {"data": [], "layout": {}, "frames": []}
     fig_data_saved = {"data": []}
@@ -434,7 +472,8 @@ iplot(fig)
             for i in range(Nhv):
                 cd.append(datad[sat]['vars'][datad['options']['hover_vars'][i]]['data'][mask])
                 qline+=datad['options']['hover_vars'][i]+": %{customdata["+str(Ndv)+"]:.2f} "+\
-                    datad[sat]['vars'][datad['options']['hover_vars'][i]]['units']+"<br>"
+                    datad[sat]['vars'][datad['options']['hover_vars'][i]]['units']+" "+\
+                    datad[sat]['vars'][datad['options']['hover_vars'][i]]['coord']+"<br>"
                 Ndv+=1
             cd=np.asarray(cd).T
             dateline="%{customdata[0]}<br>"
@@ -533,7 +572,7 @@ iplot(fig)
     # Assemble frame and slider pieces
     fig_dict["layout"]["sliders"] = [sliders_dict]
 
-    # ===============================================================================================  BBB
+    # 3D===============================================================================================  BBB
     if ngroup > 1:
         for sat in datad['sats']:
             # Add trace if more than one group.
@@ -558,7 +597,7 @@ iplot(fig)
             # Put into main data block
             fig_dict["data"].append(data_dict)
 
-    # ===============================================================================================  CCC
+    # 3D===============================================================================================  CCC
     ticE = time.perf_counter()
     # Load points and add 1 RE sphere, padded to cover all data positions
     if body == "black":
@@ -612,7 +651,7 @@ iplot(fig)
     if vbose > 0:
         print(f"  -time loading Earth: {tocE - ticE:0.4f} seconds")
 
-    # ===============================================================================================  DDD
+    # 3D===============================================================================================  DDD
     # Set layout values
     fig_dict["layout"]["height"] = 700
     fig_dict["layout"]["width"] = 800
@@ -659,9 +698,625 @@ iplot(fig)
     if vbose > 0:
         print(f"Total time creating figure object: {toc - tic:0.4f} seconds")
 
-    fig3 = go.Figure(fig_dict)
+    fig = go.Figure(fig_dict)
 
-    return fig3
+    return fig
+
+# ===============================================================================================
+# ===============================================================================================
+def custom2Dpolar(datad, NS, zoom=False, vbose=1):
+    """
+    This function creates a custom 2D polar view satellite plot, returning a plotly figure object.
+   
+    Parameters
+    ----------
+    datad: This is a data dictionary with the data used to create the plot
+    NS: string for plot type, 'N' or 'S' (any non 'S' will be considered 'N')
+    zoom: logical to zoom to just > 50 degrees lat or show all
+    vbose: Optional verbosity value, 0 will only print out warnings and errors. Default is 1.
+    
+    Returns
+    -------
+    fig: A plotly figure object that can then be visualized.
+    
+    """
+
+    # 2DP===============================================================================================  
+    # Start timer
+    tic = time.perf_counter()
+
+    # Start with error checking ...
+    if 'title' not in datad:
+        print("Warning, no title given for plot.")
+        txttop = "No Title"
+    else:
+        txttop = datad['title']
+    if 'var' not in datad['options']:
+        print("ERROR, no variable selected to plot, returning.")
+        return None
+    var=datad['options']['var']
+    if var == "time":
+        varu=""
+    else:
+        varu=datad[datad['sats'][0]]['vars'][var]['units']
+    if 'REkm' in datad['options']:
+        REkm = datad['options']['REkm']
+    else:
+        REkm=6.3781E3
+    scale=datad['options']['position_units']
+    if 'groupby' in datad['options']:
+        groupby = datad['options']['groupby']
+    else:
+        groupby = "all"
+    if 'body' in datad['options']:
+        body=datad['options']['body']
+    else:
+        body = "none"
+    if 'colorscale' in datad['options']:
+        colorscale = datad['options']['colorscale']
+    else:
+        colorscale = "Viridis"
+    if 'coord' in datad['options']:
+        coord = datad['options']['coord']
+    else:
+        coord = ""
+
+    # Precompute circle radius for various latitudes
+    c80=np.sin(((90.-80.)/90.)*np.pi/2.)
+    c70=np.sin(((90.-70.)/90.)*np.pi/2.)
+    c60=np.sin(((90.-60.)/90.)*np.pi/2.)
+    c50=np.sin(((90.-50.)/90.)*np.pi/2.)
+    c40=np.sin(((90.-40.)/90.)*np.pi/2.)
+    c30=np.sin(((90.-30.)/90.)*np.pi/2.)
+    c20=np.sin(((90.-20.)/90.)*np.pi/2.)
+    c10=np.sin(((90.-10.)/90.)*np.pi/2.)
+    c00=1.0
+    c50sq=c50**2
+    # Now compute diagonal line on circle positions
+    c00d=c00/np.sqrt(2.)
+    c50d=c50/np.sqrt(2.)
+
+    # set initial values used later, including loop over all sats
+    xmin=0.
+    xmax=0.
+    ymin=0.
+    ymax=0.
+    zmin=0.
+    zmax=0.
+    cmin= 1.e99
+    cmax=-1.e99
+    localts=dict()
+    localtimestring=dict()
+    agroup=dict()
+    ugroup=()
+    for sat in datad['sats']:
+        sPts=len(datad[sat]['vars'][datad[sat]['position_variables'][0]]['data'])
+        # Set localtimestring values
+        notime=False
+        if 'time' in datad[sat]:
+            if datad[sat]['time']['format'] == "datetime":
+                localts[sat]=np.array([d.timestamp() for d in datad[sat]['time']['data']])
+            elif datad[sat]['time']['format'] == "timestamp":
+                localts[sat]=datad[sat]['time']['data'].copy()
+            else:
+                print("ERROR, Unknown time format.")
+                return None
+            localtimestring[sat] = np.array([dt.fromtimestamp(int(d),tz=timezone.utc).strftime\
+                ("%Y-%m-%d %H:%M:%S") for d in localts[sat]])
+        else:
+            notime=True
+            if var == "time":
+                print("ERROR, no time given and plot var selected is time")
+                return None
+            localtimestring[sat]=np.array(["point "+str(i+1) for i in range(sPts)])
+
+        # Compute mask to restrict all data in trace
+        if NS == 'S':
+            maskz = datad[sat]['vars']['z']['data'] <= 0.
+        else:
+            maskz = datad[sat]['vars']['z']['data'] >= 0.
+        if zoom:
+            rr = datad[sat]['vars']['x']['data']**2 + datad[sat]['vars']['y']['data']**2
+            maskzoom = rr <= c50sq
+            mask = maskz & maskzoom
+        else:
+            mask = maskz
+
+        # Find global contour min/max
+        if var == "time":
+            c=localts[sat]
+        else:
+            c=datad[sat]['vars'][var]['data']
+        cmin=min(cmin,min(c[mask]))
+        cmax=max(cmax,max(c[mask]))
+
+        # Create array of possible 'groupby' value
+        if groupby == "day":
+            if notime:
+                print("ERROR, no time given and groupby value is",groupby)
+                return None
+            agroup[sat] = np.array([dt.fromtimestamp(int(d),tz=timezone.utc).strftime\
+                ("%Y-%m-%d") for d in localts[sat]])
+        elif groupby == "hour":
+            if notime:
+                print("ERROR, no time given and groupby value is",groupby)
+                return None
+            agroup[sat] = np.array([dt.fromtimestamp(int(d),tz=timezone.utc).strftime\
+                ("%Y-%m-%d %H") for d in localts[sat]])
+        elif groupby == "minute":
+            if notime:
+                print("ERROR, no time given and groupby value is",groupby)
+                return None
+            agroup[sat] = np.array([dt.fromtimestamp(int(d),tz=timezone.utc).strftime\
+                ("%Y-%m-%d %H:%M") for d in localts[sat]])
+        elif groupby == "orbitM":
+            # Satellite path crosses prime meridian
+            x=datad[sat]['vars'][datad[sat]['position_variables'][0]]['data']
+            y=datad[sat]['vars'][datad[sat]['position_variables'][1]]['data']
+            bgroup = ['orbit'] * len(x)
+            j=1
+            for i in range(sPts):
+                if i != 0:
+                    if x[i] > 0. and (y[i]*y[i-1]) < 0.:
+                        j+=1
+                bgroup[i] = "orbit "+str(j)
+            agroup[sat]=np.array(bgroup)
+        elif groupby == "orbitE":
+            # Satellite path crosses equator going North
+            z=datad[sat]['vars'][datad[sat]['position_variables'][2]]['data']
+            bgroup = ['orbit'] * len(z)
+            j=1
+            for i in range(sPts):
+                if i != 0:
+                    if (z[i]>0. and z[i-1]<0.):
+                        j+=1
+                bgroup[i] = "orbit "+str(j)
+            agroup[sat]=np.array(bgroup)
+        elif groupby.isdigit():
+            gb=int(groupby)
+            agroup[sat] = np.array(["points "+str(int(i/gb)*gb+1)+" - "+str(int(i/gb)*gb+gb) for i in range(sPts)])
+        else:
+            agroup[sat] = np.array(["all" for i in range(sPts)])
+
+        # Use pandas unique function rather than numpy. Its faster and does not sort the results.
+        ugroup=pd.unique(np.append(ugroup, pd.unique(agroup[sat])))
+
+    ngroup = len(ugroup)
+
+    # Build DUMMY data block to insert as needed.
+    data_dict_dummy = {
+        "type": "scatter",
+        "name": "dummy", "x": [0.], "y": [0.],
+        "mode": "lines", "line": {"width": 1},
+        "hoverinfo": "none",
+    }
+
+    # 2DP===============================================================================================  AAA
+    # make figure dictionary pieces
+    fig_dict = {"data": [], "layout": {}, "frames": []}
+    fig_data_saved = {"data": []}
+    sliders_dict = {
+        "active": 0,
+        "yanchor": "top", "xanchor": "left",
+        "currentvalue": {
+            "prefix": "Currently showing: ",
+            "visible": True,
+            "xanchor": "left"
+        },
+        "transition": {"duration": 0},
+        "pad": {"b": 10, "t": 50},
+        "len": 0.9,
+        "x": 0.1,
+        "y": 0,
+        "steps": []
+    }
+
+    # Actual plot creation loop
+    for date in ugroup:
+        frame = {"data": [], "name": date}
+        for sat in datad['sats']:
+            # Compute mask to restrict all data in trace
+            if NS == 'S':
+                maskz = datad[sat]['vars']['z']['data'] <= 0.
+            else:
+                maskz = datad[sat]['vars']['z']['data'] >= 0.
+            if zoom:
+                rr = datad[sat]['vars']['x']['data']**2 + datad[sat]['vars']['y']['data']**2
+                maskzoom = rr <= c50sq
+                mask = maskz & maskzoom
+            else:
+                mask = maskz
+
+            x=datad[sat]['vars'][datad[sat]['position_variables'][0]]['data']
+            y=datad[sat]['vars'][datad[sat]['position_variables'][1]]['data']
+            z=datad[sat]['vars'][datad[sat]['position_variables'][2]]['data']
+            sc=1.
+            if scale == "km" and datad[sat]['vars'][datad[sat]['position_variables'][0]]['units'] == "R_E":
+                sc=REkm
+            elif scale == "R_E" and datad[sat]['vars'][datad[sat]['position_variables'][0]]['units'] == "km":
+                sc=1./REkm
+            if var == "time":
+                c=localts[sat]
+                varline=""
+            else:
+                c=datad[sat]['vars'][var]['data']
+                varline=var+": %{marker.color:.4g} "+varu+"<br>"
+
+            # Update position min/max values
+            if date == ugroup[0]:
+                xmin=min(xmin,min(x[mask]*sc))
+                xmax=max(xmax,max(x[mask]*sc))
+                ymin=min(ymin,min(y[mask]*sc))
+                ymax=max(ymax,max(y[mask]*sc))
+                zmin=min(zmin,min(z[mask]*sc))
+                zmax=max(zmax,max(z[mask]*sc))
+
+            # Compute mask to restrict all data in trace
+            maskd = date == agroup[sat]
+            fullmask = mask & maskd
+            
+            # Create hover information, including extras passed in.
+            Nhv = len(datad['options']['hover_vars'])
+            cd=[]
+            cd.append(localtimestring[sat][fullmask])
+            qline=""
+            Ndv=1
+            # Add Z to list
+            cd.append(z[fullmask]*sc)
+            qline+="Z: %{customdata["+str(Ndv)+"]:.4f} "+scale+"<br>"
+            Ndv+=1
+            for i in range(Nhv):
+                cd.append(datad[sat]['vars'][datad['options']['hover_vars'][i]]['data'][fullmask])
+                qline+=datad['options']['hover_vars'][i]+": %{customdata["+str(Ndv)+"]:.2f} "+\
+                    datad[sat]['vars'][datad['options']['hover_vars'][i]]['units']+" "+\
+                    datad[sat]['vars'][datad['options']['hover_vars'][i]]['coord']+"<br>"
+                Ndv+=1
+            cd=np.asarray(cd).T
+            dateline="%{customdata[0]}<br>"
+
+            if np.sum(fullmask) < 1:
+                # Build data block with one fake point so that it looks the same
+                data_dict = {
+                    "type": "scatter",
+                    "name": date,
+                    "x": [0.], "y": [0.],
+                    "mode": "markers",
+                    "marker": {
+                        "size": 1, "cmin": cmin, "cmax": cmax, "color": [cmin],
+                        "showscale": True, "colorscale": colorscale,
+                        "colorbar": { "title": "<b>"+var+"</b><br>["+varu+"]", "tickformat": ".3g" }
+                    },
+                    "hovertemplate": "No points in "+date+"<extra></extra>",
+                }
+            else:
+                # Build data block with fullmask
+                data_dict = {
+                    "type": "scatter",
+                    "name": date,
+                    "x": list(x[fullmask]*sc), "y": list(y[fullmask]*sc),
+                    "mode": "markers",
+                    "marker": {
+                        "size": 4, "cmin": cmin, "cmax": cmax, "color": list(c[fullmask]),
+                        "showscale": True, "colorscale": colorscale,
+                        "colorbar": { "title": "<b>"+var+"</b><br>["+varu+"]", "tickformat": ".3g" }
+                    },
+                    "customdata": cd,
+                    "hovertemplate": "<b>"+datad[sat]['display_name']+"</b>"+
+                    "<br>X: %{x:.4f} "+scale+"<br>Y: %{y:.4f} "+scale+"<br>"+
+                    qline+varline+dateline+"<extra></extra>",
+                }
+
+            # If time is colorbar variable, hide labels by selecting ticks out of range
+            if var == "time":
+                data_dict.marker.colorbar['tickvals']=(0,1)
+
+            # Put each part of sequence in frame data block
+            frame["data"].append(data_dict)
+
+            # First in sequence, put dummy in main data block
+            if date == ugroup[0]:
+                fig_dict["data"].append(data_dict_dummy)
+            
+        fig_dict["frames"].append(frame)
+        slider_step = {"args": [
+            [date],
+            {"frame": {"duration": 300, "redraw": True},
+             "mode": "immediate",
+             "transition": {"duration": 0}}
+        ],
+            "label": date,
+            "method": "animate"}
+        sliders_dict["steps"].append(slider_step)
+        
+    # Assemble frame and slider pieces
+    fig_dict["layout"]["sliders"] = [sliders_dict]
+
+    # 2DP===============================================================================================  BBB
+    if ngroup > 1:
+        for sat in datad['sats']:
+            # Add trace if more than one group.
+            # This shows the whole trajectory when a subsection of data is showing.
+            x=datad[sat]['vars'][datad[sat]['position_variables'][0]]['data']
+            y=datad[sat]['vars'][datad[sat]['position_variables'][1]]['data']
+            z=datad[sat]['vars'][datad[sat]['position_variables'][2]]['data']
+            sc=1.
+            if scale == "km" and datad[sat]['vars'][datad[sat]['position_variables'][0]]['units'] == "R_E":
+                sc=REkm
+            elif scale == "R_E" and datad[sat]['vars'][datad[sat]['position_variables'][0]]['units'] == "km":
+                sc=1./REkm
+
+            # Compute mask to restrict all data in trace
+            if NS == 'S':
+                maskz = z <= 0.
+            else:
+                maskz = z >= 0.
+            if zoom:
+                rr = x**2 + y**2
+                maskzoom = rr <= c50sq
+                mask = maskz & maskzoom
+            else:
+                mask = maskz
+
+            xx=np.concatenate([x,x])
+            yy=np.concatenate([y,y])
+            # Build new position array, element by element
+            j=0
+            for i in range(len(mask)):
+                if mask[i]:
+                    xx[j]=x[i]*sc
+                    yy[j]=y[i]*sc
+                    j+=1
+                    if i+1 < len(mask):
+                        if not mask[i+1]:
+                            xx[j]=None
+                            yy[j]=None
+                            j+=1
+            xx=np.array(xx[0:j], dtype=np.float64)
+            yy=np.array(yy[0:j], dtype=np.float64)
+
+            # Build data block
+            data_dict = {
+                "type": "scatter",
+                "name": "positions", "x": list(xx), "y": list(yy),
+                "mode": "lines", "line": {"width": 3, "color": "rgba(22,22,22,0.2)"},
+                "hoverinfo": "none",
+            }
+
+            # Put into main data block
+            fig_dict["data"].append(data_dict)
+
+    # 2DP===============================================================================================  CCC
+    # Build body data block
+    data_dict = {
+        "type": "scatter",
+        "name": "positions", "x": [xmin,xmax], "y": [ymin,ymax],
+        "mode": "markers", "marker": {"size": 1},
+        "hoverinfo": "none",
+    }
+    # Put into main data block
+    fig_dict["data"].append(data_dict)
+
+    # 2DP===============================================================================================  DDD
+    # Set layout values
+    fig_dict["layout"]["height"] = 600
+    fig_dict["layout"]["width"] = 600
+    fig_dict["layout"]["scene_aspectmode"] = "data"
+    fig_dict["layout"]["xaxis"] = {'visible': False, 'showticklabels': False}
+    fig_dict["layout"]["yaxis"] = {'visible': False, 'showticklabels': False}
+    if NS == 'S':
+        if zoom:
+            txttop2 = '<br>Southern Hemisphere to 50 degrees'
+        else:
+            txttop2 = '<br>Southern Hemisphere'
+    else:
+        if zoom:
+            txttop2 = '<br>Northern Hemisphere to 50 degrees'
+        else:
+            txttop2 = '<br>Northern Hemisphere'
+    fig_dict["layout"]["title_text"] = txttop+txttop2
+    fig_dict["layout"]["showlegend"] = False
+    fig_dict["layout"]["scene_camera"] = dict(center=dict(x=0, y=0, z=0))
+    fig_dict["layout"]["hoverlabel_align"] = 'right'
+    if ngroup > 1:
+        fig_dict["layout"]["updatemenus"] = [
+            {
+                "buttons": [
+                    {
+                        "args": [None, {"frame": {"duration": 500, "redraw": True},
+                                        "fromcurrent": True, "transition": {"duration": 0}}],
+                        "label": "Play",
+                        "method": "animate"
+                    },
+                    {
+                        "args": [[None], {"frame": {"duration": 0, "redraw": True},
+                                          "mode": "immediate",
+                                          "transition": {"duration": 0}}],
+                        "label": "Pause",
+                        "method": "animate"
+                    }
+                ],
+                "direction": "left",
+                "pad": {"r": 10, "t": 75},
+                "showactive": False,
+                "type": "buttons",
+                "x": 0.1,
+                "xanchor": "right",
+                "y": 0,
+                "yanchor": "top"
+            }
+        ]
+
+    fig = go.Figure(fig_dict)
+
+    fig.update_xaxes(showgrid=False,scaleanchor='y')
+    fig.update_yaxes(showgrid=False)
+    fig.update_layout(
+        paper_bgcolor='white',
+        plot_bgcolor='white',
+        margin=dict(l=10,b=10),
+    )
+
+    if body == "lines" and coord == "GEO":
+        if zoom:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=c50d, x1=c50d, y1=-c50d),
+                ],
+            )
+        else:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1, dash="dash"),
+                         xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dot"),
+                         xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dash"),
+                         xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dot"),
+                         xref="x", yref="y", x0=-c40, y0=-c40, x1=c40, y1=c40),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c30, y0=-c30, x1=c30, y1=c30),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dash"),
+                         xref="x", yref="y", x0=-c20, y0=-c20, x1=c20, y1=c20),
+                    dict(type="circle", line=dict(color="black", width=1, dash="dot"),
+                         xref="x", yref="y", x0=-c10, y0=-c10, x1=c10, y1=c10),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00, y0=-c00, x1=c00, y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00, y0=0., x1=c00, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c00, x1=0., y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=-c00d, x1=c00d, y1=c00d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=c00d, x1=c00d, y1=-c00d),
+                ],
+                annotations=[
+                    dict(text="60", x=-0.04, y=-(c60+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                    dict(text="30", x=-0.04, y=-(c30+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                ],
+            )
+
+    else:
+        if zoom:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c50d, y0=c50d, x1=c50d, y1=-c50d),
+                ],
+            )            
+        else:
+            fig.update_layout(
+                shapes=[
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60),
+                    dict(type="circle", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c30, y0=-c30, x1=c30, y1=c30),
+                    dict(type="circle", line=dict(color="black", width=2),
+                         xref="x", yref="y", x0=-c00, y0=-c00, x1=c00, y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00, y0=0., x1=c00, y1=0.),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=0., y0=-c00, x1=0., y1=c00),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=-c00d, x1=c00d, y1=c00d),
+                    dict(type="line", line=dict(color="black", width=1),
+                         xref="x", yref="y", x0=-c00d, y0=c00d, x1=c00d, y1=-c00d),
+                ],
+                annotations=[
+                    dict(text="60", x=-0.04, y=-(c60+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                    dict(text="30", x=-0.04, y=-(c30+0.03), showarrow=False, 
+                         xref="x", yref="y", font=dict(size=8)),
+                ],
+            )
+
+    if NS == 'S':
+        fig.update_xaxes(autorange="reversed")
+        
+    if coord == 'GEO':
+        # CCMC is blocking image pulls directly from add_layout_image but copying
+        #   the file locally to /tmp and loading with PIL allows it to be used.
+        from PIL import Image
+        import urllib.request
+        if NS == 'S':
+            if zoom:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole50.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=c50, y=c50, sizex=2*c50, sizey=2*c50,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
+            else:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=1, y=1, sizex=2, sizey=2,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
+        else:
+            if zoom:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole50.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=-c50, y=c50, sizex=2*c50, sizey=2*c50,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
+            else:
+                urllib.request.urlretrieve(
+                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole.png',
+                    "/tmp/TMP.png")
+                localIMG = Image.open("/tmp/TMP.png")
+                fig.add_layout_image(
+                    dict(source=localIMG,xref="x", yref="y", x=-1, y=1, sizex=2, sizey=2,
+                         sizing="stretch", opacity=0.5, layer="below")
+                )
+
+    # end timer                                                                               
+    toc = time.perf_counter()
+    if vbose > 0:
+        print(f"Total time creating figure object: {toc - tic:0.4f} seconds")
+
+    return fig
 
 # ===============================================================================================
 # ===============================================================================================
@@ -679,6 +1334,11 @@ def custom1Dsat(datad, vbose=1):
     fig: A plotly figure object that can then be visualized.
     
     """
+
+    if 'coord' in datad['options']:
+        coord = datad['options']['coord']
+    else:
+        coord = ""
 
     # Start 1D fig
     var=datad['options']['var']
@@ -719,39 +1379,39 @@ def custom1Dsat(datad, vbose=1):
         else:
             c=datad[sat]['vars'][var]['data']
 
-        fig1 = make_subplots(rows=(Nhv+1), cols=1, shared_xaxes=True, vertical_spacing=0.04)
+        fig = make_subplots(rows=(Nhv+1), cols=1, shared_xaxes=True, vertical_spacing=0.04)
 
-        fig1.add_trace(go.Scatter(x=localdt[sat], y=c, name=var,
+        fig.add_trace(go.Scatter(x=localdt[sat], y=c, name=var,
                                   mode='lines', line= dict(shape='linear', color='black'),
-                                  hovertemplate=var+': %{y:.4g}<br>%{x}<extra></extra>',
+                                  hovertemplate=coord+'<br>'+var+': %{y:.4g}<br>%{x}<extra></extra>',
                                 ),
                        row=1, col=1)
-        fig1.update_yaxes(title_text='<b>'+var+'</b><br>['+varu+']', exponentformat='e', row=1, col=1)
-        fig1.update_layout(yaxis=dict(title=dict(font=dict(size=12))))
+        fig.update_yaxes(title_text='<b>'+var+'</b><br>['+varu+']', exponentformat='e', row=1, col=1)
+        fig.update_layout(yaxis=dict(title=dict(font=dict(size=12))))
 
         for i in range(Nhv):
             tmpv=datad['options']['hover_vars'][i]
-            fig1.add_trace(go.Scatter(x=localdt[sat], y=datad[sat]['vars'][tmpv]['data'], name=tmpv,
+            tmpu=datad[sat]['vars'][tmpv]['units']
+            fig.add_trace(go.Scatter(x=localdt[sat], y=datad[sat]['vars'][tmpv]['data'], name=tmpv,
                                       mode='lines', line= dict(shape='linear', color='black'),
-                                      hovertemplate=tmpv+': %{y:.4g}<br>%{x}<extra></extra>',
+                                      hovertemplate=coord+'<br>'+tmpv+': %{y:.4g}<br>%{x}<extra></extra>',
                                      ),
                            row=(i+2), col=1)
-            tmpu=""
-            if tmpv == "Alt":
-                tmpu=" [km]"
+#            if tmpv == "Alt":
+#                tmpu=" [km]"
             if tmpv == "Lon":
-                tmpu=" [deg]"
-                fig1.update_yaxes(tick0=0., dtick=90., row=(i+2), col=1)
+#                tmpu=" [deg]"
+                fig.update_yaxes(tick0=0., dtick=90., row=(i+2), col=1)
             if tmpv == "Lat":
-                tmpu=" [deg]"
-                fig1.update_yaxes(tick0=0., dtick=30., row=(i+2), col=1)
+#                tmpu=" [deg]"
+                fig.update_yaxes(tick0=0., dtick=30., row=(i+2), col=1)
             ya='yaxis'+str(i+2)
-            ys="dict(text='<b>"+tmpv+"</b>"+tmpu+"',font=dict(size=12))"
-            fig1['layout'][ya]['title']=eval(ys)
+            ys="dict(text='<b>"+tmpv+"</b> ["+tmpu+"]',font=dict(size=12))"
+            fig['layout'][ya]['title']=eval(ys)
 
-        fig1.update_layout(height=600, width=800, title_text=txttop, showlegend = False,)
+        fig.update_layout(height=600, width=800, title_text=txttop, showlegend = False,)
 
-    return fig1
+    return fig
 
 # ===============================================================================================
 # ===============================================================================================
@@ -771,7 +1431,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
     
     '''
 
-    # ===============================================================================================  
+    # 2D===============================================================================================  
     # Start timer
     tic = time.perf_counter()
 
@@ -903,7 +1563,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
         "hoverinfo": "none",
     }
 
-    # ===============================================================================================  AAA
+    # 2D===============================================================================================  AAA
     # make figure dictionary pieces
     fig_dict = {"data": [], "layout": {}, "frames": []}
     fig_data_saved = {"data": []}
@@ -1039,7 +1699,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
         # Assemble frame and slider pieces
         fig_dict["layout"]["sliders"] = [sliders_dict]
 
-    # ===============================================================================================  BBB
+    # 2D===============================================================================================  BBB
     if ngroup > 1:
         for sat in datad['sats']:
             # Add trace if more than one group.
@@ -1083,7 +1743,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
             if not useLT:
                 fig_dict["data"].append(data_dict)
 
-    # ===============================================================================================  DDD
+    # 2D===============================================================================================  DDD
     # Set layout values
     if useLT:
         fig_dict["layout"]["xaxis"] = {'dtick': 3.0, 'range': [0.0, 24.0], 'tick0': 0.0,
@@ -1130,7 +1790,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
     if vbose > 0:
         print(f"Total time creating figure object: {toc - tic:0.4f} seconds")
 
-    fig2 = go.Figure(fig_dict)
-    return fig2
+    fig = go.Figure(fig_dict)
+    return fig
 
 # %%
