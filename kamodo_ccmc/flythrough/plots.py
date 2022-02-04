@@ -49,7 +49,7 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
 
     REkm = (R_earth.value/1000.)
 
-    import kamodo.flythrough.model_wrapper as MW
+    import kamodo_ccmc.flythrough.model_wrapper as MW
     iC_names=MW.coord_names(inCoordName,inCoordType)
     iC_units=MW.coord_units(inCoordName,inCoordType)
     if inCoordType=='sph':
