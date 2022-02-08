@@ -17,12 +17,13 @@ if you wish to create a new environment, use this command:
 	python -m pip install ./Kamodo     
 
 Testing commands from ipython or notebook session:
-	from kamodo import Kamodo
+`	from kamodo import Kamodo
 	k = Kamodo()  
 	import kamodo_ccmc.flythrough.model_wrapper as MW  
-	MW.Model_Variables('OpenGGCM_GM')
+	MW.Model_Variables('OpenGGCM_GM')`
 
 Correct output:
+`
 The model accepts the standardized variable names listed below.
 -----------------------------------------------------------------------------------
 B_x : '['x component of magnetic field', 0, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'nT']'
@@ -43,3 +44,4 @@ P_plasma : '['plasma pressure', 14, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'pPa'
 J_x : '['x component of current density', 15, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'muA/m**2']'
 J_y : '['y component of current density', 16, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'muA/m**2']'
 J_z : '['z component of current density', 17, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'muA/m**2']'
+`
