@@ -18,11 +18,13 @@ if you wish to create a new environment, use this command:
 this command. The ./Kamodo directory should contain the kamodo_ccmc directory.)
 > python -m pip install ./Kamodo     
 
-Testing commands from ipython or notebook session:
-> from kamodo import Kamodo
-> k = Kamodo()  
-> import kamodo_ccmc.flythrough.model_wrapper as MW  
-> MW.Model_Variables('OpenGGCM_GM')
+### Testing commands from ipython or notebook session:
+```
+from kamodo import Kamodo
+k = Kamodo()  
+import kamodo_ccmc.flythrough.model_wrapper as MW  
+MW.Model_Variables('OpenGGCM_GM')
+```
 
 Correct output:
 ```
