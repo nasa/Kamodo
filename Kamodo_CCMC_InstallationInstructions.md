@@ -1,11 +1,9 @@
 ## Kamodo CCMC Installation Instructions
 
 In conda command prompt:
-1. Move to the directory where you want the Kamodo package to be stored or
-if you wish to create a new environment, use this command:
+1. Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:
 > conda create -n Kamodo_env python=3.7  
-2. Add the packages needed by the CCMC readers to the desired environment
-(replace 'Kamodo_env' with your environment name):
+2. Add the packages needed by the CCMC readers to the desired environment (replace 'Kamodo_env' with your environment name):
 > conda install -n Kamodo_env -c conda-forge netCDF4 xarray dask astropy ipython jupyter
 3. Activate the desired environment. 
 > conda activate Kamodo_env
@@ -14,8 +12,7 @@ if you wish to create a new environment, use this command:
 > python -m pip install hapiclient
 5. Download Kamodo to the current directory:
 > git clone https://github.com/nasa/Kamodo.git
-6. Install the Kamodo package. (Check the directory structure before using
-this command. The ./Kamodo directory should contain the kamodo_ccmc directory.)
+6. Install the Kamodo package. (Check the directory structure before using this command. The ./Kamodo directory should contain the kamodo_ccmc directory.)
 > python -m pip install ./Kamodo     
 
 ### Testing commands from ipython or notebook session:
