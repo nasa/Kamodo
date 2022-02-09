@@ -172,7 +172,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     coord_grid: either 'car' or 'sph' (0 or 1). Note that not all combinations 
         make sense (e.g. 'SPH' and 'car') and are not allowed.    
     high_res: the accuracy of the conversion from radius or altitude to pressure
-        level. Ignore if no conversion is needed for the variable(s) selected. 
+        level. Ignore if no conversion is needed for the variable(s) selected. Default is 20.
     output_type: One of 'csv' for comma separated output, 'cdf4' for a netCDF4 
         output file, or 'txt' for a tab-separated text file.
     output_name: complete path with filename (without the extension) for the file to
@@ -319,7 +319,7 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
             as a percentage of the min_height value: p =  (default=0.01).  
         n: the time cadence of the sample trajectory generated (default = 2 seconds)
         high_res: the resolution of the height conversion to pressure level
-            in units of km
+            in units of km. Default is 20.
         output_type: One of 'csv' for comma separated output, 'cdf4' for a netCDF4 
             output file, or 'txt' for a tab-separated text file.
         output_name: complete path with filename (without the extension) for the file to
@@ -381,7 +381,7 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
     plot_output: complete path pluts file naming convention (without the .html)
         for the file to write the plots to.
     high_res: the accuracy of the conversion from radius or altitude to pressure
-        level. Ignore if no conversion is needed for the variable(s) selected.
+        level. Ignore if no conversion is needed for the variable(s) selected. Default is 20.
     plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
         integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
         system the plot will be generated in. Only plots in cartesian coordinates
@@ -438,7 +438,7 @@ def MyFlight(traj_file, file_type, model, file_dir,
     plot_output: complete path pluts file naming convention (without the .html)
         for the file to write the plots to.
     high_res: the accuracy of the conversion from radius or altitude to pressure
-        level. Ignore if no conversion is needed for the variable(s) selected.
+        level. Ignore if no conversion is needed for the variable(s) selected. Default is 20.
     plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
         integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
         system the plot will be generated in. Only plots in cartesian coordinates
