@@ -10,18 +10,21 @@ model_varnames={
     'bx':['B_x','x component of magnetic field',0,'GSE','car',['time','x','y','z'],'nT'],
     'by':['B_y','y component of magnetic field',1,'GSE','car',['time','x','y','z'],'nT'],
     'bz':['B_z','z component of magnetic field',2,'GSE','car',['time','x','y','z'],'nT'],
-    'bx1':['B1_x','x component of magnetic field (on grid cell faces)',3,'GSE','car',['time','x','x','x'],'nT'],
-    'by1':['B1_y','y component of magnetic field (on grid cell faces)',4,'GSE','car',['time','y','y','y'],'nT'],
-    'bz1':['B1_z','z component of magnetic field (on grid cell faces)',5,'GSE','car',['time','z','z','z'],'nT'],
-    'ex':['E_x','x component of electric field (on grid cell edges)',6,'GSE','car',['time','x','x','x'],'mV/m'],
-    'ey':['E_y','y component of electric field (on grid cell edges)',7,'GSE','car',['time','y','y','y'],'mV/m'],
-    'ez':['E_z','z component of electric field (on grid cell edges)',8,'GSE','car',['time','z','z','z'],'mV/m'],
-    'vx':['V_x','x component of plasma velocity',9,'GSE','car',['time','x','y','z'],'km/s'],
-    'vy':['V_y','y component of plasma velocity',10,'GSE','car',['time','x','y','z'],'km/s'],
-    'vz':['V_z','z component of plasma velocity',11,'GSE','car',['time','x','y','z'],'km/s'],
-    'rr':['N_plasma','plasma number denstity (hydrogen equivalent)',12,'GSE','car',['time','x','y','z'],'1/cm**3'],
+    #'bx1':['B1_x','x component of magnetic field (on grid cell faces)',3,'GSE','car',['time','x','x','x'],'nT'],
+    #'by1':['B1_y','y component of magnetic field (on grid cell faces)',4,'GSE','car',['time','y','y','y'],'nT'],
+    #'bz1':['B1_z','z component of magnetic field (on grid cell faces)',5,'GSE','car',['time','z','z','z'],'nT'],
+    'ex':['E_x','x component of electric field',6,'GSE','car',['time','x','x','x'],'mV/m'],
+    'ey':['E_y','y component of electric field',7,'GSE','car',['time','y','y','y'],'mV/m'],
+    'ez':['E_z','z component of electric field',8,'GSE','car',['time','z','z','z'],'mV/m'],
+    'vx':['v_plasmax','x component of plasma velocity',9,'GSE','car',['time','x','y','z'],'km/s'],
+    'vy':['v_plasmay','y component of plasma velocity',10,'GSE','car',['time','x','y','z'],'km/s'],
+    'vz':['v_plasmaz','z component of plasma velocity',11,'GSE','car',['time','x','y','z'],'km/s'],
+    'rr':['N_plasma','number density of plasma (hydrogen equivalent)',12,'GSE','car',['time','x','y','z'],'1/cm**3'],
     'resis':['eta','resistivity',13,'GSE','car',['time','x','y','z'],'m**2/s'],
     'pp':['P_plasma','plasma pressure',14,'GSE','car',['time','x','y','z'],'pPa'],
+    'xjx':['j_x','current density, x component',15,'GSE','car',['time','x','y','z'],'muA/m**2'],
+    'xjy':['j_y','current density, y component',16,'GSE','car',['time','x','y','z'],'muA/m**2'],
+    'xjz':['j_z','current density, z component',17,'GSE','car',['time','x','y','z'],'muA/m**2'],
 }
 
 # variable linkage to grid position vectors are established during variable registration
@@ -183,7 +186,11 @@ def MODEL():
                 avoid_list = []   #empty for now
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
-                                 key not in avoid_list]            
+                                 key not in avoid_list]    
+                if not fulltime:
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list}
+                    return                      
 
             # Store variable's data and units, transposing the 2D+time array.
             variables = {model_varnames[key][0]:{'units':model_varnames[key][-1],
