@@ -27,60 +27,60 @@ from datetime import datetime, timezone, timedelta
 ###    \rho_i is the mass density of a constituent species.
 model_varnames={
                  ### 4D Variables, vertical coordinate on midpoint levels (lev)
-                 "ZGMID"    : ["H_ilev",'variable description',0,'GDZ','sph',['time','lon','lat','ilev'],"cm"],    # geometric height- interpolated to the mid points
-                 "TN"       : ["T_n",'variable description',1,'GDZ','sph',['time','lon','lat','ilev'],"K"],          # neutral temperature    
-                 "O2"       : ["psi_O2",'variable description',2,'GDZ','sph',['time','lon','lat','ilev'],""],        # molecular oxygen,   mmr
-                 "O1"       : ["psi_O",'variable description',3,'GDZ','sph',['time','lon','lat','ilev'],""],        # atomic oxygen ,   mmr
-                 "N2"       : ["psi_N2",'variable description',4,'GDZ','sph',['time','lon','lat','ilev'],""],        # molecular nitrogen,mmr
-                 "HE"       : ["psi_He",'variable description',5,'GDZ','sph',['time','lon','lat','ilev'],""],         # helium  ,   mmr
-                 "NO"       : ["psi_NO",'variable description',6,'GDZ','sph',['time','lon','lat','ilev'],""],         # nitric oxide , mmr
-                 "N4S"      : ["psi_N4S",'variable description',7,'GDZ','sph',['time','lon','lat','ilev'],""],        #  N4S ?,mmr
-                 "N2D"      : ["psi_N2D", 'variable description',8,'GDZ','sph',['time','lon','lat','ilev'],""],     # N(2D) mmr
-                 "TE"  : ["T_e",'variable description',9,'GDZ','sph',['time','lon','lat','ilev'],"K"],         #  ELECTRON TEMPERATURE,
-                 "TI"  : ["T_i",'variable description',10,'GDZ','sph',['time','lon','lat','ilev'],"K"],         #  ION TEMPERATURE
-                 "O2P" : ["N_O2plus",'variable description',11,'GDZ','sph',['time','lon','lat','ilev'],"1/cm**3"],  #  O2+ ION
-                 "OP"  : ["N_Oplus",'variable description',12,'GDZ','sph',['time','lon','lat','ilev'],"1/cm**3"],    #   O+ ION
-                 "N2N"      : ["N_N2",'variable description',13,'GDZ','sph',['time','lon','lat','ilev'],"1/cm**3"],    # molecular nitrogen (maybe number density),mmr
-                 "CO2_COOL" : ["Q_CO2cool",'variable description',14,'GDZ','sph',['time','lon','lat','ilev'],"erg/g/s"],  #  CO2 cooling rates
-                 "NO_COOL"  : ["Q_NOcool",'variable description',15,'GDZ','sph',['time','lon','lat','ilev'],"erg/g/s"],      #  NO cooling rates
-                 "UN"  : ["u_n",'variable description',16,'GDZ','sph',['time','lon','lat','ilev'],"cm/s"],            #  neutral ZONAL wind (+EAST)
-                 "VN"  : ["v_n",'variable description',17,'GDZ','sph',['time','lon','lat','ilev'],"cm/s"],            #  neutral MERIDIONAL wind (+NORTH)
-                 "O2P_ELD"  : ['O2P_ELD','variable description',18,'GDZ','sph',['time','lon','lat','ilev'],''],     #NO DESCRIPTION GIVEN
-                 "N2P_ELD"  :['N2P_ELD','variable description',19,'GDZ','sph',['time','lon','lat','ilev'],''],      #NO DESCRIPTION GIVEN
-                 "NPLUS"    :['N_Nplus','variable description',20,'GDZ','sph',['time','lon','lat','ilev'],'1/cm**3'],  #GUESS ONLY based on other number densities
-                 "NOP_ELD"  :['NOP_ELD','variable description',21,'GDZ','sph',['time','lon','lat','ilev'],''],    #NO DESCRIPTION GIVEN
-                 "SIGMA_PED" :['Sigma_P','variable description',22,'GDZ','sph',['time','lon','lat','ilev'],'S/m'],  #Pedersen Conductivity
-                 "SIGMA_HAL" :['Sigma_H','variable description',23,'GDZ','sph',['time','lon','lat','ilev'],'S/m'], #Hall Conductivity
-                 "QJOULE"   :['Q_Joule','variable description',24,'GDZ','sph',['time','lon','lat','ilev'],'erg/g/s'], #Joule Heating
-                 "O_N2"    :['psi_ON2','variable description',25,'GDZ','sph',['time','lon','lat','ilev'],''],  #O/N2 RATIO
-                 "N2D_ELD"  :['N2D_ELD','variable description',26,'GDZ','sph',['time','lon','lat','ilev'],''],  #NO DESCRIPTION GIVEN
-                 "O2N"    :['r_OtoN','variable description',27,'GDZ','sph',['time','lon','lat','ilev'],'1/cm**3'],  #GUESS ONLY 
+                 "ZGMID"    : ["H_ilev",'height dependent on primary pressure level',0,'GDZ','sph',['time','lon','lat','ilev'],"cm"],    # geometric height- interpolated to the mid points
+                 "TN"       : ["T_n",'neutral temperature',1,'GDZ','sph',['time','lon','lat','ilev'],"K"],          # neutral temperature    
+                 "O2"       : ["mmr_O2",'mass mixing ratio of molecular oxygen',2,'GDZ','sph',['time','lon','lat','ilev'],""],        # molecular oxygen,   mmr
+                 "O1"       : ["mmr_O",'mass mixing ratio of atomic oxygen',3,'GDZ','sph',['time','lon','lat','ilev'],""],        # atomic oxygen ,   mmr
+                 "N2"       : ["mmr_N2",'mass mixing ratio of molecular nitrogen',4,'GDZ','sph',['time','lon','lat','ilev'],""],        # molecular nitrogen,mmr
+                 "HE"       : ["mmr_He",'mass mixing ratio of atomic helium',5,'GDZ','sph',['time','lon','lat','ilev'],""],         # helium  ,   mmr
+                 "NO"       : ["mmr_NO",'mass mixing ratio of molecular nitric oxide',6,'GDZ','sph',['time','lon','lat','ilev'],""],         # nitric oxide , mmr
+                 "N4S"      : ["mmr_Nstate4S",'mass mixing ratio of atomic nitrogen (4S state)',7,'GDZ','sph',['time','lon','lat','ilev'],""],        #  N4S ?,mmr
+                 "N2D"      : ["mmr_Nstate2D",'mass mixing ratio of atomic nitrogen (2D state)',8,'GDZ','sph',['time','lon','lat','ilev'],""],     # N(2D) mmr
+                 "TE"  : ["T_e",'electron temperature',9,'GDZ','sph',['time','lon','lat','ilev'],"K"],         #  ELECTRON TEMPERATURE,
+                 "TI"  : ["T_i",'ion temperature',10,'GDZ','sph',['time','lon','lat','ilev'],"K"],         #  ION TEMPERATURE
+                 "O2P" : ["N_O2plus",'number density of molecular oxygen ion',11,'GDZ','sph',['time','lon','lat','ilev'],"1/cm**3"],  #  O2+ ION
+                 "OP"  : ["N_Oplus",'number density of atomic oxygen ion',12,'GDZ','sph',['time','lon','lat','ilev'],"1/cm**3"],    #   O+ ION
+                 "N2N"      : ["N_N2",'number density of molecular nitrogen',13,'GDZ','sph',['time','lon','lat','ilev'],"1/cm**3"],    # molecular nitrogen (maybe number density),mmr
+                 "CO2_COOL" : ["Q_CO2cool",'cooling rate of carbon dioxide',14,'GDZ','sph',['time','lon','lat','ilev'],"erg/g/s"],  #  CO2 cooling rates
+                 "NO_COOL"  : ["Q_NOcool",'cooling rate of nitric oxide',15,'GDZ','sph',['time','lon','lat','ilev'],"erg/g/s"],      #  NO cooling rates
+                 "UN"  : ["v_neast",'zonal neutral wind velocity (east)',16,'GDZ','sph',['time','lon','lat','ilev'],"cm/s"],            #  neutral ZONAL wind (+EAST)
+                 "VN"  : ["v_nnorth",'meridional neutral wind velocity (north)',17,'GDZ','sph',['time','lon','lat','ilev'],"cm/s"],            #  neutral MERIDIONAL wind (+NORTH)
+                 #"O2P_ELD"  : ['O2P_ELD','???',18,'GDZ','sph',['time','lon','lat','ilev'],''],     #NO DESCRIPTION GIVEN
+                 #"N2P_ELD"  :['N2P_ELD','???',19,'GDZ','sph',['time','lon','lat','ilev'],''],      #NO DESCRIPTION GIVEN
+                 "NPLUS"    :['N_Nplus','number density of atomic nitrogen ion',20,'GDZ','sph',['time','lon','lat','ilev'],'1/cm**3'],  #GUESS ONLY based on other number densities
+                 #"NOP_ELD"  :['NOP_ELD','???',21,'GDZ','sph',['time','lon','lat','ilev'],''],    #NO DESCRIPTION GIVEN
+                 "SIGMA_PED" :['sigma_P','Pedersen conductivity',22,'GDZ','sph',['time','lon','lat','ilev'],'S/m'],  #Pedersen Conductivity
+                 "SIGMA_HAL" :['sigma_H','Hall conductivity',23,'GDZ','sph',['time','lon','lat','ilev'],'S/m'], #Hall Conductivity
+                 "QJOULE"   :['Q_Joule','joule heating',24,'GDZ','sph',['time','lon','lat','ilev'],'erg/g/s'], #Joule Heating
+                 "O_N2"    :['OtoN2','Oxygen/molecular nitrogen ratio',25,'GDZ','sph',['time','lon','lat','ilev'],''],  #O/N2 RATIO
+                 #"N2D_ELD"  :['N2D_ELD','???',26,'GDZ','sph',['time','lon','lat','ilev'],''],  #NO DESCRIPTION GIVEN
+                 "O2N"    :['N_O2','number density of molecular oxygen',27,'GDZ','sph',['time','lon','lat','ilev'],'1/cm**3'],  #GUESS ONLY 
                  #
                 ### 4D Variables, vertical coordinate on interface levels (ilev)
-                 "DEN"      :["rho",'variable description',28,'GDZ','sph',['time','lon','lat','ilev1'],"g/cm**3"],     # total neutral mass density  
-                 "ZG"       :["H_ilev1",'variable description',29,'GDZ','sph',['time','lon','lat','ilev1'],"cm"],          # geometric height  
-                 "Z"        :["H_geopot",'variable description',30,'GDZ','sph',['time','lon','lat','ilev1'],"cm"],            # geopotential height (cm)  
-                 "NE"       : ["N_e",'variable description',31,'GDZ','sph',['time','lon','lat','ilev1'],"1/cm**3"],    #  ELECTRON DENSITY
-                 "OMEGA"    : ["omega",'variable description',32,'GDZ','sph',['time','lon','lat','ilev1'],"1/s"],      #  VERTICAL MOTION
-                 "POTEN"    : ["V",'variable description',33,'GDZ','sph',['time','lon','lat','ilev1'],"V"],        #  ELECTRIC POTENTIAL
-                 "UI_ExB"   : ["u_iExB",'variable description',34,'GDZ','sph',['time','lon','lat','ilev1'],'cm/s'],  #Zonal ExB Velocity
-                 "VI_ExB"   :["v_iExB",'variable description',35,'GDZ','sph',['time','lon','lat','ilev1'],'cm/s'],  #Meridional ExB Velocity
-                 "WI_ExB"   :["w_iExB", 'variable description',36,'GDZ','sph',['time','lon','lat','ilev1'], 'cm/s'], #Vertical ExB Velocity
+                 "DEN"      :["rho",'total mass density',28,'GDZ','sph',['time','lon','lat','ilev1'],"g/cm**3"],     # total neutral mass density  
+                 "ZG"       :["H_ilev1",'height dependent on secondary pressure level',29,'GDZ','sph',['time','lon','lat','ilev1'],"cm"],          # geometric height  
+                 "Z"        :["H_geopot",'geopotential height',30,'GDZ','sph',['time','lon','lat','ilev1'],"cm"],            # geopotential height (cm)  
+                 "NE"       : ["N_e",'electron number density',31,'GDZ','sph',['time','lon','lat','ilev1'],"1/cm**3"],    #  ELECTRON DENSITY
+                 "OMEGA"    : ["omega",'Vertical motion frequency',32,'GDZ','sph',['time','lon','lat','ilev1'],"1/s"],      #  VERTICAL MOTION
+                 "POTEN"    : ["V",'electric potential',33,'GDZ','sph',['time','lon','lat','ilev1'],"V"],        #  ELECTRIC POTENTIAL
+                 "UI_ExB"   : ["v_iExBeast",'zonal ExB ion velocity (east)',34,'GDZ','sph',['time','lon','lat','ilev1'],'cm/s'],  #Zonal ExB Velocity
+                 "VI_ExB"   :["v_iExBnorth",'meridional ExB ion velocity (north)',35,'GDZ','sph',['time','lon','lat','ilev1'],'cm/s'],  #Meridional ExB Velocity
+                 "WI_ExB"   :["v_iExBup",'vertical ExB ion velocity (up)',36,'GDZ','sph',['time','lon','lat','ilev1'], 'cm/s'], #Vertical ExB Velocity
                 ### 4D Variables, vertical coordinate on interface mag levels (imlev)
-                 "ZMAG"  : ["H_mag",'variable description',37,'MAG','sph',['time','mlon','mlat','milev'],"km"],     #  Geopotential Height on Geomagnetic Grid
+                 "ZMAG"  : ["H_milev",'height dependent on geomagnetic pressure level',37,'MAG','sph',['time','mlon','mlat','milev'],"km"],     #  Geopotential Height on Geomagnetic Grid
                 #
                 ### 3D Variables,    (time, lat, lon)
-                 "TEC"  : ["TEC",'variable description',38,'GDZ','sph',['time','lon','lat'],"1/cm**2"],     #  Total Electron Content
-                 "TLBC"  : ["T_nLBC",'variable description',39,'GDZ','sph',['time','lon','lat'],"K"],       #  Lower boundary condition for TN
-                 "ULBC"  : ["u_nLBC",'variable description',40,'GDZ','sph',['time','lon','lat'],"cm/s"],    #  Lower boundary condition for UN
-                 "VLBC"  : ["v_nLBC",'variable description',41,'GDZ','sph',['time','lon','lat'],"cm/s"],    #  Lower boundary condition for VN
-                 "TLBC_NM"  : ["T_nLBCNM",'variable description',42,'GDZ','sph',['time','lon','lat'],"K"],  #  Lower boundary condition for TN (TIME N-1)
-                 "ULBC_NM"  : ["u_nLBCNM",'variable description',43,'GDZ','sph',['time','lon','lat'],"cm/s"],  #  Lower boundary condition for UN (TIME N-1)
-                 "VLBC_NM"  : ["v_nLBCNM",'variable description',44,'GDZ','sph',['time','lon','lat'],"cm/s"],  #  Lower boundary condition for VN (TIME N-1)
-                 "QJOULE_INTEG":["W_Joule",'variable description',45,'GDZ','sph',['time','lon','lat'],'erg/cm**2/s'],  #Height-integrated Joule Heating
-                 "EFLUX"  :['Eflux_aurora','variable description',46,'GDZ','sph',['time','lon','lat'],'erg/cm**2/s'],  #Aurora Energy Flux
-                 "HMF2" :['HmF2','variable description',47,'GDZ','sph',['time','lon','lat'],'km'], #  Height of the F2 Layer
-                 "NMF2"  :['NmF2','variable description',48,'GDZ','sph',['time','lon','lat'],'1/cm**3'], #Peak Density of the F2 Layer
+                 "TEC"  : ["TEC",'vertical total electron content (height integrated from bottom to top boundary)',38,'GDZ','sph',['time','lon','lat'],"1/cm**2"],     #  Total Electron Content
+                 #"TLBC"  : ["T_nLBC",'Lower boundary condition for T_n',39,'GDZ','sph',['time','lon','lat'],"K"],       #  Lower boundary condition for TN
+                 #"ULBC"  : ["v_neastLBC",'Lower boundary condition for v_n east component',40,'GDZ','sph',['time','lon','lat'],"cm/s"],    #  Lower boundary condition for UN
+                 #"VLBC"  : ["v_nnorthLBC",'Lower boundary condition for v_n north component',41,'GDZ','sph',['time','lon','lat'],"cm/s"],    #  Lower boundary condition for VN
+                 #"TLBC_NM"  : ["T_nLBCNminus1",'Lower boundary condition for T_n at t=N-1',42,'GDZ','sph',['time','lon','lat'],"K"],  #  Lower boundary condition for TN (TIME N-1)
+                 #"ULBC_NM"  : ["v_neastLBCNminus1",'Lower boundary condition for v_n north component at t=N-1',43,'GDZ','sph',['time','lon','lat'],"cm/s"],  #  Lower boundary condition for UN (TIME N-1)
+                 #"VLBC_NM"  : ["v_nnorthLBCNminus1",'Lower boundary condition for v_n east component at t=N-1',44,'GDZ','sph',['time','lon','lat'],"cm/s"],  #  Lower boundary condition for VN (TIME N-1)
+                 "QJOULE_INTEG":["W_JouleH",'height integrated joule heating',45,'GDZ','sph',['time','lon','lat'],'erg/cm**2/s'],  #Height-integrated Joule Heating
+                 "EFLUX"  :['Phi_E','energy flux',46,'GDZ','sph',['time','lon','lat'],'erg/cm**2/s'],  #Aurora Energy Flux
+                 "HMF2" :['HmF2','height of maximum electron number density in F2 layer',47,'GDZ','sph',['time','lon','lat'],'km'], #  Height of the F2 Layer
+                 "NMF2"  :['NmF2','maximum electron number density in F2 layer',48,'GDZ','sph',['time','lon','lat'],'1/cm**3'], #Peak Density of the F2 Layer
                   }
 
 #####--------------------------------------------------------------------------------------
@@ -270,6 +270,10 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
                                  key not in avoid_list]
+                if not fulltime:
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list}
+                    return                     
 
             # Store the requested variables into a dictionary 
             variables = {model_varnames[key][0]:{'units':model_varnames[key][-1], 

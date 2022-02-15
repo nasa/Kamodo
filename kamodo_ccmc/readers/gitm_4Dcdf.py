@@ -6,100 +6,100 @@ from datetime import datetime, timezone, timedelta
 #line for MODEL wrapper if data scale isn't important:
 # return {key:[value[0],value[2]] for key, value in model_varnames.items()}
 #varnames in cdf files are standardized (value[0])
-model_varnames = {'r_Ar': ['r_Ar','variable description',0,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'rho_Ar': ['rho_Ar','variable description',1,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'r_CH4': ['r_CH4','variable description',2,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'k': ['k','variable description',3,'SPH','sph',['time','lon','lat','radius'], 'W/m/K'],
-                 'Q_EUV': ['Q_EUV','variable description',4,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
-                 'rho_H': ['rho_H','variable description',5,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_Hplus': ['rho_Hplus','variable description',6,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'r_H2': ['r_H2','variable description',7,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'r_HCN': ['r_HCN','variable description',8,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'rho_He': ['rho_He','variable description',9,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_Heplus': ['rho_Heplus','variable description',10,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'HeatingEfficiency': ['HeatingEfficiency','variable description',11,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'HeatBalanceTotall': ['HeatBalanceTotal','variable description',12,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'rho_N2': ['rho_N2','variable description',13,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_N2plus': ['rho_N2plus','variable description',14,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_Nplus': ['rho_Nplus','variable description',15,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_N2D': ['rho_N2D','variable description',16,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_N2P': ['rho_N2P','variable description',17,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_N4S': ['rho_N4S','variable description',18,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'r_N2': ['r_N2','variable description',19,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'rho_NO': ['rho_NO','variable description',20,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_NOplus': ['rho_NOplus','variable description',21,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_O2': ['rho_O2','variable description',22,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_O1D': ['rho_O1D', 'variable description',23,'SPH','sph',['time','lon','lat','radius'],'kg/m**3'],
-                 'rho_O2plus': ['rho_O2plus','variable description',24,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_O2D': ['rho_O2D','variable description',25,'SPH','sph',['time','lon','lat','radius'], '1/m**3'],
-                 'rho_Oplus2P': ['rho_Oplus2P','variable description',26,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_O3P': ['rho_O3P','variable description',27,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'rho_Oplus4SP': ['rho_Oplus4SP','variable description',28,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'L_Rad': ['L_Rad', 'variable description',29,'SPH','sph',['time','lon','lat','radius'],''],
-                 'rho': ['rho_n','variable description',30,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'T_n': ['T_n','variable description',31,'SPH','sph',['time','lon','lat','radius'], 'K'],
-                 'vi_east': ['vi_east','variable description',32,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'vi_north': ['vi_north','variable description',33,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'vi_up': ['vi_up','variable description',34,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'vn_east': ['vn_east','variable description',35,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'vn_north': ['vn_north','variable description',36,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'vn_up': ['vn_up','variable description',37,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'v_N2_up': ['v_N2_up','variable description',38,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'v_N4S_up': ['v_N4S_up','variable description',39,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'v_N_up': ['v_N_up','variable description',40,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'v_O2_up': ['v_O2_up','variable description',41,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'v_O3P_up': ['v_O3P_up','variable description',42,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'v_He_up': ['v_He_up','variable description',43,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
-                 'N_e': ['N_e','variable description',44,'SPH','sph',['time','lon','lat','radius'], '1/m**3'],
-                 'ElectronAverageEnergy': ['ElectronAverageEnergy','variable description',45,'SPH','sph',['time','lon','lat','radius'], 'J'],
-                 'T_e': ['T_e','variable description',46,'SPH','sph',['time','lon','lat','radius'], 'K'],
-                 'T_i': ['T_i','variable description',47,'SPH','sph',['time','lon','lat','radius'], 'K'],
-                 'SolarZenithAngle': ['SolarZenithAngle','variable description',48,'SPH','sph',['time','lon','lat'], 'radians'],
-                 'rho_CO2': ['rho_CO2','variable description',49,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 'DivJu FL': ['DivJuFL','variable description',50,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'DivJuAlt': ['DivJuAlt','variable description',51,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'ElectronEnergyFlux': ['ElectronEnergyFlux','variable description',52,'SPH','sph',['time','lon','lat','radius'], 'J/m**2'],
-                 'Field Line Length': ['Field Line Length','variable description',53,'SPH','sph',['time','lon','lat','radius'], 'm'],
-                 'sigma_P': ['sigma_P','variable description',54,'SPH','sph',['time','lon','lat','radius'], 'S/m'],
-                 'V': ['V','variable description',57,'SPH','sph',['time','lon','lat','radius'], 'V'],
-                 'sigma_H': ['sigma_H','variable description',58,'SPH','sph',['time','lon','lat','radius'], 'S/m'],
-                 'I_R2': ['I_R2','variable description',59,'SPH','sph',['time','lon','lat','radius'], 'A/m**2'],
-                 'I_R1': ['I_R1','variable description',60,'SPH','sph',['time','lon','lat','radius'], 'A/m**2'],
-                 'Ed1': ['Ed1','variable description',61,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'Ed2': ['Ed2','variable description',62,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'SolarLocalTime': ['SolarLocalTime','variable description',63,'SPH','sph',['time','lon','lat'], 'hr'],
-                 'E_up': ['E_up','variable description',64,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
-                 'E_east': ['E_east','variable description',65,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
-                 'E_north': ['E_north','variable description',66,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
-                 'E_mag': ['E_mag','variable description',67,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
-                 'B_up': ['B_up','variable description',68,'SPH','sph',['time','lon','lat','radius'], 'nT'],
-                 'B_east': ['B_east','variable description',69,'SPH','sph',['time','lon','lat','radius'], 'nT'],
-                 'B_north': ['B_north','variable description',70,'SPH','sph',['time','lon','lat','radius'], 'nT'],
-                 'B_mag': ['B_mag','variable description',71,'SPH','sph',['time','lon','lat','radius'], 'nT'],
-                 'MagLat': ['MagLat','variable description',72,'SPH','sph',['time','lon','lat','radius'], 'deg'],
-                 'MagLon': ['MagLon','variable description',73,'SPH','sph',['time','lon','lat','radius'], 'deg'],
-                 'g': ['g','variable description',74,'SPH','sph',['time','lon','lat','radius'], 'm/s**2'],
-                 'GradP_east': ['GradP_east','variable description',75,'SPH','sph',['time','lon','lat','radius'], 'Pa/m'],
-                 'GradP_north': ['GradP_north','variable description',76,'SPH','sph',['time','lon','lat','radius'], 'Pa/m'],
-                 'GradP_up': ['GradP_up','variable description',77,'SPH','sph',['time','lon','lat','radius'], 'Pa/m'],
-                 'nu_in': ['nu_in','variable description',78,'SPH','sph',['time','lon','lat','radius'], '1/s'],
-                 'ChemicalHeatingRate': ['ChemicalHeatingRate','variable description',79,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'TotalAbsoluteEUV': ['TotalAbsoluteEUV','variable description',80,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
-                 'Q_Ocool': ['Q_Ocool','variable description',81,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
-                 'Q_Joule': ['Q_Joule','variable description',82,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
-                 'Q_Auroral': ['Q_Auroral','variable description',83,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
-                 'Q_PhotoE': ['Q_PhotoE','variable description',84,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
-                 'k_eddy': ['k_eddy','variable description',85,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'k_adiabaticeddy': ['k_adiabaticeddy','variable description',86,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'Q_NOcool': ['Q_NOcool','variable description',87,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
-                 'k_molecular': ['k_molecular','variable description',88,'SPH','sph',['time','lon','lat','radius'], ''],
-                 'NmF2': ['NmF2','variable description',89,'SPH','sph',['time','lon','lat'], ''],
-                 'hmF2': ['hmF2','variable description',90,'SPH','sph',['time','lon','lat'], 'km'],
-                 'TEC': ['TEC','variable description',91,'SPH','sph',['time','lon','lat'], '10**16/m**2'],
-                 'Phi_Joule':['Phi_Joule','variable description',92,'SPH','sph',['time','lon','lat'],'W/m**2'], 
-                 'Phi_Q':['Phi_Q','variable description',93,'SPH','sph',['time','lon','lat'],'W/m**2'], 
-                 'Phi_EUV':['Phi_EUV','variable description',94,'SPH','sph',['time','lon','lat'],'W/m**2'], 
-                 'Phi_NOCooling':['Phi_NOCooling','variable description',95,'SPH','sph',['time','lon','lat'],'W/m**2']}
+model_varnames = {'r_Ar': ['mmr_Ar','mass mixing ratio of argon/neutrals',0,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'rho_Ar': ['rho_Ar','mass density of argon',1,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'r_CH4': ['mmr_CH4','mass mixing ratio of methane/neutrals',2,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'k': ['k','total conduction',3,'SPH','sph',['time','lon','lat','radius'], 'W/m/K'],
+                 'Q_EUV': ['Q_EUV','EUV heating',4,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
+                 'rho_H': ['rho_H','mass density of hydrogen',5,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_Hplus': ['rho_Hplus','mass density of hydrogen ion',6,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'r_H2': ['mmr_H2','mass mixing ratio of molecular hydrogen/neutrals',7,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'r_HCN': ['mmr_HCN','mass mixing ratio of hydrogen cyanide/neutrals',8,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'rho_He': ['rho_He','mass density of helium',9,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_Heplus': ['rho_Heplus','mass density of helium ion',10,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'HeatingEfficiency': ['Q_eff','heating efficiency',11,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'HeatBalanceTotall': ['Q_bal','heat balance total',12,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'rho_N2': ['rho_N2','mass density of molecular nitrogen',13,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_N2plus': ['rho_N2plus','mass density of molecular nitrogen ion',14,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_Nplus': ['rho_Nplus','mass density of atomic nitrogen ion',15,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_N2D': ['rho_N2D','mass density of atomic nitrogen (2D state)',16,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_N2P': ['rho_N2P','mass density of atomic nitrogen (2P state)',17,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_N4S': ['rho_N4S','mass density of atomic nitrogen (4S state)',18,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'r_N2': ['mmr_N2','mass mixing ratio of molecular nitrogen',19,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'rho_NO': ['rho_NO','mass density of nitric oxide',20,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_NOplus': ['rho_NOplus','mass density of nitric oxide ion',21,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_O2': ['rho_O2','mass density of molecular oxygen',22,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_O1D': ['rho_O1D', 'mass density of atomic oxygen (1D state)',23,'SPH','sph',['time','lon','lat','radius'],'kg/m**3'],
+                 'rho_O2plus': ['rho_O2plus','mass density of molecular oxygen ion',24,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_O2D': ['rho_O2D','mass density of atomic oxygen (2D state)',25,'SPH','sph',['time','lon','lat','radius'], '1/m**3'],
+                 'rho_Oplus2P': ['rho_Oplus2P','mass density of atomic oxygen ion (2P state)',26,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_O3P': ['rho_O3P','mass density of atomic oxygen (3P state)',27,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'rho_Oplus4SP': ['rho_Oplus4S4P','mass density of atomic oxygen ion (4S or 4P state)',28,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'L_Rad': ['Q_cool', 'radiative cooling rate',29,'SPH','sph',['time','lon','lat','radius'],''],
+                 'rho': ['rho_n','neutral mass density',30,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 'T_n': ['T_n','neutral temperature',31,'SPH','sph',['time','lon','lat','radius'], 'K'],
+                 'vi_east': ['v_ieast','zonal ion wind velocity (east)',32,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'vi_north': ['v_inorth','meridional ion wind velocity (north)',33,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'vi_up': ['v_iup','vertical ion wind velocity (up)',34,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'vn_east': ['v_neast','zonal neutral wind velocity (east)',35,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'vn_north': ['v_nnorth','meridional neutral wind velocity (north)',36,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'vn_up': ['v_nup','vertical neutral wind velocity (up)',37,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'v_N2_up': ['v_N2up','vertical velocity of molecular nitrogen (up)',38,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'v_N4S_up': ['v_Nstate4Sup','vertical velocity of atomic nitrogen (4S state) (up)',39,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'v_N_up': ['v_Nup','vertical velocity of atomic nitrogen (up)',40,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'v_O2_up': ['v_O2up','vertical velocity of molecular oxygen (up)',41,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'v_O3P_up': ['v_Ostate3Pup','vertical velocity of atomic atomic (3P state) (up)',42,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'v_He_up': ['v_Heup','vertical velocity of helium (up)',43,'SPH','sph',['time','lon','lat','radius'], 'm/s'],
+                 'N_e': ['N_e','electron number density',44,'SPH','sph',['time','lon','lat','radius'], '1/m**3'],
+                 'ElectronAverageEnergy': ['E_eavg','average electron energy',45,'SPH','sph',['time','lon','lat','radius'], 'J'],
+                 'T_e': ['T_e','electron temperature',46,'SPH','sph',['time','lon','lat','radius'], 'K'],
+                 'T_i': ['T_i','ion temperature',47,'SPH','sph',['time','lon','lat','radius'], 'K'],
+                 'SolarZenithAngle': ['SZA','solar zenith angle',48,'SPH','sph',['time','lon','lat'], 'radians'],
+                 'rho_CO2': ['rho_CO2','mass density of carbon dioxide',49,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
+                 #'DivJu FL': ['DivJuFL','???',50,'SPH','sph',['time','lon','lat','radius'], ''],
+                 #'DivJuAlt': ['DivJuAlt','???',51,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'ElectronEnergyFlux': ['Phi_eE','electron energy flux',52,'SPH','sph',['time','lon','lat','radius'], 'J/m**2'],
+                 'Field Line Length': ['s_Bfield','magnetic field arc line length',53,'SPH','sph',['time','lon','lat','radius'], 'm'],
+                 'sigma_P': ['sigma_P','Pedersen conductivity',54,'SPH','sph',['time','lon','lat','radius'], 'S/m'],
+                 'V': ['V','electric potential',57,'SPH','sph',['time','lon','lat','radius'], 'V'],
+                 'sigma_H': ['sigma_H','Hall conductivity',58,'SPH','sph',['time','lon','lat','radius'], 'S/m'],
+                 'I_R2': ['j_R2','region 2 electric current density',59,'SPH','sph',['time','lon','lat','radius'], 'A/m**2'],
+                 'I_R1': ['j_R1','region 1 electric current density',60,'SPH','sph',['time','lon','lat','radius'], 'A/m**2'],
+                 #'Ed1': ['Ed1','???',61,'SPH','sph',['time','lon','lat','radius'], ''],
+                 #'Ed2': ['Ed2','???',62,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'SolarLocalTime': ['SLT','solar local time',63,'SPH','sph',['time','lon','lat'], 'hr'],
+                 'E_up': ['E_up','vertical electric field velocity (up)',64,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
+                 'E_east': ['E_east','zonal electric field (east)',65,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
+                 'E_north': ['E_north','meridional electric field (north)',66,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
+                 'E_mag': ['E_mag','magnitude of electric field',67,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
+                 'B_up': ['B_up','vertical magnetic field velocity (up)',68,'SPH','sph',['time','lon','lat','radius'], 'nT'],
+                 'B_east': ['B_east','zonal magnetic field (east)',69,'SPH','sph',['time','lon','lat','radius'], 'nT'],
+                 'B_north': ['B_north','meridional magnetic field (north)',70,'SPH','sph',['time','lon','lat','radius'], 'nT'],
+                 'B_mag': ['B_mag','magnitude of magnetic field',71,'SPH','sph',['time','lon','lat','radius'], 'nT'],
+                 'MagLat': ['lat_B','magnetic latitude',72,'SPH','sph',['time','lon','lat','radius'], 'deg'],
+                 'MagLon': ['lon_B','magnetic longitude',73,'SPH','sph',['time','lon','lat','radius'], 'deg'],
+                 'g': ['g','gravitational acceleration',74,'SPH','sph',['time','lon','lat','radius'], 'm/s**2'],
+                 'GradP_east': ['GradP_east','zonal component of gradient of sum of ion and electron pressures (east)',75,'SPH','sph',['time','lon','lat','radius'], 'Pa/m'],
+                 'GradP_north': ['GradP_north','meridional component of gradient of sum of ion and electron pressures (north)',76,'SPH','sph',['time','lon','lat','radius'], 'Pa/m'],
+                 'GradP_up': ['GradP_up','vertical component of gradient of sum of ion and electron pressures (up)',77,'SPH','sph',['time','lon','lat','radius'], 'Pa/m'],
+                 'nu_in': ['nu_ion','ion neutral collision frequency',78,'SPH','sph',['time','lon','lat','radius'], '1/s'],
+                 'ChemicalHeatingRate': ['Q_chem','chemical heating rate',79,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'TotalAbsoluteEUV': ['Q_EUVabs','total absolute EUV',80,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
+                 'Q_Ocool': ['Q_Ocool','cooling rate of atomic oxygen',81,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
+                 'Q_Joule': ['Q_Joule','joule heating',82,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
+                 'Q_Auroral': ['Q_auroral','auroral heating',83,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
+                 'Q_PhotoE': ['Q_photoe','heating due to the photoelectric effect',84,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
+                 'k_eddy': ['k_ed','eddy conduction',85,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'k_adiabaticeddy': ['k_edadiab','adiabatic eddy conduction',86,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'Q_NOcool': ['Q_NOcool','cooling rate of nitric oxide',87,'SPH','sph',['time','lon','lat','radius'], 'K per timestep'],
+                 'k_molecular': ['k_mol','molecular conduction',88,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'NmF2': ['NmF2','Maximum electron number density in F2 layer',89,'SPH','sph',['time','lon','lat'], ''],
+                 'hmF2': ['hmF2','Height of maximum electron number density in F2 layer',90,'SPH','sph',['time','lon','lat'], 'km'],
+                 'TEC': ['TEC','vertical total electron content (height integrated from bottom to top boundary)',91,'SPH','sph',['time','lon','lat'], '10**16/m**2'],
+                 'Phi_Joule':['Phi_Joule','joule heat flux',92,'SPH','sph',['time','lon','lat'],'W/m**2'], 
+                 'Phi_Q':['Phi_heat','heat flux',93,'SPH','sph',['time','lon','lat'],'W/m**2'], 
+                 'Phi_EUV':['Phi_EUV','EUV heat flux',94,'SPH','sph',['time','lon','lat'],'W/m**2'], 
+                 'Phi_NOCooling':['Phi_NOCooling','NO cooling flux',95,'SPH','sph',['time','lon','lat'],'W/m**2']}
 
 #times from file converted to seconds since midnight of filedate
 #plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
@@ -291,6 +291,7 @@ def MODEL():
             self.missing_value = NaN
             self._registered = 0
             self.varfiles = {}  #store which variable came from which file for easier association with coords
+            self.gvarfiles = {}  #store file variable name similarly
             self.err_list = []
             self.modelname = 'GITM'
             self.variables={}
@@ -301,7 +302,7 @@ def MODEL():
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
             
-            #loop through files
+            #loop through files to collect variables and mapping
             for i in range(len(self.patterns)):
                 cdf_data = Dataset(file_dir+self.patterns[i]+'.nc', 'r')
                 files = cdf_data.file.split(',')
@@ -328,13 +329,35 @@ def MODEL():
                     gvar_list = [key for key in model_varnames.keys() \
                                  if key in cdf_data.variables.keys()]
                 self.varfiles[self.patterns[i]] = [model_varnames[key][0] for key in gvar_list]  #store which file these variables came from
-            
+                self.gvarfiles[self.patterns[i]] = gvar_list
+                
                 # Store variable data, units from netCDF file.
+                #variables = {model_varnames[key][0]:{'units':cdf_data.variables[key].units,
+                #                            'data':array(cdf_data.variables[key])} \
+                #                  for key in gvar_list}
+                #for key in variables.keys(): self.variables[key] = variables[key]
+                cdf_data.close()
+
+            #collect all possible variables in set of files and return
+            if not len(variables_requested)>0 and not fulltime:
+                self.var_dict, gvar_list = {}, []
+                
+                #loop through gvar_list variables stored for different files to make a master list
+                for i in range(len(self.patterns)): gvar_list+=self.gvarfiles[self.patterns[i]]
+                self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                        if key in gvar_list}
+                return                 
+
+            #loop through files to store variable data and units
+            for i in range(len(self.patterns)):
+                gvar_list = self.gvarfiles[self.patterns[i]]
+                cdf_data = Dataset(file_dir+self.patterns[i]+'.nc', 'r')
                 variables = {model_varnames[key][0]:{'units':cdf_data.variables[key].units,
                                             'data':array(cdf_data.variables[key])} \
                                   for key in gvar_list}
                 for key in variables.keys(): self.variables[key] = variables[key]
-                cdf_data.close()
+                cdf_data.close()                
+
     
             #prepare and return data only for last timestamp
             if not fulltime:  
