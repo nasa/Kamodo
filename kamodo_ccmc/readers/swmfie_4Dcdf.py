@@ -10,28 +10,28 @@ from os.path import isfile, basename
 #read 1 day of data from cdf instead of from multiple .tec files
 
 
-model_varnames={"Sigma_H":['Sigma_H','variable description',0,'SM','sph',['time','lon','lat'],"S"],
-                "Sigma_P":['Sigma_P','variable description',1,'SM','sph',['time','lon','lat'],"S"],
-                 "Phi_E":['Phi_E','variable description',2,'SM','sph',['time','lon','lat'],"W/m**2"], 
-                 "AveE_avgE":['E_avg','variable description',3,'SM','sph',['time','lon','lat'],'eV'],
-                 "j_R":["j_R",'variable description',4,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "Phi":["Phi",'variable description',5,'SM','sph',['time','lon','lat'],"kV"],
-                 "E_x":["E_x",'variable description',6,'SM','sph',['time','lon','lat'],"mV/m"],
-                 "E_y":["E_y",'variable description',7,'SM','sph',['time','lon','lat'],"mV/m"],
-                 "E_z":["E_z",'variable description',8,'SM','sph',['time','lon','lat'],"mV/m"],
-                 "j_x":["j_x",'variable description',9,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_y":["j_y",'variable description',10,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_z":["j_z",'variable description',11,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "v_x":['v_x','variable description',12,'SM','sph',['time','lon','lat'],"km/s"],
-                 "v_y":['v_y','variable description',13,'SM','sph',['time','lon','lat'],"km/s"],
-                 "v_z":['v_z','variable description',14,'SM','sph',['time','lon','lat'],"km/s"],
-                 "Q_Joule":['Q_Joule','variable description',15,'SM','sph',['time','lon','lat'],"mW/m**2"], 
-                 "Phi_nion":['Phi_nion','variable description',16,'SM','sph',['time','lon','lat'],"1/cm**2/s"],
-                 "Binv_RT":['Binv_RT','variable description',17,'SM','sph',['time','lon','lat'],"1/T"],
-                 "rho_RT":['rho_RT','variable description',18,'SM','sph',['time','lon','lat'],"amu/cm**3"],
-                 "P_RT":['P_RT','variable description',19,'SM','sph',['time','lon','lat'],"Pa"],
-                 "dLat_star":['dLat_star','variable description',20,'SM','sph',['time','lon','lat'],"deg"],
-                 "dlon_star":['dlon_star','variable description',21,'SM','sph',['time','lon','lat'],"deg"]}
+model_varnames={"Sigma_H":['Sigma_H','3D Hall conductivity',0,'SM','sph',['time','lon','lat'],"S"],
+                "Sigma_P":['Sigma_P','3D Pederson conductivity',1,'SM','sph',['time','lon','lat'],"S"],
+                 "Phi_E":['Phi_E','energy flux',2,'SM','sph',['time','lon','lat'],"W/m**2"], 
+                 "AveE_avgE":['E_avg','average energy',3,'SM','sph',['time','lon','lat'],'eV'],
+                 "j_R":["j_R",'radial current density',4,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "Phi":["phi",'electric potential',5,'SM','sph',['time','lon','lat'],"kV"],
+                 "E_x":["E_x",'electric field, x component',6,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_y":["E_y",'electric field, y component',7,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_z":["E_z",'electric field, z component',8,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "j_x":["j_x",'current density, x component',9,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_y":["j_y",'current density, y component',10,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_z":["j_z",'current density, z component',11,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "v_x":['v_x','total velocity, x component',12,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_y":['v_y','total velocity, y component',13,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_z":['v_z','total velocity, z component',14,'SM','sph',['time','lon','lat'],"km/s"],
+                 "Q_Joule":['W_JouleH','height integrated joule heating',15,'SM','sph',['time','lon','lat'],"mW/m**2"], 
+                 "Phi_nion":['Phi_Nion','flux of ions in number density',16,'SM','sph',['time','lon','lat'],"1/cm**2/s"],
+                 "Binv_RT":['Binv_RT','inverse magnetic field (RT) (ray tracing integrated along field line)',17,'SM','sph',['time','lon','lat'],"1/T"],
+                 "rho_RT":['rho_RTamu','molecular mass density (RT) (ray tracing integrated along field line)',18,'SM','sph',['time','lon','lat'],"amu/cm**3"],
+                 "P_RT":['P_RT','pressure (RT) (ray tracing integrated along field line)',19,'SM','sph',['time','lon','lat'],"Pa"],
+                 "dLat_star":['lat_star','conjugate latitude',20,'SM','sph',['time','lon','lat'],"deg"],
+                 "dlon_star":['lon_star','conjugate longitude',21,'SM','sph',['time','lon','lat'],"deg"]}
                  
  
 '''                
@@ -208,6 +208,10 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
                                  key not in avoid_list]
+                if not fulltime:
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list}
+                    return                     
                                    
             # Store variable's data and units, transposing the 2D+time array.
             variables = {model_varnames[key][0]:{'units':model_varnames[key][-1],

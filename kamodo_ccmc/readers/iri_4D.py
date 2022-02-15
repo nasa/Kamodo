@@ -5,19 +5,19 @@ from datetime import datetime, timedelta, timezone
 
 
 #variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'Ne':['N_e','variable description',0,'SPH','sph',['time','lon','lat','radius'],'1/m**3'], 
-                'Te':['T_e','variable description',1,'SPH','sph',['time','lon','lat','radius'],'K'],
-                'Ti':['T_i','variable description',2,'SPH','sph',['time','lon','lat','radius'],'K'], 
-                'Tn':['T_n','variable description',3,'SPH','sph',['time','lon','lat','radius'],'K'],
-                'O+':['N_Oplus','variable description',4,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'H+':['N_Hplus','variable description',5,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'He+':['N_Heplus','variable description',6,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'O2+':['N_O2plus','variable description',7,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'NO+':['N_NOplus','variable description',8,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'N+':['N_Nplus','variable description',9,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'TEC':['TEC','variable description',10,'SPH','sph',['time','lon','lat'],'10**16/m**2'],
-                'NmF2':['NmF2','variable description',11,'SPH','sph',['time','lon','lat'],'1/m**3'],
-                'HmF2':['HmF2','variable description',12,'SPH','sph',['time','lon','lat'],'km']}
+model_varnames = {'Ne':['N_e','electron number density',0,'SPH','sph',['time','lon','lat','radius'],'1/m**3'], 
+                'Te':['T_e','electron temperature',1,'SPH','sph',['time','lon','lat','radius'],'K'],
+                'Ti':['T_i','ion temperature',2,'SPH','sph',['time','lon','lat','radius'],'K'], 
+                'Tn':['T_n','neutral temperature',3,'SPH','sph',['time','lon','lat','radius'],'K'],
+                'O+':['N_Oplus','number density of atomic oxygen ion',4,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'H+':['N_Hplus','number density of atomic hydrogen ion',5,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'He+':['N_Heplus','number density of atomic helium ion',6,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'O2+':['N_O2plus','number density of molecular oxygen ion',7,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'NO+':['N_NOplus','number density of molecular nitric oxide',8,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'N+':['N_Nplus','number density of atomic nitrogen ion',9,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'TEC':['TEC','vertical total electron content (height integrated from bottom to top boundary)',10,'SPH','sph',['time','lon','lat'],'10**16/m**2'],
+                'NmF2':['NmF2','maximum electron number density in F2 layer',11,'SPH','sph',['time','lon','lat'],'1/m**3'],
+                'HmF2':['HmF2','height of maximum electron number density in F2 layer',12,'SPH','sph',['time','lon','lat'],'km']}
 
 def ts_to_hrs(time_val, filedate):
     '''Convert utc timestamp to hours since midnight on filedate.'''
@@ -151,6 +151,10 @@ def MODEL():
             else:  #only input variables on the avoid_list if specifically requested
                 gvar_list_2d = [key for key in iri2D.variables.keys() if key in model_varnames.keys()]
                 gvar_list_3d = [key for key in iri3D.variables.keys() if key in model_varnames.keys()]
+                if not fulltime:
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list_2d+gvar_list_3d}
+                    return                 
 
             #store data for each variable desired
             variables_2d = {model_varnames[var][0]: {'units': model_varnames[var][-1], 
