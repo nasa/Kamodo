@@ -162,7 +162,7 @@ def Model_Variables(model, return_dict=False):
     #choose the model-specific function to retrieve the variables
     module = Choose_Model(model)
     variable_dict = module.model_varnames
-    var_dict = {value[0]:value[1:] for key, value in variable_dict.items()}
+    var_dict = {value[0]:value[1:] for key, value in sorted(variable_dict.items())}
         
     #retrieve and print model specific and standardized variable names
     if return_dict: 
@@ -171,7 +171,7 @@ def Model_Variables(model, return_dict=False):
         print('\nThe model accepts the standardized variable names listed below.')
         #print('Units for the chosen variables are printed during the satellite flythrough if available.')
         print('-----------------------------------------------------------------------------------')
-        for key, value in var_dict.items(): print(f"{key} : '{value}'")
+        for key, value in sorted(var_dict.items()): print(f"{key} : '{value}'")
         print()
         return    
     
@@ -185,11 +185,13 @@ def File_Variables(model, file_dir, return_dict=False):
     if isinstance(file_patterns, list) or isinstance(file_patterns,np.ndarray):
         for file_pattern in file_patterns:
             kamodo_object = reader(file_pattern, fulltime=False)
-            file_variables[file_pattern] = kamodo_object.var_dict
+            file_variables[file_pattern] = {key:value for key, value \
+                                            in sorted(kamodo_object.var_dict.items())}
 
     else:
         kamodo_object = reader(file_patterns, fulltime=False)
-        file_variables[file_pattern] = kamodo_object.var_dict
+        file_variables[file_patterns] = {key:value for key, value \
+                                        in sorted(kamodo_object.var_dict.items())}
         
     #either return or print nested_dictionary
     if return_dict: 
