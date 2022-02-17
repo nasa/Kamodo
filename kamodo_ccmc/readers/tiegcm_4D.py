@@ -134,7 +134,7 @@ def MODEL():
     from time import perf_counter
     from os.path import basename
     from numpy import zeros, transpose, array, append, insert, where, unique 
-    from numpy import NaN, diff, abs, mean, broadcast_to, cos, sin, repeat, sqrt, sum
+    from numpy import NaN, diff, abs, mean, broadcast_to, cos, sin, sum
     from numpy import pi as nppi
     from netCDF4 import Dataset
     from kamodo import Kamodo
@@ -232,14 +232,14 @@ def MODEL():
             #don't need an internal coord dict because there is only one lat/lon (other than magnetic)
             
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
                 
             #translate from standardized variables to names in file
             #remove variables requested that are not in the file
-            if len(variables_requested)>0:
+            if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
                                      key in cdf_data.variables.keys()]  # file variable names
@@ -259,7 +259,10 @@ def MODEL():
                 check_list = [key for key, value in model_varnames.items()\
                               if value[0] in self.ilev_list and key in gvar_list]
                 if 'ZGMID' not in gvar_list and len(check_list)>0: 
-                    gvar_list.append('ZGMID')
+                    if 'ZGMID' in cdf_data.variables.keys():
+                        gvar_list.append('ZGMID')  #no ZGMID in files from CCMC!
+                    else: 
+                        print('ERROR! H_ilev function not in data!')
                 check_list = [key for key, value in model_varnames.items()\
                               if value[0] in self.milev_list and key in gvar_list]    
                 if 'ZMAG' not in gvar_list and len(check_list)>0: 
@@ -270,7 +273,7 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
                                  key not in avoid_list]
-                if not fulltime:
+                if not fulltime and variables_requested=='all':
                     self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
                             if key in gvar_list}
                     return                     
@@ -324,6 +327,7 @@ def MODEL():
             varname_list, self.variables = [key for key in variables.keys()], {}  #store original list b/c gridded interpolators
             t_reg = perf_counter()
             for varname in varname_list:
+                #print(varname, len(variables[varname]['data'].shape))
                 if len(variables[varname]['data'].shape)==3:
                     if filecheck:  #if neighbor found
                         #append data for first time stamp, transpose and register
@@ -377,7 +381,7 @@ def MODEL():
             tmp_arr[:,:-1,-1] = broadcast_to(top, (shape_list[1]-1,shape_list[0])).T
             
             #wrap in longitude after to prevent double counting in average
-            tmp_arr[:,-1,:] = variable[:,0,:]  
+            tmp_arr[:,-1,:] = tmp_arr[:,0,:]  
             self.variables[varname]['data'] = tmp_arr  #store result
             return tmp_arr        
     

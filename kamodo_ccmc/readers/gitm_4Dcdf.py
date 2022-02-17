@@ -297,7 +297,7 @@ def MODEL():
             self.variables={}
             
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
@@ -316,7 +316,7 @@ def MODEL():
                     setattr(self, '_radius'+str(i), array(cdf_data.variables['radius'])) #in km
             
                 #check var_list for variables not possible in this file set
-                if len(variables_requested)>0:
+                if len(variables_requested)>0 and variables_requested!='all':
                     gvar_list = [key for key in model_varnames.keys() \
                                  if key in cdf_data.variables.keys() and \
                                      model_varnames[key][0] in variables_requested]
@@ -339,7 +339,7 @@ def MODEL():
                 cdf_data.close()
 
             #collect all possible variables in set of files and return
-            if not len(variables_requested)>0 and not fulltime:
+            if not fulltime and variables_requested=='all':
                 self.var_dict, gvar_list = {}, []
                 
                 #loop through gvar_list variables stored for different files to make a master list

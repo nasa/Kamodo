@@ -127,14 +127,14 @@ def MODEL():
                             return                    
 
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
                 
             #collect variable list
             iri2D = Dataset(full_filename2d, 'r')
-            if len(variables_requested)>0:
+            if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list_2d = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
                                      key in iri2D.variables.keys()]  # file variable names
@@ -151,7 +151,7 @@ def MODEL():
             else:  #only input variables on the avoid_list if specifically requested
                 gvar_list_2d = [key for key in iri2D.variables.keys() if key in model_varnames.keys()]
                 gvar_list_3d = [key for key in iri3D.variables.keys() if key in model_varnames.keys()]
-                if not fulltime:
+                if not fulltime and variables_requested=='all':
                     self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
                             if key in gvar_list_2d+gvar_list_3d}
                     return                 

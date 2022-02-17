@@ -103,13 +103,13 @@ def MODEL():
                     print('Converted:', variables_requested)
 
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
                 
             #collect variable list            
-            if len(variables_requested)>0:
+            if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
                                      key in cdf_data.variables.keys()]  # file variable names
@@ -125,7 +125,7 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
                                  key not in avoid_list]    
-                if not fulltime:
+                if not fulltime and variables_requested=='all':
                     self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
                             if key in gvar_list}
                     return                     
