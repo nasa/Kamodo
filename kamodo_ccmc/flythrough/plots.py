@@ -259,7 +259,8 @@ iplot(fig)
         print("ERROR, no variable selected to plot, returning.")
         return None
     var=datad['options']['var']
-    if var == "time":
+    ### NOTE: the checks on variable "time" are changed to "zzztime" throughout as they don't work as intended.
+    if var == "zzztime":
         varu=""
     else:
         varu=datad[datad['sats'][0]]['vars'][var]['units']
@@ -323,13 +324,13 @@ iplot(fig)
                 ("%Y-%m-%d %H:%M:%S") for d in localts[sat]])
         else:
             notime=True
-            if var == "time":
+            if var == "zzztime":
                 print("ERROR, no time given and plot var selected is time")
                 return None
             localtimestring[sat]=np.array(["point "+str(i+1) for i in range(sPts)])
 
         # Find global contour min/max
-        if var == "time":
+        if var == "zzztime":
             c=localts[sat]
         else:
             c=datad[sat]['vars'][var]['data']
@@ -429,7 +430,7 @@ iplot(fig)
                 sc=REkm
             elif scale == "R_E" and datad[sat]['vars'][datad[sat]['position_variables'][0]]['units'] == "km":
                 sc=1./REkm
-            if var == "time":
+            if var == "zzztime":
                 c=localts[sat]
                 varline=""
             else:
@@ -497,7 +498,7 @@ iplot(fig)
             }
 
             # If time is colorbar variable, hide labels by selecting ticks out of range
-            if var == "time":
+            if var == "zzztime":
                 data_dict.marker.colorbar['tickvals']=(0,1)
 
             # Put each part of sequence in frame data block
@@ -735,7 +736,7 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
         print("ERROR, no variable selected to plot, returning.")
         return None
     var=datad['options']['var']
-    if var == "time":
+    if var == "zzztime":
         varu=""
     else:
         varu=datad[datad['sats'][0]]['vars'][var]['units']
@@ -805,7 +806,7 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
                 ("%Y-%m-%d %H:%M:%S") for d in localts[sat]])
         else:
             notime=True
-            if var == "time":
+            if var == "zzztime":
                 print("ERROR, no time given and plot var selected is time")
                 return None
             localtimestring[sat]=np.array(["point "+str(i+1) for i in range(sPts)])
@@ -823,7 +824,7 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
             mask = maskz
 
         # Find global contour min/max
-        if var == "time":
+        if var == "zzztime":
             c=localts[sat]
         else:
             c=datad[sat]['vars'][var]['data']
@@ -935,7 +936,7 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
                 sc=REkm
             elif scale == "R_E" and datad[sat]['vars'][datad[sat]['position_variables'][0]]['units'] == "km":
                 sc=1./REkm
-            if var == "time":
+            if var == "zzztime":
                 c=localts[sat]
                 varline=""
             else:
@@ -1007,7 +1008,7 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
                 }
 
             # If time is colorbar variable, hide labels by selecting ticks out of range
-            if var == "time":
+            if var == "zzztime":
                 data_dict.marker.colorbar['tickvals']=(0,1)
 
             # Put each part of sequence in frame data block
@@ -1368,13 +1369,13 @@ def custom1Dsat(datad, vbose=1):
             localdt[sat] = np.array([datetime.datetime.fromtimestamp(int(d),tz=timezone.utc) for d in localts[sat]])
         else:
             notime=True
-            if var == "time":
+            if var == "zzztime":
                 print("ERROR, no time given and plot var selected is time")
                 return None
             localtimestring[sat]=np.array(["point "+str(i+1) for i in range(sPts)])
 
         # Find global contour min/max
-        if var == "time":
+        if var == "zzztime":
             c=localts[sat]
         else:
             c=datad[sat]['vars'][var]['data']
@@ -1445,7 +1446,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
         print("ERROR, no variable selected to plot, returning.")
         return None
     var=datad['options']['var']
-    if var == "time":
+    if var == "zzztime":
         varu=""
     else:
         varu=datad[datad['sats'][0]]['vars'][var]['units']
@@ -1490,13 +1491,13 @@ def custom2Dsat(datad, useLT=False, vbose=1):
                 ("%Y-%m-%d %H:%M:%S") for d in localts[sat]])
         else:
             notime=True
-            if var == "time" or useLT:
+            if var == "zzztime" or useLT:
                 print("ERROR, no time given and plot var selected is time")
                 return None
             localtimestring[sat]=np.array(["point "+str(i+1) for i in range(sPts)])
 
         # Find global contour min/max
-        if var == "time":
+        if var == "zzztime":
             c=localts[sat]
         else:
             c=datad[sat]['vars'][var]['data']
@@ -1598,7 +1599,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
                 lt[i]=(float(h[i]))+(float(m[i])/60.)+(float(s[i])/3600.)+lon[i]*24./360.
             lt[lt > 24.]-=24.
 
-            if var == "time":
+            if var == "zzztime":
                 c=localts[sat]
                 varline=""
             else:
@@ -1669,7 +1670,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
                 }
 
             # If time is colorbar variable, hide labels by selecting ticks out of range
-            if var == "time":
+            if var == "zzztime":
                 data_dict.marker.colorbar['tickvals']=(0,1)
 
             if ngroup == 1:
