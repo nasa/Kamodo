@@ -61,6 +61,7 @@ def MODEL():
                      filetime=False, verbose=False, gridded_int=True, printfiles=False, 
                      fulltime=True, missing_value=NaN, **kwargs):
             super(MODEL, self).__init__()
+            self.modelname = 'OpenGGCM_GM'
             t0=perf_counter() # profiling time stamp
             
             #separate file directory from file name
@@ -123,7 +124,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(file_prefixes==file_prefix)[0]
                 if current_idx+1==len(file_prefixes):
-                    print('No later file available.')
+                    if verbose: print('No later file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -132,7 +133,7 @@ def MODEL():
                     #print(min_file_prefix)
                     kamodo_test = MODEL(file_dir+min_file_prefix, filetime=True, fulltime=False)
                     if not kamodo_test.conversion_test: 
-                        print('No later file available.')
+                        if verbose: print('No later file available.')
                         filecheck = False  
                         if filetime:
                             return 

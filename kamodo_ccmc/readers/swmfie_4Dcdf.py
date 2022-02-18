@@ -87,6 +87,7 @@ def MODEL():
             '''file_prefix must be of form "3D***_tYYMMDD" to load all files for one day
              and include a complete path to the files'''
             super(MODEL, self).__init__()
+            self.modelname = 'SWMF_IE'
             
             #check if given .nc file exists. If not, convert files with same prefix to netCDF
             file_prefix = basename(full_file_prefix)
@@ -147,7 +148,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(file_prefixes==file_prefix)[0]
                 if current_idx+1==len(file_prefixes):
-                    print('No later file available.')
+                    if verbose: print('No later file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -155,7 +156,7 @@ def MODEL():
                     min_file_prefix = file_dir+file_prefixes[current_idx+1][0]  #+1 for adding an end time
                     kamodo_test = MODEL(min_file_prefix, filetime=True, fulltime=False)
                     if not kamodo_test.conversion_test: 
-                        print('No later file available.')
+                        if verbose: print('No later file available.')
                         filecheck = False  
                         if filetime:
                             return        
@@ -181,7 +182,7 @@ def MODEL():
                             short_data = kamodo_neighbor.short_data                                
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                         else:
-                            print(f'No later file found within {self.dt:.1f}s.')
+                            if verbose: print(f'No later file found within {self.dt:.1f}s.')
                             filecheck = False 
                             if filetime:
                                 return                    

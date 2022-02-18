@@ -160,6 +160,7 @@ def MODEL():
              and must include a complete path to the files with the files stored in the 
              "Data" directory.'''
             super(MODEL, self).__init__()
+            self.modelname = 'GITM'
             
             #check for prepared .nc files
             file_prefix = basename(full_file_prefix)
@@ -239,7 +240,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(file_prefixes==file_prefix)[0]
                 if current_idx+1==len(file_prefixes):
-                    print('No later file available.')
+                    if verbose: print('No later file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -247,7 +248,7 @@ def MODEL():
                     min_file_prefix = file_prefixes[current_idx+1][0]  #+1 for adding an end time
                     kamodo_test = MODEL(file_dir+min_file_prefix, filetime=True, fulltime=False)
                     if not kamodo_test.conversion_test: 
-                        print('No later file available.')
+                        if verbose: print('No later file available.')
                         filecheck = False  
                         if filetime:
                             return 

@@ -57,6 +57,7 @@ def MODEL():
                      filetime=False, verbose=False, gridded_int=True, printfiles=False, 
                      fulltime=True, missing_value=NaN, **kwargs):
             super(MODEL, self).__init__()
+            self.modelname = 'OpenGGCM_GM'
             t0=perf_counter() # profiling time stamp
             
             #convert files to netcdf4 if needed

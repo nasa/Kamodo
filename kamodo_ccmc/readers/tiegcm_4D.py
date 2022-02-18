@@ -149,6 +149,7 @@ def MODEL():
             
             #### Use a super init so that your class inherits any methods from Kamodo
             super(MODEL, self).__init__()
+            self.modelname = 'TIEGCM'
     
             #store time information for satellite flythrough layer to choose the right file
             t0 = perf_counter()
@@ -192,8 +193,8 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so previous file is previous in the list
                 current_idx = where(filenames==filename)[0]
                 if current_idx==0:
-                    print('No earlier file available.')
                     filecheck = False  
+                    if verbose: print('No earlier file available.')
                     if filetime:
                         return   
                 else:
@@ -219,7 +220,7 @@ def MODEL():
                         short_data = kamodo_neighbor.short_data
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from previous file.')
                     else:
-                        print(f'No earlier file found within {self.dt:.1f}s')
+                        if verbose: print(f'No earlier file found within {self.dt:.1f}s')
                         filecheck = False
                         if filetime:
                             return                    
@@ -239,6 +240,7 @@ def MODEL():
                 
             #translate from standardized variables to names in file
             #remove variables requested that are not in the file
+            ilev_check = False  #flag to check if H_ilev needs to be bootstrapped
             if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
@@ -262,7 +264,8 @@ def MODEL():
                     if 'ZGMID' in cdf_data.variables.keys():
                         gvar_list.append('ZGMID')  #no ZGMID in files from CCMC!
                     else: 
-                        print('ERROR! H_ilev function not in data!')
+                        ilev_check=True
+                        gvar_list.append('ZG')  #bootstrap from H_ilev1
                 check_list = [key for key, value in model_varnames.items()\
                               if value[0] in self.milev_list and key in gvar_list]    
                 if 'ZMAG' not in gvar_list and len(check_list)>0: 
@@ -357,7 +360,18 @@ def MODEL():
                     self.variables[varname] = dict(units = variables[varname]['units'], data = variable)
                     self.register_4D_variable(self.variables[varname]['units'], 
                                           self.variables[varname]['data'], varname,
-                                          gridded_int)
+                                          gridded_int, verbose=verbose)
+            if ilev_check:  #if need to bootstrap H_ilev from H_ilev1, do so now
+                self.variables['H_ilev'] = dict(units = variables['H_ilev1']['units'], 
+                                                data = variables['H_ilev1']['data'])
+                self['H_ilev'] = 'H_ilev1'  #copy over interpolator and coord. dependencies
+                self.variables['H_ilev']['xvec'] = self.variables['H_ilev1']['xvec']
+                if gridded_int:
+                    self.variables['H_ilev_ijk'] = dict(units = variables['H_ilev1']['units'], 
+                                                    data = variables['H_ilev1']['data'])
+                    self['H_ilev_ijk'] = 'H_ilev1_ijk'  #copy over interpolator and coord. dependencies
+                    self.variables['H_ilev_ijk']['xvec'] = self.variables['H_ilev1_ijk']['xvec']                    
+                self._registered += 1 
             if verbose: print(f'Took {perf_counter()-t_reg:.5f}s to register '+\
                               f'{len(varname_list)} variables.')
             if verbose: print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy '+\
@@ -465,7 +479,7 @@ def MODEL():
         
         
         #### Define and register a 4D variable -----------------------------------------
-        def register_4D_variable(self, units, variable, varname, gridded_int):
+        def register_4D_variable(self, units, variable, varname, gridded_int, verbose=False):
             """Registers a 4d interpolator with 4d signature"""
                  
             ####  Get the correct coordinates
@@ -493,7 +507,7 @@ def MODEL():
                 idx_top = where(variable[:,:,:,-1]>1e+35)[0]
                 tmp_data = variable
                 while top_size==len(idx_top):   #then top row is undefined! Remove it.
-                    print(f'All values at max milev are 1e+36 for {varname}. Slicing off top array.')
+                    if verbose: print(f'All values at max milev are 1e+36 for {varname}. Slicing off top array.')
                     if self._milev.shape[0]==len(tmp_data[0,0,0,:]):
                         self._milev = self._milev[0:-1]
                     tmp_data = tmp_data[:,:,:,0:-1]

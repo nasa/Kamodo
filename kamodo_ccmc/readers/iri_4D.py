@@ -45,6 +45,7 @@ def MODEL():
                      verbose=False,**kwargs): #                 time_index=None, time_seconds=None,
             # Prepare model for function registration for the input argument
             super(MODEL, self).__init__(**kwargs)
+            self.modelname = 'IRI'
             t0 = perf_counter()
     
             #collect filenames
@@ -93,7 +94,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(filenames==filename)[0]
                 if current_idx+1==len(files):
-                    print('No later file available.')
+                    if verbose: print('No later file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -121,7 +122,7 @@ def MODEL():
                         short_data = kamodo_neighbor.short_data                          
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                     else:
-                        print(f'No later file found within {diff(time).max()*3600.:.1f}s.')
+                        if verbose: print(f'No later file found within {diff(time).max()*3600.:.1f}s.')
                         filecheck = False        
                         if filetime:
                             return                    

@@ -77,6 +77,7 @@ def MODEL():
             
             # only the density, height and neutral files are combined
             super(MODEL, self).__init__()   
+            self.modelname = 'CTIPe'
             
             #check for prepared file of given prefix
             t0 = perf_counter()
@@ -129,7 +130,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(prefix_list==file_prefix)[0]
                 if current_idx==0:
-                    print('No earlier file available.')
+                    if verbose: print('No earlier file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -137,7 +138,7 @@ def MODEL():
                     min_file_prefix = prefix_list[current_idx-1][0]  #-1 for adding an earlier time                
                     kamodo_test = MODEL(file_dir+min_file_prefix, filetime=True, fulltime=False)
                     if not kamodo_test.conversion_test: 
-                        print('No earlier file available.')
+                        if verbose: print('No earlier file available.')
                         filecheck = False  
                         if filetime:
                             return    
@@ -162,7 +163,7 @@ def MODEL():
                             short_data = kamodo_neighbor.short_data
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                         else:
-                            print(f'{file_prefix} No earlier file found within {diff(t).max():.1f}s.')
+                            if verbose: print(f'{file_prefix} No earlier file found within {diff(t).max():.1f}s.')
                             filecheck = False
                             if filetime:
                                 return
@@ -230,7 +231,6 @@ def MODEL():
             self.filename = cdf_data.file.replace(',','\n')
             if printfiles:
                 print('Files:\n', self.filename)
-            self.modelname = 'CTIPe'
             self.runname = runname
             self.missing_value = NaN
             self._registered = 0
