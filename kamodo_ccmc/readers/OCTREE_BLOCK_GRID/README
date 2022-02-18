@@ -1,0 +1,7 @@
+Implementation of octree block interpolation and field line tracing based on CCMC library of C functions that have ben used in online visualization since 2000.
+
+As of Feb. 2022, the build (interpolate_amrdata_extension_build.py) and library operation has been tested and used on Linux and MAC-OS based systems (x86-64 architecture).
+
+We plan to develop a setup.py for the whole kamodo_ccmc package that builds the library for any OS and architecture automatically or ahead of time as part of a binary distribution.
+
+
