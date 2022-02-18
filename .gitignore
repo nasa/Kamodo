@@ -5,6 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
+# Compilation outputs
+*.o
+*.mod
 
 # Distribution / packaging
 .Python
@@ -23,8 +26,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.so
-*.o
 MANIFEST
 
 # PyInstaller
