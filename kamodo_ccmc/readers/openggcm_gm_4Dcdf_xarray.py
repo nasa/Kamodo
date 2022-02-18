@@ -49,7 +49,7 @@ def MODEL():
     import xarray, dask
     from os.path import isfile
     from kamodo import Kamodo, kamodofy
-    from kamodo_ccmc.readers.reader_utilities import register_interpolator, define_4d_gridded_interpolator
+    from kamodo_ccmc.readers.reader_utilities import register_interpolator
     
     class MODEL(Kamodo):
         '''OpenGGCM_GM magnetosphere reader'''
@@ -259,7 +259,7 @@ def MODEL():
                                                           y=xvec_arr[i][2], z=xvec_arr[i][3]).values)
                     else: 
                         result[i] = NaN
-                print(f'Took {perf_counter()-t0:.3f} s for {len(xvec)} positions.')
+                #print(f'Took {perf_counter()-t0:.3f} s for {len(xvec)} positions.')
                 return result
             
             self = register_interpolator(self, varname, interpolator, xvec_dependencies)
