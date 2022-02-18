@@ -162,7 +162,7 @@ def Model_Variables(model, return_dict=False):
     #choose the model-specific function to retrieve the variables
     module = Choose_Model(model)
     variable_dict = module.model_varnames
-    var_dict = {value[0]:value[1:] for key, value in sorted(variable_dict.items())}
+    var_dict = {value[0]:value[1:] for key, value in variable_dict.items()}
         
     #retrieve and print model specific and standardized variable names
     if return_dict: 
@@ -183,15 +183,19 @@ def File_Variables(model, file_dir, return_dict=False):
     file_variables={}
     #collect file variables in a nested dictionary
     if isinstance(file_patterns, list) or isinstance(file_patterns,np.ndarray):
+        #print(model, file_patterns)
         for file_pattern in file_patterns:
-            kamodo_object = reader(file_pattern, fulltime=False)
+            kamodo_object = reader(file_pattern, fulltime=False, variables_requested='all')
             file_variables[file_pattern] = {key:value for key, value \
                                             in sorted(kamodo_object.var_dict.items())}
 
-    else:
-        kamodo_object = reader(file_patterns, fulltime=False)
-        file_variables[file_patterns] = {key:value for key, value \
-                                        in sorted(kamodo_object.var_dict.items())}
+    else:  #reader requires full filenames, not a file pattern
+        files = glob(file_patterns)  #find full filenames for given pattern
+        #print(model, files)
+        for file in files:
+            kamodo_object = reader(file, fulltime=False, variables_requested='all')
+            file_variables[file] = {key:value for key, value \
+                                            in sorted(kamodo_object.var_dict.items())}
         
     #either return or print nested_dictionary
     if return_dict: 
@@ -206,6 +210,23 @@ def File_Variables(model, file_dir, return_dict=False):
             print()
         return
     
+def File_Times(model, file_dir):
+    '''Return/print time ranges available in the data in the given dir. Also
+    performs file conversions of new data if needed.'''
+    
+    #get time ranges from data
+    from kamodo_ccmc.flythrough.SF_utilities import check_timescsv
+    file_patterns = FileSearch(model, file_dir)
+    times_dict = check_timescsv(file_patterns, model)
+    
+    #print time ranges for given file groups: file_pattern, beg time, end time, etc
+    print('File pattern: UTC time ranges')
+    print('------------------------------------------')
+    for key in times_dict.keys():
+        print(f"{times_dict[key][0]} : {times_dict[key][1:]}")
+    
+    return times_dict
+
 def Var_3D(model):
     '''Return list of model variables that are three-dimensional. Model agnostic.'''
     
