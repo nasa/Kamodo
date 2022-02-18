@@ -13,7 +13,7 @@ CalcIlev (around line 217) where the note is.
 """
 
 from numpy import vectorize, array, linspace, diff, where, isnan, float64
-from numpy import concatenate, argmin, argsort, unique, ndarray, NaN
+from numpy import concatenate, argmin, argsort, unique, ndarray, NaN, nanmax
 from numpy import abs as npabs
 from time import perf_counter
 from os.path import basename, isfile
@@ -105,7 +105,7 @@ def day_files(file_pattern, model, call_type):
     return times
 
 def check_timescsv(file_pattern, model, call_type='normal'):
-    '''check for times csv file, write if not found in file_dir'''
+    '''check for times csv file, write if not found in file_dir or if outdated'''
     
     #file_pattern could be a list if more than one pattern in file_dir exists   
     if not isinstance(file_pattern, str):  #if a list/array of strings (GITM/similar)
@@ -122,14 +122,28 @@ def check_timescsv(file_pattern, model, call_type='normal'):
         csv_filename = file_dir+model+'_singletimes.csv'
     #print('csv_filename', csv_filename)
     
-    #if file DNE, write and return, else read and return
+    #if file DNE or outdated, write and return, else read and return
     if not isfile(csv_filename):
         times = day_files(file_pattern, model, call_type)
         write_timescsv(csv_filename, times)
     else:
         times = read_timescsv(csv_filename)
+        
+        #compare file contents to data in dir
+        oldfile_pattern = [value[0] for key, value in times.items()]  #file_patterns in times.csv file
+        if len(oldfile_pattern)==len(file_pattern):  #same length -> compare contents
+            compare = sum(oldfile_pattern==file_pattern)
+            if compare==len(file_pattern):  #if match, then return
+                return times
+            else:  #not matching -> delete old file and recreate
+                times = day_files(file_pattern, model, call_type)
+                write_timescsv(csv_filename, times)                
+        else: #different lengths -> delete old file and recreate
+            times = day_files(file_pattern, model, call_type)
+            write_timescsv(csv_filename, times) 
+                
     return times
-
+    
 def save_times(file_patterns, sat_time, model, verbose=False):
     '''Adjust times between files to filetime within half of dt in seconds (7.5min by default).
     Works for models with one day of data per file.'''
@@ -277,7 +291,8 @@ def CalcIlev(H, Hunit, t, c1_val, c2_val, height, ilev_grid, z_unit, high_res, v
     #get height function output for the ilev range allowed in model
     #sample_ilev = linspace(min_ilev,max_ilev,75,dtype=float)  #typical range is 15
     rough_height = H(array([[t, c1_val, c2_val, ilev] for ilev in ilev_grid]))*Hconv
-    max_height = rough_height.max()  #save for output
+    max_height = nanmax(rough_height)  #save for output, ignore NaNs if possible
+    #will return NaN if all values are NaNs
     if isnan(max_height):  #this happens if one or more of the coordinates is out of range (typically time)
         if verbose: print('Coordinate(s) are out of range:', t, c1_val, c2_val)
         return NaN, NaN
@@ -286,7 +301,12 @@ def CalcIlev(H, Hunit, t, c1_val, c2_val, height, ilev_grid, z_unit, high_res, v
     #when/if Zach writes a more physical way to extrapolate, can call from here.
     if height>max_height:
         if verbose: print('Given height is above pressure level. Returning max possible pressure level instead')
-        return ilev_grid.max(), abs(height-max_height)
+        test_height, idx = NaN, 0
+        while test_height==NaN:  #ignore top of ilev_grid in case of grid mismatch (e.g. some TIEGCM data)
+            idx -= 1  #start from end/max of ilev_grid values
+            max_ilev = ilev_grid[idx]
+            test_height = H([t, c1_val, c2_val, max_ilev])
+        return max_ilev, abs(height-max_height)
 
     #continue with numerical inversion
     ilev_idx = argsort(npabs(height-rough_height))[0] #first value may not be in center of curve
