@@ -42,7 +42,7 @@ model_varnames = {'rho':['rho','total mass density',0,'SPH_plev','sph',['time','
                   'Vi_lon':['v_inorth','meridional ion wind velocity (north)',28,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
                   'Vi_lat':['v_ieast','zonal ion wind velocity (east)',29,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
                   'W_Joule':['W_JouleH','height integrated joule heating',30,'SPH','sph',['time','lon','lat'],'W/m**2'],
-                  'Eflux_precip':['Phi_E','energy flux',31,'SPH','sph',['time','lon','lat'],'W/m**2'],
+                  'Eflux_precip':['Phi_E','energy flux',31,'SPH','sph',['time','lon','lat'],'mW/m**2'],
                   'Eavg_precip':['E_avg','average energy',32,'SPH','sph',['time','lon','lat'],'keV'],
                   'TEC':['TEC','vertical total electron content (height integrated from bottom to top boundary)',33,'SPH','sph',['time','lon','lat'],'1/m**2'], #'10**16/m**2'
                   'E_theta140km':['E_theta140km','Electric field at 140 km, theta component',34,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
