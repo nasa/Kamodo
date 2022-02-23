@@ -441,33 +441,19 @@ def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, c
                                  if (value[2].split('_')[0]+','+value[3]==coord_name)\
                                      and key in variable_list]] \
                     for coord_name in var_coord_strs}  #key is coord type 'name,type'
-                    #first value is a list of the variable names needed those coordinates
+                    #first value is a list of the variable names needing those coordinates
         #print('Performing needed coordinate conversions using SpacePy.')
         for key in new_coords.keys():   #e.g. key= 'GDZ,sph'
             #convert to needed coordinates, in/out order NO LONGER depends on coord_grid
             #can't use net_idx because indices won't line up anymore with split by files
             alt_c1, alt_c2, alt_c3, units_out = \
                     ConvertCoord(sat_time,c1,c2,c3,coord_type,coord_grid,*key.split(','))
-            '''#used with utils_old ConvertCoord function
-            if key.split(',')[1]=='sph' and coord_grid=='sph':  
-                alt_c3, alt_c2, alt_c1, units_out = \
-                    ConvertCoord(sat_time,c3,c2,c1,coord_type,coord_grid,*key.split(','))  #height, lat, lon for both
-            elif key.split(',')[1]=='sph' and coord_grid=='car':
-                alt_c3, alt_c2, alt_c1, units_out = \
-                    ConvertCoord(sat_time,c1,c2,c3,coord_type,coord_grid,*key.split(','))  #x, y, z input
-            elif key.split(',')[1]=='car' and coord_grid=='sph':
-                alt_c1, alt_c2, alt_c3, units_out = \
-                    ConvertCoord(sat_time,c3,c2,c1,coord_type,coord_grid,*key.split(','))  #height, lat, lon input
-            elif key.split(',')[1]=='car' and coord_grid=='car':
-                alt_c1, alt_c2, alt_c3, units_out = \
-                    ConvertCoord(sat_time,c1,c2,c3,coord_type,coord_grid,*key.split(','))  #x, y, z for both
-            '''
             new_coords[key].extend([alt_c1,alt_c2,alt_c3])  #elements 1, 2, 3
             #print(key, alt_c1.min(), alt_c1.max(), alt_c2.min(), alt_c2.max(), 
             #      alt_c3.min(), alt_c3.max())
             
             #determine unit of z coordinate. needed for conversion to ilev
-            if key.split(',')[0]=='GDZ': z_unit='km'
+            if key=='GDZ,sph': z_unit='km'
             else: z_unit='R_E'
             new_coords[key].append(z_unit)  #element 4
             #print('z_unit:', z_unit)
@@ -475,7 +461,7 @@ def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, c
         new_coords = {coord_type+','+coord_grid:[variable_list,c1,c2,c3]}   
         
         #determine unit of z coordinate. needed for conversion to ilev
-        if coord_type=='GDZ': z_unit='km'
+        if coord_type=='GDZ' and coord_grid=='sph': z_unit='km'
         else: z_unit='R_E'
         new_coords[coord_type+','+coord_grid].append(z_unit)  #element 4
         #print('z_unit:', z_unit)
