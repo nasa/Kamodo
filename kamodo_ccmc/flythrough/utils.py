@@ -168,9 +168,10 @@ def ConvertCoord(inTime,c1,c2,c3,inCoord,inType,outCoord,outType,verbose=False):
         xx, yy, zz = newC.data.T
 
     #check for and correct negative radii or altitudes, observed in some conversions to GDZ sph
+    #also correct for negative longitudes in SPH sph coordinates (should be 0 to 360 longitude)
     if outType == 'sph':
         idx = np.where(zz<0.)[0]
-        while len(idx)>0:  #error only observed to occur when lat=-90 deg in GDZ
+        while len(idx)>0:  #neg radii error only observed to occur when lat=-90 deg in GDZ
             if verbose: print(f'Shifting {len(idx)} latitudes to avoid negative radii or altitudes.')
             c2[idx] += 0.000000001  #slightly offset lat from -90 deg
             idx2 = np.where(c2>90.)[0]  #safety check for lat>90 after offset
@@ -183,6 +184,9 @@ def ConvertCoord(inTime,c1,c2,c3,inCoord,inType,outCoord,outType,verbose=False):
             zz[idx], yy[idx], xx[idx] = newC_idx.data.T
             #print(zz[idx])
             idx = np.where(zz<0.)[0]
+        if outCoord=='SPH': #SPH sph lon range should be 0 to 360
+            idx = np.where(xx<0)[0]  #select negative longitudes
+            xx[idx] += 360  #fix
 
     outUnits = newC.units
     if outType == "sph":

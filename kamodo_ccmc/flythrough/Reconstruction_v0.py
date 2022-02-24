@@ -64,7 +64,7 @@ from scipy.interpolate import RegularGridInterpolator
 import kamodo_ccmc.flythrough.model_wrapper as MW
 
 
-def read_Bobs_sattraj(file_dir):
+def read_GDC_sattraj(file_dir):
     #read data from Bob's file into dictionary
     filename = file_dir+'KGS_orbit_data.txt'
     file_dict = {}
@@ -161,7 +161,11 @@ class RECON(Kamodo):
           the entire orbit to avoid averaging data of different natures. Whether
           a given time+spatial coordinate is on the day or night side is 
           determined by converting the time+spatial coordinates of the orbit slices
-          into MAG spherical coordinates and filtering based on longitude.  
+          into GSE spherical coordinates and filtering based on longitude.
+          The longitude logic compensates to keep equatorial crossing in GSE
+          at the same MLT as the original set.
+          NOTE: Orbital slicing may not produce the desired result in cartesian 
+          coordinates.
     - recon_dims = string representing choice of dimensions to use in reconstruction
         'tc1','tc2','tc3','c1c2','c1c3','c2c3' are the options. 
         The first name is the x-axis, and the second name is the y-axis.
@@ -187,7 +191,7 @@ class RECON(Kamodo):
         dimension and the recon_option chosen requires averaging. Default is
         the average c3 value of the entire set of input and offset trajectories.        
     - dx = grid resolution for the x axis in the same units as x, default of 2. 
-    - dy = grid resolution for the y axis in the same units as y, default of 2
+    - dy = grid resolution for the y axis in the same units as y, default of 2.
     - d1 = grid resolution for the first non-reconstructed dimension. Only used
         if _AvgDSlice options are chosen and if slicing in local time. Default=0.
     - d2 = grid resolution for the second non-reconstructed dimension. Only used
@@ -205,8 +209,8 @@ class RECON(Kamodo):
         the North Pole, then filter the satellite trajectory to only include
         times where the z dimension is positive. Similarly, reconstructions of
         the South Pole can be performed by simply filtering out the times where
-        the z dimension is negative. This filtering is not needed when time is
-        one of the reconstructed dimensions, but it can be done is desired.
+        the z dimension is positive. This filtering is not needed when time is
+        one of the reconstructed dimensions, but it can be done if desired.
         Example: 
             import numpy as np
             pos_idx = np.where(results['c3']>0.)[0]  #North Pole is z>0.
@@ -214,7 +218,7 @@ class RECON(Kamodo):
             c1 = results['c1'][pos_idx]
             c2 = results['c2'][pos_idx]
             c3 = results['c3'][pos_idx]
-    Cartesian note: For cartesian spatial reconstructions of nearly spherical 
+    Cartesian note: For cartesian reconstructions of nearly spherical 
         trajectories, 'Unmod_AvgDSlice' option is recommended to avoid reconstructing
         a ring of data around the Earth. Reconstructions will be better achieved
         in spherical coordinates for these scenarios. To easily switch between
@@ -222,18 +226,7 @@ class RECON(Kamodo):
             from kamodo_ccmc.flythrough.utils import ConvertCoord
             lon, lat, radius, units = ConvertCoord(utc_time,x,y,z,
                           'GSE','car','GEO','sph')
-        See the flythrough documentation for more details on this function.
-    Slicing in magnetic local time: Reconstructing data using a constant local time is
-        only supported in spherical coordinates, and if longitude is not one of
-        the reconstructed dimensions. This can be achieved by converting the
-        input trajectory into the geomagnetic (MAG) spherical coordinate system, 
-        choosing a reconstruction that does not involve longitude, and putting 
-        the longitude corresponding to the local time as the c1_avg keyword 
-        (e.g. 180 degrees for 1200 MLT). Note that the recon_option chosen must 
-        have 'Avg' in the string or this value will not be used. Read the 
-        recon_option description for more information on the options, and see 
-        the cartesian note for an example of how to convert to a different 
-        coordinate system.
+        See the relevant flythrough example notebook for more details on this function.
     '''
 
     def __init__(self, model, variable_name, file_dir, sat_time, c1, 
@@ -259,7 +252,6 @@ class RECON(Kamodo):
         self.recon_option = recon_option  #from a list of reconstruction analysis options
         self.recon_dims = recon_dims  #user's choice of which two dimensions to reconstruct
         self.sat_datetime = ts_to_dt(sat_time[0])  #datetime object for first utc timestamp
-        #self.time = (sat_time-sat_time.min())/3600.  #hours since first utc timestamp
         self.t_avg, self.c1_avg, self.c2_avg, self.c3_avg = t_avg, c1_avg, c2_avg, c3_avg
         self.dt = dt  #used for orbit slicing
         if 't' in recon_dims: self.dx = dx/3600.  #change dx from seconds to hours
@@ -279,13 +271,8 @@ class RECON(Kamodo):
         if 'AvgDSlice' in recon_option and (d1==0. or d2==0.):
             raise AttributeError(f'You must specify d1 and d2 for {self.recon_option}.')
         
-        #checks
-        #print(self.datetime, self.sat_time.min())
-        #print(self.time.min(), self.time.max())
-
         #sometimes see [0.,0.,0.] as an offset for no input values (?!). fixing here
         #seems to be a memory random error. Doesn't happen all the time.
-        #print(time_offsets, c1_offsets, c2_offsets, c3_offsets)
         if sum(time_offsets)==0: time_offsets=[0.]
         if sum(c1_offsets)==0: c1_offsets=[0.]
         if sum(c2_offsets)==0: c2_offsets=[0.]
@@ -294,7 +281,6 @@ class RECON(Kamodo):
         #check that offset lists are the same length. append zeros if not
         #print(time_offsets, c1_offsets, c2_offsets, c3_offsets)
         max_length = max([len(item) for item in [time_offsets, c1_offsets, c2_offsets, c3_offsets]])
-        #print(max_length)
         for item in [time_offsets, c1_offsets, c2_offsets, c3_offsets]:
             while len(item)<max_length: item.append(0.)
         self.time_offsets = time_offsets
@@ -305,10 +291,6 @@ class RECON(Kamodo):
         #get variable units from satellite flythrough software
         self.variable_units = MW.Var_units(model, [variable_name])[variable_name]
         self.variables = {}   #initialize kamodo's dictionary
-        
-        #print(time_offsets, c1_offsets, c2_offsets, c3_offsets)
-        #print(len(self.c1))
-    
         
         #BEGIN ANALYSIS
         if self.run_option=='all':
@@ -352,7 +334,6 @@ class RECON(Kamodo):
         fly_t, fly_c1, fly_c2, fly_c3 = [], [], [], []
         for i in range(len(self.time_offsets)):
             #calculate new trajectory
-            #print(self.time_offsets[i], self.c1_offsets[i], self.c2_offsets[i], self.c3_offsets[i])
             new_time = self.sat_time+self.time_offsets[i]
             new_c1 = self.c1+self.c1_offsets[i]
             new_c2 = self.c2+self.c2_offsets[i]
@@ -384,7 +365,7 @@ class RECON(Kamodo):
         self.fly_t, self.fly_c1, self.fly_c2, self.fly_c3 = fly_t, fly_c1, fly_c2, fly_c3
         l = len(fly_t)
         
-        #store average of entire trajectory is needed next or later or both
+        #store average of entire trajectory if needed next or later or both
         if 'Avg' in self.recon_option:
             if self.t_avg=='':
                 self.t_avg = np.mean(fly_t)
@@ -415,19 +396,17 @@ class RECON(Kamodo):
             print('Filtering constellation trajectories on day/night option '+\
                   f'using GSE cartesian coordinates for {fly_t.size} locations...')
             from kamodo_ccmc.flythrough.utils import ConvertCoord
-            c1_MAG, c2_MAG, c3_MAG, units = ConvertCoord(fly_t, fly_c1, fly_c2, fly_c3,
+            c1_GSE, c2_GSE, c3_GSE, units = ConvertCoord(fly_t, fly_c1, fly_c2, fly_c3,
                                                          self.coord_type, 
                                                          self.coord_grid,
                                                          'GSE','car')             
             
             #split into day or night based on option chosen
-            #In MAG sph coordinates, day is lon>90 or lon<-90
+            #In GSE sph coordinates, day is lon>90 or lon<-90
             if 'OrbitSliceD' in self.recon_option:
-                LT_idx = np.where(c1_MAG>=0.)[0]  #x points to sun
-                #MLT_idx = np.where((c1_MAG>=90.) | (c1_MAG<-90.))[0]
+                LT_idx = np.where(c1_GSE>=0.)[0]  #x points to sun
             elif 'OrbitSliceN' in self.recon_option:
-                LT_idx = np.where(c1_MAG<=0.)[0]
-                #MLT_idx = np.where((c1_MAG<90.) & (c1_MAG>=-90.))[0]
+                LT_idx = np.where(c1_GSE<=0.)[0]
             fly_t = fly_t[LT_idx]
             fly_c1 = fly_c1[LT_idx]
             fly_c2 = fly_c2[LT_idx]
@@ -437,8 +416,9 @@ class RECON(Kamodo):
         print(f'Performing satellite constellation flythrough for {fly_t.size} locations...')
         results = SF.ModelFlythrough(self.model, self.file_dir, 
                         [self.variable_name], fly_t, fly_c1, fly_c2, 
-                        fly_c3, self.coord_type, self.coord_grid, high_res=1.)
+                        fly_c3, self.coord_type, self.coord_grid, _print_units=False)
         self.data_datetime = ts_to_dt(results['utc_time'][0])
+        #self.results = results  #too much demand on memory
         return results
     
     def grid_data(self, results):
@@ -461,21 +441,22 @@ class RECON(Kamodo):
                 self.ymin, self.ymax = y_data.min(), y_data.max()
                 self.nx = int(360./self.dx)+1
                 self.ny = int(180./self.dy)+1
-                x = np.linspace(self.lon_max-360.,self.lon_max,self.nx)  # center positions
-                y = np.linspace(-90.,90.,self.ny)
+                self.x = np.linspace(self.lon_max-360.,self.lon_max,self.nx)  # center positions
+                self.y = np.linspace(-90.,90.,self.ny)
             else:
                 print('Using predefined grid.')
-                x, y = self.x, self.y
             variable = np.zeros((self.nx, self.ny))
              
             #sort data into grid
-            print('Building reconstruction grid for LonLat...', end="")
+            print('Gridding data for LonLat...', end="")
             for i in range(self.nx):  
                 for j in range(self.ny):  
-                    idx = np.where((abs(x_data-x[i])<self.dx/2.) & 
-                                    (abs(y_data-y[j])<self.dy/2.))[0]
-                    if len(idx)>0: variable[i,j] = np.mean(variable_data[idx])
-                    else: variable[i,j] = np.nan
+                    idx = np.where((abs(x_data-self.x[i])<self.dx/2.) & 
+                                    (abs(y_data-self.y[j])<self.dy/2.))[0]
+                    if len(idx)>0: variable[i,j] = np.nanmean(variable_data[idx])
+                    else: 
+                        #print(len(idx), self.x[i], self.dx, self.y[j], self.dy)
+                        variable[i,j] = np.nan
             
         elif self.recon_dims=='c2c3' and self.coord_grid=='sph':
             #initialize data and height boundary
@@ -489,20 +470,19 @@ class RECON(Kamodo):
                 self.ymin, self.ymax = y_data.min(), y_data.max()
                 self.nx = int(180./self.dx)+1
                 self.ny = int((y_data.max()-y_data.min())/self.dy)+1
-                x = np.linspace(-90.,90.,self.nx)  #center positions
-                y = np.linspace(y_data.min(), y_data.max(), self.ny) 
+                self.x = np.linspace(-90.,90.,self.nx)  #center positions
+                self.y = np.linspace(y_data.min(), y_data.max(), self.ny) 
             else:
                 print('Using predefined grid.')
-                x, y = self.x, self.y             
             variable = np.zeros((self.nx, self.ny))
              
             #sort data into grid
-            print('Building reconstruction grid for LatHR...',end="")
+            print('Gridding data for LatHR...',end="")
             for i in range(self.nx):
                 for j in range(self.ny):
-                    idx = np.where((abs(x_data-x[i])<self.dx/2.) & 
-                                    (abs(y_data-y[j])<self.dy/2.))[0]
-                    if len(idx)>0: variable[i,j] = np.mean(variable_data[idx])
+                    idx = np.where((abs(x_data-self.x[i])<self.dx/2.) & 
+                                    (abs(y_data-self.y[j])<self.dy/2.))[0]
+                    if len(idx)>0: variable[i,j] = np.nanmean(variable_data[idx])
                     else: variable[i,j] = np.nan
             
         elif self.recon_dims=='c1c3' and self.coord_grid=='sph':
@@ -517,20 +497,19 @@ class RECON(Kamodo):
                 self.ymin, self.ymax = y_data.min(), y_data.max()
                 self.nx = int(360./self.dx)+1
                 self.ny = int((y_data.max()-y_data.min())/self.dy)+1
-                x = np.linspace(self.lon_max-360.,self.lon_max,self.nx)  #center positions
-                y = np.linspace(y_data.min(), y_data.max(), self.ny)  
+                self.x = np.linspace(self.lon_max-360.,self.lon_max,self.nx)  #center positions
+                self.y = np.linspace(y_data.min(), y_data.max(), self.ny)  
             else:
                 print('Using predefined grid.')
-                x, y = self.x, self.y                      
             variable = np.zeros((self.nx, self.ny))
              
             #sort data into grid
-            print('Building reconstruction grid for LonHR...',end="")
+            print('Gridding data for LonHR...',end="")
             for i in range(self.nx):  
                 for j in range(self.ny):
-                    idx = np.where((abs(x_data-x[i])<self.dx/2.) & 
-                                    (abs(y_data-y[j])<self.dy/2.))[0]
-                    if len(idx)>0: variable[i,j] = np.mean(variable_data[idx])
+                    idx = np.where((abs(x_data-self.x[i])<self.dx/2.) & 
+                                    (abs(y_data-self.y[j])<self.dy/2.))[0]
+                    if len(idx)>0: variable[i,j] = np.nanmean(variable_data[idx])
                     else: variable[i,j] = np.nan
 
         elif self.recon_dims=='tc2' and self.coord_grid=='sph':
@@ -546,20 +525,19 @@ class RECON(Kamodo):
                 self.ymin, self.ymax = y_data.min(), y_data.max()
                 self.nx = int((x_data.max()-x_data.min())/self.dx)+1
                 self.ny = int(180./self.dy)+1
-                x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
-                y = np.linspace(-90.,90.,self.ny)
+                self.x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
+                self.y = np.linspace(-90.,90.,self.ny)
             else:
                 print('Using predefined grid.')
-                x, y = self.x, self.y                   
             variable = np.zeros((self.nx, self.ny))
              
             #sort data into grid
-            print('Building reconstruction grid for TimeLat...',end="")
+            print('Gridding data for TimeLat...',end="")
             for i in range(self.nx):  
                 for j in range(self.ny):  
-                    idx = np.where((abs(x_data-x[i])<self.dx/2.) & 
-                                    (abs(y_data-y[j])<self.dy/2.))[0]
-                    if len(idx)>0: variable[i,j] = np.mean(variable_data[idx])
+                    idx = np.where((abs(x_data-self.x[i])<self.dx/2.) & 
+                                    (abs(y_data-self.y[j])<self.dy/2.))[0]
+                    if len(idx)>0: variable[i,j] = np.nanmean(variable_data[idx])
                     else: variable[i,j] = np.nan
 
         elif self.recon_dims=='tc1' and self.coord_grid=='sph':
@@ -575,20 +553,19 @@ class RECON(Kamodo):
                 self.ymin, self.ymax = y_data.min(), y_data.max()
                 self.nx = int((x_data.max()-x_data.min())/self.dx)+1
                 self.ny = int(360./self.dy)+1
-                x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
-                y = np.linspace(self.lon_max-360.,self.lon_max,self.ny)
+                self.x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
+                self.y = np.linspace(self.lon_max-360.,self.lon_max,self.ny)
             else:
                 print('Using predefined grid.')
-                x, y = self.x, self.y                    
             variable = np.zeros((self.nx, self.ny))
              
             #sort data into grid
-            print('Building reconstruction grid for TimeLon...',end="")
+            print('Gridding data for TimeLon...',end="")
             for i in range(self.nx):  
                 for j in range(self.ny):
-                    idx = np.where((abs(x_data-x[i])<self.dx/2.) & 
-                                    (abs(y_data-y[j])<self.dy/2.))[0]
-                    if len(idx)>0: variable[i,j] = np.mean(variable_data[idx])
+                    idx = np.where((abs(x_data-self.x[i])<self.dx/2.) & 
+                                    (abs(y_data-self.y[j])<self.dy/2.))[0]
+                    if len(idx)>0: variable[i,j] = np.nanmean(variable_data[idx])
                     else: variable[i,j] = np.nan
             
         elif 't' in self.recon_dims:  #'tc3' spherical option and all cartesian time options
@@ -605,20 +582,19 @@ class RECON(Kamodo):
                 self.ymin, self.ymax = y_data.min(), y_data.max()
                 self.nx = int((x_data.max()-x_data.min())/self.dx)+1
                 self.ny = int((y_data.max()-y_data.min())/self.dy)+1
-                x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
-                y = np.linspace(y_data.min(), y_data.max(), self.ny)  
+                self.x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
+                self.y = np.linspace(y_data.min(), y_data.max(), self.ny)  
             else:
                 print('Using predefined grid.')
-                x, y = self.x, self.y             
             variable = np.zeros((self.nx, self.ny))
              
             #sort data into grid
-            print('Building reconstruction grid for TimeHR...',end="")
+            print('Gridding data for TimeHR...',end="")
             for i in range(self.nx):  
                 for j in range(self.ny):
-                    idx = np.where((abs(x_data-x[i])<self.dx/2.) & 
-                                    (abs(y_data-y[j])<self.dy/2.))[0]
-                    if len(idx)>0: variable[i,j] = np.mean(variable_data[idx])  
+                    idx = np.where((abs(x_data-self.x[i])<self.dx/2.) & 
+                                    (abs(y_data-self.y[j])<self.dy/2.))[0]
+                    if len(idx)>0: variable[i,j] = np.nanmean(variable_data[idx])  
                     else: variable[i,j] = np.nan
         
         else:# cartesian
@@ -635,24 +611,24 @@ class RECON(Kamodo):
                 self.ymin, self.ymax = y_data.min(), y_data.max()
                 self.nx = int((x_data.max()-x_data.min())/self.dx)+1
                 self.ny = int((y_data.max()-y_data.min())/self.dy)+1
-                x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
-                y = np.linspace(y_data.min(), y_data.max(), self.ny)  
+                self.x = np.linspace(x_data.min(), x_data.max(), self.nx)  #center positions
+                self.y = np.linspace(y_data.min(), y_data.max(), self.ny)  
             else:
                 print('Using predefined grid.')
-                x, y = self.x, self.y                
+                #x, y = self.x, self.y                
             variable = np.zeros((self.nx, self.ny))
              
             #sort data into grid
             print('Building cartesian reconstruction grid...',end="")
             for i in range(self.nx):  
                 for j in range(self.ny):
-                    idx = np.where((abs(x_data-x[i])<self.dx/2.) & 
-                                    (abs(y_data-y[j])<self.dy/2.))[0]
-                    if len(idx)>0: variable[i,j] = np.mean(variable_data[idx])
+                    idx = np.where((abs(x_data-self.x[i])<self.dx/2.) & 
+                                    (abs(y_data-self.y[j])<self.dy/2.))[0]
+                    if len(idx)>0: variable[i,j] = np.nanmean(variable_data[idx])
                     else: variable[i,j] = np.nan
         
         print(f'done in {ti.perf_counter()-t0:.5f}s for {self.nx*self.ny} gridpoints.\n')
-        if not (hasattr(self, 'x') and hasattr(self, 'y')): self.x, self.y = x, y
+        #if not (hasattr(self, 'x') and hasattr(self, 'y')): self.x, self.y = x, y
         return variable
 
     def model_grid(self):
@@ -704,8 +680,8 @@ class RECON(Kamodo):
             t0 = ti.perf_counter()
             model_results = SF.ModelFlythrough(self.model, self.file_dir, 
                                 [self.variable_name], tt, xx, yy, zz, self.coord_type, 
-                                self.coord_grid, high_res=1.)
-            self.model_results = model_results  #store for sanity checks
+                                self.coord_grid, _print_units=False)
+            #self.model_results = model_results  #store for sanity checks
             
             #reshape data and return
             if self.recon_dims=='tc1': #needed only for this combination
@@ -719,8 +695,7 @@ class RECON(Kamodo):
 
         #A model orbit slice is what an infinite number of satellites would see if
         #  distributed along the orbit slice 
-        #The longitude logic here assumes the input trajectory is NOT in a magnetic
-        #  coordinate system and compensates to keep equatorial crossing in GSM
+        #The longitude logic here compensates to keep equatorial crossing in GSE
         #  at the same MLT as the original set.
         elif 'OrbitSlice' in self.recon_option: 
             print('Performing orbit slicing of model data...')
@@ -734,7 +709,6 @@ class RECON(Kamodo):
                 T.append(singleorbit_time.max()-singleorbit_time.min())
             orbital_period = int(np.mean(np.array(T)))  #find average of periods to nearest second
             print(f'Approximate orbital period is {orbital_period} s.')
-            #print(int(orbital_period/self.dt)+1)
             
             #initialize time offset grid and corresponding lon offsets
             tgrid = np.linspace(0, orbital_period, int(orbital_period/self.dt)+1)
@@ -746,7 +720,6 @@ class RECON(Kamodo):
             model_c1 = np.tile(self.fly_c1, len(tgrid))+lon_grid
             model_c2 = np.tile(self.fly_c2, len(tgrid))
             model_c3 = np.tile(self.fly_c3, len(tgrid))
-            #print(model_t.shape, model_c1.shape, model_c2.shape, model_c3.shape)
              
             #retrieve local times through SM coordinate conversion
             print('Filtering model orbit slices on day/night option using GSE '+\
@@ -759,13 +732,11 @@ class RECON(Kamodo):
                                                          'GSE','car')             
             
             #split into day or night based on option chosen
-            #In MAG sph coordinates, day is lon>90 or lon<-90
+            #In GSE sph coordinates, day is lon>90 or lon<-90
             if 'OrbitSliceD' in self.recon_option:
                 LT_idx = np.where(c1_MAG>=0.)[0]  #x points to sun, x>=0 is dayside
-                #MLT_idx = np.where((c1_MAG>=90.) | (c1_MAG<-90.))[0]
             elif 'OrbitSliceN' in self.recon_option:
                 LT_idx = np.where(c1_MAG<=0.)[0]
-                #MLT_idx = np.where((c1_MAG<90.) & (c1_MAG>=-90.))[0]
             model_t = model_t[LT_idx]
             model_c1 = model_c1[LT_idx]
             model_c2 = model_c2[LT_idx]
@@ -776,8 +747,9 @@ class RECON(Kamodo):
             t0 = ti.perf_counter()
             model_results = SF.ModelFlythrough(self.model, self.file_dir, 
                                 [self.variable_name], model_t, model_c1, model_c2, 
-                                model_c3, self.coord_type, self.coord_grid, high_res=1.)
-            self.model_results = model_results  #store for sanity checks        
+                                model_c3, self.coord_type, self.coord_grid, 
+                                _print_units=False)
+            #self.model_results = model_results  #store for sanity checks        
             
             #the orbit slices and day/night filtering result in orbit arrays of
             #  different lengths, so can't just reshape. Have to regrid.
@@ -785,7 +757,8 @@ class RECON(Kamodo):
             return model_data
         
         else:  #find average of slices in range of dimensions not used
-            #assign values for model grid according to recon_dims option chosen   
+            #assign values for model grid according to recon_dims option chosen  
+            #..._AvgDSlice
             #x coordinate first
             if self.recon_dims[:-2]=='t':  #convert hours back to UTC timestamps
                 new_time = self.x*3600.+self.sat_time.min() #model_x
@@ -807,62 +780,79 @@ class RECON(Kamodo):
             #the t and c1 dimensions need to be switched in order for data to get
             #   reshaped correctly. It simply doesn't work the normal way in 4D.
             if self.recon_dims=='tc1':
-                self.n1 = int((self.c2.max()-self.c2.min())/self.d1)
-                self.n2 = int((self.c3.max()-self.c3.min())/self.d2)
+                self.n1 = int(np.ceil((self.c2.max()-self.c2.min())/self.d1))
+                self.n2 = int(np.ceil((self.c3.max()-self.c3.min())/self.d2))
                 new_c2 = np.linspace(self.c2.min(), self.c2.max(), self.n1)
                 new_c3 = np.linspace(self.c3.min(), self.c3.max(), self.n2)
                 final_shape = (self.ny,self.nx,self.n1,self.n2)  #flip t and c1
                 mean_axes = (2,3)
             elif self.recon_dims=='tc2':
-                self.n1 = int((self.c1.max()-self.c1.min())/self.d1)
-                self.n2 = int((self.c3.max()-self.c3.min())/self.d2)                
+                self.n1 = int(np.ceil((self.c1.max()-self.c1.min())/self.d1))
+                self.n2 = int(np.ceil((self.c3.max()-self.c3.min())/self.d2))
                 new_c1 = np.linspace(self.c1.min(), self.c1.max(), self.n1)
                 new_c3 = np.linspace(self.c3.min(), self.c3.max(), self.n2)    
                 final_shape = (self.n1,self.nx,self.ny,self.n2)  #flip t and c1
                 mean_axes = (1,3)
             elif self.recon_dims=='tc3':
-                self.n1 = int((self.c1.max()-self.c1.min())/self.d1)
-                self.n2 = int((self.c2.max()-self.c2.min())/self.d2)                
+                self.n1 = int(np.ceil((self.c1.max()-self.c1.min())/self.d1))
+                self.n2 = int(np.ceil((self.c2.max()-self.c2.min())/self.d2))
                 new_c1 = np.linspace(self.c1.min(), self.c1.max(), self.n1)
                 new_c2 = np.linspace(self.c2.min(), self.c2.max(), self.n2)    
                 final_shape = (self.n1,self.nx,self.n2,self.ny)  #flip t and c1
                 mean_axes = (1,2)
             elif self.recon_dims=='c1c2':  
-                self.n1 = int((self.sat_time.max()-self.sat_time.min())/self.d1)
-                self.n2 = int((self.c3.max()-self.c3.min())/self.d2)                
+                self.n1 = int(np.ceil((self.sat_time.max()-self.sat_time.min())/self.d1))
+                self.n2 = int(np.ceil((self.c3.max()-self.c3.min())/self.d2))
                 new_time = np.linspace(self.sat_time.min(), self.sat_time.max(), self.n1)
                 new_c3 = np.linspace(self.c3.min(), self.c3.max(), self.n2)            
                 final_shape = (self.nx,self.n1,self.ny,self.n2) #have to flip t and c1
                 mean_axes = (0,3)
             elif self.recon_dims=='c1c3':
-                self.n1 = int((self.sat_time.max()-self.sat_time.min())/self.d1)
-                self.n2 = int((self.c2.max()-self.c2.min())/self.d2)                  
+                self.n1 = int(np.ceil((self.sat_time.max()-self.sat_time.min())/self.d1))
+                self.n2 = int(np.ceil((self.c2.max()-self.c2.min())/self.d2))
                 new_time = np.linspace(self.sat_time.min(), self.sat_time.max(), self.n1)
                 new_c2 = np.linspace(self.c2.min(), self.c2.max(), self.n2)  
                 final_shape = (self.nx,self.n1,self.n2,self.ny) #flip t and c1
                 mean_axes = (0,2)
             elif self.recon_dims=='c2c3':
-                self.n1 = int((self.sat_time.max()-self.sat_time.min())/self.d1)
-                self.n2 = int((self.c1.max()-self.c1.min())/self.d2)                  
+                self.n1 = int(np.ceil((self.sat_time.max()-self.sat_time.min())/self.d1))
+                self.n2 = int(np.ceil((self.c1.max()-self.c1.min())/self.d2))
                 new_time = np.linspace(self.sat_time.min(), self.sat_time.max(), self.n1)
                 new_c1 = np.linspace(self.c1.min(), self.c1.max(), self.n2)      
                 final_shape = (self.n2,self.n1,self.nx,self.ny)  #flip t and c1
                 mean_axes = (0,1)
+            final_shape = list(final_shape)
                 
             #create coordinate arrays of same length for flythrough, perform flythrough
             tt, xx, yy, zz = np.meshgrid(new_time, new_c1, new_c2, new_c3, indexing = 'xy')
-            print(f'Performing non-averaged grid flythrough for {np.ravel(tt).size} locations...')
+            print(f'Performing non-averaged grid flythrough for {np.ravel(tt).size} locations in {len(new_time)} time increments...')
             t0 = ti.perf_counter()
-            model_results = SF.ModelFlythrough(self.model, self.file_dir, 
-                                [self.variable_name], np.ravel(tt), np.ravel(xx),
-                                np.ravel(yy), np.ravel(zz), self.coord_type, 
-                                self.coord_grid, high_res=1.)
+            model_results, t_skipped = {}, 0
+            for t in new_time:  #loop through grids at individual times
+                idx = np.where(new_time==t)[0]
+                print(f'Performing flythrough for time increment {idx[0]+1} out of {len(new_time)}...  ',end='\r')
+                tt, xx, yy, zz = np.meshgrid(t, new_c1, new_c2, new_c3, indexing = 'xy')
+                t_results = SF.ModelFlythrough(self.model, self.file_dir, 
+                                    [self.variable_name], np.ravel(tt), np.ravel(xx),
+                                    np.ravel(yy), np.ravel(zz), self.coord_type, 
+                                    self.coord_grid, _print_units=False)                
+                #store results if time not excluded
+                if len(model_results.keys())==0 and len(t_results['utc_time'])>0: 
+                    model_results=t_results
+                    for key in model_results: model_results[key] = list(model_results[key]) 
+                    #change to lists for more efficient memory handling
+                elif len(model_results.keys())>0 and len(t_results['utc_time'])>0: 
+                    for key in model_results.keys(): model_results[key].extend(list(t_results[key]))
+                elif len(t_results['utc_time'])==0:
+                    final_shape[1]-=1  #if a time is skipped, update the expected final shape accordingly
+                    t_skipped += 1
             print(f'Grid flythrough completed in {ti.perf_counter()-t0:.5f} s.')
-            self.model_results = model_results
+            for key in model_results.keys(): model_results[key] = np.array(model_results[key])
+            #self.model_results = model_results
 
             #reshape, average grids over non-reconstructed dimensions and return
             tmp = np.reshape(model_results[self.variable_name],
-                                    final_shape)
+                                    tuple(final_shape))
             model_array = np.transpose(tmp, axes=(1,0,2,3))
             model_data = np.nanmean(model_array, mean_axes)  #ignore NaN values in avg
             return model_data
@@ -897,7 +887,6 @@ class RECON(Kamodo):
         
         if x.size==y.size: data = data.T  #interpolator gets flipped somehow if square array
         xvec_dependencies = self.xvec_dict()
-        #print(x.size, y.size, data.shape)
         
         #create gridded interpolator, use nearest-neighbor to avoid problems with NaNs
         rgi = RegularGridInterpolator((x, y), data, bounds_error = False, 
