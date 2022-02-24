@@ -56,8 +56,8 @@ model_varnames = {'r_Ar': ['mmr_Ar','mass mixing ratio of argon/neutrals',0,'SPH
                  'T_i': ['T_i','ion temperature',47,'SPH','sph',['time','lon','lat','radius'], 'K'],
                  'SolarZenithAngle': ['SZA','solar zenith angle',48,'SPH','sph',['time','lon','lat'], 'radians'],
                  'rho_CO2': ['rho_CO2','mass density of carbon dioxide',49,'SPH','sph',['time','lon','lat','radius'], 'kg/m**3'],
-                 #'DivJu FL': ['DivJuFL','???',50,'SPH','sph',['time','lon','lat','radius'], ''],
-                 #'DivJuAlt': ['DivJuAlt','???',51,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'DivJu FL': ['DivI_nfl','divergence of the neutral wind-driven currents integrated along the field-line',50,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'DivJuAlt': ['DivI_nalt','divergence of the neutral wind-driven currents integrated along the altitude',51,'SPH','sph',['time','lon','lat','radius'], ''],
                  'ElectronEnergyFlux': ['Phi_eE','electron energy flux',52,'SPH','sph',['time','lon','lat','radius'], 'J/m**2'],
                  'Field Line Length': ['s_Bfield','magnetic field arc line length',53,'SPH','sph',['time','lon','lat','radius'], 'm'],
                  'sigma_P': ['sigma_P','Pedersen conductivity',54,'SPH','sph',['time','lon','lat','radius'], 'S/m'],
@@ -65,8 +65,8 @@ model_varnames = {'r_Ar': ['mmr_Ar','mass mixing ratio of argon/neutrals',0,'SPH
                  'sigma_H': ['sigma_H','Hall conductivity',58,'SPH','sph',['time','lon','lat','radius'], 'S/m'],
                  'I_R2': ['j_R2','region 2 electric current density',59,'SPH','sph',['time','lon','lat','radius'], 'A/m**2'],
                  'I_R1': ['j_R1','region 1 electric current density',60,'SPH','sph',['time','lon','lat','radius'], 'A/m**2'],
-                 #'Ed1': ['Ed1','???',61,'SPH','sph',['time','lon','lat','radius'], ''],
-                 #'Ed2': ['Ed2','???',62,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'Ed1': ['E_perpeast','dynamo electric field in the perpendicular to the magnetic field direction that is "eastward"',61,'SPH','sph',['time','lon','lat','radius'], ''],
+                 'Ed2': ['E_perpnorth','dynamo electric field in the perpendicular to the magnetic field direction that is "northward"',62,'SPH','sph',['time','lon','lat','radius'], ''],
                  'SolarLocalTime': ['SLT','solar local time',63,'SPH','sph',['time','lon','lat'], 'hr'],
                  'E_up': ['E_up','vertical electric field velocity (up)',64,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
                  'E_east': ['E_east','zonal electric field (east)',65,'SPH','sph',['time','lon','lat','radius'], 'V/m'],
@@ -257,12 +257,11 @@ def MODEL():
                         if verbose: print(f'Took {perf_counter()-t_search:.5f}s to find the best file.')
                         if time_test<=self.dt:  #if nearest file time at least within one timestep (hrs)
                             filecheck = True
-                        
+                            self.datetimes[1] = kamodo_test.datetimes[0]
+                            self.filetimes[1] = kamodo_test.filetimes[0]
+                                
                             #time only version if returning time for searching
                             if filetime:
-                                kamodo_neighbor = MODEL(file_dir+min_file_prefix, fulltime=False, filetime=True)
-                                self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                                self.filetimes[1] = kamodo_neighbor.filetimes[0]
                                 return  #return object with additional time (for SF code) 
                             
                             #get kamodo object with same requested variables to add to each array below
@@ -270,8 +269,6 @@ def MODEL():
                             kamodo_neighbor = MODEL(file_dir+min_file_prefix, 
                                                     variables_requested=variables_requested, 
                                                     fulltime=False)
-                            self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                            self.filetimes[1] = kamodo_neighbor.filetimes[0]
                             short_data = kamodo_neighbor.short_data                            
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                         else:

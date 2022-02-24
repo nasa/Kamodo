@@ -104,12 +104,11 @@ def MODEL():
                     time_test = abs(kamodo_test.filetimes[0]-self.filetimes[1])  #never empty b/c includes itself 
                     if time_test<=self.dt:  #if nearest file time at least within one timestep (hrs)                
                         filecheck = True
-                    
+                        self.datetimes[1] = kamodo_test.datetimes[0]
+                        self.filetimes[1] = kamodo_test.filetimes[0]
+                            
                         #time only version if returning time for searching
                         if filetime:
-                            kamodo_neighbor = MODEL(min_file, fulltime=False, filetime=True)
-                            self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                            self.filetimes[1] = kamodo_neighbor.filetimes[0]
                             return  #return object with additional time (for SF code) 
                         
                         #get kamodo object with same requested variables to add to each array below
@@ -117,8 +116,6 @@ def MODEL():
                         kamodo_neighbor = MODEL(min_file, 
                                                 variables_requested=variables_requested, 
                                                 fulltime=False)
-                        self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                        self.filetimes[1] = kamodo_neighbor.filetimes[0]
                         short_data = kamodo_neighbor.short_data                          
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                     else:

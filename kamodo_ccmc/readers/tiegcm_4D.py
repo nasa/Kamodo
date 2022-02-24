@@ -166,9 +166,9 @@ def MODEL():
                               in zip([year[0], year[-1]],[mtime[0],mtime[-1]])]  #strings in format = YYYY-MM-DD HH:MM:SS
             self.filetimes=[dts_to_ts(file_dts) for file_dts in self.datetimes]   #timestamps in UTC 
             time = year_mtime_tohrs(year, day, hour, minute, self.filedate)
-            #time = array([year_mtime_tohrs(y, m, self.filedate) for y, m in \
-            #              zip(year, mtime)])  #hours since midnight of self.filedate
-            self.dt = diff(time).max()*3600.  #time is in hours
+            if len(time)>1:
+                self.dt = diff(time).max()*3600.  #time is in hours
+            else: self.dt = 0.
             
             if filetime and not fulltime: #(used when searching for neighboring files below)
                 return  #return times as is to prevent recursion
@@ -184,7 +184,7 @@ def MODEL():
                 #find other files with same pattern
                 from glob import glob
                 
-                file_pattern = file_dir+'s*.nc' #returns a string for tiegcm
+                file_pattern = file_dir+'*.nc' #returns a string for tiegcm
                 files = sorted(glob(file_pattern))
                 filenames = unique([basename(f) for f in files])
                 
@@ -198,25 +198,23 @@ def MODEL():
                     if filetime:
                         return   
                 else:
-                    min_filename = file_dir+filenames[current_idx-1][0]  #-1 for adding a beginning time
+                    min_filename = file_dir+filenames[current_idx-1][0]  
                     kamodo_test = MODEL(min_filename, filetime=True, fulltime=False)   
                     time_test = abs(kamodo_test.filetimes[1]-self.filetimes[0])  
-                    if time_test<=self.dt:  #if nearest file time at least within one timestep (hrs)
+                    if time_test<=self.dt or (self.dt==0. and time_test<=3600.*6.):  
+                        #if nearest file time at least within one timestep (hrs) or 6 hours
                         filecheck = True                
-                    
+                        self.datetimes[0] = kamodo_test.datetimes[1]  #adds time at beginning
+                        self.filetimes[0] = kamodo_test.filetimes[1]
+                            
                         #time only version if returning time for searching
                         if filetime:
-                            kamodo_neighbor = MODEL(min_filename, fulltime=False, filetime=True)
-                            self.datetimes[0] = kamodo_neighbor.datetimes[1]
-                            self.filetimes[0] = kamodo_neighbor.filetimes[1]
                             return  #return object with additional time (for SF code) 
                         
                         #get kamodo object with same requested variables to add to each array below
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to find closest file.')
                         kamodo_neighbor = MODEL(min_filename, variables_requested=variables_requested, 
                                                fulltime=False)
-                        self.datetimes[0] = kamodo_neighbor.datetimes[1]
-                        self.filetimes[0] = kamodo_neighbor.filetimes[1]
                         short_data = kamodo_neighbor.short_data
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from previous file.')
                     else:

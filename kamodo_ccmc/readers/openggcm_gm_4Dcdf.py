@@ -142,20 +142,17 @@ def MODEL():
                         if verbose: print(f'Took {perf_counter()-t_search:.5f}s to find the best file.')
                         if time_test<=self.dt:  #if nearest file time at least within one timestep (hrs)
                             filecheck = True
-                        
+                            self.datetimes[1] = kamodo_test.datetimes[0]  #add first time from next file
+                            self.filetimes[1] = kamodo_test.filetimes[0]
+                                
                             #time only version if returning time for searching
                             if filetime:
-                                kamodo_neighbor = MODEL(file_dir+min_file_prefix, fulltime=False, filetime=True)
-                                self.datetimes[1] = kamodo_neighbor.datetimes[0]  #add first time from next file
-                                self.filetimes[1] = kamodo_neighbor.filetimes[0]
                                 return  #return object with additional time (for SF code) 
                             
                             #get kamodo object with same requested variables to add to each array below
                             kamodo_neighbor = MODEL(file_dir+min_file_prefix, 
                                                     variables_requested=variables_requested, 
                                                     fulltime=False)
-                            self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                            self.filetimes[1] = kamodo_neighbor.filetimes[0]
                             short_data = kamodo_neighbor.short_data     
                             del kamodo_neighbor  #to avoid too much data in memory
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
