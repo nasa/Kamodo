@@ -4,7 +4,7 @@ Created on Wed Apr  7 14:57:55 2021
 author: rringuet
 
 Satellite Flythrough code to call for any model.
-All desired model data for the desired model should be in a single directory.
+All desired model data for the desired model output run should be in a single directory.
 
 Example calls from the command line:
     Get list of models and function calls possible:  python ./SatelliteFlythrough_new.py
@@ -47,7 +47,9 @@ RLL    Radius, Latitude, Longitude        (-180, 180)    Radius (R_E)
 For descriptions of most of the coordinate systems, see 
 https://sscweb.gsfc.nasa.gov/users_guide/Appendix_C.shtml and it's reference,
 "Geophysical Coordinate Transformations", C.T. Russell, Cosmic Electrodynamics, Vol. 2, pp. 184 - 196, 1971.
-
+The current links to SpacePy's coordinate documentation and wrapped conversion functions are:
+    https://spacepy.github.io/autosummary/spacepy.coordinates.Coords.html
+    http://svn.code.sf.net/p/irbem/code/trunk/manual/user_guide.html
 """
 import numpy as np
 from os.path import basename
@@ -67,6 +69,7 @@ def SatelliteTrajectory(dataset, start_ts, stop_ts, coord_type='GEO',
     verbose: Set to true to be overwhelmed with information.
     
     Coordinates are retrieved on a cartesian grid.
+    See kamodo_ccmc.flythrough.utils.ConvertCoord for info on the coordinate systems.
     '''
     from kamodo_ccmc.readers.hapi import HAPI
 
@@ -119,7 +122,8 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
     Returns a dictionary with keys: sat_time, c1, c2, and c3.
         sat_time is an array in UTC seconds since 1970-01-01.
         (c1,c2,c3) = (lon, lat, alt) in (deg,deg,km) in the 'GDZ', 'sph' 
-        coordinate system in SpacePy.
+        coordinate system in SpacePy. See kamodo_ccmc.flythrough.utils.ConvertCoord 
+        for more info on the coordinate systems.
     '''
     
     #determine basic parameters
@@ -155,7 +159,7 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
 def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3, 
                     coord_type, coord_grid, high_res=20., verbose=False, 
                     output_type='', output_name='', plot_output='', 
-                    plot_coord='GEO'):  
+                    plot_coord='GEO', _print_units=True):  
     '''Call satellite flythrough wrapper specific to the model chosen.
     Parameters:   
     ------------
@@ -197,6 +201,8 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
             values of the indicated variable for each time+spatial coordinate given
         - The units of each array in the returned dictionary are printed to 
             the screen.
+            
+    See kamodo_ccmc.flythrough.utils.ConvertCoord for info on the coordinate systems.
     ''' 
 
     #if input types are lists, correct to be numpy arrays (important for calling from C++)
@@ -237,7 +243,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     coord_units = U.MW.coord_units(coord_type, coord_grid)
     results_units = U.MW.Var_units(model, var_list)    
     for key in coord_units: results_units[key] = coord_units[key]
-    print(results_units)    
+    if _print_units: print(results_units)    
     
     if verbose: 
         print(f'Units from the {model} model by variable name:\n{results_units}')
@@ -344,6 +350,7 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
     - The units of each array in the returned dictionary are printed to 
         the screen.
 
+    See kamodo_ccmc.flythrough.utils.ConvertCoord for info on the coordinate systems.
     ''' 
     
     #generate a sample satellite trajectory
@@ -400,6 +407,8 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
             values of the indicated variable for each time+spatial coordinate given
         - The units of each array in the returned dictionary are printed to 
             the screen.
+            
+    See kamodo_ccmc.flythrough.utils.ConvertCoord for info on the coordinate systems.
     '''
     
     #retrieve satellite trajectory from HAPI/CDAWeb
@@ -457,6 +466,8 @@ def MyFlight(traj_file, file_type, model, file_dir,
             values of the indicated variable for each time+spatial coordinate given
         - The units of each array in the returned dictionary are printed to 
             the screen.
+            
+    See kamodo_ccmc.flythrough.utils.ConvertCoord for info on the coordinate systems.
     '''
 
     #read in trajectory from file into dictionary, including metadata

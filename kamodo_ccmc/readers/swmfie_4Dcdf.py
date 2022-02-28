@@ -10,28 +10,28 @@ from os.path import isfile, basename
 #read 1 day of data from cdf instead of from multiple .tec files
 
 
-model_varnames={"Sigma_H":['Sigma_H','variable description',0,'SM','sph',['time','lon','lat'],"S"],
-                "Sigma_P":['Sigma_P','variable description',1,'SM','sph',['time','lon','lat'],"S"],
-                 "Phi_E":['Phi_E','variable description',2,'SM','sph',['time','lon','lat'],"W/m**2"], 
-                 "AveE_avgE":['E_avg','variable description',3,'SM','sph',['time','lon','lat'],'eV'],
-                 "j_R":["j_R",'variable description',4,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "Phi":["Phi",'variable description',5,'SM','sph',['time','lon','lat'],"kV"],
-                 "E_x":["E_x",'variable description',6,'SM','sph',['time','lon','lat'],"mV/m"],
-                 "E_y":["E_y",'variable description',7,'SM','sph',['time','lon','lat'],"mV/m"],
-                 "E_z":["E_z",'variable description',8,'SM','sph',['time','lon','lat'],"mV/m"],
-                 "j_x":["j_x",'variable description',9,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_y":["j_y",'variable description',10,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "j_z":["j_z",'variable description',11,'SM','sph',['time','lon','lat'],"muA/m**2"],
-                 "v_x":['v_x','variable description',12,'SM','sph',['time','lon','lat'],"km/s"],
-                 "v_y":['v_y','variable description',13,'SM','sph',['time','lon','lat'],"km/s"],
-                 "v_z":['v_z','variable description',14,'SM','sph',['time','lon','lat'],"km/s"],
-                 "Q_Joule":['Q_Joule','variable description',15,'SM','sph',['time','lon','lat'],"mW/m**2"], 
-                 "Phi_nion":['Phi_nion','variable description',16,'SM','sph',['time','lon','lat'],"1/cm**2/s"],
-                 "Binv_RT":['Binv_RT','variable description',17,'SM','sph',['time','lon','lat'],"1/T"],
-                 "rho_RT":['rho_RT','variable description',18,'SM','sph',['time','lon','lat'],"amu/cm**3"],
-                 "P_RT":['P_RT','variable description',19,'SM','sph',['time','lon','lat'],"Pa"],
-                 "dLat_star":['dLat_star','variable description',20,'SM','sph',['time','lon','lat'],"deg"],
-                 "dlon_star":['dlon_star','variable description',21,'SM','sph',['time','lon','lat'],"deg"]}
+model_varnames={"Sigma_H":['Sigma_H','3D Hall conductivity',0,'SM','sph',['time','lon','lat'],"S"],
+                "Sigma_P":['Sigma_P','3D Pederson conductivity',1,'SM','sph',['time','lon','lat'],"S"],
+                 "Phi_E":['Phi_E','energy flux',2,'SM','sph',['time','lon','lat'],"W/m**2"], 
+                 "AveE_avgE":['E_avg','average energy',3,'SM','sph',['time','lon','lat'],'eV'],
+                 "j_R":["j_R",'radial current density',4,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "Phi":["phi",'electric potential',5,'SM','sph',['time','lon','lat'],"kV"],
+                 "E_x":["E_x",'electric field, x component',6,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_y":["E_y",'electric field, y component',7,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "E_z":["E_z",'electric field, z component',8,'SM','sph',['time','lon','lat'],"mV/m"],
+                 "j_x":["j_x",'current density, x component',9,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_y":["j_y",'current density, y component',10,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "j_z":["j_z",'current density, z component',11,'SM','sph',['time','lon','lat'],"muA/m**2"],
+                 "v_x":['v_x','total velocity, x component',12,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_y":['v_y','total velocity, y component',13,'SM','sph',['time','lon','lat'],"km/s"],
+                 "v_z":['v_z','total velocity, z component',14,'SM','sph',['time','lon','lat'],"km/s"],
+                 "Q_Joule":['W_JouleH','height integrated joule heating',15,'SM','sph',['time','lon','lat'],"mW/m**2"], 
+                 "Phi_nion":['Phi_Nion','flux of ions in number density',16,'SM','sph',['time','lon','lat'],"1/cm**2/s"],
+                 "Binv_RT":['Binv_RT','inverse magnetic field (RT) (ray tracing integrated along field line)',17,'SM','sph',['time','lon','lat'],"1/T"],
+                 "rho_RT":['rho_RTamu','molecular mass density (RT) (ray tracing integrated along field line)',18,'SM','sph',['time','lon','lat'],"amu/cm**3"],
+                 "P_RT":['P_RT','pressure (RT) (ray tracing integrated along field line)',19,'SM','sph',['time','lon','lat'],"Pa"],
+                 "dLat_star":['lat_star','conjugate latitude',20,'SM','sph',['time','lon','lat'],"deg"],
+                 "dlon_star":['lon_star','conjugate longitude',21,'SM','sph',['time','lon','lat'],"deg"]}
                  
  
 '''                
@@ -87,6 +87,7 @@ def MODEL():
             '''file_prefix must be of form "3D***_tYYMMDD" to load all files for one day
              and include a complete path to the files'''
             super(MODEL, self).__init__()
+            self.modelname = 'SWMF_IE'
             
             #check if given .nc file exists. If not, convert files with same prefix to netCDF
             file_prefix = basename(full_file_prefix)
@@ -147,7 +148,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(file_prefixes==file_prefix)[0]
                 if current_idx+1==len(file_prefixes):
-                    print('No later file available.')
+                    if verbose: print('No later file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -155,7 +156,7 @@ def MODEL():
                     min_file_prefix = file_dir+file_prefixes[current_idx+1][0]  #+1 for adding an end time
                     kamodo_test = MODEL(min_file_prefix, filetime=True, fulltime=False)
                     if not kamodo_test.conversion_test: 
-                        print('No later file available.')
+                        if verbose: print('No later file available.')
                         filecheck = False  
                         if filetime:
                             return        
@@ -163,12 +164,11 @@ def MODEL():
                         time_test = abs(kamodo_test.filetimes[0]-self.filetimes[1])  
                         if time_test<=self.dt:  #if nearest file time at least within one timestep (hrs)
                             filecheck = True
-                        
+                            self.datetimes[1] = kamodo_test.datetimes[0]
+                            self.filetimes[1] = kamodo_test.filetimes[0]
+                                
                             #time only version if returning time for searching
                             if filetime:
-                                kamodo_neighbor = MODEL(min_file_prefix, fulltime=False, filetime=True)
-                                self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                                self.filetimes[1] = kamodo_neighbor.filetimes[0]
                                 return  #return object with additional time (for SF code) 
                             
                             #get kamodo object with same requested variables to add to each array below
@@ -176,24 +176,22 @@ def MODEL():
                             kamodo_neighbor = MODEL(min_file_prefix, 
                                                     variables_requested=variables_requested, 
                                                     fulltime=False)
-                            self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                            self.filetimes[1] = kamodo_neighbor.filetimes[0]
                             short_data = kamodo_neighbor.short_data                                
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                         else:
-                            print(f'No later file found within {self.dt:.1f}s.')
+                            if verbose: print(f'No later file found within {self.dt:.1f}s.')
                             filecheck = False 
                             if filetime:
                                 return                    
 
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
                 
             #get list of variables possible in these files using first file
-            if len(variables_requested)>0:
+            if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
                                      key in cdf_data.variables.keys()]  # file variable names
@@ -208,6 +206,10 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
                                  key not in avoid_list]
+                if not fulltime and variables_requested=='all':
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list}
+                    return                     
                                    
             # Store variable's data and units, transposing the 2D+time array.
             variables = {model_varnames[key][0]:{'units':model_varnames[key][-1],

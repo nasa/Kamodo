@@ -10,22 +10,21 @@ model_varnames={
     'bx':['B_x','x component of magnetic field',0,'GSE','car',['time','x','y','z'],'nT'],
     'by':['B_y','y component of magnetic field',1,'GSE','car',['time','x','y','z'],'nT'],
     'bz':['B_z','z component of magnetic field',2,'GSE','car',['time','x','y','z'],'nT'],
-    'bx1':['B1_x','x component of magnetic field (on grid cell faces)',3,'GSE','car',['time','x','x','x'],'nT'],
-    'by1':['B1_y','y component of magnetic field (on grid cell faces)',4,'GSE','car',['time','y','y','y'],'nT'],
-    'bz1':['B1_z','z component of magnetic field (on grid cell faces)',5,'GSE','car',['time','z','z','z'],'nT'],
-    'ex':['E_x','x component of electric field (on grid cell edges)',6,'GSE','car',['time','x','x','x'],'mV/m'],
-    'ey':['E_y','y component of electric field (on grid cell edges)',7,'GSE','car',['time','y','y','y'],'mV/m'],
-    'ez':['E_z','z component of electric field (on grid cell edges)',8,'GSE','car',['time','z','z','z'],'mV/m'],
-    'vx':['V_x','x component of plasma velocity',9,'GSE','car',['time','x','y','z'],'km/s'],
-    'vy':['V_y','y component of plasma velocity',10,'GSE','car',['time','x','y','z'],'km/s'],
-    'vz':['V_z','z component of plasma velocity',11,'GSE','car',['time','x','y','z'],'km/s'],
-    'rr':['N_plasma','plasma number denstity (hydrogen equivalent)',12,'GSE','car',['time','x','y','z'],'1/cm**3'],
+    #'bx1':['B1_x','x component of magnetic field (on grid cell faces)',3,'GSE','car',['time','x','x','x'],'nT'],
+    #'by1':['B1_y','y component of magnetic field (on grid cell faces)',4,'GSE','car',['time','y','y','y'],'nT'],
+    #'bz1':['B1_z','z component of magnetic field (on grid cell faces)',5,'GSE','car',['time','z','z','z'],'nT'],
+    'ex':['E_x','x component of electric field',6,'GSE','car',['time','x','x','x'],'mV/m'],
+    'ey':['E_y','y component of electric field',7,'GSE','car',['time','y','y','y'],'mV/m'],
+    'ez':['E_z','z component of electric field',8,'GSE','car',['time','z','z','z'],'mV/m'],
+    'vx':['v_plasmax','x component of plasma velocity',9,'GSE','car',['time','x','y','z'],'km/s'],
+    'vy':['v_plasmay','y component of plasma velocity',10,'GSE','car',['time','x','y','z'],'km/s'],
+    'vz':['v_plasmaz','z component of plasma velocity',11,'GSE','car',['time','x','y','z'],'km/s'],
+    'rr':['N_plasma','number density of plasma (hydrogen equivalent)',12,'GSE','car',['time','x','y','z'],'1/cm**3'],
     'resis':['eta','resistivity',13,'GSE','car',['time','x','y','z'],'m**2/s'],
     'pp':['P_plasma','plasma pressure',14,'GSE','car',['time','x','y','z'],'pPa'],
-    'xjx':['J_x','x component of current density',15,'GSE','car',['time','x','y','z'],'muA/m**2'],
-    'xjy':['J_y','y component of current density',16,'GSE','car',['time','x','y','z'],'muA/m**2'],
-    'xjz':['J_z','z component of current density',17,'GSE','car',['time','x','y','z'],'muA/m**2'],
-    #add current density components here
+    'xjx':['j_x','current density, x component',15,'GSE','car',['time','x','y','z'],'muA/m**2'],
+    'xjy':['j_y','current density, y component',16,'GSE','car',['time','x','y','z'],'muA/m**2'],
+    'xjz':['j_z','current density, z component',17,'GSE','car',['time','x','y','z'],'muA/m**2'],
 }
 
 # variable linkage to grid position vectors are established during variable registration
@@ -50,7 +49,7 @@ def MODEL():
     import xarray, dask
     from os.path import isfile
     from kamodo import Kamodo, kamodofy
-    from kamodo_ccmc.readers.reader_utilities import register_interpolator, define_4d_gridded_interpolator
+    from kamodo_ccmc.readers.reader_utilities import register_interpolator
     
     class MODEL(Kamodo):
         '''OpenGGCM_GM magnetosphere reader'''
@@ -58,6 +57,7 @@ def MODEL():
                      filetime=False, verbose=False, gridded_int=True, printfiles=False, 
                      fulltime=True, missing_value=NaN, **kwargs):
             super(MODEL, self).__init__()
+            self.modelname = 'OpenGGCM_GM'
             t0=perf_counter() # profiling time stamp
             
             #convert files to netcdf4 if needed
@@ -104,13 +104,13 @@ def MODEL():
                     print('Converted:', variables_requested)
 
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
                 
             #collect variable list            
-            if len(variables_requested)>0:
+            if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
                                      key in cdf_data.variables.keys()]  # file variable names
@@ -125,7 +125,11 @@ def MODEL():
                 avoid_list = []   #empty for now
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
-                                 key not in avoid_list]            
+                                 key not in avoid_list]    
+                if not fulltime and variables_requested=='all':
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list}
+                    return                     
 
             # Store variable's units and reference to Dataset object in memory
             variables = {model_varnames[key][0]:{'units':model_varnames[key][-1],
@@ -255,7 +259,7 @@ def MODEL():
                                                           y=xvec_arr[i][2], z=xvec_arr[i][3]).values)
                     else: 
                         result[i] = NaN
-                print(f'Took {perf_counter()-t0:.3f} s for {len(xvec)} positions.')
+                #print(f'Took {perf_counter()-t0:.3f} s for {len(xvec)} positions.')
                 return result
             
             self = register_interpolator(self, varname, interpolator, xvec_dependencies)

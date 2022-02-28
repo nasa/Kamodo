@@ -5,19 +5,19 @@ from datetime import datetime, timedelta, timezone
 
 
 #variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'Ne':['N_e','variable description',0,'SPH','sph',['time','lon','lat','radius'],'1/m**3'], 
-                'Te':['T_e','variable description',1,'SPH','sph',['time','lon','lat','radius'],'K'],
-                'Ti':['T_i','variable description',2,'SPH','sph',['time','lon','lat','radius'],'K'], 
-                'Tn':['T_n','variable description',3,'SPH','sph',['time','lon','lat','radius'],'K'],
-                'O+':['N_Oplus','variable description',4,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'H+':['N_Hplus','variable description',5,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'He+':['N_Heplus','variable description',6,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'O2+':['N_O2plus','variable description',7,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'NO+':['N_NOplus','variable description',8,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'N+':['N_Nplus','variable description',9,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                'TEC':['TEC','variable description',10,'SPH','sph',['time','lon','lat'],'10**16/m**2'],
-                'NmF2':['NmF2','variable description',11,'SPH','sph',['time','lon','lat'],'1/m**3'],
-                'HmF2':['HmF2','variable description',12,'SPH','sph',['time','lon','lat'],'km']}
+model_varnames = {'Ne':['N_e','electron number density',0,'SPH','sph',['time','lon','lat','radius'],'1/m**3'], 
+                'Te':['T_e','electron temperature',1,'SPH','sph',['time','lon','lat','radius'],'K'],
+                'Ti':['T_i','ion temperature',2,'SPH','sph',['time','lon','lat','radius'],'K'], 
+                'Tn':['T_n','neutral temperature',3,'SPH','sph',['time','lon','lat','radius'],'K'],
+                'O+':['N_Oplus','number density of atomic oxygen ion',4,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'H+':['N_Hplus','number density of atomic hydrogen ion',5,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'He+':['N_Heplus','number density of atomic helium ion',6,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'O2+':['N_O2plus','number density of molecular oxygen ion',7,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'NO+':['N_NOplus','number density of molecular nitric oxide',8,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'N+':['N_Nplus','number density of atomic nitrogen ion',9,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                'TEC':['TEC','vertical total electron content (height integrated from bottom to top boundary)',10,'SPH','sph',['time','lon','lat'],'10**16/m**2'],
+                'NmF2':['NmF2','maximum electron number density in F2 layer',11,'SPH','sph',['time','lon','lat'],'1/m**3'],
+                'HmF2':['HmF2','height of maximum electron number density in F2 layer',12,'SPH','sph',['time','lon','lat'],'km']}
 
 def ts_to_hrs(time_val, filedate):
     '''Convert utc timestamp to hours since midnight on filedate.'''
@@ -45,6 +45,7 @@ def MODEL():
                      verbose=False,**kwargs): #                 time_index=None, time_seconds=None,
             # Prepare model for function registration for the input argument
             super(MODEL, self).__init__(**kwargs)
+            self.modelname = 'IRI'
             t0 = perf_counter()
     
             #collect filenames
@@ -93,7 +94,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(filenames==filename)[0]
                 if current_idx+1==len(files):
-                    print('No later file available.')
+                    if verbose: print('No later file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -103,12 +104,11 @@ def MODEL():
                     time_test = abs(kamodo_test.filetimes[0]-self.filetimes[1])  #never empty b/c includes itself 
                     if time_test<=self.dt:  #if nearest file time at least within one timestep (hrs)                
                         filecheck = True
-                    
+                        self.datetimes[1] = kamodo_test.datetimes[0]
+                        self.filetimes[1] = kamodo_test.filetimes[0]
+                            
                         #time only version if returning time for searching
                         if filetime:
-                            kamodo_neighbor = MODEL(min_file, fulltime=False, filetime=True)
-                            self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                            self.filetimes[1] = kamodo_neighbor.filetimes[0]
                             return  #return object with additional time (for SF code) 
                         
                         #get kamodo object with same requested variables to add to each array below
@@ -116,25 +116,23 @@ def MODEL():
                         kamodo_neighbor = MODEL(min_file, 
                                                 variables_requested=variables_requested, 
                                                 fulltime=False)
-                        self.datetimes[1] = kamodo_neighbor.datetimes[0]
-                        self.filetimes[1] = kamodo_neighbor.filetimes[0]
                         short_data = kamodo_neighbor.short_data                          
                         if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                     else:
-                        print(f'No later file found within {diff(time).max()*3600.:.1f}s.')
+                        if verbose: print(f'No later file found within {diff(time).max()*3600.:.1f}s.')
                         filecheck = False        
                         if filetime:
                             return                    
 
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
                 
             #collect variable list
             iri2D = Dataset(full_filename2d, 'r')
-            if len(variables_requested)>0:
+            if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list_2d = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
                                      key in iri2D.variables.keys()]  # file variable names
@@ -151,6 +149,10 @@ def MODEL():
             else:  #only input variables on the avoid_list if specifically requested
                 gvar_list_2d = [key for key in iri2D.variables.keys() if key in model_varnames.keys()]
                 gvar_list_3d = [key for key in iri3D.variables.keys() if key in model_varnames.keys()]
+                if not fulltime and variables_requested=='all':
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list_2d+gvar_list_3d}
+                    return                 
 
             #store data for each variable desired
             variables_2d = {model_varnames[var][0]: {'units': model_varnames[var][-1], 

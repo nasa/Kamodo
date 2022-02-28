@@ -46,6 +46,7 @@ https://sscweb.gsfc.nasa.gov/users_guide/Appendix_C.shtml and it's reference,
 from glob import glob
 from numpy import unique
 from os.path import basename
+import numpy as np
 
 
 model_dict = {0:'CTIPe', 1:'GITM', 2:'IRI', 3:'SWMF_IE', 4:'TIEGCM', 5:'OpenGGCM_GM'}
@@ -170,11 +171,62 @@ def Model_Variables(model, return_dict=False):
         print('\nThe model accepts the standardized variable names listed below.')
         #print('Units for the chosen variables are printed during the satellite flythrough if available.')
         print('-----------------------------------------------------------------------------------')
-        for key, value in var_dict.items(): print(f"{key} : '{value}'")
+        for key, value in sorted(var_dict.items()): print(f"{key} : '{value}'")
         print()
         return    
     
+def File_Variables(model, file_dir, return_dict=False):
+    '''Print list of variables in model data output stored in file_dir.'''
+
+    reader = Model_Reader(model)
+    file_patterns = FileSearch(model, file_dir)
+    file_variables={}
+    #collect file variables in a nested dictionary
+    if isinstance(file_patterns, list) or isinstance(file_patterns,np.ndarray):
+        #print(model, file_patterns)
+        for file_pattern in file_patterns:
+            kamodo_object = reader(file_pattern, fulltime=False, variables_requested='all')
+            file_variables[file_pattern] = {key:value for key, value \
+                                            in sorted(kamodo_object.var_dict.items())}
+
+    else:  #reader requires full filenames, not a file pattern
+        files = glob(file_patterns)  #find full filenames for given pattern
+        #print(model, files)
+        for file in files:
+            kamodo_object = reader(file, fulltime=False, variables_requested='all')
+            file_variables[file] = {key:value for key, value \
+                                            in sorted(kamodo_object.var_dict.items())}
+        
+    #either return or print nested_dictionary
+    if return_dict: 
+        return file_variables
+    else:
+        #print file pattern standardized variable names
+        for file_key in file_variables.keys():
+            print(f'\nThe file {file_key} contains the following standardized variable names:')
+            #print('Units for the chosen variables are printed during the satellite flythrough if available.')
+            print('-----------------------------------------------------------------------------------')
+            for key, value in file_variables[file_key].items(): print(f"{key} : '{value}'")
+            print()
+        return
     
+def File_Times(model, file_dir):
+    '''Return/print time ranges available in the data in the given dir. Also
+    performs file conversions of new data if needed.'''
+    
+    #get time ranges from data
+    from kamodo_ccmc.flythrough.SF_utilities import check_timescsv
+    file_patterns = FileSearch(model, file_dir)
+    times_dict = check_timescsv(file_patterns, model)
+    
+    #print time ranges for given file groups: file_pattern, beg time, end time, etc
+    print('File pattern: UTC time ranges')
+    print('------------------------------------------')
+    for key in times_dict.keys():
+        print(f"{times_dict[key][0]} : {times_dict[key][1:]}")
+    
+    return times_dict
+
 def Var_3D(model):
     '''Return list of model variables that are three-dimensional. Model agnostic.'''
     

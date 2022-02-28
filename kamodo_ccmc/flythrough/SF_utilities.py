@@ -13,7 +13,7 @@ CalcIlev (around line 217) where the note is.
 """
 
 from numpy import vectorize, array, linspace, diff, where, isnan, float64
-from numpy import concatenate, argmin, argsort, unique, ndarray, NaN
+from numpy import concatenate, argmin, argsort, unique, ndarray, NaN, nanmax, nanmin
 from numpy import abs as npabs
 from time import perf_counter
 from os.path import basename, isfile
@@ -105,7 +105,7 @@ def day_files(file_pattern, model, call_type):
     return times
 
 def check_timescsv(file_pattern, model, call_type='normal'):
-    '''check for times csv file, write if not found in file_dir'''
+    '''check for times csv file, write if not found in file_dir or if outdated'''
     
     #file_pattern could be a list if more than one pattern in file_dir exists   
     if not isinstance(file_pattern, str):  #if a list/array of strings (GITM/similar)
@@ -122,14 +122,28 @@ def check_timescsv(file_pattern, model, call_type='normal'):
         csv_filename = file_dir+model+'_singletimes.csv'
     #print('csv_filename', csv_filename)
     
-    #if file DNE, write and return, else read and return
+    #if file DNE or outdated, write and return, else read and return
     if not isfile(csv_filename):
         times = day_files(file_pattern, model, call_type)
         write_timescsv(csv_filename, times)
     else:
         times = read_timescsv(csv_filename)
+        
+        #compare file contents to data in dir
+        oldfile_pattern = [value[0] for key, value in times.items()]  #file_patterns in times.csv file
+        if len(oldfile_pattern)==len(file_pattern):  #same length -> compare contents
+            compare = sum(oldfile_pattern==file_pattern)
+            if compare==len(file_pattern):  #if match, then return
+                return times
+            else:  #not matching -> delete old file and recreate
+                times = day_files(file_pattern, model, call_type)
+                write_timescsv(csv_filename, times)                
+        else: #different lengths -> delete old file and recreate
+            times = day_files(file_pattern, model, call_type)
+            write_timescsv(csv_filename, times) 
+                
     return times
-
+    
 def save_times(file_patterns, sat_time, model, verbose=False):
     '''Adjust times between files to filetime within half of dt in seconds (7.5min by default).
     Works for models with one day of data per file.'''
@@ -159,7 +173,7 @@ def save_times(file_patterns, sat_time, model, verbose=False):
     nbad_times = len(sat_time)-l_idx
     #print('save_times function', len(sat_time), l_idx)
     if nbad_times>0:
-        print(f'{nbad_times} data points are not in model output files and are excluded from the flythrough.')
+        print(f'{nbad_times} times are not in model output files and are excluded from the flythrough.')
         
     return sat_time, times, net_idx
 
@@ -277,16 +291,29 @@ def CalcIlev(H, Hunit, t, c1_val, c2_val, height, ilev_grid, z_unit, high_res, v
     #get height function output for the ilev range allowed in model
     #sample_ilev = linspace(min_ilev,max_ilev,75,dtype=float)  #typical range is 15
     rough_height = H(array([[t, c1_val, c2_val, ilev] for ilev in ilev_grid]))*Hconv
-    max_height = rough_height.max()  #save for output
-    if isnan(max_height):  #this happens if one or more of the coordinates is out of range (typically time)
+    max_height, min_height = nanmax(rough_height), nanmin(rough_height)  #save for output, ignore NaNs if possible
+    #will return NaN if all values are NaNs
+    if isnan(max_height) or isnan(min_height):  #this happens if one or more of the coordinates is out of range (typically time)
         if verbose: print('Coordinate(s) are out of range:', t, c1_val, c2_val)
         return NaN, NaN
     
-    #allow extrapolation for heights ABOVE height function range for this time/location
-    #when/if Zach writes a more physical way to extrapolate, can call from here.
-    if height>max_height:
-        if verbose: print('Given height is above pressure level. Returning max possible pressure level instead')
-        return ilev_grid.max(), abs(height-max_height)
+    #handle requested heights outside of the allowed range at given t, c1, c2 coordinate
+    if height>max_height:  #max first
+        if verbose: print('Given height is above maximum pressure level. Returning max possible pressure level instead')
+        test_height, idx = NaN, 0
+        while isnan(test_height):  #ignore top of ilev_grid in case of grid mismatch (e.g. some TIEGCM data)
+            idx -= 1  #start from end/max of ilev_grid values
+            max_ilev = ilev_grid[idx]
+            test_height = H([t, c1_val, c2_val, max_ilev])
+        return max_ilev, abs(height-max_height)
+    if height<min_height:  #then min
+        if verbose: print('Given height is below minimum pressure level. Returning min possible pressure level instead')
+        test_height, idx = NaN, -1
+        while isnan(test_height):  #ignore top of ilev_grid in case of grid mismatch (e.g. some TIEGCM data)
+            idx += 1  #start from beginning/min of ilev_grid values
+            min_ilev = ilev_grid[idx]
+            test_height = H([t, c1_val, c2_val, min_ilev])
+        return min_ilev, abs(height-min_height)
 
     #continue with numerical inversion
     ilev_idx = argsort(npabs(height-rough_height))[0] #first value may not be in center of curve
@@ -331,14 +358,19 @@ def call_CalcIlev(ilev_string, kamodo_object, sat_track0, z_unit, high_res):
                        z_unit, high_res, verbose=False) for sat_position in sat_track0]).T
     if len(height_res)>1:
         #Give user feedback about range of height resolution for height to ilev conversion
-        clean_height = array([val for val in height_res if not isnan(val)]) #remove NaN values
-        max_res = clean_height.max()
-        print(f'\nBest height resolution achieved: {clean_height.min():.5f} m')
-        print(f'Worst height resolution achieved: {max_res:.5f} m\n')
+        #clean_height = array([val for val in height_res if not isnan(val)]) #remove NaN values
+        max_res = nanmax(height_res)
+        print(f'\nBest height resolution achieved: {nanmin(height_res):.5f} m')
+        print(f'Worst height resolution achieved: {max_res:.5f} m')
+        if max_res>high_res: 
+            idx = where(height_res>high_res)[0]
+            print(f'{len(idx)} requested coordinates are out of range.')
+            #print(array(sat_track0)[idx][-1])
+        print()
     else:
         print(f'\nHeight resolution achieved: {height_res[0]:.5f} m\n')
         max_res = height_res
-    if max_res>high_res: print('Files:', kamodo_object.filename)
+    #if max_res>high_res: print('Files:', kamodo_object.filename)
     
     return sat_ilev
 
@@ -421,33 +453,21 @@ def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, c
                                  if (value[2].split('_')[0]+','+value[3]==coord_name)\
                                      and key in variable_list]] \
                     for coord_name in var_coord_strs}  #key is coord type 'name,type'
-                    #first value is a list of the variable names needed those coordinates
+                    #first value is a list of the variable names needing those coordinates
         #print('Performing needed coordinate conversions using SpacePy.')
         for key in new_coords.keys():   #e.g. key= 'GDZ,sph'
             #convert to needed coordinates, in/out order NO LONGER depends on coord_grid
             #can't use net_idx because indices won't line up anymore with split by files
             alt_c1, alt_c2, alt_c3, units_out = \
                     ConvertCoord(sat_time,c1,c2,c3,coord_type,coord_grid,*key.split(','))
-            '''#used with utils_old ConvertCoord function
-            if key.split(',')[1]=='sph' and coord_grid=='sph':  
-                alt_c3, alt_c2, alt_c1, units_out = \
-                    ConvertCoord(sat_time,c3,c2,c1,coord_type,coord_grid,*key.split(','))  #height, lat, lon for both
-            elif key.split(',')[1]=='sph' and coord_grid=='car':
-                alt_c3, alt_c2, alt_c1, units_out = \
-                    ConvertCoord(sat_time,c1,c2,c3,coord_type,coord_grid,*key.split(','))  #x, y, z input
-            elif key.split(',')[1]=='car' and coord_grid=='sph':
-                alt_c1, alt_c2, alt_c3, units_out = \
-                    ConvertCoord(sat_time,c3,c2,c1,coord_type,coord_grid,*key.split(','))  #height, lat, lon input
-            elif key.split(',')[1]=='car' and coord_grid=='car':
-                alt_c1, alt_c2, alt_c3, units_out = \
-                    ConvertCoord(sat_time,c1,c2,c3,coord_type,coord_grid,*key.split(','))  #x, y, z for both
-            '''
             new_coords[key].extend([alt_c1,alt_c2,alt_c3])  #elements 1, 2, 3
             #print(key, alt_c1.min(), alt_c1.max(), alt_c2.min(), alt_c2.max(), 
             #      alt_c3.min(), alt_c3.max())
+            #print(coord_type, coord_grid, sat_time, c1, c2, c3)
+            #print(key, sat_time, alt_c1, alt_c2, alt_c3)            
             
             #determine unit of z coordinate. needed for conversion to ilev
-            if key.split(',')[0]=='GDZ': z_unit='km'
+            if key=='GDZ,sph': z_unit='km'
             else: z_unit='R_E'
             new_coords[key].append(z_unit)  #element 4
             #print('z_unit:', z_unit)
@@ -455,7 +475,7 @@ def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, c
         new_coords = {coord_type+','+coord_grid:[variable_list,c1,c2,c3]}   
         
         #determine unit of z coordinate. needed for conversion to ilev
-        if coord_type=='GDZ': z_unit='km'
+        if coord_type=='GDZ' and coord_grid=='sph': z_unit='km'
         else: z_unit='R_E'
         new_coords[coord_type+','+coord_grid].append(z_unit)  #element 4
         #print('z_unit:', z_unit)
@@ -522,7 +542,7 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
     coord_dict = coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type, coord_grid)
     
     #perform flythroughs
-    print('Interpolating through model data...',end="")
+    if verbose: print('Interpolating through model data...',end="")
     #print(coord_dict['GDZ,sph'][0], coord_dict['GDZ,sph'][5])
     interp_time = perf_counter()
     for key in coord_dict.keys():
@@ -545,7 +565,7 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
         #collect interpolated data into the same dictionary
         for var in newvar_list:  #sort and combine arrays for the same variable
             results_dict[var] = concatenate(tuple([results[var] for results in list_results]))
-    print(f'done in {perf_counter()-interp_time:.5f} s.')
+    if verbose: print(f'done in {perf_counter()-interp_time:.5f} s.')
 
     return results_dict
 

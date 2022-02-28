@@ -11,44 +11,44 @@ from numpy import vectorize
 
 
 # constants and dictionaries
-model_varnames = {'rho':['rho','variable description',0,'SPH_plev','sph',['time','lon','lat','ilev1'],'kg/m**3'],
-                  'T':['T','variable description',1,'SPH_plev','sph',['time','lon','lat','ilev1'],'K'],
-                  'T_e':['T_e','variable description',2,'SPH','sph',['time','lon','lat','radius'],'K'],
-                  'T_i':['T_i','variable description',3,'SPH','sph',['time','lon','lat','radius'],'K'],
-                  'H_ilev':['H_ilev','variable description',4,'SPH_plev','sph',['time','lon','lat','ilev'],'m'], 
-                  'H_lev':['H_ilev1','variable description',5,'SPH_plev','sph',['time','lon','lat','ilev1'],'m'],                      
-                  'Vn_lat':['Vn_lat','variable description',6,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'Vn_lon':['Vn_lon','variable description',7,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'Vn_H':['Vn_H','variable description',8,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'T_n':['T_n','variable description',9,'SPH_plev','sph',['time','lon','lat','ilev'],'K'],
-                  'Rmt':['Rmt','variable description',10,'SPH_plev','sph',['time','lon','lat','ilev1'],'amu'],
-                  'N_e':['N_e','variable description',11,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+model_varnames = {'rho':['rho','total mass density',0,'SPH_plev','sph',['time','lon','lat','ilev1'],'kg/m**3'],
+                  'T':['T','temperature',1,'SPH_plev','sph',['time','lon','lat','ilev1'],'K'],
+                  'T_e':['T_e','electron temperature',2,'SPH','sph',['time','lon','lat','radius'],'K'],
+                  'T_i':['T_i','ion temperature',3,'SPH','sph',['time','lon','lat','radius'],'K'],
+                  'H_ilev':['H_ilev','height dependent on primary pressure level',4,'SPH_plev','sph',['time','lon','lat','ilev'],'m'], 
+                  'H_lev':['H_ilev1','height dependent on secondary pressure level',5,'SPH_plev','sph',['time','lon','lat','ilev1'],'m'],                      
+                  'Vn_lat':['v_nnorth','meridional neutral wind velocity (north)',6,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'Vn_lon':['v_neast','zonal neutral wind velocity (east)',7,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'Vn_H':['v_nup','vertical neutral wind velocity (up)',8,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'T_n':['T_n','neutral temperature',9,'SPH_plev','sph',['time','lon','lat','ilev'],'K'],
+                  'Rmt':['m_avgmol','mean molecular mass',10,'SPH_plev','sph',['time','lon','lat','ilev1'],'amu'],
+                  'N_e':['N_e','electron number density',11,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
                   #'N_n':['N_n','variable description',12,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'Q_Solar':['Q_Solar','variable description',13,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
-                  'Q_Joule':['Q_Joule','variable description',14,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
-                  'Q_radiation':['Q_radiation','variable description',15,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
-                  'N_O':['N_O','variable description',16,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_O2':['N_O2','variable description',17,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_N2':['N_N2','variable description',18,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_NO':['N_NO','variable description',19,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_NOplus':['N_NOplus','variable description',20,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_N2plus':['N_N2plus','variable description',21,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],  
-                  'N_O2plus':['N_O2plus','variable description',22,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_Nplus':['N_Nplus','variable description',23,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
-                  'N_Oplus':['N_Oplus','variable description',24,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                  'N_Hplus':['N_Hplus','variable description',25,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
-                  'Sigma_P':['Sigma_P','variable description',26,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
-                  'Sigma_H':['Sigma_H','variable description',27,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
-                  'Vi_lon':['Vi_lon','variable description',28,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'Vi_lat':['Vi_lat','variable description',29,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
-                  'W_Joule':['W_Joule','variable description',30,'SPH','sph',['time','lon','lat'],'W/m**2'],
-                  'Eflux_precip':['Eflux_precip','variable description',31,'SPH','sph',['time','lon','lat'],'W/m**2'],
-                  'Eavg_precip':['Eavg_precip','variable description',32,'SPH','sph',['time','lon','lat'],'keV'],
-                  'TEC':['TEC','variable description',33,'SPH','sph',['time','lon','lat'],'1/m**2'], #'10**16/m**2'
-                  'E_theta140km':['E_theta140km','variable description',34,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
-                  'E_lambda140km':['E_lambda140km','variable description',35,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
-                  'E_theta300km':['E_theta300km','variable description',36,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
-                  'E_lambda300km':['E_lambda300km','variable description',37,'SPH_E','sph',['time','Elon','Elat'],'V/m']}
+                  'Q_Solar':['Q_Solar','solar heating',13,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
+                  'Q_Joule':['Q_Joule','joule heating',14,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
+                  'Q_radiation':['Q_rad','radiative heating or cooling',15,'SPH_plev','sph',['time','lon','lat','ilev'],'J/kg/s'],
+                  'N_O':['N_O','number density of atomic oxygen',16,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_O2':['N_O2','number density of molecular oxygen',17,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_N2':['N_N2','number density of molecular nitrogen',18,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_NO':['N_NO','number density of molecular nitric oxide',19,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_NOplus':['N_NOplus','number density of nitric oxide ion',20,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_N2plus':['N_N2plus','number density of molecular nitrogen ion',21,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],  
+                  'N_O2plus':['N_O2plus','number density of molecular oxygen ion',22,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_Nplus':['N_Nplus','number density of atomic nitrogen ion',23,'SPH_plev','sph',['time','lon','lat','ilev'],'1/m**3'],
+                  'N_Oplus':['N_Oplus','number density of atomic oxygen ion',24,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                  'N_Hplus':['N_Hplus','number density of atomic hydrogen ion',25,'SPH','sph',['time','lon','lat','radius'],'1/m**3'],
+                  'Sigma_P':['sigma_P','Pedersen conductivity',26,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
+                  'Sigma_H':['sigma_H','Hall conductivity',27,'SPH_plev','sph',['time','lon','lat','ilev'],'S/m'],
+                  'Vi_lon':['v_inorth','meridional ion wind velocity (north)',28,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'Vi_lat':['v_ieast','zonal ion wind velocity (east)',29,'SPH_plev','sph',['time','lon','lat','ilev'],'m/s'],
+                  'W_Joule':['W_JouleH','height integrated joule heating',30,'SPH','sph',['time','lon','lat'],'W/m**2'],
+                  'Eflux_precip':['Phi_E','energy flux',31,'SPH','sph',['time','lon','lat'],'mW/m**2'],
+                  'Eavg_precip':['E_avg','average energy',32,'SPH','sph',['time','lon','lat'],'keV'],
+                  'TEC':['TEC','vertical total electron content (height integrated from bottom to top boundary)',33,'SPH','sph',['time','lon','lat'],'1/m**2'], #'10**16/m**2'
+                  'E_theta140km':['E_theta140km','Electric field at 140 km, theta component',34,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
+                  'E_lambda140km':['E_lambda140km','Electric field at 140 km, lambda component',35,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
+                  'E_theta300km':['E_theta300km','Electric field at 300 km, theta component',36,'SPH_E','sph',['time','Elon','Elat'],'V/m'],
+                  'E_lambda300km':['E_lambda300km','Electric field at 300 km, lambda component',37,'SPH_E','sph',['time','Elon','Elat'],'V/m']}
 
 
 #convert an array of timestamps to an array of hrs since midnight
@@ -77,6 +77,7 @@ def MODEL():
             
             # only the density, height and neutral files are combined
             super(MODEL, self).__init__()   
+            self.modelname = 'CTIPe'
             
             #check for prepared file of given prefix
             t0 = perf_counter()
@@ -99,6 +100,8 @@ def MODEL():
                             datetime.utcfromtimestamp(t[-1]).isoformat(sep=' ')]  #strings
             self.filetimes=[t[0], t[-1]]   #timestamps in hours for matching in wrapper
             self.dt = diff(t).max()  #t is in seconds
+            
+            #print(full_file_prefix, variables_requested, filetime, printfiles, gridded_int, fulltime)
     
             #execute logic for finding nearest time in neighboring file if requested
             if filetime and not fulltime: #(used when searching for neighboring files below)
@@ -127,7 +130,7 @@ def MODEL():
                 #files are automatically sorted by YYMMDD, so next file is next in the list
                 current_idx = where(prefix_list==file_prefix)[0]
                 if current_idx==0:
-                    print('No earlier file available.')
+                    if verbose: print('No earlier file available.')
                     filecheck = False  
                     if filetime:
                         return   
@@ -135,7 +138,7 @@ def MODEL():
                     min_file_prefix = prefix_list[current_idx-1][0]  #-1 for adding an earlier time                
                     kamodo_test = MODEL(file_dir+min_file_prefix, filetime=True, fulltime=False)
                     if not kamodo_test.conversion_test: 
-                        print('No earlier file available.')
+                        if verbose: print('No earlier file available.')
                         filecheck = False  
                         if filetime:
                             return    
@@ -143,24 +146,21 @@ def MODEL():
                         time_test = abs(kamodo_test.filetimes[1]-self.filetimes[0])  
                         if time_test<=self.dt:  #if nearest file time at least within one timestep (s)
                             filecheck = True
-                        
+                            self.datetimes[0] = kamodo_test.datetimes[1]
+                            self.filetimes[0] = kamodo_test.filetimes[1]
+                                
                             #time only version if returning time for searching
                             if filetime:
-                                kamodo_neighbor = MODEL(file_dir+min_file_prefix, fulltime=False, filetime=True)
-                                self.datetimes[0] = kamodo_neighbor.datetimes[1]
-                                self.filetimes[0] = kamodo_neighbor.filetimes[1]
                                 return  #return object with additional time (for SF code) 
                             
                             #get kamodo object with same requested variables to add to each array below
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to find closest file.')
                             kamodo_neighbor = MODEL(file_dir+min_file_prefix, variables_requested=variables_requested, 
                                                    fulltime=False)
-                            self.datetimes[0] = kamodo_neighbor.datetimes[1]
-                            self.filetimes[0] = kamodo_neighbor.filetimes[1]
                             short_data = kamodo_neighbor.short_data
                             if verbose: print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
                         else:
-                            print(f'{file_prefix} No earlier file found within {diff(t).max():.1f}s.')
+                            if verbose: print(f'{file_prefix} No earlier file found within {diff(t).max():.1f}s.')
                             filecheck = False
                             if filetime:
                                 return
@@ -171,13 +171,13 @@ def MODEL():
             #self.Elat_list = [value[0] for key, value in model_varnames.items() if value[5][-1]=='Elat']
     
             #perform initial check on variables_requested list
-            if len(variables_requested)>0 and fulltime:
+            if len(variables_requested)>0 and fulltime and variables_requested!='all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in test_list]
                 if len(err_list)>0: print('Variable name(s) not recognized:', err_list)
                 
             #collect variable list
-            if len(variables_requested)>0:
+            if len(variables_requested)>0 and variables_requested!='all':
                 gvar_list = [key for key, value in model_varnames.items() \
                                  if value[0] in variables_requested and \
                                      key in cdf_data.variables.keys()]  # file variable names
@@ -207,6 +207,10 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys() \
                              if key in model_varnames.keys() and \
                                  key not in avoid_list]
+                if not fulltime and variables_requested=='all':
+                    self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
+                            if key in gvar_list}
+                    return 
     
             # Store the requested variables into a dictionary 
             variables = {model_varnames[key][0]:{'units':model_varnames[key][-1], 
@@ -224,7 +228,6 @@ def MODEL():
             self.filename = cdf_data.file.replace(',','\n')
             if printfiles:
                 print('Files:\n', self.filename)
-            self.modelname = 'CTIPe'
             self.runname = runname
             self.missing_value = NaN
             self._registered = 0
