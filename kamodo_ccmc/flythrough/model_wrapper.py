@@ -137,7 +137,8 @@ def FileSearch(model, file_dir, call_type='normal'):
         return file_patterns        
 
     elif model=='TIEGCM':
-        return file_dir+'s*.nc'
+        print('Please remove all pxxx.nc files if present.')
+        return file_dir+'*.nc'
     
     elif model=='OpenGGCM_GM':
         files = sorted(glob(file_dir+'*.nc'))
