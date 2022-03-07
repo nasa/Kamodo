@@ -32,7 +32,10 @@ def define_3d_gridded_interpolator(units,variable,t,lon,lat,xvec_dependencies,
 
     if 'Elat' in xvec_dependencies.keys():
         interpolator_grid = kamodofy(gridify(function, time = t, Elon = lon, Elat = lat), 
-                                     units=units, data=variable, arg_units=xvec_dependencies)         
+                                     units=units, data=variable, arg_units=xvec_dependencies)    
+    elif 'x' in xvec_dependencies.keys() or 'X' in xvec_dependencies.keys():
+        interpolator_grid = kamodofy(gridify(function, time = t, x = lon, y = lat), 
+                                     units=units, data=variable, arg_units=xvec_dependencies)  
     else:
         interpolator_grid = kamodofy(gridify(function, time = t, lon = lon, lat = lat), 
                                      units=units, data=variable, arg_units=xvec_dependencies)          
@@ -70,6 +73,9 @@ def define_4d_gridded_interpolator(units,variable,t,lon,lat,ht,xvec_dependencies
     elif 'radius' in xvec_dependencies.keys():
         interpolator_grid = kamodofy(gridify(function, time = t, lon=lon, lat = lat,  radius = ht), 
                                      units=units, data=variable, arg_units=xvec_dependencies)        
+    elif 'x' in xvec_dependencies.keys() or 'X' in xvec_dependencies.keys():
+        interpolator_grid = kamodofy(gridify(function, time = t, x=lon, y = lat, z = ht), 
+                                     units=units, data=variable, arg_units=xvec_dependencies) 
     else:
         interpolator_grid = kamodofy(gridify(function, time = t, lon=lon, lat = lat,  height = ht), 
                                      units=units, data=variable, arg_units=xvec_dependencies)          
