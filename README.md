@@ -1,8 +1,8 @@
 # About this repo
 
-This is a fork of `ccmc/rebeccaringuette`. The goal is to fully kamodofied containers so that they are ready for production.
+This repo includes kamodo-core as a submodule, which includes core functionality and default plotting options. This CCMC repository contains model and data output readers as well as extra functionality such as satellite flythrough.
 
-Eventually, this repo will include kamodo-core as a submodule, in order to keep it consistent with ongoing improvements to the kamodo-core.
+See the file Kamodo_CCMC_InstallationInstructions.md for detailed setup steps.
 
 # Kamodo
 
