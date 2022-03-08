@@ -53,7 +53,7 @@ def MODEL():
     
     class MODEL(Kamodo):
         '''OpenGGCM_GM magnetosphere reader'''
-        def __init__(self,full_file_prefix, variables_requested=[], runname = "noname",
+        def __init__(self,full_file_prefix, variables_requested=[], 
                      filetime=False, verbose=False, gridded_int=True, printfiles=False, 
                      fulltime=True, missing_value=NaN, **kwargs):
             super(MODEL, self).__init__()
@@ -144,7 +144,6 @@ def MODEL():
             self.verbose = verbose
             self.filename = cdf_data.file.split(',')
             self.modelname = cdf_data.model
-            self.runname = runname
             self.modelname = 'OpenGGCM_GM'
             self._registered = 0
             if printfiles: 

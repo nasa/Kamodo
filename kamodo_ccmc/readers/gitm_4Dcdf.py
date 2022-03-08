@@ -152,8 +152,8 @@ def MODEL():
     #main class object
     class MODEL(Kamodo): 
         '''GITM model data reader.'''
-        def __init__(self, full_file_prefix, variables_requested=[], runname="noname",
-                     filetime=False, verbose=False, gridded_int=True, printfiles=False,
+        def __init__(self, full_file_prefix, variables_requested=[], filetime=False, 
+                     verbose=False, gridded_int=True, printfiles=False,
                      fulltime=True,**kwargs): 
             '''filename must be of form "***_tYYMMDD" to load all files for one day
             or of form "***_tYYMMDD_HH" to load only files for one hour
@@ -285,7 +285,6 @@ def MODEL():
             
             #store variables
             self.filename = []
-            self.runname = runname
             self.missing_value = NaN
             self._registered = 0
             self.varfiles = {}  #store which variable came from which file for easier association with coords
