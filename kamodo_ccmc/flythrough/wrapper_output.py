@@ -6,8 +6,71 @@ Created on Fri May 14 21:41:24 2021
 
 routines to output satellite flythrough time series into various file formats
 Oct 12, 2021: adding coordinate system to metadata of each file (in and out)
+Mar 8, 2022: Adding function to convert outputs into Kamodo functions
 """
 import numpy as np
+from kamodo import Kamodo, kamodofy
+from scipy.interpolate import interp1d
+from datetime import datetime, timezone
+
+
+@np.vectorize
+def ts_to_datetime(time_val):
+    '''Convert from utc timestampt to datetime object.'''
+    return datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc)
+
+@np.vectorize
+def datetime_to_utcts(date_time):
+    '''Convert from datetime object to utc timestamp.'''
+    return datetime.timestamp(date_time)
+
+def Functionalize_TimeSeries(utc_time, variable_name, variable_units, variable_data, kamodo_object=None):
+    '''Funtionalize the given time series data, return in a kamodo object.
+    
+    utc_time = a 1D array of utc timestamps.
+    variable_name = a string representation of the name of the variable.
+    variable_units = a string representation of the units of the variable.
+    variable_data = a 1D array of the variable data of the same length as the utc_time array.
+    Each command returns a kamodo object with the data functionalized. If you want additional functions added to
+    a pre-existing kamodo object, then input the desired kamodo object through the kamodo_object keyword.
+    '''
+
+    #Perform the conversion on the array of UTC timestamps
+    time_date = ts_to_datetime(utc_time)  
+
+    #Define an interpolator for the given time series array.
+    interp = interp1d(utc_time, variable_data, bounds_error=False, fill_value=np.NaN) 
+
+    #Functionalize the time series array
+    @kamodofy(units=variable_units, data=variable_data)  #units
+    def timeseries_func(time = time_date):  #function depends on array of datetime objects
+        utc_ts = datetime_to_utcts(time)  #convert the given datetime objects to UTC timestamps
+        return interp(utc_ts)     #return the scipy interpolator
+    
+    #Define a Kamodo object to include the desired functions.
+    if kamodo_object is None:
+        kamodo_object = Kamodo()
+    kamodo_object[variable_name] = timeseries_func
+    return kamodo_object  
+
+def Functionalize_SFResults(model, variable_list, results, kamodo_object=None):
+    '''Functionalizes the given list of variables in the results dictionary.
+    
+    model = name of model (string).
+    variable_list = list of string variable names present in results dictionary to functionalize.
+    results = dictionary returned from any flythrough function.
+    kamodo_object (default=None) = a predefined Kamodo object to add functionalized data to.
+    '''
+    import kamodo_ccmc.flythrough.model_wrapper as MW
+    #results_units = MW.Var_units(model, variable_list)  
+    if kamodo_object is None: kamodo_object = Kamodo()
+    for varname in variable_list:
+        if varname not in results.keys() or varname in ['utc_time','c1','c2','c3','net_idx']: 
+            continue  #skip if not in dictionary or if it is a coordinate or index list
+        kamodo_object = Functionalize_TimeSeries(results['utc_time'],varname,
+                                                 MW.Var_units(model,varname)[varname],results[varname], 
+                                                kamodo_object=kamodo_object)
+    return kamodo_object
 
 def SFcdf_reader(filename):
     '''Loads the data from a cdf file that was written by the SFdata_tocdf routine below into a nested dict'''
