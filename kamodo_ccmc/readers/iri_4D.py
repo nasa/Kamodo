@@ -30,7 +30,6 @@ def ts_to_hrs(time_val, filedate):
 #converts to hours since midnight of filedate for plotting
 def MODEL():
     from kamodo import Kamodo
-    #print('KAMODO IMPORTED!')
     from netCDF4 import Dataset
     from os.path import basename
     from numpy import array, transpose, NaN, unique, append, zeros, abs, diff, where
@@ -40,10 +39,9 @@ def MODEL():
 
     class MODEL(Kamodo):
         '''IRI model data reader.'''
-        def __init__(self, full_filename3d, variables_requested = [], runname = "noname",
+        def __init__(self, full_filename3d, variables_requested = [], 
                      printfiles=False, filetime=False, gridded_int=True, fulltime=True,
-                     verbose=False,**kwargs): #                 time_index=None, time_seconds=None,
-            # Prepare model for function registration for the input argument
+                     verbose=False,**kwargs):                
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'IRI'
             t0 = perf_counter()
@@ -63,13 +61,13 @@ def MODEL():
             iri3D = Dataset(full_filename3d, 'r')
             time = array(iri3D.variables['time'])/60.  #convert to hours since midnight of file        
             self.filedate = datetime(int(filename[-10:-6]),1,1,0,0,0).replace(tzinfo=timezone.utc)+\
-                timedelta(days=int(filename[-6:-3])-1)
-            #strings with timezone info chopped off (UTC anyway)
+                timedelta(days=int(filename[-6:-3])-1)  #datetime object for midnight on date
+            #strings with timezone info chopped off (UTC anyway). Format: ‘YYYY-MM-DD HH:MM:SS’
             self.datetimes=[(self.filedate+timedelta(hours=time[0])).isoformat(sep=' ')[:19], 
                             (self.filedate+timedelta(hours=time[-1])).isoformat(sep=' ')[:19]]  #strings
             self.filetimes=[datetime.timestamp(datetime.strptime(dt, '%Y-%m-%d %H:%M:%S').replace(\
-                tzinfo=timezone.utc)) for dt in self.datetimes]   #timestamp in seconds, for value matching in wrapper
-            self.dt = diff(time).max()*3600.  #time is in hours since midnight
+                tzinfo=timezone.utc)) for dt in self.datetimes]   #utc timestamp in seconds
+            self.dt = diff(time).max()*3600.  #convert time resolution to seconds
                 
             if filetime and not fulltime: #(used when searching for neighboring files below)
                 return  #return times as is to prevent recursion
@@ -86,7 +84,7 @@ def MODEL():
                 from glob import glob
                 
                 file_pattern = file_dir+'IRI.3D.*.nc' #returns a string for iri
-                files = sorted(glob(file_pattern))
+                files = sorted(glob(file_pattern))  #method may change for AWS
                 filenames = unique([basename(f) for f in files])
                 
                 #find closest file by utc timestamp
@@ -149,7 +147,7 @@ def MODEL():
             else:  #only input variables on the avoid_list if specifically requested
                 gvar_list_2d = [key for key in iri2D.variables.keys() if key in model_varnames.keys()]
                 gvar_list_3d = [key for key in iri3D.variables.keys() if key in model_varnames.keys()]
-                if not fulltime and variables_requested=='all':
+                if not fulltime and variables_requested=='all':  #returns list of variables included in data files
                     self.var_dict = {value[0]: value[1:] for key, value in model_varnames.items() \
                             if key in gvar_list_2d+gvar_list_3d}
                     return                 
@@ -164,7 +162,7 @@ def MODEL():
             variables = variables_3d
             for key in variables_2d: variables[key] = variables_2d[key]
                 
-            #prepare and return data only for first timestamp
+            #prepare and return data 
             if not fulltime:  
                 iri3D.close()
                 iri2D.close()
@@ -190,7 +188,6 @@ def MODEL():
             #store a few items in iri object
             self.missing_value = NaN
             self._registered = 0
-            self.runname=runname
             self.modelname = 'IRI'
             if verbose: print(f'Took {perf_counter()-t0:.6f}s to read in data')
             if printfiles: print(self.filename)

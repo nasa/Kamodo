@@ -81,7 +81,7 @@ def MODEL():
     from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators    
        
     class MODEL(Kamodo): 
-        def __init__(self, full_file_prefix, variables_requested=[], runname="noname",
+        def __init__(self, full_file_prefix, variables_requested=[], 
                      filetime=False, verbose=False, gridded_int=True, printfiles=False,
                      fulltime=True, **kwargs): 
             '''file_prefix must be of form "3D***_tYYMMDD" to load all files for one day
@@ -234,7 +234,6 @@ def MODEL():
     
             #store variables
             self.filename = files
-            self.runname = runname
             self.missing_value = NaN
             self.modelname = 'SWMF_IE'
             self._registered = 0

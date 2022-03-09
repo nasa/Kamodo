@@ -72,8 +72,8 @@ def MODEL():
     class MODEL(Kamodo):
         '''CTIPe model data reader'''
         def __init__(self, full_file_prefix, variables_requested = [], filetime=False,
-                     runname = "noname", printfiles=False, gridded_int=True, 
-                     fulltime=True, verbose=False, **kwargs):  
+                     printfiles=False, gridded_int=True, fulltime=True, verbose=False, 
+                     **kwargs):  
             
             # only the density, height and neutral files are combined
             super(MODEL, self).__init__()   
@@ -228,7 +228,6 @@ def MODEL():
             self.filename = cdf_data.file.replace(',','\n')
             if printfiles:
                 print('Files:\n', self.filename)
-            self.runname = runname
             self.missing_value = NaN
             self._registered = 0
             

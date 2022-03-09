@@ -255,16 +255,21 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         if model not in basename(output_name):
             file_dir = output_name.split(basename(output_name))[0]
             output_name = file_dir+model+'_'+basename(output_name)
+            
+        #retrieve file names/patterns for output
+        file_times = U.MW.File_Times(model, file_dir)
+        filenames=[]
+        for key in file_times.keys(): filenames.append(file_times[key][0])
         
         #perform output type desired
         if output_type=='csv':
-            output_filename = WO.SFdata_tocsv(output_name, '', model, results, 
+            output_filename = WO.SFdata_tocsv(output_name, filenames, model, results, 
                                               results_units, coord_type, coord_grid)
         elif output_type=='cdf4':
-            output_filename= WO.SFdata_tocdf(output_name, '', model, results, 
+            output_filename= WO.SFdata_tocdf(output_name, filenames, model, results, 
                                              results_units, coord_type, coord_grid)
         elif output_type=='txt':
-            output_filename = WO.SFdata_toascii(output_name, '', model, results, 
+            output_filename = WO.SFdata_toascii(output_name, filenames, model, results, 
                                                 results_units, coord_type, coord_grid)
         print(f"Output saved in {output_filename}.")  #no access to model filenames
         

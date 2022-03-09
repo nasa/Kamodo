@@ -143,7 +143,7 @@ def MODEL():
     
     class MODEL(Kamodo): 
         '''TIEGCM model data reader.'''
-        def __init__(self, full_filename, variables_requested=[], runname="noname",
+        def __init__(self, full_filename, variables_requested=[], 
                      filetime=False, verbose=False, gridded_int=True, printfiles=False,
                      fulltime=True, **kwargs):  #filename should include the full path
             
@@ -293,7 +293,6 @@ def MODEL():
     
             #### Store our inputs as class attributes to the class
             self.filename      = full_filename
-            self.runname       = runname
             self.missing_value = NaN
             self._registered   = 0
             self.variables     = dict()
