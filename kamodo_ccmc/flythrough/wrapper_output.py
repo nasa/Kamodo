@@ -53,20 +53,18 @@ def Functionalize_TimeSeries(utc_time, variable_name, variable_units, variable_d
     kamodo_object[variable_name] = timeseries_func
     return kamodo_object  
 
-def Functionalize_SFResults(model, variable_list, results, kamodo_object=None):
-    '''Functionalizes the given list of variables in the results dictionary.
+def Functionalize_SFResults(model, results, kamodo_object=None):
+    '''Functionalizes all non-coordinate variables in the results dictionary.
     
-    model = name of model (string).
-    variable_list = list of string variable names present in results dictionary to functionalize.
+    model = name of model (string) from outut of MW.Choose_Model('').
     results = dictionary returned from any flythrough function.
-    kamodo_object (default=None) = a predefined Kamodo object to add functionalized data to.
+    kamodo_object (default=None) = a predefined Kamodo object to add functionalized 
+       data to. If none is provided, a new one will be created.
     '''
     import kamodo_ccmc.flythrough.model_wrapper as MW
-    #results_units = MW.Var_units(model, variable_list)  
     if kamodo_object is None: kamodo_object = Kamodo()
+    variable_list = [item for item in list(results.keys()) if item not in ['utc_time','c1','c2','c3','net_idx']]
     for varname in variable_list:
-        if varname not in results.keys() or varname in ['utc_time','c1','c2','c3','net_idx']: 
-            continue  #skip if not in dictionary or if it is a coordinate or index list
         kamodo_object = Functionalize_TimeSeries(results['utc_time'],varname,
                                                  MW.Var_units(model,varname)[varname],results[varname], 
                                                 kamodo_object=kamodo_object)
