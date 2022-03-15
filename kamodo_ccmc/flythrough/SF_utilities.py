@@ -82,7 +82,7 @@ def day_files(file_pattern, model, call_type):
         files, times = file_pattern, {}  #run reader with file_prefixes given
     else: 
         from glob import glob
-        files, times = glob(file_pattern), {}
+        files, times = sorted(glob(file_pattern)), {}
         
     #collect only time information from files for full time range
     reader = MW.Model_Reader(model)
