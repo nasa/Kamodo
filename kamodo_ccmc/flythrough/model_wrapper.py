@@ -108,7 +108,7 @@ def FileSearch(model, file_dir, call_type='normal'):
     if isinstance(model,int): model = model_dict[model]  #convert to string
     
     if model=='CTIPe':
-        files = glob(file_dir+'*.nc')  #look for wrapped and original data
+        files = sorted(glob(file_dir+'*.nc'))  #look for wrapped and original data
         file_patterns = unique([file_dir+basename(f)[:10] for f in files \
                                             if 'CTIPe' not in basename(f)])
         return file_patterns  
@@ -117,7 +117,7 @@ def FileSearch(model, file_dir, call_type='normal'):
         return file_dir+'IRI.3D.*.nc'
     
     elif model=='GITM':  #whole day version of filesearch
-        files = glob(file_dir+'*')  #next line returns list of prefixes: e.g. 3DALL_t20150315
+        files = sorted(glob(file_dir+'*'))  #next line returns list of prefixes: e.g. 3DALL_t20150315
         if call_type=='normal': #give prefix for full day files
             file_patterns = unique([file_dir+'*'+basename(f)[7:13] for f in files\
                                     if 'GITM' not in basename(f) and '.nc' not in basename(f)])
@@ -127,7 +127,7 @@ def FileSearch(model, file_dir, call_type='normal'):
         return file_patterns     
     
     elif model=='SWMF_IE':
-        files = glob(file_dir+'i_e*')  #next line returns list of prefixes: e.g. i_e20150315
+        files = sorted(glob(file_dir+'i_e*'))  #next line returns list of prefixes: e.g. i_e20150315
         if call_type=='normal': #give prefix for full day files
             file_patterns = unique([file_dir+basename(f)[:11] for f in files\
                                             if '.nc' not in basename(f)])
@@ -191,7 +191,7 @@ def File_Variables(model, file_dir, return_dict=False):
                                             in sorted(kamodo_object.var_dict.items())}
 
     else:  #reader requires full filenames, not a file pattern
-        files = glob(file_patterns)  #find full filenames for given pattern
+        files = sorted(glob(file_patterns))  #find full filenames for given pattern
         #print(model, files)
         for file in files:
             kamodo_object = reader(file, fulltime=False, variables_requested='all')
