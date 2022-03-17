@@ -49,7 +49,8 @@ from os.path import basename
 import numpy as np
 
 
-model_dict = {0:'CTIPe', 1:'GITM', 2:'IRI', 3:'SWMF_IE', 4:'TIEGCM', 5:'OpenGGCM_GM'}
+model_dict = {0:'CTIPe', 1:'GITM', 2:'IRI', 3:'SWMF_IE', 4:'TIEGCM', 5:'OpenGGCM_GM',
+              6:'AmGEO'}
 
 def convert_model_string(model_int):
     '''Converts numerical model reference to string.'''
@@ -93,6 +94,10 @@ def Choose_Model(model):
 
     elif model=='OpenGGCM_GM':
         import kamodo_ccmc.readers.openggcm_gm_4Dcdf_xarray as module
+        return module
+    
+    elif model=='AmGEO':
+        import kamodo_ccmc.readers.amgeo_4D as module
         return module
     
     else:
@@ -145,6 +150,9 @@ def FileSearch(model, file_dir, call_type='normal'):
         file_patterns = unique([file_dir+basename(f).split('3df_')[0]+'3df_'+f.split('3df_')[1][:13]\
                                             for f in files])  
         return file_patterns
+    
+    elif model=='AmGEO':
+        return file_dir+'*N.h5'
     
     else:
         raise AttributeError('Model not yet added.')
