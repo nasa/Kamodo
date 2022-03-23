@@ -17,11 +17,11 @@ from datetime import datetime, timezone
 @np.vectorize
 def ts_to_datetime(time_val):
     '''Convert from utc timestampt to datetime object.'''
-    return datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc)
+    return datetime.utcfromtimestamp(int(time_val)).replace(tzinfo=timezone.utc)  #datetime.utcfromtimestamp requires an integer value
 
 @np.vectorize
 def datetime_to_utcts(date_time):
-    '''Convert from datetime object to utc timestamp.'''
+    '''Convert from datetime UTC object to utc timestamp.'''
     return datetime.timestamp(date_time)
 
 def Functionalize_TimeSeries(utc_time, variable_name, variable_units, variable_data, kamodo_object=None):
@@ -63,11 +63,18 @@ def Functionalize_SFResults(model, results, kamodo_object=None):
     '''
     import kamodo_ccmc.flythrough.model_wrapper as MW
     if kamodo_object is None: kamodo_object = Kamodo()
-    variable_list = [item for item in list(results.keys()) if item not in ['utc_time','c1','c2','c3','net_idx']]
+    variable_list = [item for item in list(results.keys()) if item not in ['utc_time','c1','c2','c3','net_idx','metadata']]
     for varname in variable_list:
-        kamodo_object = Functionalize_TimeSeries(results['utc_time'],varname,
-                                                 MW.Var_units(model,varname)[varname],results[varname], 
-                                                kamodo_object=kamodo_object)
+        if isinstance(results['utc_time'], (dict)):   #version of results from file
+            kamodo_object = Functionalize_TimeSeries(results['utc_time']['data'],varname,
+                                                     MW.Var_units(model,varname)[varname],
+                                                     results[varname]['data'], 
+                                                     kamodo_object=kamodo_object)    
+        else:  #version of results directly from flythrough
+            kamodo_object = Functionalize_TimeSeries(results['utc_time'],varname,
+                                                 MW.Var_units(model,varname)[varname],
+                                                 results[varname], 
+                                                 kamodo_object=kamodo_object)
     return kamodo_object
 
 def SFcdf_reader(filename):
