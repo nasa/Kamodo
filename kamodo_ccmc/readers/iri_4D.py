@@ -38,7 +38,51 @@ def MODEL():
     from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators, regdef_3D_interpolators
 
     class MODEL(Kamodo):
-        '''IRI model data reader.'''
+        '''IRI model data reader.
+        
+        Inputs:
+            full_filename3d: a string representing the file pattern of the model
+                output data.     
+                Note: This reader takes the full filename of the 3D output file,
+                typically of the naming convention file_dir+'IRI.3D.YYYYDDD.nc', where
+                YYYY is the four digit year and DDD is the three digit day of year
+                (e.g. 2017148 for May 28, 2017).
+            variables_requested = a list of variable name strings chosen from the
+                model_varnames dictionary in this script, specifically the first 
+                item in the list associated with a given key.
+                - If empty, the reader functionalizes all possible variables (default)
+                - If 'all', the reader returns the model_varnames dictionary above
+                    for only the variables present in the given files. Note: the
+                    fulltime keyword must be False to acheive this behavior.
+            filetime = boolean (default = False)
+                - if False, the script fully executes.
+                - If True, the script only executes far enough to determine the 
+                    time values associated with the chosen data.
+                Note: The behavior of the script is determined jointly by the 
+                    filetime and fulltime keyword values.
+            printfiles = boolean (default = False)
+                - If False, the filenames associated with the data retrieved ARE
+                    NOT printed.
+                - If True, the filenames associated with the data retrieved ARE
+                    printed. 
+            gridded_int = boolean (default = True)
+                - If True, the variables chosen are functionalized in both the
+                    standard method and a gridded method.
+                - If False, the variables chosen are functionalized in only the
+                    standard method.
+            fulltime = boolean (default = True)
+                - If True, linear interpolation in time between files is included
+                    in the returned interpolator functions.
+                - If False, no linear interpolation in time between files is included.
+            verbose = boolean (False)
+                - If False, script execution and the underlying Kamodo execution 
+                    is quiet except for specified messages.
+                - If True, be prepared for a plethora of messages.
+        All inputs are described in further detail in KamodoOnboardingInstructions.pdf.
+        
+        Returns: a kamodo object (see Kamodo core documentation) containing all 
+            requested variables in functionalized form.                
+        '''
         def __init__(self, full_filename3d, variables_requested = [], 
                      printfiles=False, filetime=False, gridded_int=True, fulltime=True,
                      verbose=False,**kwargs):                

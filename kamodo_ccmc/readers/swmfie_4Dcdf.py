@@ -73,19 +73,62 @@ def ts_to_hrs(time_val, filedate):
 #files = glob.glob(file_dir+'i_e*.tec')  #for wrapper, this and the next line
 #file_patterns = unique([file_dir+f.split('/')[-1].split('\\')[-1][:11] for f in files])
 def MODEL():
-    from numpy import array, NaN, abs, unique, append, zeros, diff, where, insert, flip
+    from numpy import array, NaN, abs, unique, append, zeros, diff, where
     from time import perf_counter
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    #print('KAMODO IMPORTED!')
     from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators    
        
     class MODEL(Kamodo): 
+        '''SWMF_IE model data reader.
+            
+        Inputs:
+            full_file_prefix: a string representing the file pattern of the model
+                output data.     
+                Note: This reader takes a file pattern of the format
+                file_dir+'i_eYYYYMMDD', where YYYY is the four digit year, MM is
+                the two digit month, and DD is the two digit day (e.g. 20080502
+                for May 2, 2008).
+            variables_requested = a list of variable name strings chosen from the
+                model_varnames dictionary in this script, specifically the first 
+                item in the list associated with a given key.
+                - If empty, the reader functionalizes all possible variables (default)
+                - If 'all', the reader returns the model_varnames dictionary above
+                    for only the variables present in the given files. Note: the
+                    fulltime keyword must be False to acheive this behavior.
+            filetime = boolean (default = False)
+                - if False, the script fully executes.
+                - If True, the script only executes far enough to determine the 
+                    time values associated with the chosen data.
+                Note: The behavior of the script is determined jointly by the 
+                    filetime and fulltime keyword values.
+            printfiles = boolean (default = False)
+                - If False, the filenames associated with the data retrieved ARE
+                    NOT printed.
+                - If True, the filenames associated with the data retrieved ARE
+                    printed. 
+            gridded_int = boolean (default = True)
+                - If True, the variables chosen are functionalized in both the
+                    standard method and a gridded method.
+                - If False, the variables chosen are functionalized in only the
+                    standard method.
+            fulltime = boolean (default = True)
+                - If True, linear interpolation in time between files is included
+                    in the returned interpolator functions.
+                - If False, no linear interpolation in time between files is included.
+            verbose = boolean (False)
+                - If False, script execution and the underlying Kamodo execution 
+                    is quiet except for specified messages.
+                - If True, be prepared for a plethora of messages.
+        All inputs are described in further detail in KamodoOnboardingInstructions.pdf.
+        
+        Returns: a kamodo object (see Kamodo core documentation) containing all 
+            requested variables in functionalized form.                
+            '''        
         def __init__(self, full_file_prefix, variables_requested=[], 
                      filetime=False, verbose=False, gridded_int=True, printfiles=False,
                      fulltime=True, **kwargs): 
-            '''file_prefix must be of form "3D***_tYYMMDD" to load all files for one day
-             and include a complete path to the files'''
+
             super(MODEL, self).__init__()
             self.modelname = 'SWMF_IE'
             
