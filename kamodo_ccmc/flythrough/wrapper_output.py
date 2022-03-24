@@ -16,8 +16,8 @@ from datetime import datetime, timezone
 
 @np.vectorize
 def ts_to_datetime(time_val):
-    '''Convert from utc timestampt to datetime object.'''
-    return datetime.utcfromtimestamp(int(time_val)).replace(tzinfo=timezone.utc)  #datetime.utcfromtimestamp requires an integer value
+    '''Convert from utc timestamp to datetime object.'''
+    return datetime.utcfromtimestamp(int(time_val)).replace(tzinfo=timezone.utc)
 
 @np.vectorize
 def datetime_to_utcts(date_time):
