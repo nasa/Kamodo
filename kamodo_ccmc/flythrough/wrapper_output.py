@@ -21,7 +21,7 @@ def ts_to_datetime(time_val):
 
 @np.vectorize
 def datetime_to_utcts(date_time):
-    '''Convert from datetime object to utc timestamp.'''
+    '''Convert from datetime UTC object to utc timestamp.'''
     return datetime.timestamp(date_time)
 
 def Functionalize_TimeSeries(utc_time, variable_name, variable_units, variable_data, kamodo_object=None):

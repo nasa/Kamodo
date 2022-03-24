@@ -47,7 +47,6 @@ J_y : '['y component of current density', 16, 'GSE', 'car', ['time', 'x', 'y', '
 J_z : '['z component of current density', 17, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'muA/m**2']'
 ```
 
-### Video Tutorial Links
-Kamodo Flythrough Tutorial: https://www.youtube.com/watch?v=1I2BZBl-wl4
-
-Kamodo Onboarding Tutorial: https://www.youtube.com/watch?v=nvl61pklEuU
+### Video Tutorial Links  
+Kamodo Flythrough Tutorial: https://www.youtube.com/watch?v=1I2BZBl-wl4  
+Kamodo Onboarding Tutorial: https://www.youtube.com/watch?v=nvl61pklEuU  

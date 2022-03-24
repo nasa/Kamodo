@@ -115,6 +115,9 @@ class HAPI(Kamodo):
                     aunit="nT"
                     afill=0.1*float(afill)
                     adata=0.1*adata.astype(np.float)
+                if aunit == "n/cc":
+                    # The unit n/cc should be 1/cc to register properly in Kamodo
+                    aunit="1/cc"
                 self.variables[varname] = dict(units=aunit,
                                                data=adata,
                                                size=asize,
