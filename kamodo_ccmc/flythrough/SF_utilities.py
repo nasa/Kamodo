@@ -172,7 +172,9 @@ def save_times(file_patterns, sat_time, model, verbose=False):
     #print errors for any remaining 'bad' times
     nbad_times = len(sat_time)-l_idx
     #print('save_times function', len(sat_time), l_idx)
-    if nbad_times>0:
+    if nbad_times==1:
+        print(f'{nbad_times} time is not in model output files and is excluded from the flythrough.')
+    elif nbad_times>0:
         print(f'{nbad_times} times are not in model output files and are excluded from the flythrough.')
         
     return sat_time, times, net_idx
