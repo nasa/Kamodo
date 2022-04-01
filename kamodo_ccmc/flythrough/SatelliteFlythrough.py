@@ -257,7 +257,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
             output_name = file_dir+model+'_'+basename(output_name)
             
         #retrieve file names/patterns for output
-        file_times = U.MW.File_Times(model, file_dir)
+        file_times = U.MW.File_Times(model, file_dir, print_output=False)
         filenames=[]
         for key in file_times.keys(): filenames.append(file_times[key][0])
         
