@@ -253,8 +253,8 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     if output_type!='':
         #correct input filename
         if model not in basename(output_name):
-            file_dir = output_name.split(basename(output_name))[0]
-            output_name = file_dir+model+'_'+basename(output_name)
+            output_file_dir = output_name.split(basename(output_name))[0]
+            output_name = output_file_dir+model+'_'+basename(output_name)
             
         #retrieve file names/patterns for output
         file_times = U.MW.File_Times(model, file_dir, print_output=False)
@@ -277,11 +277,11 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         print('Generating interactive plots...')
         
         #correct input filename and split into useful pieces
-        file_prefix = basename(plot_output)
-        file_dir = plot_output.split(file_prefix)[0]
+        plot_file_prefix = basename(plot_output)
+        plot_file_dir = plot_output.split(plot_file_prefix)[0]
         if model not in file_prefix:
-            file_dir+=model+'_'     
-        file_prefix+='_'            
+            plot_file_dir+=model+'_'     
+        plot_file_prefix+='_'            
         
         #check plot_coord variable, convert from integer and prevent plotting errors
         plot_coord, plot_grid = U.MW.convert_coordnames(plot_coord, 'car')
@@ -298,11 +298,11 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],results['c3'],
                       results[var],results_units[var],
                       coord_type, coord_grid, plot_coord,'all',model,body='black', 
-                      divfile=file_dir+file_prefix+var+'_3D.html', displayplot=False)
+                      divfile=plot_file_dir+plot_file_prefix+var+'_3D.html', displayplot=False)
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],
                       results['c3'],results[var],results_units[var],
                   coord_type, coord_grid, plot_coord,'all',model,type='1D',
-                  divfile=file_dir+file_prefix+var+'_1D.html', displayplot=False)
+                  divfile=plot_file_dir+plot_file_prefix+var+'_1D.html', displayplot=False)
     
     return results  #not sure that than C++ can take more than one return variable 
 
