@@ -279,7 +279,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         #correct input filename and split into useful pieces
         plot_file_prefix = basename(plot_output)
         plot_file_dir = plot_output.split(plot_file_prefix)[0]
-        if model not in file_prefix:
+        if model not in plot_file_prefix:
             plot_file_dir+=model+'_'     
         plot_file_prefix+='_'            
         
