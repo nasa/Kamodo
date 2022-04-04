@@ -52,7 +52,7 @@ The current links to SpacePy's coordinate documentation and wrapped conversion f
     http://svn.code.sf.net/p/irbem/code/trunk/manual/user_guide.html
 """
 import numpy as np
-from os.path import basename
+from os.path import basename, isfile
 import kamodo_ccmc.flythrough.wrapper_output as WO
 import kamodo_ccmc.flythrough.SF_utilities as U
 
@@ -158,7 +158,7 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
 #keep so users can call this if they have their own satellite trajectory data
 def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3, 
                     coord_type, coord_grid, high_res=20., verbose=False, 
-                    output_type='', output_name='', plot_output='', 
+                    output_type='', output_name='', plot_output=False, 
                     plot_coord='GEO', _print_units=True):  
     '''Call satellite flythrough wrapper specific to the model chosen.
     Parameters:   
@@ -179,10 +179,11 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         level. Ignore if no conversion is needed for the variable(s) selected. Default is 20.
     output_type: One of 'csv' for comma separated output, 'cdf4' for a netCDF4 
         output file, or 'txt' for a tab-separated text file.
-    output_name: complete path with filename (without the extension) for the file to
+    output_name: complete path with filename (without the extension) for the file(s) to
         write the results to.
-    plot_output: complete path pluts file naming convention (without the .html)
-        for the file to write the plots to.
+    plot_output: boolean value (default=False). True = plots produced. False = 
+        no plots produced. Filenames determined by output_name + variable names+
+        plot type (1D or 3D).
     plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
         integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
         system the plot will be generated in. Only plots in cartesian coordinates
@@ -215,6 +216,12 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     if output_type not in ['cdf4','csv','txt','', ' ']:  #allow empty strings
         raise AttributeError('Output file type not recognized. Must be one of'+\
                             ' cdf4, csv, or txt.')    
+
+    #Check if output file already exists. Break if it does.
+    if isfile(output_name+'.'+output_type):
+        raise AttributeError(f'{output_name+"."+output_type} already exists. ' +
+                             'Please either remove the file or change the ' +
+                             'output_name and then rerun the command.')
         
     #if model is given as an integer, then convert to a string
     model = U.MW.convert_model_string(model)
@@ -251,11 +258,6 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         print('The units of the trajectory variables are unchanged from the inputs.')
         
     if output_type!='':
-        #correct input filename
-        if model not in basename(output_name):
-            output_file_dir = output_name.split(basename(output_name))[0]
-            output_name = output_file_dir+model+'_'+basename(output_name)
-            
         #retrieve file names/patterns for output
         file_times = U.MW.File_Times(model, file_dir, print_output=False)
         filenames=[]
@@ -271,17 +273,10 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         elif output_type=='txt':
             output_filename = WO.SFdata_toascii(output_name, filenames, model, results, 
                                                 results_units, coord_type, coord_grid)
-        print(f"Output saved in {output_filename}.")  #no access to model filenames
+        print(f"Output saved in {output_filename+output_type}.")  #no access to model filenames
         
-    if plot_output!='':
+    if plot_output:
         print('Generating interactive plots...')
-        
-        #correct input filename and split into useful pieces
-        plot_file_prefix = basename(plot_output)
-        plot_file_dir = plot_output.split(plot_file_prefix)[0]
-        if model not in plot_file_prefix:
-            plot_file_dir+=model+'_'     
-        plot_file_prefix+='_'            
         
         #check plot_coord variable, convert from integer and prevent plotting errors
         plot_coord, plot_grid = U.MW.convert_coordnames(plot_coord, 'car')
@@ -298,18 +293,18 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],results['c3'],
                       results[var],results_units[var],
                       coord_type, coord_grid, plot_coord,'all',model,body='black', 
-                      divfile=plot_file_dir+plot_file_prefix+var+'_3D.html', displayplot=False)
+                      divfile=output_name+var+'_3D.html', displayplot=False)
             SatPlot4D(var,results['utc_time'],results['c1'],results['c2'],
                       results['c3'],results[var],results_units[var],
                   coord_type, coord_grid, plot_coord,'all',model,type='1D',
-                  divfile=plot_file_dir+plot_file_prefix+var+'_1D.html', displayplot=False)
+                  divfile=output_name+var+'_1D.html', displayplot=False)
     
     return results  #not sure that than C++ can take more than one return variable 
 
 def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65., 
                min_lat=-65., lon_perorbit=363., max_height=450., min_height=400., 
                p=0.01, n=2., high_res=20., verbose=False, output_type='',
-               output_name='', plot_output='', plot_coord='GEO'):
+               output_name='', plot_output=False, plot_coord='GEO'):
     '''Generates a sample trajectory and then flies that trajectory through the 
     model data chosen.
      
@@ -335,8 +330,9 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
             output file, or 'txt' for a tab-separated text file.
         output_name: complete path with filename (without the extension) for the file to
             write the results to.
-        plot_output: complete path pluts file naming convention (without the .html)
-            for the file to write the plots to.
+        plot_output: boolean value (default=False). True = plots produced. False = 
+            no plots produced. Filenames determined by output_name + variable names+
+            plot type (1D or 3D).
         plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
             integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
             system the plot will be generated in. Only plots in cartesian coordinates
@@ -373,7 +369,7 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list, max_lat=65
     return results    
 
 def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type='GEO',
-               output_type='', output_name='', plot_output='', plot_coord='GEO',
+               output_type='', output_name='', plot_output=False, plot_coord='GEO',
                high_res=20., verbose=False):
     '''
     Retrieves the trajectory for the satellite requested and then flies that
@@ -390,8 +386,9 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
         output file, or 'txt' for a tab-separated text file.
     output_name: complete path with filename (without the extension) for the file to
         write the results to.
-    plot_output: complete path pluts file naming convention (without the .html)
-        for the file to write the plots to.
+    plot_output: boolean value (default=False). True = plots produced. False = 
+        no plots produced. Filenames determined by output_name + variable names+
+        plot type (1D or 3D).
     high_res: the accuracy of the conversion from radius or altitude to pressure
         level. Ignore if no conversion is needed for the variable(s) selected. Default is 20.
     plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
@@ -429,7 +426,7 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
 
 
 def MyFlight(traj_file, file_type, model, file_dir, 
-             variable_list, output_type='', output_name='', plot_output='', 
+             variable_list, output_type='', output_name='', plot_output=False, 
              plot_coord='GEO', high_res=20., verbose=False):
     '''Read in a trajectory from a file, then fly through the model data selected.
     
@@ -449,8 +446,9 @@ def MyFlight(traj_file, file_type, model, file_dir,
         output file, or 'txt' for a tab-separated text file.
     output_name: complete path with filename (without the extension) for the file to
         write the results to.
-    plot_output: complete path pluts file naming convention (without the .html)
-        for the file to write the plots to.
+    plot_output: boolean value (default=False). True = plots produced. False = 
+        no plots produced. Filenames determined by output_name + variable names+
+        plot type (1D or 3D).
     high_res: the accuracy of the conversion from radius or altitude to pressure
         level. Ignore if no conversion is needed for the variable(s) selected. Default is 20.
     plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
@@ -541,7 +539,7 @@ if __name__=='__main__':
             high_res = float(argv[14])
             output_type = argv[15]
             output_name = argv[16]
-            plot_output = argv[17]
+            plot_output = int(argv[17])
             plot_coord = argv[18]
             
             #check input
@@ -578,7 +576,7 @@ if __name__=='__main__':
                 coord_type = argv[8]
             output_type = argv[9]
             output_name = argv[10]
-            plot_output = argv[11]
+            plot_output = int(argv[11])
             plot_coord = argv[12]
             high_res = float(argv[13])            
             
@@ -607,7 +605,7 @@ if __name__=='__main__':
             variable_list = temp_str.split(',')   #['rho','N_n']              
             output_type = argv[7]
             output_name= argv[8]
-            plot_output = argv[9]
+            plot_output = int(argv[9])
             plot_coord = argv[10]
             high_res = float(argv[11])
             
