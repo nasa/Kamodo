@@ -158,7 +158,7 @@ def _read_SWMFIE(file_prefix, verbose=False):
     t0 = perf_counter()
 
     # establish time attributes first for file searching
-    files = glob(file_prefix+'*.tec')   # take one day of data
+    files = sorted(glob(file_prefix+'*.tec'))   # take one day of data
     file_datestr = basename(file_prefix)[3:11]
     # string_date = 'YYYY-MM-DD'
     string_date = file_datestr[:4]+'-'+file_datestr[4:6]+'-'+file_datestr[6:8]
