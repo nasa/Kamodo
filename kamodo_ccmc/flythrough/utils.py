@@ -32,7 +32,6 @@ from datetime import datetime as dt
 from datetime import timezone
 from spacepy.coordinates import Coords
 from spacepy.time import Ticktock
-from spacepy.irbempy import get_Lstar
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 
@@ -509,6 +508,9 @@ def ComputeLshell(inTime,c1,c2,c3,inCoord,inType):
     c2:       array:  Lstar
     c3:       array:  MLT
     """
+
+    #make sure package is loaded.
+    from spacepy.irbempy import get_Lstar
 
     # Start timer
     tic = time.perf_counter()
