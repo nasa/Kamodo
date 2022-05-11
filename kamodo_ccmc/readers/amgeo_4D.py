@@ -7,40 +7,40 @@ from numpy import vectorize
 
 # 'C:/Users/rringuet/Kamodo_WinDev1/AmGEO/'
 model_varnames = {'E_ph': ['E_east', 'Electric Field (eastward)',
-                           0, 'MAG', 'sph', ['time', 'lon', 'lat'], 'V/m'],
+                           0, 'SM', 'sph', ['time', 'lon', 'lat'], 'V/m'],
                   'E_th': ['E_north', 'Electric Field (equatorward)',
-                           1, 'MAG', 'sph', ['time', 'lon', 'lat'], 'V/m'],
+                           1, 'SM', 'sph', ['time', 'lon', 'lat'], 'V/m'],
                   'cond_hall': ['Sigma_H', 'Ovation Pyme Hall Conductance',
-                                2, 'MAG', 'sph', ['time', 'lon', 'lat'], 'S'],  # units=mho=S
+                                2, 'SM', 'sph', ['time', 'lon', 'lat'], 'S'],  # units=mho=S
                   'cond_ped': ['Sigma_P', 'Ovation Pyme Pedersen Conductance',
-                               3, 'MAG', 'sph', ['time', 'lon', 'lat'], 'S'],  # units=mho=S
+                               3, 'SM', 'sph', ['time', 'lon', 'lat'], 'S'],  # units=mho=S
                   'epot': ['V', 'Electric Potential',
-                           4, 'MAG', 'sph', ['time', 'lon', 'lat'], 'V'],
+                           4, 'SM', 'sph', ['time', 'lon', 'lat'], 'V'],
                   'int_joule_heat_n': ['W_JouleN', 'Northern Hemisphere Integrated Joule Heating',
-                                       5, 'MAG', 'sph', ['time'], 'GW'],
+                                       5, 'SM', 'sph', ['time'], 'GW'],
                   'int_joule_heat_s': ['W_JouleS', 'Southern Hemisphere Integrated Joule Heating',
-                                       6, 'MAG', 'sph', ['time'], 'GW'],
+                                       6, 'SM', 'sph', ['time'], 'GW'],
                   # 1D time series only, but different for each hemisphere
                   'jfac': ['j_fac', 'Field Aligned Current',
-                           7, 'MAG', 'sph', ['time', 'lon', 'lat'], 'muA/m**2'],
+                           7, 'SM', 'sph', ['time', 'lon', 'lat'], 'muA/m**2'],
                   'joule_heat': ['Q_Joule', 'Joule Heating (E-field^2*Pedersen)',
-                                 8, 'MAG', 'sph', ['time', 'lon', 'lat'], 'mW/m**2'],
+                                 8, 'SM', 'sph', ['time', 'lon', 'lat'], 'mW/m**2'],
                   'mpot': ['psi', 'Magnetic Potential',
-                           9, 'MAG', 'sph', ['time', 'lon', 'lat'], 'cT/m'],
+                           9, 'SM', 'sph', ['time', 'lon', 'lat'], 'cT/m'],
                   'sdB_ph': ['dB_east', 'Spacecraft-Observed Magnetic Perturbations (eastward)',
-                             10, 'MAG', 'sph', ['time', 'lon', 'lat'], 'nT'],
+                             10, 'SM', 'sph', ['time', 'lon', 'lat'], 'nT'],
                   'sdB_th': ['dB_north', 'Spacecraft-Observed Magnetic Perturbations (equatorward)',
-                             11, 'MAG', 'sph', ['time', 'lon', 'lat'], 'nT'],
+                             11, 'SM', 'sph', ['time', 'lon', 'lat'], 'nT'],
                   'v_ph': ['v_ieast', 'Ion Drift Velocity (eastward)',
-                           12, 'MAG', 'sph', ['time', 'lon', 'lat'], 'm/s'],
+                           12, 'SM', 'sph', ['time', 'lon', 'lat'], 'm/s'],
                   'v_th': ['v_inorth', 'Ion Drift Velocity (equatorward)',
-                           13, 'MAG', 'sph', ['time', 'lon', 'lat'], 'm/s'],
+                           13, 'SM', 'sph', ['time', 'lon', 'lat'], 'm/s'],
                   'imf_By': ['B_y', 'measured y component of IMF magnetic field from OMNI',
-                             14, 'MAG', 'sph', ['time'], 'nT'],  # in attrs of time dataset
+                             14, 'SM', 'sph', ['time'], 'nT'],  # in attrs of time dataset
                   'imf_Bz': ['B_z', 'measured z component of IMF magnetic field from OMNI',
-                             15, 'MAG', 'sph', ['time'], 'nT'],  # in attrs of time dataset
+                             15, 'SM', 'sph', ['time'], 'nT'],  # in attrs of time dataset
                   'solar_wind_speed': ['v_sw', 'measured solar wind speed from OMNI',
-                                       16, 'MAG', 'sph', ['time'], 'km/s']  # in attrs of time dataset
+                                       16, 'SM', 'sph', ['time'], 'km/s']  # in attrs of time dataset
                   }
 
 
@@ -295,9 +295,6 @@ def MODEL():
                           'data': 0.} for var in gvar_list}
             # list of variables to be retrieved from attrs
             attrs_var = ['imf_By', 'imf_Bz', 'solar_wind_speed']
-            lon = unique(f_data1['lons'])  # NEED here for longitude swapping logic
-            lon_le180 = where(lon <= 180)[0]
-            lon_ge180 = where(lon >= 180)[0][:-1]  # ignore 360 values, repeat 180 for -180 values
             for var in gvar_list:
                 if var in attrs_var:  # save time series data from attributes
                     variables[model_varnames[var][0]]['data'] = \
@@ -318,7 +315,6 @@ def MODEL():
                         variables[model_varnames[var][0]]['data'] = \
                             array([array(f_data1[time+'S']['int_joule_heat'])[0]
                                    for time in time_list], dtype=float)
-
                 else:  # pull from datasets
                     if hemi == '*':
                         tmp = array([array(f_data1[time+'N'][var]) for
@@ -343,14 +339,7 @@ def MODEL():
                         total_data = concatenate((south_data, data1), axis=2)
                     else:
                         total_data = data1
-
-                    # swap longitudes, repeat 180 values for -180 position
-                    variables[model_varnames[var][0]]['data'] = zeros(
-                        total_data.shape, dtype=float)
-                    variables[model_varnames[var][0]]['data'][:, :len(lon_ge180), :] = \
-                        total_data[:, lon_ge180, :]
-                    variables[model_varnames[var][0]]['data'][:, len(lon_ge180):, :] = \
-                        total_data[:, lon_le180, :]
+                    variables[model_varnames[var][0]]['data'] = total_data
 
             # prepare and return data
             if not fulltime:
@@ -381,11 +370,7 @@ def MODEL():
             elif hemi == 'S':  # N hemisphere file DNE
                 lat_S = flip(unique(f_data1['lats']))*(-1)  # reverse order and make negative
                 self._lat = insert(lat_S, 0, -90.)  # insert south pole value
-
-            # rearrange lon grid to be from -180 to 180 to match data
-            self._lon = zeros(lon.shape)
-            self._lon[:len(lon_ge180)] = lon[lon_ge180]-360.
-            self._lon[len(lon_ge180):] = lon[lon_le180]
+            self._lon = unique(f_data1['lons'])-180. # shift noon to be at 0 deg lon
 
             # convert height in km to radius in R_E to conform to MAG coord sys in spacepy
             self._radius = (110.+R_earth.value/1000.)/(R_earth.value/1000.)  # 110 km altitude
