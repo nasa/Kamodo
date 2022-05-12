@@ -416,7 +416,8 @@ class RECON(Kamodo):
         print(f'Performing satellite constellation flythrough for {fly_t.size} locations...')
         results = SF.ModelFlythrough(self.model, self.file_dir, 
                         [self.variable_name], fly_t, fly_c1, fly_c2, 
-                        fly_c3, self.coord_type, self.coord_grid, _print_units=False)
+                        fly_c3, self.coord_type+'-'+self.coord_grid,
+                        _print_units=False)
         self.data_datetime = ts_to_dt(results['utc_time'][0])
         #self.results = results  #too much demand on memory
         return results
@@ -679,8 +680,9 @@ class RECON(Kamodo):
             print(f'Performing averaged grid flythrough for {tt.size} locations...')
             t0 = ti.perf_counter()
             model_results = SF.ModelFlythrough(self.model, self.file_dir, 
-                                [self.variable_name], tt, xx, yy, zz, self.coord_type, 
-                                self.coord_grid, _print_units=False)
+                                [self.variable_name], tt, xx, yy, zz,
+                                self.coord_type+'-'+self.coord_grid,
+                                _print_units=False)
             #self.model_results = model_results  #store for sanity checks
             
             #reshape data and return
@@ -747,7 +749,7 @@ class RECON(Kamodo):
             t0 = ti.perf_counter()
             model_results = SF.ModelFlythrough(self.model, self.file_dir, 
                                 [self.variable_name], model_t, model_c1, model_c2, 
-                                model_c3, self.coord_type, self.coord_grid, 
+                                model_c3, self.coord_type+'-'+self.coord_grid, 
                                 _print_units=False)
             #self.model_results = model_results  #store for sanity checks        
             
@@ -834,8 +836,9 @@ class RECON(Kamodo):
                 tt, xx, yy, zz = np.meshgrid(t, new_c1, new_c2, new_c3, indexing = 'xy')
                 t_results = SF.ModelFlythrough(self.model, self.file_dir, 
                                     [self.variable_name], np.ravel(tt), np.ravel(xx),
-                                    np.ravel(yy), np.ravel(zz), self.coord_type, 
-                                    self.coord_grid, _print_units=False)                
+                                    np.ravel(yy), np.ravel(zz),
+                                    self.coord_type+'-'+self.coord_grid,
+                                    _print_units=False)                
                 #store results if time not excluded
                 if len(model_results.keys())==0 and len(t_results['utc_time'])>0: 
                     model_results=t_results
