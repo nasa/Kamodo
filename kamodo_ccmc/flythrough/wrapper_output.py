@@ -97,8 +97,7 @@ def SFdata_tocdf(filename, model_filename, model_name, results_dict, results_uni
     from netCDF4 import Dataset    
     
     #start new output object
-    cdf_filename = filename+'.nc'
-    data_out = Dataset(filename+'.nc', 'w', format='NETCDF4')
+    data_out = Dataset(filename, 'w', format='NETCDF4')
     data_out.modelfile = model_filename
     data_out.model = model_name
     data_out.coord_type = coord_type
@@ -119,7 +118,7 @@ def SFdata_tocdf(filename, model_filename, model_name, results_dict, results_uni
         
     #close file
     data_out.close()     
-    return cdf_filename   
+    return filename   
 
 def SFcsv_reader(filename, delimiter=','):
     '''Loads the data from a csv file that was written by the SFdata_tocsv routine below into a nested dict'''
@@ -176,8 +175,7 @@ def SFdata_tocsv(filename, model_filename, model_name, results_dict, results_uni
             time_key = key
             break    
     
-    csv_filename = filename+'.csv'
-    data_out = open(csv_filename, 'w')
+    data_out = open(filename, 'w')
     if not isinstance(model_filename, list):
         data_out.write(f'#Model files used:, {model_filename}')
     else:
@@ -189,7 +187,7 @@ def SFdata_tocsv(filename, model_filename, model_name, results_dict, results_uni
     for i in range(len(results_dict[time_key])):
         data_out.write('\n'+''.join([f'{values[i]},' for key, values in results_dict.items()]))
     data_out.close()
-    return csv_filename
+    return filename
 
 def SFascii_reader(filename):
     '''Loads the data from a csv file that was written by the SFdata_toascii routine below into a nested dict'''
@@ -207,8 +205,7 @@ def SFdata_toascii(filename, model_filename, model_name, results_dict, results_u
             time_key = key
             break 
         
-    ascii_filename = filename+'.txt'
-    data_out = open(ascii_filename, 'w')
+    data_out = open(filename, 'w')
     if not isinstance(model_filename, list):
         data_out.write(f'#Model files used:\t {model_filename}')
     else:
@@ -220,4 +217,62 @@ def SFdata_toascii(filename, model_filename, model_name, results_dict, results_u
     for i in range(len(results_dict[time_key])):
         data_out.write('\n'+''.join([f'{values[i]}\t' for key, values in results_dict.items()]))
     data_out.close()
-    return ascii_filename
+    return filename
+
+
+def SF_read(filename):
+    '''Collect input function calls into one function.
+    
+    filename = string with complete filepath. The file extension must be one
+        of 'nc'for a netCDF4 file, 'csv' for a comma separated file, or 'txt'
+        for a tab separated file.
+        
+    Output: a nested dictionary containing the metadata, data, and units.'''
+    
+    file_type = filename.split('.')[-1]
+    if file_type == 'nc':
+        traj_data = SFcdf_reader(filename)
+    elif file_type == 'csv':
+        traj_data = SFcsv_reader(filename)
+    elif file_type == 'txt':
+        traj_data = SFascii_reader(filename)
+    else:
+        raise AttributeError('File type not recognized. Must be one of'+\
+                            ' cdf4, csv, or txt.')
+    return traj_data
+    
+    
+def SF_write(filename, model_filename, model_name, results_dict, results_units,
+                   coord_sys):
+    '''Collect output function calls into one function.
+
+    Inputs:    
+        filename = string with complete filepath. The file extension must be one
+            of 'nc' for a netCDF4 file, 'csv' for a comma separated file, or 'txt'
+            for a tab separated file.    
+        model_filename = A list of the model data filenames or prefixes used
+            to generate the data. Filenames should include the full file path.
+        model_name = A string indicating the model name.
+        results_dict = A dictionary with variable names as keys (strings) and
+            the time series data as the values (one array per key).
+        results_units = A dictionary with variable names as keys (strings) and
+            the units as the values (one value per key). 
+        coord_sys = one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', 'SPH',
+            or 'RLL' combined with '-sph' or '-car'. E.g. 'SM-car' or 'GDZ-sph'.
+    
+    '''
+    coord_type, coord_grid = coord_sys.split('-')
+    output_type = filename.split('.')[-1]
+    if output_type=='csv':
+        output_filename = SFdata_tocsv(filename, model_filename, model_name,
+                                       results_dict, results_units, coord_type,
+                                       coord_grid)
+    elif output_type=='nc':
+        output_filename= SFdata_tocdf(filename, model_filename, model_name,
+                                      results_dict, results_units, coord_type,
+                                      coord_grid)
+    elif output_type=='txt':
+        output_filename = SFdata_toascii(filename, model_filename, model_name,
+                                         results_dict, results_units, coord_type,
+                                         coord_grid)
+    return output_filename
