@@ -88,6 +88,7 @@ def SFcdf_reader(filename):
                             'model_used': cdf_data.model,
                             'coord_type': cdf_data.coord_type,
                             'coord_grid': cdf_data.coord_grid}  #add metadata
+    cdf_data.close()
     return cdf_dict
 
 def SFdata_tocdf(filename, model_filename, model_name, results_dict, results_units,
@@ -162,7 +163,7 @@ def SFcsv_reader(filename, delimiter=','):
                              'model_used': model_used[1].strip(),
                              'coord_type': coord_info[1].strip(),
                              'coord_grid': coord_info[2].strip()}
-    
+    read_obj.close()    
     return data_dict
 
 def SFdata_tocsv(filename, model_filename, model_name, results_dict, results_units,
