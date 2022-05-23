@@ -30,11 +30,14 @@ import time
 import numpy as np
 from datetime import datetime as dt
 from datetime import timezone
+import spacepy.coordinates as spc
 from spacepy.coordinates import Coords
 from spacepy.time import Ticktock
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 
+#Set option in spacepy to use ctrans instead of irbempy for coordinate transforms
+spc.DEFAULTS.set_values(use_irbem=False, itol=5)
 
 #Define coordinate lists for AstroPy and SpacePy
 astropy_coordlist = ['teme','icrs','fk5','fk4','itrs','galactic','cirs','tete',
