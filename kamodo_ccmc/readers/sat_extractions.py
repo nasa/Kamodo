@@ -15,7 +15,7 @@ from collections.abc import Iterable
 
 def ror_get_info(runID):
     '''Query run information for given runID'''
-    server = "https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR/"
+    server = "https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR"
     query = '{}/files.php?id={}'.format(server, runID)
     response = urllib.request.urlopen(query)
     data = json.loads(response.read())
@@ -46,9 +46,9 @@ def ror_return_satellites(runID):
 
 def ror_get_extraction(runID, coord, satellite):
     '''Query for file contents from server'''
-    server = "https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR/"
+    server = "https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR"
     query = '{}/{}/{}/{}_{}.txt'.format(server, runID, satellite, coord, satellite)
-    print(query)
+    # print(query)
     response = urllib.request.urlopen(query)
     file = response.read()
     return file
@@ -58,8 +58,8 @@ class SATEXTRACT(Kamodo):
             runID, # ccmc runs-on-request run id
             coord, # coordinate system
             satellite, # satellite
-            debug=1,
-            server="https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR/",
+            debug=0,
+            server="https://ccmc.gsfc.nasa.gov/RoR_WWW/VMR",
             **kwargs):
         super(SATEXTRACT, self).__init__(**kwargs)
         self.verbose=False # overrides kwarg
@@ -75,7 +75,7 @@ class SATEXTRACT(Kamodo):
             print(' -server: CCMC RoR')
             print(' -runID: ',runID)
             print(' -coordinate system: ',coord)
-        print(' -satellite: ',satellite)
+            print(' -satellite: ',satellite)
         self.variables=dict()
         self.file = ror_get_extraction(runID, coord, satellite).decode('ascii')
         self.parse_file()
@@ -365,17 +365,36 @@ class SATEXTRACT(Kamodo):
                 
             else:
                 # Standard single/vector variable plot
-                if self.variables[var]['size'] == 1:
+                varn=var
+                if var in self.variables:
+                    size=self.variables[var]['size']
+                else:
+                    if var+'_x' in self.variables:
+                        size=0
+                    else:
+                        print("Invalid plot variable passed in.")
+                        return
+                if size == 0:
+                    var=varn+'_x'
                     x=self.variables[var]['data']
                     fig.add_trace(go.Scatter(x=self.dtarray, y=x, mode='lines+markers', name=var))
-                elif self.variables[var]['size'] == 3:
+                    var=varn+'_y'
+                    x=self.variables[var]['data']
+                    fig.add_trace(go.Scatter(x=self.dtarray, y=x, mode='lines+markers', name=var))
+                    var=varn+'_z'
+                    x=self.variables[var]['data']
+                    fig.add_trace(go.Scatter(x=self.dtarray, y=x, mode='lines+markers', name=var))
+                elif size == 1:
+                    x=self.variables[var]['data']
+                    fig.add_trace(go.Scatter(x=self.dtarray, y=x, mode='lines+markers', name=var))
+                elif size == 3:
                     x=self.variables[var]['data'][:,0]
                     y=self.variables[var]['data'][:,1]
                     z=self.variables[var]['data'][:,2]
                     fig.add_trace(go.Scatter(x=self.dtarray, y=x, mode='lines+markers', name=var))
                     fig.add_trace(go.Scatter(x=self.dtarray, y=y, mode='lines+markers', name=var))
                     fig.add_trace(go.Scatter(x=self.dtarray, y=z, mode='lines+markers', name=var))
-                ytitle=var+" ["+self.variables[var]['units']+"]"
+                ytitle=varn+" ["+self.variables[var]['units']+"]"
                 fig.update_xaxes(title_text="Time")
                 fig.update_yaxes(title_text=ytitle)
                 fig.update_layout(hovermode="x")
@@ -463,7 +482,7 @@ class SATEXTRACT(Kamodo):
             varu=self.variables[var]['units']
 
             if quiver:
-                if "_x" in var or "_y" in var or"_z" in var:
+                if "_x" in var or "_y" in var or "_z" in var:
                     var=var.split('_')[0]
                     qxvar=var+"_x"
                     qyvar=var+"_y"
@@ -691,7 +710,7 @@ class SATEXTRACT(Kamodo):
 # New class to collect all satellites
 #
 class SATEXTRACTALL(Kamodo):
-    def __init__(self, runID, coord, debug=1, sats=[], **kwargs):
+    def __init__(self, runID, coord, debug=0, sats=[], **kwargs):
         super(SATEXTRACTALL, self).__init__(**kwargs)
         # Start timer
         tic = time.perf_counter()
@@ -702,24 +721,26 @@ class SATEXTRACTALL(Kamodo):
         self.runID = runID
         self.coordinates = coord
         self.debug = debug
-        print(' -server: CCMC RoR')
-        print(' -runID: ',runID)
-        print(' -coordinate system: ',coord)
+        if self.debug > 0:
+            print(' -server: CCMC RoR')
+            print(' -runID: ',runID)
+            print(' -coordinate system: ',coord)
         self.satellites = dict()
         result=ror_get_info(runID)
         for sat in result['satellites']:
             satname = sat['name']
             if len(sats) == 0 or satname in sats:
-                ror = SATEXTRACT(runID, coord, satname, debug=0)
+                ror = SATEXTRACT(runID, coord, satname, debug=debug)
                 self.satellites[satname] = ror
         self.start=ror.start
         self.stop=ror.stop
         self.runname=ror.runname
         self.modelname=ror.modelname
-        print(' -data extracted from model: ',self.modelname)
+        if self.debug > 0:
+            print(' -data extracted from model: ',self.modelname)
         # end timer
         toc = time.perf_counter()
-        print(f"Time loading files and registering satellites: {toc - tic:0.4f} seconds")
+        print(f"Time loading files and registering all satellites: {toc - tic:0.4f} seconds")
 
     def get_plot(self, type="3Dvar", scale="R_E", var="", groupby="all",
                  quiver=False, quiverscale="5.", quiverskip="0"):
