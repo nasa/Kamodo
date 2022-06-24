@@ -143,14 +143,14 @@ def MODEL():
                      printfiles=False, filetime=False, gridded_int=True, fulltime=True,
                      verbose=False, hemi='?', **kwargs):
             super(MODEL, self).__init__(**kwargs)
-            self.modelname = 'AmGEO'
+            self.modelname = 'AMGeO'
             t0 = perf_counter()
 
             # collect filenames
             files = sorted(glob(file_pattern+hemi+'.h5'))
             if 'N.h5' in files[0]:
                 full_filenameN = files[0]
-                if 'S.h5' in files[1]:  # S file should be next
+                if len(files) == 2:  # S file should be next
                     full_filenameS = files[1]
                     hemi = '*'  # data for both hemispheres available
                 else:
