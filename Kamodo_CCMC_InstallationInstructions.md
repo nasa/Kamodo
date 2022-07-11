@@ -4,7 +4,7 @@ In conda command prompt:
 1. Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:
 > conda create -n Kamodo_env python=3.7  
 2. Add the packages needed by the CCMC readers to the desired environment (replace 'Kamodo_env' with your environment name):
-> conda install -n Kamodo_env -c conda-forge netCDF4 xarray dask astropy ipython jupyter
+> conda install -n Kamodo_env -c conda-forge netCDF4 xarray dask astropy ipython jupyter h5py
 3. Activate the desired environment. 
 > conda activate Kamodo_env
 4. Install remaining dependencies:
