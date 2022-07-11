@@ -13,15 +13,11 @@ Kamodo is a CCMC tool for access, interpolation, and visualization of space weat
 
 The project page is located at the Community Coordinated Modeling Center, located at NASA Goddard Space Flight Center.
 
-* Official site page [https://ccmc.gsfc.nasa.gov/Kamodo/](https://ccmc.gsfc.nasa.gov/Kamodo/)
+* Official site page [https://ccmc.gsfc.nasa.gov/tools/Kamodo/](https://ccmc.gsfc.nasa.gov/tools/kamodo/)
 
 Kamodo's official source code is hosted on github under a permissive NASA open source license:
 
 * [https://github.com/nasa/Kamodo](https://github.com/nasa/Kamodo)
-
-Periodic contributions to Kamodo are made from the unofficial repo located here
-
-* [https://github.com/asherp/Kamodo](https://github.com/asherp/Kamodo)
 
 
 ## Usage
