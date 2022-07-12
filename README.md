@@ -19,6 +19,9 @@ Kamodo's official source code is hosted on github under a permissive NASA open s
 
 * [https://github.com/nasa/Kamodo](https://github.com/nasa/Kamodo)
 
+Kamodo sample model output data is available from the CCMC for several different models.
+
+* [https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/](https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/)
 
 ## Usage
 Suppose we have a vector field defined by a function of positions in the x-y plane:
