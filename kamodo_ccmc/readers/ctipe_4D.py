@@ -16,81 +16,81 @@ from numpy import vectorize
 
 # constants and dictionaries
 model_varnames = {'rho': ['rho', 'total mass density',
-                          0, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'kg/m**3'],
+                          0, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'kg/m**3'],
                   'T': ['T', 'temperature',
-                        1, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'K'],
+                        1, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'K'],
                   'T_e': ['T_e', 'electron temperature',
-                          2, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], 'K'],
+                          2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
                   'T_i': ['T_i', 'ion temperature',
-                          3, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], 'K'],
+                          3, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
                   'H_ilev': ['H_ilev', 'height dependent on primary pressure level',
-                             4, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm'],
+                             4, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm'],
                   'H_lev': ['H_ilev1', 'height dependent on secondary pressure level',
-                            5, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'm'],
+                            5, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'm'],
                   'Vn_lat': ['v_nnorth', 'meridional neutral wind velocity (north)',
-                             6, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                             6, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'Vn_lon': ['v_neast', 'zonal neutral wind velocity (east)',
-                             7, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                             7, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'Vn_H': ['v_nup', 'vertical neutral wind velocity (up)',
-                           8, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                           8, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'T_n': ['T_n', 'neutral temperature',
-                          9, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
+                          9, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
                   'Rmt': ['m_avgmol', 'mean molecular mass',
-                          10, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'amu'],
+                          10, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'amu'],
                   'N_e': ['N_e', 'electron number density',
-                          11, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                          11, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   # 'N_n': ['N_n', 'variable description',
-                  # 12, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                  # 12, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'Q_Solar': ['Q_Solar', 'solar heating',
-                              13, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'J/kg/s'],
+                              13, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'J/kg/s'],
                   'Q_Joule': ['Q_Joule', 'joule heating',
-                              14, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'J/kg/s'],
+                              14, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'J/kg/s'],
                   'Q_radiation': ['Q_rad', 'radiative heating or cooling',
-                                  15, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'J/kg/s'],
+                                  15, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'J/kg/s'],
                   'N_O': ['N_O', 'number density of atomic oxygen',
-                          16, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                          16, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_O2': ['N_O2', 'number density of molecular oxygen',
-                           17, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                           17, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_N2': ['N_N2', 'number density of molecular nitrogen',
-                           18, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                           18, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_NO': ['N_NO', 'number density of molecular nitric oxide',
-                           19, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                           19, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_NOplus': ['N_NOplus', 'number density of nitric oxide ion',
-                               20, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                               20, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_N2plus': ['N_N2plus', 'number density of molecular nitrogen ion',
-                               21, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                               21, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_O2plus': ['N_O2plus', 'number density of molecular oxygen ion',
-                               22, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                               22, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_Nplus': ['N_Nplus', 'number density of atomic nitrogen ion',
-                              23, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
+                              23, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/m**3'],
                   'N_Oplus': ['N_Oplus', 'number density of atomic oxygen ion',
-                              24, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                              24, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'N_Hplus': ['N_Hplus', 'number density of atomic hydrogen ion',
-                              25, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                              25, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'Sigma_P': ['sigma_P', 'Pedersen conductivity',
-                              26, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'S/m'],
+                              26, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'S/m'],
                   'Sigma_H': ['sigma_H', 'Hall conductivity',
-                              27, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'S/m'],
+                              27, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'S/m'],
                   'Vi_lon': ['v_inorth', 'meridional ion wind velocity (north)',
-                             28, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                             28, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'Vi_lat': ['v_ieast', 'zonal ion wind velocity (east)',
-                             29, 'SPH_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                             29, 'GDZ_plev', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'W_Joule': ['W_JouleH', 'height integrated joule heating',
-                              30, 'SPH', 'sph', ['time', 'lon', 'lat'], 'W/m**2'],
+                              30, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'W/m**2'],
                   'Eflux_precip': ['Phi_E', 'energy flux',
-                                   31, 'SPH', 'sph', ['time', 'lon', 'lat'], 'mW/m**2'],
+                                   31, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'mW/m**2'],
                   'Eavg_precip': ['E_avg', 'average energy',
-                                  32, 'SPH', 'sph', ['time', 'lon', 'lat'], 'keV'],
+                                  32, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'keV'],
                   'TEC': ['TEC', 'vertical total electron content (height integrated from bottom to top boundary)',
-                          33, 'SPH', 'sph', ['time', 'lon', 'lat'], '1/m**2'],  # '10**16/m**2'
+                          33, 'GDZ', 'sph', ['time', 'lon', 'lat'], '1/m**2'],  # '10**16/m**2'
                   'E_theta140km': ['E_theta140km', 'Electric field at 140 km,  theta component',
-                                   34, 'SPH_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m'],
+                                   34, 'GDZ_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m'],
                   'E_lambda140km': ['E_lambda140km', 'Electric field at 140 km, lambda component',
-                                    35, 'SPH_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m'],
+                                    35, 'GDZ_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m'],
                   'E_theta300km': ['E_theta300km', 'Electric field at 300 km, theta component',
-                                   36, 'SPH_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m'],
+                                   36, 'GDZ_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m'],
                   'E_lambda300km': ['E_lambda300km', 'Electric field at 300 km, lambda component',
-                                    37, 'SPH_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m']}
+                                    37, 'GDZ_E', 'sph', ['time', 'Elon', 'Elat'], 'V/m']}
 
 
 @vectorize
@@ -192,6 +192,7 @@ def MODEL():
             # execute logic for finding nearest time in neighboring file
             # (used when searching for neighboring files below)
             if filetime and not fulltime:
+                cdf_data.close()
                 return  # return times as is to prevent recursion
 
             # if variables are given as integers,  convert to standard names
@@ -223,6 +224,7 @@ def MODEL():
                         print('No earlier file available.')
                     filecheck = False
                     if filetime:
+                        cdf_data.close()
                         return
                 else:
                     # -1 for adding an earlier time
@@ -234,6 +236,7 @@ def MODEL():
                             print('No earlier file available.')
                         filecheck = False
                         if filetime:
+                            cdf_data.close()
                             return
                     else:
                         time_test = abs(kamodo_test.filetimes[1] - self.filetimes[0])
@@ -245,6 +248,7 @@ def MODEL():
 
                             # time only version if returning time for searching
                             if filetime:
+                                cdf_data.close()
                                 return
                             # return object with additional time (for SF code)
 
@@ -265,6 +269,7 @@ def MODEL():
                                       'within {diff(t).max():.1f}s.')
                             filecheck = False
                             if filetime:
+                                cdf_data.close()
                                 return
 
             # collect variable dependency lists
@@ -320,6 +325,7 @@ def MODEL():
                 if not fulltime and variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in gvar_list}
+                    cdf_data.close()
                     return
 
             # Store the requested variables into a dictionary
@@ -351,17 +357,20 @@ def MODEL():
                 self._time = ts_to_hrs(t, self.filedate)
 
             # store dimensions if requested variable(s) require it
-            self._ilev = array(cdf_data.variables['ilev'])  # neutral file
-            self._lon0 = array(cdf_data.variables['lon_n'])
-            self._lat0 = array(cdf_data.variables['lat_n'])
-            self._Elat = array(cdf_data.variables['Elat'])
-            self._Elon = array(cdf_data.variables['Elon'])
-            self._ilev1 = array(cdf_data.variables['lev'])      # density file
-            self._lon1 = array(cdf_data.variables['lon_d'])
-            self._lat1 = array(cdf_data.variables['lat_d'])
-            self._radius = array(cdf_data.variables['radius'])  # height file
-            self._lon = array(cdf_data.variables['lon_h'])
-            self._lat = array(cdf_data.variables['lat_h'])
+            if 'ilev' in cdf_data.variables.keys():  # if neutral file existed
+                self._ilev = array(cdf_data.variables['ilev'])  # neutral file
+                self._lon0 = array(cdf_data.variables['lon_n'])
+                self._lat0 = array(cdf_data.variables['lat_n'])
+                self._Elat = array(cdf_data.variables['Elat'])
+                self._Elon = array(cdf_data.variables['Elon'])
+            if 'lev' in cdf_data.variables.keys():  # if density file existed
+                self._ilev1 = array(cdf_data.variables['lev'])      # density file
+                self._lon1 = array(cdf_data.variables['lon_d'])
+                self._lat1 = array(cdf_data.variables['lat_d'])
+            if 'height' in cdf_data.variables.keys():  # if height file existed
+                self._height = array(cdf_data.variables['height'])  # height file
+                self._lon = array(cdf_data.variables['lon_h'])
+                self._lat = array(cdf_data.variables['lat_h'])
             cdf_data.close()
 
             # register interpolators for each requested variable
@@ -438,18 +447,27 @@ def MODEL():
             # determine coordinate variables by coord list
             coord_list = [value[5][-1] for key, value in model_varnames.items()
                           if value[0] == varname][0]
-            if 'ilev1' in coord_list:
+            if 'ilev1' in coord_list and hasattr(self, '_ilev1'):
                 lon, lat, z = self._lon1, self._lat1, self._ilev1
                 xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
                                      'ilev1': 'm/m'}
-            if 'ilev' in coord_list:
+            if 'ilev' in coord_list and hasattr(self, '_ilev'):
                 lon, lat, z = self._lon0, self._lat0, self._ilev
                 xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
                                      'ilev': 'm/m'}
-            if 'radius' in coord_list:
-                lon, lat, z = self._lon, self._lat, self._radius
+            if varname == 'N_e':  # special case b/c in more than one file
+                if not hasattr(self, '_height'):  # height file DNE
+                    lon, lat, z = self._lon0, self._lat0, self._ilev
+                    xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
+                                         'ilev': 'm/m'}
+                else:
+                    lon, lat, z = self._lon, self._lat, self._height
+                    xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
+                                         'height': 'km'}
+            if 'height' in coord_list and varname != 'N_e' and hasattr(self, '_height'):
+                lon, lat, z = self._lon, self._lat, self._height
                 xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                     'radius': 'R_E'}
+                                 'height': 'km'}
 
             # define and register the interpolators
             self = regdef_4D_interpolators(self, units, variable, self._time,
