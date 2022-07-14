@@ -4,193 +4,193 @@ from datetime import datetime, timezone, timedelta
 # file_prefix = 'C:/Users/rringuet/Kamodo_WinDev1/GITM/3DLST_t150317'
 # varnames in cdf files are standardized (value[0])
 model_varnames = {'r_Ar': ['mmr_Ar', 'mass mixing ratio of argon/neutrals',
-                           0, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], ''],
+                           0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], ''],
                   'rho_Ar': ['rho_Ar', 'mass density of argon',
-                             1, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                             1, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'r_CH4': ['mmr_CH4', 'mass mixing ratio of methane/neutrals',
-                            2, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], ''],
+                            2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], ''],
                   'k': ['k', 'total conduction',
-                        3, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'W/m/K'],
+                        3, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'W/m/K'],
                   'Q_EUV': ['Q_EUV', 'EUV heating',
-                            4, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K per timestep'],
+                            4, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K per timestep'],
                   'rho_H': ['rho_H', 'mass density of hydrogen',
-                            5, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                            5, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_Hplus': ['rho_Hplus', 'mass density of hydrogen ion',
-                                6, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                6, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'r_H2': ['mmr_H2', 'mass mixing ratio of molecular hydrogen/neutrals',
-                           7, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                           7, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'r_HCN': ['mmr_HCN', 'mass mixing ratio of hydrogen cyanide/neutrals',
-                            8, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                            8, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'rho_He': ['rho_He', 'mass density of helium',
-                             9, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                             9, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_Heplus': ['rho_Heplus', 'mass density of helium ion',
-                                 10, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                 10, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'HeatingEfficiency': ['Q_eff', 'heating efficiency',
-                                        11, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                                        11, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'HeatBalanceTotall': ['Q_bal', 'heat balance total',
-                                        12, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                                        12, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'rho_N2': ['rho_N2', 'mass density of molecular nitrogen',
-                             13, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                             13, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_N2plus': ['rho_N2plus', 'mass density of molecular nitrogen ion',
-                                 14, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                 14, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_Nplus': ['rho_Nplus', 'mass density of atomic nitrogen ion',
-                                15, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                15, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_N2D': ['rho_N2D', 'mass density of atomic nitrogen (2D state)',
-                              16, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                              16, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_N2P': ['rho_N2P', 'mass density of atomic nitrogen (2P state)',
-                              17, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                              17, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_N4S': ['rho_N4S', 'mass density of atomic nitrogen (4S state)',
-                              18, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                              18, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'r_N2': ['mmr_N2', 'mass mixing ratio of molecular nitrogen',
-                           19, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                           19, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'rho_NO': ['rho_NO', 'mass density of nitric oxide',
-                             20, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                             20, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_NOplus': ['rho_NOplus', 'mass density of nitric oxide ion',
-                                 21, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                 21, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_O2': ['rho_O2', 'mass density of molecular oxygen',
-                             22, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                             22, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_O1D': ['rho_O1D', 'mass density of atomic oxygen (1D state)',
-                              23, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                              23, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_O2plus': ['rho_O2plus', 'mass density of molecular oxygen ion',
-                                 24, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                 24, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_O2D': ['rho_O2D', 'mass density of atomic oxygen (2D state)',
-                              25, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                              25, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'rho_Oplus2P': ['rho_Oplus2P', 'mass density of atomic oxygen ion (2P state)',
-                                  26, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                  26, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_O3P': ['rho_O3P', 'mass density of atomic oxygen (3P state)',
-                              27, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                              27, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'rho_Oplus4SP': ['rho_Oplus4S4P', 'mass density of atomic oxygen ion (4S or 4P state)',
-                                   28, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                                   28, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'L_Rad': ['Q_cool', 'radiative cooling rate',
-                            29, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                            29, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'rho': ['rho_n', 'neutral mass density',
-                          30, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                          30, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'T_n': ['T_n', 'neutral temperature',
-                          31, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K'],
+                          31, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K'],
                   'vi_east': ['v_ieast', 'zonal ion wind velocity (east)',
-                              32, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                              32, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'vi_north': ['v_inorth', 'meridional ion wind velocity (north)',
-                               33, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                               33, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'vi_up': ['v_iup', 'vertical ion wind velocity (up)',
-                            34, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                            34, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'vn_east': ['v_neast', 'zonal neutral wind velocity (east)',
-                              35, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                              35, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'vn_north': ['v_nnorth', 'meridional neutral wind velocity (north)',
-                               36, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                               36, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'vn_up': ['v_nup', 'vertical neutral wind velocity (up)',
-                            37, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                            37, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'v_N2_up': ['v_N2up', 'vertical velocity of molecular nitrogen (up)',
-                              38, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                              38, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'v_N4S_up': ['v_Nstate4Sup', 'vertical velocity of atomic nitrogen (4S state) (up)',
-                               39, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                               39, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'v_N_up': ['v_Nup', 'vertical velocity of atomic nitrogen (up)',
-                             40, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                             40, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'v_O2_up': ['v_O2up', 'vertical velocity of molecular oxygen (up)',
-                              41, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                              41, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'v_O3P_up': ['v_Ostate3Pup', 'vertical velocity of atomic atomic (3P state) (up)',
-                               42, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                               42, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'v_He_up': ['v_Heup', 'vertical velocity of helium (up)',
-                              43, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s'],
+                              43, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'N_e': ['N_e', 'electron number density',
-                          44, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                          44, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'ElectronAverageEnergy': ['E_eavg', 'average electron energy',
-                                            45, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'J'],
+                                            45, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'J'],
                   'T_e': ['T_e', 'electron temperature',
-                          46, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K'],
+                          46, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K'],
                   'T_i': ['T_i', 'ion temperature',
-                          47, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K'],
+                          47, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K'],
                   'SolarZenithAngle': ['SZA', 'solar zenith angle',
-                                       48, 'SPH', 'sph',  ['time', 'lon', 'lat'], 'radians'],
+                                       48, 'GDZ', 'sph',  ['time', 'lon', 'lat'], 'radians'],
                   'rho_CO2': ['rho_CO2', 'mass density of carbon dioxide',
-                              49, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'kg/m**3'],
+                              49, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'kg/m**3'],
                   'DivJu FL': ['DivI_nfl', 'divergence of the neutral wind-driven currents integrated along the field-line',
-                               50, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                               50, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'DivJuAlt': ['DivI_nalt', 'divergence of the neutral wind-driven currents integrated along the altitude',
-                               51, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                               51, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'ElectronEnergyFlux': ['Phi_eE', 'electron energy flux',
-                                         52, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'J/m**2'],
+                                         52, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'J/m**2'],
                   'Field Line Length': ['s_Bfield', 'magnetic field arc line length',
-                                        53, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm'],
+                                        53, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm'],
                   'sigma_P': ['sigma_P', 'Pedersen conductivity',
-                              54, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'S/m'],
+                              54, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'S/m'],
                   'V': ['V', 'electric potential',
-                        57, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'V'],
+                        57, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'V'],
                   'sigma_H': ['sigma_H', 'Hall conductivity',
-                              58, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'S/m'],
+                              58, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'S/m'],
                   'I_R2': ['j_R2', 'region 2 electric current density',
-                           59, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'A/m**2'],
+                           59, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'A/m**2'],
                   'I_R1': ['j_R1', 'region 1 electric current density',
-                           60, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'A/m**2'],
+                           60, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'A/m**2'],
                   'Ed1': ['E_perpeast', 'dynamo electric field in the perpendicular to the magnetic field direction that is "eastward"',
-                          61, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                          61, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'Ed2': ['E_perpnorth', 'dynamo electric field in the perpendicular to the magnetic field direction that is "northward"',
-                          62, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                          62, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'SolarLocalTime': ['SLT', 'solar local time',
-                                     63, 'SPH', 'sph',  ['time', 'lon', 'lat'], 'hr'],
+                                     63, 'GDZ', 'sph',  ['time', 'lon', 'lat'], 'hr'],
                   'E_up': ['E_up', 'vertical electric field velocity (up)',
-                           64, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'V/m'],
+                           64, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'V/m'],
                   'E_east': ['E_east', 'zonal electric field (east)',
-                             65, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'V/m'],
+                             65, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'V/m'],
                   'E_north': ['E_north', 'meridional electric field (north)',
-                              66, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'V/m'],
+                              66, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'V/m'],
                   'E_mag': ['E_mag', 'magnitude of electric field',
-                            67, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'V/m'],
+                            67, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'V/m'],
                   'B_up': ['B_up', 'vertical magnetic field velocity (up)',
-                           68, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'nT'],
+                           68, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'nT'],
                   'B_east': ['B_east', 'zonal magnetic field (east)',
-                             69, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'nT'],
+                             69, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'nT'],
                   'B_north': ['B_north', 'meridional magnetic field (north)',
-                              70, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'nT'],
+                              70, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'nT'],
                   'B_mag': ['B_mag', 'magnitude of magnetic field',
-                            71, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'nT'],
+                            71, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'nT'],
                   'MagLat': ['lat_B', 'magnetic latitude',
-                             72, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'deg'],
+                             72, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'deg'],
                   'MagLon': ['lon_B', 'magnetic longitude',
-                             73, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'deg'],
+                             73, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'deg'],
                   'g': ['g', 'gravitational acceleration',
-                        74, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'm/s**2'],
+                        74, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'm/s**2'],
                   'GradP_east': ['GradP_east', 'zonal component of gradient of sum of ion and electron pressures (east)',
-                                 75, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'Pa/m'],
+                                 75, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'Pa/m'],
                   'GradP_north': ['GradP_north', 'meridional component of gradient of sum of ion and electron pressures (north)',
-                                  76, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'Pa/m'],
+                                  76, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'Pa/m'],
                   'GradP_up': ['GradP_up', 'vertical component of gradient of sum of ion and electron pressures (up)',
-                               77, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'Pa/m'],
+                               77, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'Pa/m'],
                   'nu_in': ['nu_ion', 'ion neutral collision frequency',
-                            78, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], '1/s'],
+                            78, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], '1/s'],
                   'ChemicalHeatingRate': ['Q_chem', 'chemical heating rate',
-                                          79, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                                          79, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'TotalAbsoluteEUV': ['Q_EUVabs', 'total absolute EUV',
-                                       80, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K per timestep'],
+                                       80, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K per timestep'],
                   'Q_Ocool': ['Q_Ocool', 'cooling rate of atomic oxygen',
-                              81, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K per timestep'],
+                              81, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K per timestep'],
                   'Q_Joule': ['Q_Joule', 'joule heating',
-                              82, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K per timestep'],
+                              82, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K per timestep'],
                   'Q_Auroral': ['Q_auroral', 'auroral heating',
-                                83, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K per timestep'],
+                                83, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K per timestep'],
                   'Q_PhotoE': ['Q_photoe', 'heating due to the photoelectric effect',
-                               84, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K per timestep'],
+                               84, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K per timestep'],
                   'k_eddy': ['k_ed', 'eddy conduction',
-                             85, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                             85, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'k_adiabaticeddy': ['k_edadiab', 'adiabatic eddy conduction',
-                                      86, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                                      86, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'Q_NOcool': ['Q_NOcool', 'cooling rate of nitric oxide',
-                               87, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], 'K per timestep'],
+                               87, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], 'K per timestep'],
                   'k_molecular': ['k_mol', 'molecular conduction',
-                                  88, 'SPH', 'sph',  ['time', 'lon', 'lat', 'radius'], ''],
+                                  88, 'GDZ', 'sph',  ['time', 'lon', 'lat', 'height'], ''],
                   'NmF2': ['NmF2', 'Maximum electron number density in F2 layer',
-                           89, 'SPH', 'sph',  ['time', 'lon', 'lat'], ''],
+                           89, 'GDZ', 'sph',  ['time', 'lon', 'lat'], ''],
                   'hmF2': ['hmF2', 'Height of maximum electron number density in F2 layer',
-                           90, 'SPH', 'sph',  ['time', 'lon', 'lat'], 'km'],
+                           90, 'GDZ', 'sph',  ['time', 'lon', 'lat'], 'km'],
                   'TEC': ['TEC', 'vertical total electron content (height integrated from bottom to top boundary)',
-                          91, 'SPH', 'sph',  ['time', 'lon', 'lat'], '10**16/m**2'],
+                          91, 'GDZ', 'sph',  ['time', 'lon', 'lat'], '10**16/m**2'],
                   'Phi_Joule': ['Phi_Joule', 'joule heat flux',
-                                92, 'SPH', 'sph',  ['time', 'lon', 'lat'], 'W/m**2'],
+                                92, 'GDZ', 'sph',  ['time', 'lon', 'lat'], 'W/m**2'],
                   'Phi_Q': ['Phi_heat', 'heat flux',
-                            93, 'SPH', 'sph',  ['time', 'lon', 'lat'], 'W/m**2'],
+                            93, 'GDZ', 'sph',  ['time', 'lon', 'lat'], 'W/m**2'],
                   'Phi_EUV': ['Phi_EUV', 'EUV heat flux',
-                              94, 'SPH', 'sph',  ['time', 'lon', 'lat'], 'W/m**2'],
+                              94, 'GDZ', 'sph',  ['time', 'lon', 'lat'], 'W/m**2'],
                   'Phi_NOCooling': ['Phi_NOCooling', 'NO cooling flux',
-                                    95, 'SPH', 'sph',  ['time', 'lon', 'lat'], 'W/m**2']
+                                    95, 'GDZ', 'sph',  ['time', 'lon', 'lat'], 'W/m**2']
                   }
 
 
@@ -329,7 +329,7 @@ def MODEL():
             # establish time attributes first for file searching, preferring 3D
             for name in self.patterns:
                 if '3DLST' in name or '3DALL' in name:
-                    cdf_file = name  # need to get reference radius correct
+                    cdf_file = name  # need to get reference height correct
             cdf_data = Dataset(file_dir+cdf_file+'.nc', 'r')
             string_date = cdf_data.filedate
             self.filedate = datetime.strptime(string_date+' 00:00:00',
@@ -350,6 +350,7 @@ def MODEL():
                 self.dt = 0
 
             if filetime and not fulltime:
+                cdf_data.close()
                 return  # return times as is to prevent infinite recursion
 
             # if variables are given as integers, convert to standard names
@@ -381,6 +382,7 @@ def MODEL():
                         print('No later file available.')
                     filecheck = False
                     if filetime:
+                        cdf_data.close()
                         return
                 else:
                     # +1 for adding an end time
@@ -392,6 +394,7 @@ def MODEL():
                             print('No later file available.')
                         filecheck = False
                         if filetime:
+                            cdf_data.close()
                             return
                     else:
                         time_test = abs(kamodo_test.filetimes[0]-self.filetimes[1])
@@ -405,6 +408,7 @@ def MODEL():
 
                             # time only version if returning time for searching
                             if filetime:
+                                cdf_data.close()
                                 return  # return object with additional time
 
                             # get kamodo object with same requested variables
@@ -421,12 +425,13 @@ def MODEL():
                                 print(f'No later file found within {self.dt:.1f}s.')
                             filecheck = False
                             if filetime:
+                                cdf_data.close()
                                 return
 
             # store coordinates for reference, time is NOT the same for all
             self._lat = array(cdf_data.variables['lat'])  # -90 to 90
-            self._lon = array(cdf_data.variables['lon'])  # 0 to 360
-            self._radius = array(cdf_data.variables['radius'])
+            self._lon = array(cdf_data.variables['lon'])  # -180 to 180
+            self._height = array(cdf_data.variables['height'])
             cdf_data.close()
 
             # store variables
@@ -456,7 +461,7 @@ def MODEL():
                 setattr(self, '_lat'+str(i), array(cdf_data.variables['lat']))
                 setattr(self, '_lon'+str(i), array(cdf_data.variables['lon']))
                 if '2D' not in self.patterns[i]:
-                    setattr(self, '_radius'+str(i), array(cdf_data.variables['radius']))
+                    setattr(self, '_height'+str(i), array(cdf_data.variables['height']))
 
                 # check var_list for variables not possible in this file set
                 if len(variables_requested) > 0 and variables_requested != 'all':
@@ -610,14 +615,14 @@ def MODEL():
                     time = getattr(self, '_time'+str(i))
                     lat = getattr(self, '_lat'+str(i))
                     lon = getattr(self, '_lon'+str(i))
-                    radius = getattr(self, '_radius'+str(i))
+                    height = getattr(self, '_height'+str(i))
                     break
 
             # define and register the interpolators
             xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                 'radius': 'R_E'}
+                                 'height': 'km'}
             self = regdef_4D_interpolators(self, units, variable, time, lon,
-                                           lat, radius, varname,
+                                           lat, height, varname,
                                            xvec_dependencies, gridded_int)
             return
     return MODEL

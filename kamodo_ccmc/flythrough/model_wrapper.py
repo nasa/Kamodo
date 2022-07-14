@@ -48,7 +48,7 @@ import numpy as np
 
 
 model_dict = {0: 'CTIPe', 1: 'GITM', 2: 'IRI', 3: 'SWMF_IE', 4: 'TIEGCM',
-              5: 'OpenGGCM_GM', 6: 'AmGEO'}
+              5: 'OpenGGCM_GM', 6: 'AMGeO'}
 
 
 def convert_model_string(model_int):
@@ -110,7 +110,7 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.openggcm_gm_4Dcdf_xarray as module
         return module
 
-    elif model == 'AmGEO':
+    elif model == 'AMGeO':
         import kamodo_ccmc.readers.amgeo_4D as module
         return module
 
@@ -178,8 +178,11 @@ def FileSearch(model, file_dir, call_type='normal'):
                                 f.split('3df_')[1][:13] for f in files])
         return file_patterns
 
-    elif model == 'AmGEO':
-        return file_dir+'*N.h5'
+    elif model == 'AMGeO':
+        files = sorted(glob(file_dir+'*.h5'))
+        file_patterns = unique([file_dir + basename(f).split('.h5')[0][:-1]
+                                for f in files])
+        return file_patterns
 
     else:
         raise AttributeError('Model not yet added.')

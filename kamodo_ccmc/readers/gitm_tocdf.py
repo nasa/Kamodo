@@ -442,8 +442,6 @@ def _read(varlist, attrs, newfile=True):
                 coords['lat'] = np.unique(np.array(temp))*180.0/np.pi
             elif v == 'Altitude':
                 coords['height'] = np.unique(np.array(temp))/1000.  # km, need for height integration
-                coords['radius'] = (coords['height'] +
-                                    R_earth.value/1000.)/(R_earth.value/1000.)  # in R_E
             else:  # put in height, lat, lon order, noting fortran ordering
                 variables[v] = np.transpose(np.array(temp).reshape(
                     (attrs['nLon'], attrs['nLat'], attrs['nAlt']),
@@ -672,6 +670,13 @@ def GitmBin(filename, flag_2D, verbose=False):
 
 
 def gitm_toCDF(filename, coords, variables, var_dict, attrs):
+    from numpy import where, zeros
+    
+    #perform longitude shift
+    lon = coords['lon']  # 0 to 360
+    lon_le180 = where(lon<=180)[0]  
+    lon_ge180 = where(lon>=180)[0]  #repeat 180 for -180 values         
+    coords['lon'] = lon - 180.
 
     # start new wrapped output object
     cdf_filename = filename+'.nc'
@@ -682,15 +687,13 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
     data_out.endian = attrs['endian']
     data_out.filedate = attrs['filedate']
     for dim in coords.keys():  # register dimensions
-        if dim == 'height':
-            continue  # skip height
         if coords[dim].size == 1 and dim != 'time':
-            continue  # skip radius for 2D variables
+            continue  # skip height for 2D variables
         new_dim = data_out.createDimension(dim, coords[dim].size)  # create dimension
         new_var = data_out.createVariable(dim, np.float64, dim)  # create variable
         new_var[:] = coords[dim]  # store data for dimension in variable
-        if dim == 'radius':
-            units = 'R_E'
+        if dim == 'height':
+            units = 'km'
         if dim == 'time':
             units = 'hr'
         else:
@@ -702,18 +705,24 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
               'phi_qJoule', 'phi_q', 'phi_qEUV', 'phi_qNOCooling']
     for variable_name in variables.keys():
         new_name = gitm_varnames[var_dict[variable_name][0]][0]
-        if 1 in variables[variable_name].shape[1:]:  # remove radius dimension for 2D data
+        if 1 in variables[variable_name].shape[1:]:  # remove height dimension for 2D data
             variables[variable_name] = np.squeeze(variables[variable_name], axis=(1))
         if len(variables[variable_name].shape) == 4:
             new_var = data_out.createVariable(new_name, np.float64,
-                                              ('time', 'lon', 'lat', 'radius'))
+                                              ('time', 'lon', 'lat', 'height'))
+            tmp_arr = zeros(list(variables[variable_name].shape))
+            tmp_arr[:, :, :, :len(lon_ge180)] = variables[variable_name][:, :, :, lon_ge180]
+            tmp_arr[:, :, :, len(lon_ge180):] = variables[variable_name][:, :, :, lon_le180]  
             # (t,h,lat,lon) -> (t,lon,lat,h)
-            new_data = np.transpose(variables[variable_name], (0, 3, 2, 1))
+            new_data = np.transpose(tmp_arr, (0, 3, 2, 1))
         elif len(variables[variable_name].shape) == 3:
             new_var = data_out.createVariable(new_name, np.float64,
                                               ('time', 'lon', 'lat'))
+            tmp_arr = zeros(list(variables[variable_name].shape))
+            tmp_arr[:, :, :len(lon_ge180)] = variables[variable_name][:, :, lon_ge180]
+            tmp_arr[:, :, len(lon_ge180):] = variables[variable_name][:, :, lon_le180] 
             # (t,lat,lon) -> (t,lon,lat)
-            new_data = np.transpose(variables[variable_name], (0, 2, 1))
+            new_data = np.transpose(tmp_arr, (0, 2, 1))
         new_var[:] = new_data  # store data in variable
         new_var.datascale, new_var.units = gitm_varnames[var_dict[variable_name][0]][1:]
 

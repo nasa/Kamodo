@@ -5,31 +5,31 @@ from datetime import datetime, timedelta, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {'Ne': ['N_e', 'electron number density',
-                         0, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'Te': ['T_e', 'electron temperature',
-                         1, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], 'K'],
+                         1, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
                   'Ti': ['T_i', 'ion temperature',
-                         2, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], 'K'],
+                         2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
                   'Tn': ['T_n', 'neutral temperature',
-                         3, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], 'K'],
+                         3, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
                   'O+': ['N_Oplus', 'number density of atomic oxygen ion',
-                         4, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                         4, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'H+': ['N_Hplus', 'number density of atomic hydrogen ion',
-                         5, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                         5, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'He+': ['N_Heplus', 'number density of atomic helium ion',
-                          6, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                          6, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'O2+': ['N_O2plus', 'number density of molecular oxygen ion',
-                          7, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                          7, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'NO+': ['N_NOplus', 'number density of molecular nitric oxide',
-                          8, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                          8, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'N+': ['N_Nplus', 'number density of atomic nitrogen ion',
-                         9, 'SPH', 'sph', ['time', 'lon', 'lat', 'radius'], '1/m**3'],
+                         9, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
                   'TEC': ['TEC', 'vertical total electron content (height integrated from bottom to top boundary)',
-                          10, 'SPH', 'sph', ['time', 'lon', 'lat'], '10**16/m**2'],
+                          10, 'GDZ', 'sph', ['time', 'lon', 'lat'], '10**16/m**2'],
                   'NmF2': ['NmF2', 'maximum electron number density in F2 layer',
-                           11, 'SPH', 'sph', ['time', 'lon', 'lat'], '1/m**3'],
+                           11, 'GDZ', 'sph', ['time', 'lon', 'lat'], '1/m**3'],
                   'HmF2': ['HmF2', 'height of maximum electron number density in F2 layer',
-                           12, 'SPH', 'sph', ['time', 'lon', 'lat'], 'km']
+                           12, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'km']
                   }
 
 
@@ -137,6 +137,7 @@ def MODEL():
             self.dt = diff(time).max()*3600.  # convert time resolution to seconds
 
             if filetime and not fulltime:
+                iri3D.close()
                 return  # return times as is to prevent recursion
 
             # if variables are given as integers, convert to standard names
@@ -163,6 +164,7 @@ def MODEL():
                         print('No later file available.')
                     filecheck = False
                     if filetime:
+                        iri3D.close()
                         return
                 else:
                     # +1 for adding an end time
@@ -177,6 +179,7 @@ def MODEL():
 
                         # time only version if returning time for searching
                         if filetime:
+                            iri3D.close()
                             return  # return object with additional time
 
                         # get kamodo object with same requested variables
@@ -193,6 +196,7 @@ def MODEL():
                             print(f'No later file found within {diff(time).max()*3600.:.1f}s.')
                         filecheck = False
                         if filetime:
+                            iri3D.close()
                             return
 
             # perform initial check on variables_requested list
@@ -230,6 +234,8 @@ def MODEL():
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in
                                      gvar_list_2d+gvar_list_3d}
+                    iri3D.close()
+                    iri2D.close()
                     return
 
             # store data for each variable desired
@@ -260,11 +266,12 @@ def MODEL():
                 self._time = time
 
             # collect data and make dimensional grid from 3D file
-            self._lon = array(iri3D.variables['lon'])
+            lon = array(iri3D.variables['lon'])  # 0 to 360
+            lon_le180 = where(lon<=180)[0]  
+            lon_ge180 = where(lon>=180)[0]  #repeat 180 for -180 values 
+            self._lon = lon - 180.
             self._lat = array(iri3D.variables['lat'])
-            # convert height in km to radius in R_E to conform to SPH coord sys
-            self._radius = (array(iri3D.variables['ht']) +
-                            R_earth.value/1000.)/(R_earth.value/1000.)
+            self._height = array(iri3D.variables['ht'])
             iri3D.close()   # close netCDF4 files
             iri2D.close()
 
@@ -283,7 +290,7 @@ def MODEL():
             for varname in varname_list:
                 if len(variables[varname]['data'].shape) == 3:
                     if filecheck:  # if neighbor found
-                        # append data for last time stamp, transpose
+                        # append data for last time stamp
                         data_shape = list(variables[varname]['data'].shape)
                         data_shape[0] += 1  # add space for time
                         new_data = zeros(data_shape)
@@ -291,11 +298,17 @@ def MODEL():
                         new_data[:-1, :, :] = variables[varname]['data']
                         # add in data for additional time
                         new_data[-1, :, :] = short_data[varname]['data'][0, :, :]
-                        # (t, lat, lon) -> (t, lon, lat)
-                        variable = transpose(new_data, (0, 2, 1))
-                    else:
-                        # (t, lat, lon) -> (t, lon, lat)
-                        variable = transpose(variables[varname]['data'], (0, 2, 1))
+                        variables[varname]['data'] = new_data  # save 
+                        
+                    # shift longitude
+                    data_shape = list(variables[varname]['data'].shape)
+                    new_data = zeros(data_shape)
+                    new_data[:, :, :len(lon_ge180)] = \
+                        variables[varname]['data'][:, :, lon_ge180]
+                    new_data[:, :, len(lon_ge180)-1:] = \
+                        variables[varname]['data'][:, :, lon_le180] 
+                    # (t, lat, lon) -> (t, lon, lat)
+                    variable = transpose(new_data, (0, 2, 1))
                     self.variables[varname] = dict(units=variables[varname]['units'],
                                                    data=variable)
                     self.register_3D_variable(self.variables[varname]['units'],
@@ -311,11 +324,17 @@ def MODEL():
                         new_data[:-1, :, :, :] = variables[varname]['data']
                         # add in data for additional time
                         new_data[-1, :, :, :] = short_data[varname]['data'][0, :, :, :]
-                        # (t, h, lat, lon) -> (t, lon, lat, h)
-                        variable = transpose(new_data, (0, 3, 2, 1))
-                    else:
-                        # (t, h, lat, lon) -> (t, lon, lat, h)
-                        variable = transpose(variables[varname]['data'], (0, 3, 2, 1))
+                        variables[varname]['data'] = new_data  # save
+                        
+                    # shift longitude
+                    data_shape = list(variables[varname]['data'].shape)
+                    new_data = zeros(data_shape)
+                    new_data[:, :, :, :len(lon_ge180)] = \
+                        variables[varname]['data'][:, :, :, lon_ge180]
+                    new_data[:, :, :, len(lon_ge180)-1:] = \
+                        variables[varname]['data'][:, :, :, lon_le180] 
+                    # (t, h, lat, lon) -> (t, lon, lat, h)
+                    variable = transpose(new_data, (0, 3, 2, 1))
                     self.variables[varname] = dict(units=variables[varname]['units'],
                                                    data=variable)
                     self.register_4D_variable(self.variables[varname]['units'],
@@ -345,9 +364,9 @@ def MODEL():
 
             # define and register the fast interpolator
             xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                 'radius': 'R_E'}
+                                 'height': 'km'}
             self = regdef_4D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, self._radius,
+                                           self._lon, self._lat, self._height,
                                            varname, xvec_dependencies,
                                            gridded_int)
             return

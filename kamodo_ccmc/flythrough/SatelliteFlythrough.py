@@ -209,7 +209,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     
     # give error if unknown output type given BEFORE running flythrough
     output_type = output_name.split('.')[-1]
-    if output_type not in ['nc','csv','txt']:
+    if output_type not in ['nc','csv','txt','']:
         raise AttributeError('Output extension not recognized. Must be one of'+\
                             ' nc, csv, or txt.')    
 
