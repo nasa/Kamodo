@@ -1750,7 +1750,7 @@ def custom2Dsat(datad, useLT=False, vbose=1):
         fig_dict["layout"]["xaxis"] = {'dtick': 3.0, 'range': [0.0, 24.0], 'tick0': 0.0,
                                        'title': {'text': '<b>LT</b> [hrs]'}}
     else:
-        fig_dict["layout"]["xaxis"] = {'dtick': 30.0, 'range': [0.0, 360.0], 'tick0': 0.0,
+        fig_dict["layout"]["xaxis"] = {'dtick': 30.0, 'range': [-180.0, 180.0], 'tick0': 0.0,
                                        'title': {'text': '<b>Lon</b> [deg]'}}
     fig_dict["layout"]["yaxis"] = {'dtick': 30.0, 'range': [-90.0, 90.0], 'tick0': 0.0,
                                    'title': {'text': '<b>Lat</b> [deg]'}}
