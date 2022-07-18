@@ -672,12 +672,17 @@ def GitmBin(filename, flag_2D, verbose=False):
 def gitm_toCDF(filename, coords, variables, var_dict, attrs):
     from numpy import where, zeros
     
-    #perform longitude shift
-    lon = coords['lon']  # 0 to 360
-    lon_le180 = where(lon<=180)[0]  
-    lon_ge180 = where(lon>=180)[0]  #repeat 180 for -180 values         
-    coords['lon'] = lon - 180.
-
+    # perform longitude shift, careful of extra values on ends
+    lon_le180 = np.where((coords['lon']<=180.) & (coords['lon']>=0.))[0]
+    lon_ge180 = np.where((coords['lon']>=180.) & (coords['lon']<=360.))[0]
+    lon_ge180 = np.insert(lon_ge180, 0, lon_le180[-1])
+    lon_le180 = np.append(lon_le180, lon_ge180[1])
+    lon_shape = len(lon_ge180)+len(lon_le180)
+    new_lon = np.zeros(lon_shape)
+    new_lon[:len(lon_ge180)] = coords['lon'][lon_ge180]-360.
+    new_lon[len(lon_ge180):] = coords['lon'][lon_le180]  # -182 to 182 deg now
+    coords['lon'] = new_lon
+    
     # start new wrapped output object
     cdf_filename = filename+'.nc'
     data_out = Dataset(cdf_filename, 'w', format='NETCDF4')
@@ -710,7 +715,9 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
         if len(variables[variable_name].shape) == 4:
             new_var = data_out.createVariable(new_name, np.float64,
                                               ('time', 'lon', 'lat', 'height'))
-            tmp_arr = zeros(list(variables[variable_name].shape))
+            var_shape = list(variables[variable_name].shape)
+            var_shape[-1] = lon_shape
+            tmp_arr = zeros(var_shape)
             tmp_arr[:, :, :, :len(lon_ge180)] = variables[variable_name][:, :, :, lon_ge180]
             tmp_arr[:, :, :, len(lon_ge180):] = variables[variable_name][:, :, :, lon_le180]  
             # (t,h,lat,lon) -> (t,lon,lat,h)
@@ -718,7 +725,9 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
         elif len(variables[variable_name].shape) == 3:
             new_var = data_out.createVariable(new_name, np.float64,
                                               ('time', 'lon', 'lat'))
-            tmp_arr = zeros(list(variables[variable_name].shape))
+            var_shape = list(variables[variable_name].shape)
+            var_shape[-1] = lon_shape
+            tmp_arr = zeros(var_shape)
             tmp_arr[:, :, :len(lon_ge180)] = variables[variable_name][:, :, lon_ge180]
             tmp_arr[:, :, len(lon_ge180):] = variables[variable_name][:, :, lon_le180] 
             # (t,lat,lon) -> (t,lon,lat)
