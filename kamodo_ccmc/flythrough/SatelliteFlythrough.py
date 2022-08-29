@@ -126,16 +126,17 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
         for more info on the coordinate systems.
     '''
     
-    #determine basic parameters
-    orbit_seconds = int(90.*60./float(n))  #determine number of samples per 90min orbit
-    n_orbits = (stop_time-start_time)/float(orbit_seconds*n) #orbits of 90 min each
+    # determine basic parameters
+    orbit_seconds = int(90.*60./float(n))  # determine number of samples per 90min orbit
+    n_orbits = (stop_time-start_time)/float(orbit_seconds*n)  # orbits of 90 min each
     h_scale, h_offset = (max_height-min_height)/2., np.mean([max_height,min_height])
     lat_scale, lat_offset = (max_lat-min_lat)/2., np.mean([max_lat,min_lat])
     time_left = (stop_time-start_time)/float(n)-int(n_orbits)*orbit_seconds
     
-    #create orbital tracks 
+    # create orbital tracks 
     pi_arr = np.linspace(0.,2.*np.pi,orbit_seconds)  
-    lat, height = np.tile(np.cos(pi_arr), int(n_orbits)), np.tile(np.sin(pi_arr), int(n_orbits))
+    lat, height = np.tile(np.cos(pi_arr), int(n_orbits)), np.tile(np.sin(pi_arr), 
+                                                                  int(n_orbits))
     if time_left>0:
         lat = np.append(lat, np.cos(pi_arr[0:int(time_left)]))  #add partial last orbit
         height = np.append(height, np.sin(pi_arr[0:int(time_left)]))
@@ -152,6 +153,123 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
     print('(c1,c2,c3) = (lon, lat, alt) in (deg,deg,km) in the GDZ, sph coordinate system.'+\
           '\nsat_time contains the utc timestamps.')    
     return sample_dict, 'GDZ-sph'
+    
+
+def TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence):
+    '''Use sgp4 to calculate a satellite trajectory using TLEs.
+    Parameters:
+        tle_file: The file name, including complete file path, of a file
+            containing two-line elements. It is assumed that the file has no
+            header.
+        start_utcts: The UTC timestamp corresponding to the desired start time.
+            Should be an integer.
+        stop_utcts: The UTC timestamp corresponding to the desired stop time.
+            Should be an integer.
+        time_cadenca: The number of seconds desired between trajectory
+            positions. Should be an integer.
+    
+    If the time cadence does not evenly divide into the range of timestamps
+        given, then the ending time value will be extended so that the entire
+        requested range will be covered.
+    
+    Returns a dictionary with keys: sat_time, c1, c2, and c3.
+        sat_time is an array in UTC seconds since 1970-01-01.
+        (c1,c2,c3) = (x, y, z) in (km,km,km) in the 'TEME', 'car' 
+        coordinate system in AstroPy. See kamodo_ccmc.flythrough.utils.ConvertCoord 
+        for more info on the coordinate systems.
+    BEWARE THE UNITS!!!
+    '''
+    from sgp4.api import days2mdhms, Satrec
+    import pandas as pd
+    from datetime import datetime, timezone
+    from astropy.constants import R_earth
+    
+    # Create an array of timestamps with the requested spacing.
+    n = int((stop_utcts-start_utcts)/time_cadence)
+    if (start_utcts+time_cadence*n < stop_utcts):
+        n += 1
+        stop_utcts = start_utcts+time_cadence*n
+    UTCtimestamps = np.linspace(start_utcts, stop_utcts, n+1)
+    print(UTCtimestamps)
+    
+    # Convert timestamp array to decimal Julian dates using pandas.
+    @np.vectorize
+    def UTCtstoJulianDate(UTC_ts):
+        '''Converts a UTC timestamp to a Julian date using pandas.
+        Input: UTC timestamp integer value.
+        Output: Julian date calculated by pandas.
+        '''
+        
+        dt = datetime.utcfromtimestamp(UTC_ts).replace(tzinfo=timezone.utc)
+        pd_dt = pd.to_datetime(dt)
+        return pd_dt.to_julian_date()
+    julian_dates = UTCtstoJulianDate(UTCtimestamps)
+    
+    # Read in TLEs
+    tle_data = {'TLE_line1': [], 'TLE_line2': [], 
+                'Element Set Epoch (UTC)': []}
+    with open(tle_file) as file:
+        for line in file:
+            tle_data['TLE_line1'].append(line.strip())
+            tle_data['Element Set Epoch (UTC)'].append(line[18:32].strip())
+            line = next(file)
+            tle_data['TLE_line2'].append(line.strip())
+    
+    # Calculate UTC timestamps for TLEs.
+    tmp = []
+    for item in tle_data['Element Set Epoch (UTC)']:
+        yr = int(item[0:2])
+        if yr >= 57:
+            year = 1900+yr
+        else:
+            year = 2000+yr
+        month, day, hr, minute, sec = days2mdhms(year, float(item[2:]))
+        ts = datetime(year, month, day, hr, minute, round(sec), 
+                      tzinfo = timezone.utc).timestamp()
+        tmp.append(ts)
+    tle_data['UTC_timestamps'] = np.array(tmp, dtype=int)
+    
+    # Assign timestamps to TLE indices
+    zeros = np.zeros(UTCtimestamps.shape, dtype=float)
+    results = {'sat_time': np.zeros(UTCtimestamps.shape, dtype=int), 
+               'c1': zeros, 'c2': zeros, 'c3': zeros}
+    for i in range(len(tle_data['UTC_timestamps'])-1):
+        # Determine relevant timestamps in user array
+        idx = np.where((UTCtimestamps >= tle_data['UTC_timestamps'][i])
+                 & (UTCtimestamps < tle_data['UTC_timestamps'][i+1]))[0]
+        if len(idx) < 1:
+            continue
+        
+        # Initialize TLE information
+        satellite = Satrec.twoline2rv(tle_data['TLE_line1'][i],
+                                      tle_data['TLE_line2'][i])
+        
+        # Calculate position vector for each relevant timestamp
+        @np.vectorize
+        def calc_position(jd, satellite):
+            '''Use sgp4 to calculate the position vector for a given julian
+                date and initiliazed satellite instance.
+            Returns r, the position in km in the idiosyncratic True Equator Mean 
+            Equinox (TEME) coordinate frame.'''
+            e, r, v = satellite.sgp4(jd, 0.0)
+            return r  
+        x, y, z = calc_position(julian_dates[idx], satellite)
+        
+        # Convert to earth radii and store
+        R_earth_km = R_earth.value/1000.
+        results['sat_time'][idx] = UTCtimestamps[idx]
+        results['c1'][idx] = x/R_earth_km
+        results['c2'][idx] = y/R_earth_km
+        results['c3'][idx] = z/R_earth_km
+    
+    # Remove empty values and return
+    idx = np.where(results['sat_time'] != 0)[0]
+    results['sat_time'] = UTCtimestamps[idx]
+    results['c1'] = results['c1'][idx]
+    results['c2'] = results['c2'][idx]
+    results['c3'] = results['c3'][idx]
+
+    return results, 'teme-car'
 
 
 #want to enable call of this from C++ for flexibility, so return only one value
@@ -475,6 +593,8 @@ def MyFlight(traj_file, model, file_dir, variable_list,
                               high_res=high_res, verbose=verbose)      
         
     return results
+
+#def TLE_Flight()
 
 
 #allow calls from the command line
