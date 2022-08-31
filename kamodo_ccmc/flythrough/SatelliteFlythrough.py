@@ -162,18 +162,18 @@ def SampleTrajectory(start_time, stop_time, max_lat=65., min_lat=-65.,
 
 def TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence,
                   method='forward', verbose=False):
-    '''Use sgp4 to calculate a satellite trajectory using TLEs.
+    '''Use sgp4 to calculate a satellite trajectory given TLEs.
     Parameters:
         tle_file: The file name, including complete file path, of a file
             containing two-line elements. It is assumed that the file has no
-            header.
+            header and no other content.
         start_utcts: The UTC timestamp corresponding to the desired start time.
             Should be an integer.
         stop_utcts: The UTC timestamp corresponding to the desired stop time.
             Should be an integer.
         time_cadence: The number of seconds desired between trajectory
             positions. Should be an integer.
-        method: 'forward' or 'closest'. This keyword changes the propagation
+        method: 'forward' or 'nearest'. This keyword changes the propagation
             method for timestamps between TLEs, not for timestamps before the
             first TLE or after the last TLE. The 'forward' (default) method
             uses the previous TLE to propagate forward for all timestamps
@@ -187,7 +187,7 @@ def TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence,
 
     Returns a dictionary with keys: sat_time, c1, c2, and c3.
         sat_time is an array in UTC seconds since 1970-01-01.
-        (c1,c2,c3) = (x, y, z) in (km,km,km) in the 'TEME', 'car'
+        (c1,c2,c3) = (x, y, z) in (km,km,km) in the 'teme', 'car'
         coordinate system in AstroPy. See kamodo_ccmc.flythrough.utils.ConvertCoord
         for more info on the coordinate systems.
     '''
@@ -253,7 +253,7 @@ def TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence,
         for key in tle_data.keys():
             print(key, tle_data[key])
 
-    # If nearest propagation method chosen, prepare timestamp assignment
+    # If nearest propagation method chosen, prepare timestamp assignments
     if method == 'nearest':
         ts_nearest = np.zeros((len(tle_data['UTC_timestamps']),
                                len(UTCtimestamps)), dtype=int)
@@ -278,7 +278,7 @@ def TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence,
                     if verbose:
                         print('Skipped TLE index:', i-1)
                     continue
-            elif i < len(tle_data['UTC_timestamps']):
+            elif i < len(tle_data['UTC_timestamps']):  # propagate forwards
                 idx = np.where((UTCtimestamps >= tle_data['UTC_timestamps'][i-1]) &
                                (UTCtimestamps < tle_data['UTC_timestamps'][i]))[0]
                 tle_idx = i-1
@@ -614,36 +614,49 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list, coord_type=
 
 def TLEFlight(tle_file, start, stop, time_cadence, model, file_dir,
               variable_list, output_name='', plot_coord='GEO', high_res=20.,
-              verbose=False):
+              method='forward', verbose=False):
     '''
-    Retrieves the TLEs from the given file, generates a trajectory from the
-    TLEs, and then flies that trajectory through the model data requested.
-
-    tle_file: name of the file containing the TLEs, including the file path.
-        (See space-track.org for TLE information.)
-    start: utc timestamp for start of desired time interval
-    stop: utc timestamp for end of desired time interval
-    time_cadence: The number of seconds desired between trajectory positions.
-    model: 'CTIPe','IRI', ...
-    file_dir: complete path to where model data files are stored.
-    variable_list: List of standardized variable names. Corresponding integers
-        are allowed. See model variable output for details.
-    coord_type: Pick from GEO, GSM, GSE, or SM for the satellite trajectory.
-    high_res: the accuracy of the conversion from radius or altitude to pressure
-        level. Ignore if no conversion is needed for the variable(s) selected.
-        Default is 20.
-    output_name: complete path with filename (with the extension) for the file to
-        write the results to. Plotting filenames are determined by
-        output_name - extension + variable names + plot type (1D or 3D).
-        Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
-        separated data, or 'txt' for tab separated data files.
-    high_res: the accuracy of the conversion from radius or altitude to pressure
-        level. Ignore if no conversion is needed for the variable(s) selected.
-        Default is 20.
-    plot_coord: Any of the coordinate systems in SpacePy or AstroPy.
-        See the ConvertCoord function for more information on the choices of
-        string values.
-    verbose: Set to true to be overwhelmed with information.
+    Use sgp4 to calculate a satellite trajectory given TLEs, then fly the
+    trajectory through the chosen model data. If the time cadence does not
+    evenly divide into the range of timestamps given, then the ending time
+    value will be extended so that the entire requested range will be covered.
+    Parameters:
+        tle_file: The file name, including complete file path, of a file
+            containing two-line elements. It is assumed that the file has no
+            header and no other content.
+        start_utcts: The UTC timestamp corresponding to the desired start time.
+            Should be an integer.
+        stop_utcts: The UTC timestamp corresponding to the desired stop time.
+            Should be an integer.
+        time_cadence: The number of seconds desired between trajectory
+            positions. Should be an integer.
+        model: 'CTIPe','IRI', ...
+        file_dir: complete path to where model data files are stored.
+        variable_list: List of standardized variable names. Corresponding integers
+            are allowed. See model variable output for details.
+        coord_type: Pick from GEO, GSM, GSE, or SM for the satellite trajectory.
+        high_res: the accuracy of the conversion from radius or altitude to pressure
+            level. Ignore if no conversion is needed for the variable(s) selected.
+            Default is 20.
+        output_name: complete path with filename (with the extension) for the file to
+            write the results to. Plotting filenames are determined by
+            output_name - extension + variable names + plot type (1D or 3D).
+            Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
+            separated data, or 'txt' for tab separated data files.
+        high_res: the accuracy of the conversion from radius or altitude to pressure
+            level. Ignore if no conversion is needed for the variable(s) selected.
+            Default is 20.
+        plot_coord: Any of the coordinate systems in SpacePy or AstroPy.
+            See the ConvertCoord function for more information on the choices of
+            string values.
+        method: 'forward' or 'nearest'. This keyword changes the propagation
+            method for timestamps between TLEs, not for timestamps before the
+            first TLE or after the last TLE. The 'forward' (default) method
+            uses the previous TLE to propagate forward for all timestamps
+            between the selected TLE and the next one, while the 'nearest'
+            method finds the TLE nearest to the timestamp and propagates either
+            forward or backward for the timestamp.
+        verbose: Set to true to be overwhelmed with information.
 
     Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
         - utc_time is an array in UTC seconds since 1970-01-01 of the satellite
@@ -662,7 +675,7 @@ def TLEFlight(tle_file, start, stop, time_cadence, model, file_dir,
 
     # retrieve satellite trajectory from HAPI/CDAWeb
     sat_dict, coord_sys = TLETrajectory(tle_file, start, stop, time_cadence,
-                                        verbose=verbose)
+                                        method=method, verbose=verbose)
     # call satellite flythrough code
     results = ModelFlythrough(model, file_dir, variable_list, sat_dict['sat_time'],
                               sat_dict['c1'], sat_dict['c2'], sat_dict['c3'],
@@ -835,6 +848,7 @@ if __name__ == '__main__':
             output_name = argv[10]
             plot_coord = argv[11]
             high_res = float(argv[12])
+            method = argv[13]
 
             # check input
             print(f'\ntle_file: {tle_file}, \nstart: {start}, \nstop: {stop},' +
@@ -842,12 +856,13 @@ if __name__ == '__main__':
                   f'\nmodel: {model}, \nfile_dir: {file_dir},' +
                   f'\nvariable_list: {variable_list}, \ncoord_type: {coord_type},' +
                   f'\noutput_name: {output_name}, \nplot_coord: {plot_coord}, ' +
-                  f'\nhigh_res: {high_res}\n')
+                  f'\nhigh_res: {high_res}, method: {method}\n')
 
             results = TLEFlight(tle_file, start, stop, time_cadence,
                                 model, file_dir, variable_list,
                                 coord_type=coord_type, output_name=output_name,
-                                plot_coord=plot_coord, high_res=high_res)
+                                plot_coord=plot_coord, high_res=high_res,
+                                method=method)
 
         elif argv[1] == 'MyFlight':  # gather variables and call MyFlight
             traj_file = argv[2]
