@@ -38,6 +38,8 @@ from spacepy.time import Ticktock
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 
+#Set option in spacepy to use ctrans instead of irbempy for coordinate transforms
+spc.DEFAULTS.set_values(use_irbem=False, itol=5)
 
 # Set option in spacepy to use ctrans instead of irbempy
 spc.DEFAULTS.set_values(use_irbem=False, itol=5)

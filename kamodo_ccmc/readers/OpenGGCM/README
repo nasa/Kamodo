@@ -1,0 +1,6 @@
+Fortran source code annnot have comments after teh fortran statement:
+	integer foo      ! comment
+This has to be:
+! comment
+	integer foo
+
