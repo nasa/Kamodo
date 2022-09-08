@@ -9,8 +9,8 @@ In conda command prompt:
 > conda activate Kamodo_env
 4. Install remaining dependencies:
 > python -m pip install --upgrade spacepy  
-> python -m pip install hapiclient
-> python -m pip install cdflib
+> python -m pip install hapiclient  
+> python -m pip install cdflib  
 5. Download Kamodo to the current directory:
 > git clone https://github.com/nasa/Kamodo.git
 6. Install the Kamodo package. (Check the directory structure before using this command. The ./Kamodo directory should contain the kamodo_ccmc directory.)
