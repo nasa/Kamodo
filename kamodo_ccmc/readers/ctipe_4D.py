@@ -409,7 +409,7 @@ def MODEL():
                              in ilev1_replace]
                 if len(add_ilev1 + add_ilev) > 0:
                     print('The following functions will be converted from ' +
-                          'pressure level to height and will not have '+
+                          'pressure level to height and will not have ' +
                           'gridded versions:', var_replace)
                 if len(add_ilev) > 0:
                     add_ilev += ['H_ilev']
@@ -447,7 +447,7 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys()
                              if key in model_varnames.keys()]
                 print('The following functions will be converted from ' +
-                      'pressure level to height and will not have '+
+                      'pressure level to height and will not have ' +
                       'gridded versions:', self.total_replace)
                 if not fulltime and variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in

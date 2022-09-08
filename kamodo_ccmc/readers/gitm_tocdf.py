@@ -10,7 +10,8 @@
 # Contains: class GitmBin    - The class for the GITM binary, which will read
 #                              a single GITM output binary
 #           def calc_magdi   - Reads a single GITM ion or mag output binary and
-#                              computes the magnetic inclination and declination
+#                              computes the magnetic inclination and
+#                              declination
 #           def calc_magvel  - Reads a single GITM ion output binary and
 #                              uses data from the standard GITM output (3DAll)
 #                              to compute the ion characteristics in magnetic
@@ -38,7 +39,8 @@
 #                 Aaron Ridley approved reader for open source use in Kamodo
 #          Rebecca Ringuette - 05/14/2021: Removed spacepy dependency and
 #                 converted output to a netCDF4 file for increased speed
-#                 in later layers. Also removed and adapted calc_magdi, calc_magvel,
+#                 in later layers. Also removed and adapted calc_magdi,
+#                 calc_magvel,
 #                 calc_lt for generalized use by other readers. Copied and
 #                 adapted calc_tec and calc_2dion for use by other readers.
 #                 Removed append_data since converting whole file to a cdf.
@@ -81,9 +83,11 @@ gitm_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear', ''],
                  'O(1D) Mass Density': ['rho_O1D', 'exponential', 'kg/m**3'],
                  'O2+ Mass Density': ['rho_O2plus', 'exponential', 'kg/m**3'],
                  'O(2D) Mass Density': ['rho_O2D', 'exponential', '1/m**3'],
-                 'O+(2P) Mass Density': ['rho_Oplus2P', 'exponential', 'kg/m**3'],
+                 'O+(2P) Mass Density': ['rho_Oplus2P', 'exponential',
+                                         'kg/m**3'],
                  'O(3P) Mass Density': ['rho_O3P', 'exponential', 'kg/m**3'],
-                 'O+(4SP) Mass Density': ['rho_Oplus4SP', 'exponential', 'kg/m**3'],
+                 'O+(4SP) Mass Density': ['rho_Oplus4SP', 'exponential',
+                                          'kg/m**3'],
                  'Radiative Cooling': ['L_Rad', 'linear', ''],
                  'Neutral Density': ['rho', 'exponential', 'kg/m**3'],
                  'T_n': ['T_n', 'linear', 'K'],
@@ -100,14 +104,17 @@ gitm_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear', ''],
                  'v_O(3P)_up': ['v_O3P_up', 'linear', 'm/s'],
                  'v_He_up': ['v_He_up', 'linear', 'm/s'],
                  '[e-]': ['rho_e', 'linear', '1/m**3'],
-                 'Electron Average Energy': ['ElectronAverageEnergy', 'linear', 'J'],
+                 'Electron Average Energy': ['ElectronAverageEnergy', 'linear',
+                                             'J'],
                  'T_e': ['T_e', 'linear', 'K'],
                  'T_i': ['T_i', 'linear', 'K'],
-                 'Solar Zenith Angle': ['SolarZenithAngle', 'linear', 'radians'],
+                 'Solar Zenith Angle': ['SolarZenithAngle', 'linear',
+                                        'radians'],
                  'CO2 Mass Density': ['rho_CO2', 'exponential', 'kg/m**3'],
                  'DivJu FL': ['DivJuFL', '', ''],
                  'DivJuAlt': ['DivJuAlt', 'linear', ''],
-                 'Electron Energy Flux': ['ElectronEnergyFlux', 'exponential', 'J/m**2'],
+                 'Electron Energy Flux': ['ElectronEnergyFlux', 'exponential',
+                                          'J/m**2'],
                  'Field Line Length': ['Field Line Length', 'linear', 'm'],
                  'sigma_P': ['sigma_P', 'linear', 'S/m'],
                  'Sigma_P': ['Sigma_P', 'linear', 'S/m'],
@@ -134,14 +141,18 @@ gitm_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear', ''],
                  'GradP_north (P_i + P_e)': ['GradP_north', 'linear', 'Pa/m'],
                  'GradP_up (P_i + P_e)': ['GradP_up', 'linear', 'Pa/m'],
                  'nu_in': ['nu_in', 'linear', '1/s'],
-                 'Chemical Heating Rate': ['ChemicalHeatingRate', 'linear', ''],
-                 'Total Absolute EUV': ['TotalAbsoluteEUV', 'linear', 'K per timestep'],
+                 'Chemical Heating Rate': ['ChemicalHeatingRate', 'linear',
+                                           ''],
+                 'Total Absolute EUV': ['TotalAbsoluteEUV', 'linear',
+                                        'K per timestep'],
                  'O Cooling': ['L_O', 'linear', 'K per timestep'],
                  'Joule Heating': ['Q_Joule', 'linear', 'K per timestep'],
                  'Auroral Heating': ['Q_Auroral', 'linear', 'K per timestep'],
-                 'Photoelectron Heating': ['Q_PhotoE', 'linear', 'K per timestep'],
+                 'Photoelectron Heating': ['Q_PhotoE', 'linear',
+                                           'K per timestep'],
                  'Eddy Conduction': ['k_eddy', 'linear', ''],
-                 'Adiabatic Eddy Conduction': ['k_adiabaticeddy', 'linear', ''],
+                 'Adiabatic Eddy Conduction': ['k_adiabaticeddy', 'linear',
+                                               ''],
                  'NO Cooling': ['L_NO', 'linear', 'K per timestep'],
                  'Molecular Conduction': ['k_molecular', 'linear', ''],
                  'max_electron_density': ['NmF2', 'linear', ''],
@@ -152,7 +163,6 @@ gitm_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear', ''],
                  'HeatFlux_EUV': ['phi_qEUV', 'linear', 'W/m**2'],
                  'NO CoolingFlux': ['phi_qNOCooling', 'linear', 'W/m**2']}
 
-# need to find out timestep between files and replace 'per timestep' with this info
 # if not always one value, deal with this in kamodo wrapper
 name_dict = {"Altitude": "Altitude", "Ar Mixing Ratio": "Argon Mixing Ratio",
              "Ar": "Ar Mass Density",
@@ -193,7 +203,8 @@ name_dict = {"Altitude": "Altitude", "Ar Mixing Ratio": "Argon Mixing Ratio",
              "V!Dn!N (up,O!D2!N              )": "v_O2_up",
              "V!Dn!N (up,O(!U3!NP)           )": "v_O(3P)_up",
              "V!Dn!N (up,He                  )": "v_He_up",
-             "e-": "[e-]", "Electron_Average_Energy": "Electron Average Energy",
+             "e-": "[e-]",
+             "Electron_Average_Energy": "Electron Average Energy",
              "eTemperature": "T_e", "iTemperature": "T_i",
              "Solar Zenith Angle": "Solar Zenith Angle",
              "Vertical TEC": "Vertical TEC", "CO!D2!N": "CO2 Mass Density",
@@ -244,12 +255,16 @@ unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              "EuvHeating": "K per timestep",
              "H": "kg/m**3", "H!U+!N": "kg/m**3", "H2 Mixing Ratio": "",
              "HCN Mixing Ratio": "", "He": "kg/m**3", "He!U+!N": "kg/m**3",
-             "Heating Efficiency": "", "Heat Balance Total": "", "Latitude": "radians",
-             "Longitude": "radians", "N!D2!N": "kg/m**3", "N!D2!U+!N": "kg/m**3",
+             "Heating Efficiency": "", "Heat Balance Total": "",
+             "Latitude": "radians",
+             "Longitude": "radians", "N!D2!N": "kg/m**3",
+             "N!D2!U+!N": "kg/m**3",
              "N!D2!U+!N            (/m3)": "1/m**3", "N!U+!N": "kg/m**3",
-             "N(!U2!ND)": "kg/m**3", "N(!U2!NP)": "kg/m**3", "N(!U4!NS)": "kg/m**3",
+             "N(!U2!ND)": "kg/m**3", "N(!U2!NP)": "kg/m**3",
+             "N(!U4!NS)": "kg/m**3",
              "N2 Mixing Ratio": "", "NO": "kg/m**3", "NO!U+!N": "kg/m**3",
-             "O!D2!N": "kg/m**3", "O(!U1!ND)": "kg/m**3", "O!D2!U+!N": "kg/m**3",
+             "O!D2!N": "kg/m**3", "O(!U1!ND)": "kg/m**3",
+             "O!D2!U+!N": "kg/m**3",
              "O(!U2!ND)!": "1/m**3", "O(!U2!ND)!U+!N": "1/m**3",
              "O(!U2!NP)!U+!N": "kg/m**3",
              "O(!U2!NP)!U+!N": "kg/m**3", "O(!U3!NP)": "kg/m**3",
@@ -258,8 +273,10 @@ unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              "V!Di!N (east)": "m/s",
              "Vi (east) (m/s)": "m/s", "V!Di!N (north)": "m/s",
              "Vi (north) (m/s)": "m/s",
-             "V!Di!N (up)": "m/s", "Vi (up) (m/s)": "m/s", "V!Dn!N (east)": "m/s",
-             "Vn (east) (m/s)": "m/s", "V!Dn!N (north)": "m/s", "Vn (north) (m/s)": "m/s",
+             "V!Di!N (up)": "m/s", "Vi (up) (m/s)": "m/s",
+             "V!Dn!N (east)": "m/s",
+             "Vn (east) (m/s)": "m/s", "V!Dn!N (north)": "m/s",
+             "Vn (north) (m/s)": "m/s",
              "V!Dn!N (up)": "m/s", "Vn (up) (m/s)": "m/s",
              "V!Dn!N (up,N!D2!N              )": "m/s",
              "V!Dn!N (up,N(!U4!NS)           )": "m/s",
@@ -267,7 +284,8 @@ unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              "V!Dn!N (up,O!D2!N              )": "m/s",
              "V!Dn!N (up,O(!U3!NP)           )": "m/s",
              "V!Dn!N (up,He                  )": "m/s",
-             "e-": "1/m**3", "Electron_Average_Energy": "J", "eTemperature": "K",
+             "e-": "1/m**3", "Electron_Average_Energy": "J",
+             "eTemperature": "K",
              "iTemperature": "K", "LT": "h", "Local Time": "h",
              "Solar Zenith Angle": "radians",
              "Vertical TEC": "10**16/m**2", "CO!D2!N": "kg/m**3",
@@ -275,13 +293,15 @@ unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              "Electron_Energy_Flux": "J/m**2", "FL Length": "m",
              "Pedersen FL Conductance": "S/m",
              "dLon": "deg", "Pedersen Conductance": "S/m", "dLat": "deg",
-             "Hall FL Conductance": "S/m", "Potential": "V", "Hall Conductance": "S/m",
+             "Hall FL Conductance": "S/m", "Potential": "V",
+             "Hall Conductance": "S/m",
              "Je2": "A/m**2", "Je1": "A/m**2", "Magnetic Longitude": "deg",
              "E.F. Vertical": "V/m", "E.F. East": "V/m", "E.F. North": "V/m",
              "E.F. Magnitude": "V/m",
              "B.F. Vertical": "nT", "B.F. East": "nT", "B.F. North": "nT",
              "B.F. Magnitude": "nT",
-             "Magnetic Latitude": "deg", "Ed1": "", "Ed2": "", "Gravity": "m/s**2",
+             "Magnetic Latitude": "deg", "Ed1": "", "Ed2": "",
+             "Gravity": "m/s**2",
              "PressGrad (east)": "Pa/m", "Joule Heating": "K per timestep",
              "PressGrad (north)": "Pa/m", "O Cooling": "K per timestep",
              "PressGrad (up)": "Pa/m", "Total Abs EUV": "K per timestep",
@@ -293,7 +313,8 @@ unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              'NmF2': "", 'hmF2': "km", 'VTEC': "10**16/m**2",
              'AltIntJouleHeating (W/m2)': 'W/m**2',
              'AltIntHeatingTransfer (W/m2)': 'W/m**2',
-             'AltIntEuvHeating (W/m2)': 'W/m**2', 'AltIntNOCooling (W/m2)': 'W/m**2'}
+             'AltIntEuvHeating (W/m2)': 'W/m**2',
+             'AltIntNOCooling (W/m2)': 'W/m**2'}
 
 scale_dict = {"Altitude": "linear", "Ar Mixing Ratio": "linear",
               "Ar": "exponential", "CH4 Mixing Ratio": "linear",
@@ -360,7 +381,8 @@ scale_dict = {"Altitude": "linear", "Ar Mixing Ratio": "linear",
               'NmF2': "linear", 'hmF2': "linear", 'VTEC': 'linear',
               'AltIntJouleHeating (W/m2)': 'linear',
               'AltIntHeatingTransfer (W/m2)': 'linear',
-              'AltIntEuvHeating (W/m2)': 'linear', 'AltIntNOCooling (W/m2)': 'linear'}
+              'AltIntEuvHeating (W/m2)': 'linear',
+              'AltIntNOCooling (W/m2)': 'linear'}
 
 
 def _read(varlist, attrs, newfile=True):
@@ -441,7 +463,8 @@ def _read(varlist, attrs, newfile=True):
             elif v == 'Latitude':
                 coords['lat'] = np.unique(np.array(temp))*180.0/np.pi
             elif v == 'Altitude':
-                coords['height'] = np.unique(np.array(temp))/1000.  # km, need for height integration
+                # km, need for height integration
+                coords['height'] = np.unique(np.array(temp))/1000.
             else:  # put in height, lat, lon order, noting fortran ordering
                 variables[v] = np.transpose(np.array(temp).reshape(
                     (attrs['nLon'], attrs['nLat'], attrs['nAlt']),
@@ -518,13 +541,15 @@ def calc_tec(coords, attrs, variables, verbose=False):
     '''
     import scipy.integrate as integ
 
-    if 'e-' in variables.keys() or 'e-                   (/m3)' in variables.keys():
+    if 'e-' in variables.keys() or 'e-                   (/m3)' in\
+            variables.keys():
         if 'e-' in variables.keys():
             e_key = 'e-'
         elif 'e-                   (/m3)' in variables.keys():
             e_key = 'e-                   (/m3)'
         temp = np.array(variables[e_key] * 1.0e-16)
-        variables['VTEC'] = np.zeros((attrs['nLat'], attrs['nLon']), dtype=np.float64)
+        variables['VTEC'] = np.zeros((attrs['nLat'], attrs['nLon']),
+                                     dtype=np.float64)
         for ilon in range(attrs['nLon']):
             for ilat in range(attrs['nLat']):
                 # Integrate electron density over altitude, not including
@@ -546,13 +571,16 @@ def calc_2dion(coords, attrs, variables, verbose=False):
     from scipy.interpolate import interp1d
     from scipy.signal import argrelextrema
 
-    if 'e-' in variables.keys() or 'e-                   (/m3)' in variables.keys():
+    if 'e-' in variables.keys() or 'e-                   (/m3)' in\
+            variables.keys():
         if 'e-' in variables.keys():
             e_key = 'e-'
         elif 'e-                   (/m3)' in variables.keys():
             e_key = 'e-                   (/m3)'
-        variables['NmF2'] = np.zeros((attrs['nLat'], attrs['nLon']), dtype=np.float64)
-        variables['hmF2'] = np.zeros((attrs['nLat'], attrs['nLon']), dtype=np.float64)
+        variables['NmF2'] = np.zeros((attrs['nLat'], attrs['nLon']),
+                                     dtype=np.float64)
+        variables['hmF2'] = np.zeros((attrs['nLat'], attrs['nLon']),
+                                     dtype=np.float64)
         alt = np.linspace(min(coords['height'][2:-2]),
                           max(coords['height'][2:-2]), 1000)
         ilon, ilat = coords['lon'], coords['lat']
@@ -561,7 +589,8 @@ def calc_2dion(coords, attrs, variables, verbose=False):
 
                 # Interpolate over the electron density altitude profile
                 eprof = interp1d(coords['height'][2:-2],
-                                 variables[e_key][2:-2, ilat, ilon], kind="cubic")
+                                 variables[e_key][2:-2, ilat, ilon],
+                                 kind="cubic")
                 edens = eprof(alt)
 
                 # Find the local maxima of the electron density profile
@@ -670,23 +699,24 @@ def GitmBin(filename, flag_2D, verbose=False):
 
 
 def gitm_toCDF(filename, coords, variables, var_dict, attrs):
-    from numpy import where, zeros
-    
+    from numpy import zeros
+
     # perform longitude shift, careful of extra values on ends
-    lon_le180 = np.where((coords['lon']<=180.) & (coords['lon']>=0.))[0]
-    lon_ge180 = np.where((coords['lon']>=180.) & (coords['lon']<=360.))[0]
+    lon_le180 = np.where((coords['lon'] <= 180.) & (coords['lon'] >= 0.))[0]
+    lon_ge180 = np.where((coords['lon'] >= 180.) & (coords['lon'] <= 360.))[0]
     lon_ge180 = np.insert(lon_ge180, 0, lon_le180[-1])
     lon_le180 = np.append(lon_le180, lon_ge180[1])
     lon_shape = len(lon_ge180)+len(lon_le180)
     new_lon = np.zeros(lon_shape)
-    new_lon[:len(lon_ge180)] = coords['lon'][lon_ge180]-360.
+    new_lon[:len(lon_ge180)] = coords['lon'][lon_ge180] - 360.
     new_lon[len(lon_ge180):] = coords['lon'][lon_le180]  # -182 to 182 deg now
     coords['lon'] = new_lon
-    
+
     # start new wrapped output object
     cdf_filename = filename+'.nc'
     data_out = Dataset(cdf_filename, 'w', format='NETCDF4')
-    data_out.file = ''.join([f+',' for f in attrs['file']]).strip(',')  # csv list of files
+    # csv list of files
+    data_out.file = ''.join([f+',' for f in attrs['file']]).strip(',')
     data_out.model = 'GITM'
     data_out.version = attrs['version']
     data_out.endian = attrs['endian']
@@ -694,8 +724,10 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
     for dim in coords.keys():  # register dimensions
         if coords[dim].size == 1 and dim != 'time':
             continue  # skip height for 2D variables
-        new_dim = data_out.createDimension(dim, coords[dim].size)  # create dimension
-        new_var = data_out.createVariable(dim, np.float64, dim)  # create variable
+        # create dimension
+        new_dim = data_out.createDimension(dim, coords[dim].size)
+        # create variable
+        new_var = data_out.createVariable(dim, np.float64, dim)
         new_var[:] = coords[dim]  # store data for dimension in variable
         if dim == 'height':
             units = 'km'
@@ -710,16 +742,20 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
               'phi_qJoule', 'phi_q', 'phi_qEUV', 'phi_qNOCooling']
     for variable_name in variables.keys():
         new_name = gitm_varnames[var_dict[variable_name][0]][0]
-        if 1 in variables[variable_name].shape[1:]:  # remove height dimension for 2D data
-            variables[variable_name] = np.squeeze(variables[variable_name], axis=(1))
+        # remove height dimension for 2D data
+        if 1 in variables[variable_name].shape[1:]:
+            variables[variable_name] = np.squeeze(variables[variable_name],
+                                                  axis=(1))
         if len(variables[variable_name].shape) == 4:
             new_var = data_out.createVariable(new_name, np.float64,
                                               ('time', 'lon', 'lat', 'height'))
             var_shape = list(variables[variable_name].shape)
             var_shape[-1] = lon_shape
             tmp_arr = zeros(var_shape)
-            tmp_arr[:, :, :, :len(lon_ge180)] = variables[variable_name][:, :, :, lon_ge180]
-            tmp_arr[:, :, :, len(lon_ge180):] = variables[variable_name][:, :, :, lon_le180]  
+            tmp_arr[:, :, :, :len(lon_ge180)] =\
+                variables[variable_name][:, :, :, lon_ge180]
+            tmp_arr[:, :, :, len(lon_ge180):] =\
+                variables[variable_name][:, :, :, lon_le180]
             # (t,h,lat,lon) -> (t,lon,lat,h)
             new_data = np.transpose(tmp_arr, (0, 3, 2, 1))
         elif len(variables[variable_name].shape) == 3:
@@ -728,12 +764,15 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
             var_shape = list(variables[variable_name].shape)
             var_shape[-1] = lon_shape
             tmp_arr = zeros(var_shape)
-            tmp_arr[:, :, :len(lon_ge180)] = variables[variable_name][:, :, lon_ge180]
-            tmp_arr[:, :, len(lon_ge180):] = variables[variable_name][:, :, lon_le180] 
+            tmp_arr[:, :, :len(lon_ge180)] =\
+                variables[variable_name][:, :, lon_ge180]
+            tmp_arr[:, :, len(lon_ge180):] =\
+                variables[variable_name][:, :, lon_le180]
             # (t,lat,lon) -> (t,lon,lat)
             new_data = np.transpose(tmp_arr, (0, 2, 1))
         new_var[:] = new_data  # store data in variable
-        new_var.datascale, new_var.units = gitm_varnames[var_dict[variable_name][0]][1:]
+        new_var.datascale, new_var.units =\
+            gitm_varnames[var_dict[variable_name][0]][1:]
 
     # close file
     data_out.close()
@@ -750,8 +789,10 @@ def dts_to_hrs(datetime_string, filedate):
 
 
 def GITMbin_toCDF(file_prefix, flag_2D=False):
-    '''Collect data from all files found with file_prefix into one netCDF4 file'''
-    # If flag_2D is False, then 2D files are not present and 2D variables will be calculated
+    '''Collect data from all files found with file_prefix into one netCDF4 file
+    '''
+    # If flag_2D is False, then 2D files are not present and
+    # 2D variables will be calculated
     # Takes much longer if False.
 
     from os.path import basename
@@ -766,12 +807,15 @@ def GITMbin_toCDF(file_prefix, flag_2D=False):
     file_name = basename(file_prefix)
     file_dt_str = file_name.split('_t')[-1].split('_')[0]  # keep only YYMMDD
     if int(file_dt_str[:2]) > 60:  # later than 1960
-        string_date = '19'+file_dt_str[:2]+'-'+file_dt_str[2:4]+'-'+file_dt_str[4:6]
+        string_date = '19' + file_dt_str[:2] + '-' + file_dt_str[2:4] + '-' +\
+            file_dt_str[4:6]
     else:
-        string_date = '20'+file_dt_str[:2]+'-'+file_dt_str[2:4]+'-'+file_dt_str[4:6]
+        string_date = '20' + file_dt_str[:2] + '-' + file_dt_str[2:4] + '-' +\
+            file_dt_str[4:6]
     filedate = datetime.strptime(string_date+' 00:00:00', '%Y-%m-%d %H:%M:%S'
                                  ).replace(tzinfo=timezone.utc)  # dt object
-    filename, coords, variables, var_dict, attrs = GitmBin(files[0], flag_2D)  # first file data
+    # first file data
+    filename, coords, variables, var_dict, attrs = GitmBin(files[0], flag_2D)
     time = [attrs['time'][:19]]  # accurate to the sec
     master_variables = {key: [[value]] for key, value in variables.items()}
 
@@ -787,7 +831,8 @@ def GITMbin_toCDF(file_prefix, flag_2D=False):
     attrs['filedate'] = filedate.strftime('%Y-%m-%d')  # store in attrs
     attrs['file'] = files
 
-    cdf_filename = gitm_toCDF(file_prefix, coords, master_variables, var_dict, attrs)
-    print(f'Files of pattern {file_prefix+"*.bin"} converted to {cdf_filename} ' +
-          f'in {perf_counter()-ftic:.5f}s')
+    cdf_filename = gitm_toCDF(file_prefix, coords, master_variables, var_dict,
+                              attrs)
+    print(f'Files of pattern {file_prefix+"*.bin"} converted to ' +
+          f'{cdf_filename} in {perf_counter()-ftic:.5f}s')
     return True

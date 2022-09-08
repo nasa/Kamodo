@@ -5,37 +5,50 @@ from datetime import datetime, timedelta, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {'Ne': ['N_e', 'electron number density',
-                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
+                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         '1/m**3'],
                   'Te': ['T_e', 'electron temperature',
-                         1, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                         1, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         'K'],
                   'Ti': ['T_i', 'ion temperature',
-                         2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                         2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         'K'],
                   'Tn': ['T_n', 'neutral temperature',
-                         3, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                         3, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         'K'],
                   'O+': ['N_Oplus', 'number density of atomic oxygen ion',
-                         4, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
+                         4, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         '1/m**3'],
                   'H+': ['N_Hplus', 'number density of atomic hydrogen ion',
-                         5, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
+                         5, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         '1/m**3'],
                   'He+': ['N_Heplus', 'number density of atomic helium ion',
-                          6, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
+                          6, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                          '1/m**3'],
                   'O2+': ['N_O2plus', 'number density of molecular oxygen ion',
-                          7, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
-                  'NO+': ['N_NOplus', 'number density of molecular nitric oxide',
-                          8, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
+                          7, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                          '1/m**3'],
+                  'NO+': ['N_NOplus', 'number density of molecular nitric ' +
+                          'oxide', 8, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                     'height'], '1/m**3'],
                   'N+': ['N_Nplus', 'number density of atomic nitrogen ion',
-                         9, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/m**3'],
-                  'TEC': ['TEC', 'vertical total electron content (height integrated from bottom to top boundary)',
-                          10, 'GDZ', 'sph', ['time', 'lon', 'lat'], '10**16/m**2'],
-                  'NmF2': ['NmF2', 'maximum electron number density in F2 layer',
-                           11, 'GDZ', 'sph', ['time', 'lon', 'lat'], '1/m**3'],
-                  'HmF2': ['HmF2', 'height of maximum electron number density in F2 layer',
-                           12, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'km']
+                         9, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         '1/m**3'],
+                  'TEC': ['TEC', 'vertical total electron content (height ' +
+                          'integrated from bottom to top boundary)',
+                          10, 'GDZ', 'sph', ['time', 'lon', 'lat'],
+                          '10**16/m**2'],
+                  'NmF2': ['NmF2', 'maximum electron number density in F2 ' +
+                           'layer', 11, 'GDZ', 'sph', ['time', 'lon', 'lat'],
+                           '1/m**3'],
+                  'HmF2': ['HmF2', 'height of maximum electron number ' +
+                           'density in F2 layer', 12, 'GDZ', 'sph',
+                           ['time', 'lon', 'lat'], 'km']
                   }
 
 
 def ts_to_hrs(time_val, filedate):
     '''Convert utc timestamp to hours since midnight on filedate.'''
-
     return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
             filedate).total_seconds()/3600.
 
@@ -49,7 +62,8 @@ def MODEL():
     from kamodo import Kamodo
     from netCDF4 import Dataset
     from os.path import basename
-    from numpy import array, transpose, NaN, unique, append, zeros, abs, diff, where
+    from numpy import array, transpose, NaN, unique, append, zeros, abs, diff
+    from numpy import where
     from time import perf_counter
     from astropy.constants import R_earth
     from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators
@@ -59,19 +73,22 @@ def MODEL():
         '''IRI model data reader.
 
         Inputs:
-            full_filename3d: a string representing the file pattern of the model
-                output data.
-                Note: This reader takes the full filename of the 3D output file,
-                typically of the naming convention file_dir+'IRI.3D.YYYYDDD.nc',
-                where YYYY is the four digit year and DDD is the three digit day
-                of year (e.g. 2017148 for May 28, 2017).
-            variables_requested = a list of variable name strings chosen from the
-                model_varnames dictionary in this script, specifically the first
-                item in the list associated with a given key.
-                - If empty, the reader functionalizes all possible variables (default)
-                - If 'all', the reader returns the model_varnames dictionary above
-                    for only the variables present in the given files. Note: the
-                    fulltime keyword must be False to acheive this behavior.
+            full_filename3d: a string representing the file pattern of the
+                model output data.
+                Note: This reader takes the full filename of the 3D output
+                file, typically of the naming convention
+                file_dir+'IRI.3D.YYYYDDD.nc',
+                where YYYY is the four digit year and DDD is the three digit
+                day of year (e.g. 2017148 for May 28, 2017).
+            variables_requested = a list of variable name strings chosen from
+                the model_varnames dictionary in this script, specifically the
+                first item in the list associated with a given key.
+                - If empty, the reader functionalizes all possible variables
+                    (default)
+                - If 'all', the reader returns the model_varnames dictionary
+                    above for only the variables present in the given files.
+                    Note: the fulltime keyword must be False to acheive this
+                    behavior.
             filetime = boolean (default = False)
                 - if False, the script fully executes.
                 - If True, the script only executes far enough to determine the
@@ -79,8 +96,8 @@ def MODEL():
                 Note: The behavior of the script is determined jointly by the
                     filetime and fulltime keyword values.
             printfiles = boolean (default = False)
-                - If False, the filenames associated with the data retrieved ARE
-                    NOT printed.
+                - If False, the filenames associated with the data retrieved
+                    ARE NOT printed.
                 - If True, the filenames associated with the data retrieved ARE
                     printed.
             gridded_int = boolean (default = True)
@@ -89,14 +106,16 @@ def MODEL():
                 - If False, the variables chosen are functionalized in only the
                     standard method.
             fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is included
-                    in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is included.
+                - If True, linear interpolation in time between files is
+                    included in the returned interpolator functions.
+                - If False, no linear interpolation in time between files is
+                    included.
             verbose = boolean (False)
-                - If False, script execution and the underlying Kamodo execution
-                    is quiet except for specified messages.
+                - If False, script execution and the underlying Kamodo
+                    execution is quiet except for specified messages.
                 - If True, be prepared for a plethora of messages.
-        All inputs are described in further detail in KamodoOnboardingInstructions.pdf.
+        All inputs are described in further detail in
+            KamodoOnboardingInstructions.pdf.
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
@@ -130,11 +149,15 @@ def MODEL():
                 timedelta(days=int(filename[-6:-3]) - 1)
             # strings with timezone info chopped off (UTC anyway).
             # Format: ‘YYYY-MM-DD HH:MM:SS’
-            self.datetimes = [(self.filedate+timedelta(hours=time[0])).isoformat(sep=' ')[:19],
-                              (self.filedate+timedelta(hours=time[-1])).isoformat(sep=' ')[:19]]
-            self.filetimes = [datetime.timestamp(datetime.strptime(dt, '%Y-%m-%d %H:%M:%S').replace(
-                tzinfo=timezone.utc)) for dt in self.datetimes]   # utc timestamp
-            self.dt = diff(time).max()*3600.  # convert time resolution to seconds
+            self.datetimes = [
+                (self.filedate+timedelta(hours=time[0])).isoformat(
+                    sep=' ')[:19],
+                (self.filedate+timedelta(hours=time[-1])).isoformat(
+                    sep=' ')[:19]]
+            self.filetimes = [datetime.timestamp(datetime.strptime(
+                dt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)) for dt
+                in self.datetimes]   # utc timestamp
+            self.dt = diff(time).max()*3600.  # convert time resolution to sec
 
             if filetime and not fulltime:
                 iri3D.close()
@@ -143,7 +166,8 @@ def MODEL():
             # if variables are given as integers, convert to standard names
             if len(variables_requested) > 0:
                 if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in model_varnames.items()
+                    tmp_var = [value[0] for key, value in
+                               model_varnames.items()
                                if value[2] in variables_requested]
                     variables_requested = tmp_var
 
@@ -151,13 +175,15 @@ def MODEL():
                 # find other files with same pattern
                 from glob import glob
 
-                file_pattern = file_dir + 'IRI.3D.*.nc'  # returns a string for iri
+                file_pattern = file_dir + 'IRI.3D.*.nc'  # returns a string
                 files = sorted(glob(file_pattern))  # method may change for AWS
                 filenames = unique([basename(f) for f in files])
 
                 # find closest file by utc timestamp
-                # iri has an open time at the end, so need a beginning time from the closest file
-                # files are automatically sorted by YYMMDD, so next file is next in the list
+                # iri has an open time at the end
+                # need a beginning time from the closest file
+                # files are automatically sorted by YYMMDD
+                # next file is next in the list
                 current_idx = where(filenames == filename)[0]
                 if current_idx+1 == len(files):
                     if verbose:
@@ -169,8 +195,10 @@ def MODEL():
                 else:
                     # +1 for adding an end time
                     min_file = file_dir + filenames[current_idx+1][0]
-                    kamodo_test = MODEL(min_file, filetime=True, fulltime=False)
-                    time_test = abs(kamodo_test.filetimes[0] - self.filetimes[1])
+                    kamodo_test = MODEL(min_file, filetime=True,
+                                        fulltime=False)
+                    time_test = abs(kamodo_test.filetimes[0] -
+                                    self.filetimes[1])
                     # if nearest file time at least within one timestep
                     if time_test <= self.dt:
                         filecheck = True
@@ -184,25 +212,30 @@ def MODEL():
 
                         # get kamodo object with same requested variables
                         if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to find closest file.')
-                        kamodo_neighbor = MODEL(min_file,
-                                                variables_requested=variables_requested,
-                                                fulltime=False)
+                            print(f'Took {perf_counter()-t0:.3f}s to find ' +
+                                  'closest file.')
+                        kamodo_neighbor = MODEL(
+                            min_file, variables_requested=variables_requested,
+                            fulltime=False)
                         short_data = kamodo_neighbor.short_data
                         if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to get data from closest file.')
+                            print(f'Took {perf_counter()-t0:.3f}s to get ' +
+                                  'data from closest file.')
                     else:
                         if verbose:
-                            print(f'No later file found within {diff(time).max()*3600.:.1f}s.')
+                            print('No later file found within ' +
+                                  f'{diff(time).max()*3600.:.1f}s.')
                         filecheck = False
                         if filetime:
                             iri3D.close()
                             return
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and fulltime and variables_requested != 'all':
+            if len(variables_requested) > 0 and fulltime and \
+                    variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
-                err_list = [item for item in variables_requested if item not in test_list]
+                err_list = [item for item in variables_requested if item not in
+                            test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
 
@@ -217,10 +250,12 @@ def MODEL():
                                 key in iri3D.variables.keys()]
 
                 # check for variables requested but not available
-                if len(gvar_list_2d)+len(gvar_list_3d) != len(variables_requested):
-                    err_list = [value[0] for key, value in model_varnames.items()
-                                if value[0] in variables_requested and
-                                key not in gvar_list_2d and key not in gvar_list_3d]
+                if len(gvar_list_2d)+len(gvar_list_3d) != \
+                        len(variables_requested):
+                    err_list = [value[0] for key, value in
+                                model_varnames.items() if value[0] in
+                                variables_requested and key not in gvar_list_2d
+                                and key not in gvar_list_3d]
                     if len(err_list) > 0:
                         print('Some requested variables are not available:',
                               err_list)
@@ -239,12 +274,12 @@ def MODEL():
                     return
 
             # store data for each variable desired
-            variables_2d = {model_varnames[var][0]: {'units': model_varnames[var][-1],
-                                                     'data': array(iri2D.variables[var])}
-                            for var in gvar_list_2d}
-            variables_3d = {model_varnames[var][0]: {'units': model_varnames[var][-1],
-                                                     'data': array(iri3D.variables[var])}
-                            for var in gvar_list_3d}
+            variables_2d = {model_varnames[var][0]: {
+                'units': model_varnames[var][-1],
+                'data': array(iri2D.variables[var])} for var in gvar_list_2d}
+            variables_3d = {model_varnames[var][0]: {
+                'units': model_varnames[var][-1],
+                'data': array(iri3D.variables[var])} for var in gvar_list_3d}
             variables = variables_3d
             for key in variables_2d:
                 variables[key] = variables_2d[key]
@@ -267,8 +302,8 @@ def MODEL():
 
             # collect data and make dimensional grid from 3D file
             lon = array(iri3D.variables['lon'])  # 0 to 360
-            lon_le180 = where(lon<=180)[0]  
-            lon_ge180 = where(lon>=180)[0]  #repeat 180 for -180 values 
+            lon_le180 = where(lon <= 180)[0]
+            lon_ge180 = where(lon >= 180)[0]  # repeat 180 for -180 values
             self._lon = lon - 180.
             self._lat = array(iri3D.variables['lat'])
             self._height = array(iri3D.variables['ht'])
@@ -286,7 +321,8 @@ def MODEL():
             # register interpolators for each requested variable
             t_reg = perf_counter()
             # store original list b/c gridded interpolators change key list
-            varname_list, self.variables = [key for key in variables.keys()], {}
+            varname_list = [key for key in variables.keys()]
+            self.variables = {}
             for varname in varname_list:
                 if len(variables[varname]['data'].shape) == 3:
                     if filecheck:  # if neighbor found
@@ -297,20 +333,21 @@ def MODEL():
                         # put in current data
                         new_data[:-1, :, :] = variables[varname]['data']
                         # add in data for additional time
-                        new_data[-1, :, :] = short_data[varname]['data'][0, :, :]
-                        variables[varname]['data'] = new_data  # save 
-                        
+                        new_data[-1, :, :] =\
+                            short_data[varname]['data'][0, :, :]
+                        variables[varname]['data'] = new_data  # save
+
                     # shift longitude
                     data_shape = list(variables[varname]['data'].shape)
                     new_data = zeros(data_shape)
                     new_data[:, :, :len(lon_ge180)] = \
                         variables[varname]['data'][:, :, lon_ge180]
                     new_data[:, :, len(lon_ge180)-1:] = \
-                        variables[varname]['data'][:, :, lon_le180] 
+                        variables[varname]['data'][:, :, lon_le180]
                     # (t, lat, lon) -> (t, lon, lat)
                     variable = transpose(new_data, (0, 2, 1))
-                    self.variables[varname] = dict(units=variables[varname]['units'],
-                                                   data=variable)
+                    self.variables[varname] = dict(
+                        units=variables[varname]['units'], data=variable)
                     self.register_3D_variable(self.variables[varname]['units'],
                                               self.variables[varname]['data'],
                                               varname, gridded_int)
@@ -323,20 +360,21 @@ def MODEL():
                         # put in current data
                         new_data[:-1, :, :, :] = variables[varname]['data']
                         # add in data for additional time
-                        new_data[-1, :, :, :] = short_data[varname]['data'][0, :, :, :]
+                        new_data[-1, :, :, :] =\
+                            short_data[varname]['data'][0, :, :, :]
                         variables[varname]['data'] = new_data  # save
-                        
+
                     # shift longitude
                     data_shape = list(variables[varname]['data'].shape)
                     new_data = zeros(data_shape)
                     new_data[:, :, :, :len(lon_ge180)] = \
                         variables[varname]['data'][:, :, :, lon_ge180]
                     new_data[:, :, :, len(lon_ge180)-1:] = \
-                        variables[varname]['data'][:, :, :, lon_le180] 
+                        variables[varname]['data'][:, :, :, lon_le180]
                     # (t, h, lat, lon) -> (t, lon, lat, h)
                     variable = transpose(new_data, (0, 3, 2, 1))
-                    self.variables[varname] = dict(units=variables[varname]['units'],
-                                                   data=variable)
+                    self.variables[varname] = dict(
+                        units=variables[varname]['units'], data=variable)
                     self.register_4D_variable(self.variables[varname]['units'],
                                               self.variables[varname]['data'],
                                               varname, gridded_int)
@@ -344,8 +382,8 @@ def MODEL():
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
             if verbose:
-                print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy ' +
-                      f'{len(varname_list)} variables.')
+                print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
+                      f' {len(varname_list)} variables.')
 
         # define and register a 3D variable
         def register_3D_variable(self, units, variable, varname, gridded_int):

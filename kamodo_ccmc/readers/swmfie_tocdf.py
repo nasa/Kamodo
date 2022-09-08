@@ -10,8 +10,9 @@ from datetime import datetime, timezone
 from os.path import basename
 from netCDF4 import Dataset
 
-swmfie_varnames = {"X": ['x', 'km'], "Y": ['y', 'km'], "Z": ['z', 'km'],  # ignored
-                   "Theta": ['theta', "deg"], "Psi": ['psi', "deg"],  # coordinates
+swmfie_varnames = {"X": ['x', 'km'], "Y": ['y', 'km'], "Z": ['z', 'km'],
+                   # coordinates are ignored
+                   "Theta": ['theta', "deg"], "Psi": ['psi', "deg"],
                    "Btilt_theta": ['theta_Btilt', "deg"],
                    "Btilt_psi": ['psi_Btilt', "deg"],
                    "SigmaH": ['Sigma_H', "S"], "SigmaP": ['Sigma_P', "S"],
@@ -33,7 +34,8 @@ swmfie_varnames = {"X": ['x', 'km'], "Y": ['y', 'km'], "Z": ['z', 'km'],  # igno
 
 '''
 Documentation variables:
-"X":['x','km'],"Y":['y','km'],"Z":['z','km'],    (ignored, given in R_E on a unit sphere)
+(ignored, given in R_E on a unit sphere)
+"X":['x','km'],"Y":['y','km'],"Z":['z','km'],
 "Theta":['theta',"deg"],"Psi":['psi',"deg"],     (used as coordinates)
 "Btilt_theta":['theta_Btilt',"deg"], "Btilt_psi":['psi_Btilt',"deg"]
 (added directly to object for documentation purposes)
@@ -43,7 +45,6 @@ Documentation variables:
 @np.vectorize
 def dts_to_hrs(datetime_string, filedate):
     '''Get hours since midnight from datetime string'''
-
     return (datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S').replace(
         tzinfo=timezone.utc) - filedate).total_seconds()/3600.
 
@@ -51,14 +52,12 @@ def dts_to_hrs(datetime_string, filedate):
 @np.vectorize
 def filename_to_dts(filename, string_date):
     '''Get datetime string in format "YYYY-MM-SS HH:mm:SS" from filename'''
-
     mmhhss = basename(filename)[12:18]
     return string_date+' '+mmhhss[:2]+':'+mmhhss[2:4]+':'+mmhhss[4:]
 
 
 def dts_to_ts(file_dts):
     '''Get datetime timestamp in UTC from datetime string'''
-
     return datetime.timestamp(datetime.strptime(file_dts, '%Y-%m-%d %H:%M:%S'
                                                 ).replace(tzinfo=timezone.utc))
 
@@ -106,7 +105,7 @@ def read_SWMFIE_header(filename):
 
     # determine how many lines constitute one data list
     data_lines = file_contents.split('\n')[skip1+1:]
-    num_test = [len(line) for line in data_lines]  # list of lengths of each line
+    num_test = [len(line) for line in data_lines]  # list of lengths of lines
     ndata_lines = np.diff(np.where(np.array(num_test) == num_test[0])[0])[0]
 
     # cleanup and return
@@ -127,34 +126,42 @@ def read_SWMFIE_data(filename, header):
     file_object.close()
 
     # Get theta_Btilt value from file
-    title_line = file_contents[0].replace('\n', ',').replace('"', '').strip().strip(',')
+    title_line = file_contents[0].replace('\n',
+                                          ',').replace('"',
+                                                       '').strip().strip(',')
     theta_Btilt = float(title_line.split(',')[-1].strip().split()[1])
 
     # collect data into an array, one for each run_type
     file_data1 = file_contents[header['skip1']+1:header['skip2']-1]
-    data1 = np.array([''.join(file_data1[i:i+header['ndata_lines']]).strip('\n').split()
-                      for i in range(0, len(file_data1), header['ndata_lines'])],
+    data1 = np.array([''.join(file_data1[i:i+header['ndata_lines']]).
+                      strip('\n').split() for i in range(
+                          0, len(file_data1), header['ndata_lines'])],
                      dtype=float)
     file_data2 = file_contents[header['skip2']+1:]
-    data2 = np.array([''.join(file_data2[i:i+header['ndata_lines']]).strip('\n').split()
-                      for i in range(0, len(file_data2), header['ndata_lines'])],
+    data2 = np.array([''.join(file_data2[i:i+header['ndata_lines']]).
+                      strip('\n').split() for i in range(
+                          0, len(file_data2), header['ndata_lines'])],
                      dtype=float)
 
     # determine correct dimension sizes from theta and psi (3 and 4)
     # combine data and return in dict
     nLatA, nLon = np.unique(data1[:, 3]).size, np.unique(data1[:, 4]).size
-    data = np.concatenate((np.reshape(data1, (nLon, nLatA, len(header['variable_list']))),
-                           np.reshape(data2, (nLon, nLatA, len(header['variable_list'])))),
-                          axis=1)[:, ::-1, :]  # leave since grids are identical in N/S hemispheres
+    data = np.concatenate((np.reshape(data1, (nLon, nLatA,
+                                              len(header['variable_list']))),
+                           np.reshape(data2, (nLon, nLatA,
+                                              len(header['variable_list'])))),
+                          axis=1)[:, ::-1, :]
+    # leave since grids are identical in N/S hemispheres
 
-    return {swmfie_varnames[header['variable_list'][i]][0]: np.transpose(data[:, :, i], [1, 0])
+    return {swmfie_varnames[header['variable_list'][i]][0]:
+            np.transpose(data[:, :, i], [1, 0])
             for i in range(len(header['variable_list']))}, theta_Btilt
 
 
 # file_prefix = 'C:/Users/rringuet/Kamodo_WinDev1/SWMF_IE/i_e20180801'
 def _read_SWMFIE(file_prefix, verbose=False):
-    '''file_prefix must be of form "3D***_tYYMMDD" to load all files for one day
-     and include a complete path to the files'''
+    '''file_prefix must be of form "3D***_tYYMMDD" to load all files for one
+     day and include a complete path to the files'''
     t0 = perf_counter()
 
     # establish time attributes first for file searching
@@ -167,7 +174,8 @@ def _read_SWMFIE(file_prefix, verbose=False):
 
     # get list of variables possible in these files using first file
     if len(files) > 1:
-        file_header = read_SWMFIE_header(files[1])  # first file has a different header format
+        # first file has a different header format
+        file_header = read_SWMFIE_header(files[1])
     else:
         file_header = read_SWMFIE_header(files[0])
     file_varlist = file_header['variable_list']
@@ -183,7 +191,8 @@ def _read_SWMFIE(file_prefix, verbose=False):
     lon, lat0 = np.unique(data['psi']), np.unique(data['theta'])-90.
     lon -= 180  # shifting longitude to be in range -180 to 180
     lat0 = np.insert(lat0, np.where(lat0 == 0.)[0], 0.)
-    # interpolator requires unique ascending values, offset two zero values by 0.0001
+    # interpolator requires unique ascending values
+    # offset two zero values by 0.0001
     lat0[np.where(lat0 == 0.)[0]] = -0.0001, 0.0001
     lat = np.insert(lat0, 0, -90.)
     lat = np.append(lat, 90.)  # add values for poles for wrapping
@@ -216,7 +225,8 @@ def _read_SWMFIE(file_prefix, verbose=False):
         # (t,lat,lon) -> (t,lon,lat)
         new_data = np.transpose(variables[var_key], (0, 2, 1))
 
-        # original longitude range is from 0 to 360, moving data to be from -180 to 180 instead
+        # original longitude range is from 0 to 360
+        # moving data to be from -180 to 180 instead
         # without changing the longitude reference point
         tmp = np.zeros(new_data.shape)
         tmp[:, :lon_idx-lon.size % 2, :] = new_data[:, lon_idx:, :]
@@ -256,8 +266,10 @@ def _toCDF(filename, files, coords, variables, var_units, filedate):
     data_out.model = 'SWMF_IE'
     data_out.filedate = filedate.strftime('%Y-%m-%d %H:%M:%S')
     for dim in coords.keys():
-        new_dim = data_out.createDimension(dim, coords[dim].size)  # create dimension
-        new_var = data_out.createVariable(dim, np.float64, dim)  # create variable
+        # create dimension
+        new_dim = data_out.createDimension(dim, coords[dim].size)
+        # create variable
+        new_var = data_out.createVariable(dim, np.float64, dim)
         new_var[:] = coords[dim]  # store data for dimension in variable
         if dim == 'radius':
             units = 'R_E'
@@ -275,7 +287,8 @@ def _toCDF(filename, files, coords, variables, var_units, filedate):
                                               ('time', 'lon', 'lat'))
             new_data = variables[variable_name]
         elif variable_name in var_1D:
-            new_var = data_out.createVariable(variable_name, np.float64, ('time'))
+            new_var = data_out.createVariable(variable_name, np.float64,
+                                              ('time'))
             new_data = variables[variable_name]
         else:
             continue
@@ -288,13 +301,15 @@ def _toCDF(filename, files, coords, variables, var_units, filedate):
 def convertSWMFIE_toCDF(file_prefix):
     '''Convert files of given pattern into one netCDF4 file'''
 
-    print(f'NetCDF version of data not found. Converting files with {file_prefix} prefix to netCDF.')
+    print('NetCDF version of data not found. Converting files with ' +
+          f'{file_prefix} prefix to netCDF.')
     ftic = perf_counter()
     files, coords, variables, var_units, filedate = _read_SWMFIE(file_prefix,
                                                                  verbose=True)
     if coords == 0:
         return False  # if only one file, perform a clean return
-    cdf_filename = _toCDF(file_prefix, files, coords, variables, var_units, filedate)
-    print(f'{len(files)} files with prefix {file_prefix} now combined into {cdf_filename} ' +
-          f'in {perf_counter()-ftic:.6f}s.')
+    cdf_filename = _toCDF(file_prefix, files, coords, variables, var_units,
+                          filedate)
+    print(f'{len(files)} files with prefix {file_prefix} now combined into ' +
+          f'{cdf_filename} in {perf_counter()-ftic:.6f}s.')
     return True
