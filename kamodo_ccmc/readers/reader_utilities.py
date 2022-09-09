@@ -6,6 +6,7 @@ Created on Thu May 13 18:28:18 2021
 from kamodo import kamodofy, gridify
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from numpy import NaN
+import forge
 from datetime import datetime, timezone
 
 
@@ -29,7 +30,7 @@ def dts_to_hrs(datetime_string, filedate):
             filedate).total_seconds()/3600.
 
 
-def define_1d_interpolator(units, variable, t):
+def define_1d_interpolator(units, variable, t, coord_str):
     '''Define interpolators for 1D variables uniformly.
 
     Inputs:
@@ -42,7 +43,12 @@ def define_1d_interpolator(units, variable, t):
     '''
 
     rgi = interp1d(t, variable, bounds_error=False, fill_value=NaN)
+    param_xvec = forge.FParameter(name='xvec_'+coord_str,
+                                  interface_name='xvec',
+                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
+                                  default=t)
 
+    @forge.replace('xvec', param_xvec)
     @kamodofy(units=units, data=variable)
     def interpolator(xvec):
         """Interpolates 1d variable without A grid"""
@@ -50,30 +56,7 @@ def define_1d_interpolator(units, variable, t):
     return interpolator
 
 
-def define_1d_gridded_interpolator(units, variable, t, xvec_dependencies,
-                                   function):
-    '''Define interpolators for 1D variables uniformly, gridded version.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 1D array of data values.
-        t: A 1D array of utc timestamp values.
-        xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies = {'time':'hr'}
-            typically.
-        function: an ungridded kamodofied function, typically produced by the
-            define_1d_interpolator function above.
-    Output: A kamodofied gridded function to interpolate over the data given.
-        See Kamodo core documentation for more details.
-    '''
-
-    interpolator_grid = kamodofy(gridify(function, time=t), units=units,
-                                 data=variable, arg_units=xvec_dependencies)
-    return interpolator_grid
-
-
-def define_2d_interpolator(units, variable, lon, lat):
+def define_2d_interpolator(units, variable, lon, lat, coord_str):
     '''Define interpolators for 2D variables uniformly.
 
     Inputs:
@@ -88,7 +71,13 @@ def define_2d_interpolator(units, variable, lon, lat):
 
     rgi = RegularGridInterpolator((lon, lat),
                                   variable, bounds_error=False, fill_value=NaN)
+    track = [[loni, lati] for loni, lati in zip(lon, lat)]
+    param_xvec = forge.FParameter(name='xvec_'+coord_str,
+                                  interface_name='xvec',
+                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
+                                  default=track)
 
+    @forge.replace('xvec', param_xvec)
     @kamodofy(units=units, data=variable)
     def interpolator(xvec):
         """Interpolates 3d variable without A grid"""
@@ -127,7 +116,7 @@ def define_2d_gridded_interpolator(units, variable, lon, lat,
     return interpolator_grid
 
 
-def define_3d_interpolator(units, variable, t, lon, lat):
+def define_3d_interpolator(units, variable, t, lon, lat, coord_str):
     '''Define interpolators for 3D variables uniformly.
 
     Inputs:
@@ -143,7 +132,13 @@ def define_3d_interpolator(units, variable, t, lon, lat):
 
     rgi = RegularGridInterpolator((t, lon, lat),
                                   variable, bounds_error=False, fill_value=NaN)
+    track = [[ti, loni, lati] for ti, loni, lati in zip(t, lon, lat)]
+    param_xvec = forge.FParameter(name='xvec_'+coord_str,
+                                  interface_name='xvec',
+                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
+                                  default=track)
 
+    @forge.replace('xvec', param_xvec)
     @kamodofy(units=units, data=variable)
     def interpolator(xvec):
         """Interpolates 3d variable without A grid"""
@@ -188,7 +183,7 @@ def define_3d_gridded_interpolator(units, variable, t, lon, lat,
     return interpolator_grid
 
 
-def define_4d_interpolator(units, variable, t, lon, lat, ht):
+def define_4d_interpolator(units, variable, t, lon, lat, ht, coord_str):
     '''Define interpolators for 4D variables uniformly.
 
     Inputs:
@@ -205,7 +200,14 @@ def define_4d_interpolator(units, variable, t, lon, lat, ht):
 
     rgi = RegularGridInterpolator((t, lon, lat, ht),
                                   variable, bounds_error=False, fill_value=NaN)
+    track = [[ti, loni, lati, hti] for ti, loni, lati, hti in
+             zip(t, lon, lat, ht)]
+    param_xvec = forge.FParameter(name='xvec_'+coord_str,
+                                  interface_name='xvec',
+                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
+                                  default=track)
 
+    @forge.replace('xvec', param_xvec)
     @kamodofy(units=units, data=variable)
     def interpolator(xvec):
         """Interpolates 4d variable without a grid"""
@@ -297,7 +299,7 @@ def register_interpolator(kamodo_object, varname, interpolator,
 
 
 def regdef_1D_interpolators(kamodo_object, units, variable, t, varname,
-                            xvec_dependencies, gridded_int):
+                            xvec_dependencies, gridded_int, coord_str):
     '''Calls all necessary functions to register and define 1D interpolators.
 
     Inputs:
@@ -318,24 +320,17 @@ def regdef_1D_interpolators(kamodo_object, units, variable, t, varname,
         included.
     '''
 
-    interpolator = define_1d_interpolator(units, variable, t)
+    interpolator = define_1d_interpolator(units, variable, t, coord_str)
     kamodo_object = register_interpolator(kamodo_object, varname, interpolator,
                                           xvec_dependencies)
 
-    # define and register the gridded interpolator if desired
-    if gridded_int:
-        kamodo_object.variables[varname+'_ijk'] = dict(units=units,
-                                                       data=variable)
-        gridded_interpolator = define_1d_gridded_interpolator(
-            units, variable, t, xvec_dependencies, interpolator)
-        kamodo_object = register_interpolator(kamodo_object, varname+'_ijk',
-                                              gridded_interpolator,
-                                              xvec_dependencies)
+    # do not bother with a gridded interpolator for 1D functions
     return kamodo_object
 
 
 def regdef_3D_interpolators(kamodo_object, units, variable, t, lon, lat,
-                            varname, xvec_dependencies, gridded_int):
+                            varname, xvec_dependencies, gridded_int,
+                            coord_str):
     '''Calls all necessary functions to register and define 3D interpolators.
 
     Inputs:
@@ -358,7 +353,8 @@ def regdef_3D_interpolators(kamodo_object, units, variable, t, lon, lat,
         included.
     '''
 
-    interpolator = define_3d_interpolator(units, variable, t, lon, lat)
+    interpolator = define_3d_interpolator(units, variable, t, lon, lat,
+                                          coord_str)
     kamodo_object = register_interpolator(kamodo_object, varname, interpolator,
                                           xvec_dependencies)
 
@@ -375,7 +371,8 @@ def regdef_3D_interpolators(kamodo_object, units, variable, t, lon, lat,
 
 
 def regdef_4D_interpolators(kamodo_object, units, variable, t, lon, lat, z,
-                            varname, xvec_dependencies, gridded_int):
+                            varname, xvec_dependencies, gridded_int,
+                            coord_str):
     '''Calls all necessary functions to register and define 4D interpolators.
 
     Inputs:
@@ -399,7 +396,8 @@ def regdef_4D_interpolators(kamodo_object, units, variable, t, lon, lat, z,
         included.
     '''
 
-    interpolator = define_4d_interpolator(units, variable, t, lon, lat, z)
+    interpolator = define_4d_interpolator(units, variable, t, lon, lat, z,
+                                          coord_str)
     kamodo_object = register_interpolator(kamodo_object, varname, interpolator,
                                           xvec_dependencies)
 

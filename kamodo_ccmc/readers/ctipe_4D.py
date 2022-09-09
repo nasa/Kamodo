@@ -401,16 +401,10 @@ def MODEL():
             # collect variable list
             if len(variables_requested) > 0 and variables_requested != 'all':
                 # add ilev version of variables to the list, adding H_ilev(1)
-                var_replace = [var for var in variables_requested if var in
-                               ilev_replace or var in ilev1_replace]
                 add_ilev = [var+'_ilev' for var in variables_requested if var
                             in ilev_replace]
                 add_ilev1 = [var+'_ilev1' for var in variables_requested if var
                              in ilev1_replace]
-                if len(add_ilev1 + add_ilev) > 0:
-                    print('The following functions will be converted from ' +
-                          'pressure level to height and will not have ' +
-                          'gridded versions:', var_replace)
                 if len(add_ilev) > 0:
                     add_ilev += ['H_ilev']
                 if len(add_ilev1) > 0:
@@ -446,9 +440,6 @@ def MODEL():
             else:  # return full possible variable list
                 gvar_list = [key for key in cdf_data.variables.keys()
                              if key in model_varnames.keys()]
-                print('The following functions will be converted from ' +
-                      'pressure level to height and will not have ' +
-                      'gridded versions:', self.total_replace)
                 if not fulltime and variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in
@@ -525,9 +516,9 @@ def MODEL():
             ilev_check = unique([True for item in varname_list if 'ilev' ==
                                  item[-4:]])
             if ilev1_check and 'H_ilev1' not in varname_list:
-                self.ilev_sub = True
+                self.ilev_sub = 'H_ilev1'
             elif ilev_check and 'H_ilev' not in varname_list:
-                self.ilev_sub = True
+                self.ilev_sub = 'H_ilev'
             else:
                 self.ilev_sub = False
 
@@ -603,9 +594,12 @@ def MODEL():
                                      'Elat': 'deg'}
 
             # define and register the interpolators
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'3D'
             self = RU.regdef_3D_interpolators(self, units, variable,
                                               self._time, lon, lat, varname,
-                                              xvec_dependencies, gridded_int)
+                                              xvec_dependencies, gridded_int,
+                                              coord_str)
             return
 
         # define and register a 4D variable
@@ -615,6 +609,7 @@ def MODEL():
             # determine coordinate variables by coord list
             coord_list = [value[5] for key, value in model_varnames.items()
                           if value[0] == varname][0]
+            # both pressure level grids are present, just not both H functions
             if 'ilev1' in coord_list and hasattr(self, '_ilev1'):
                 lon, lat, z = self._lon1, self._lat1, self._ilev1
                 xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
@@ -639,46 +634,74 @@ def MODEL():
                                      'lat': 'deg', 'height': 'km'}
 
             # define and register the interpolators
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'4D'
+            # need H functions to be gridded regardless of gridded_int value
+            h_grid = True if varname in ['H_ilev', 'H_ilev1'] else gridded_int
             self = RU.regdef_4D_interpolators(self, units, variable,
                                               self._time, lon, lat, z,
                                               varname, xvec_dependencies,
-                                              gridded_int)
+                                              h_grid, coord_str)
 
             # perform substitution if needed
-            if varname in ['H_ilev', 'H_ilev1'] and self.ilev_sub:
+            if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
                 other_name = ['H_ilev', 'H_ilev1']
                 other_name.remove(varname)  # first element is the other name
                 print(f'{other_name[0]} missing in data and is needed to ' +
                       'convert the requested variables to depend on height.' +
                       f' Using {varname} instead.')
+                xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
+                                     other_name[0][2:]: 'm/m'}
                 self.variables[other_name[0]] = dict(units=units,
                                                      data=variable)
                 # register the other variable by linking to this one
                 self = RU.register_interpolator(self, other_name[0], varname,
                                                 xvec_dependencies)
 
-            # implement custom interpolation method here for f(ilev)
-            if varname in self.total_ilev:
-                # set inputs
+            # create pressure level -> km function once per ilev type
+            if varname in ['H_ilev', 'H_ilev1'] or varname in self.total_ilev:
+                if varname in ['H_ilev', 'H_ilev1']:  # create custom interp
+                    new_varname = 'P'+coord_list[-1][1:]
+                    # Import and call custom interpolator
+                    from ctipe_ilevinterp import PLevelInterp
+                    interpolator, interp_ijk, kms = PLevelInterp(
+                        self, self._time, lon, lat, z, 'H_'+coord_list[-1])
+                    setattr(self, '_kms_'+coord_list[-1], kms)
+                    units = 'm/m'
+                    # kms is a 1D array of the median height values in km
+                else:  # define by function composition
+                    new_varname = varname.split('_ilev')[0]
+                    # substitute kms array if height was also substituted
+                    if isinstance(self.ilev_sub, str):
+                        other_name = ['ilev', 'ilev1']
+                        other_name.remove(self.ilev_sub[2:])
+                        kms = getattr(self, '_kms_'+other_name[0])
+                        interpolator = varname+'(P'+other_name[0][1:]+')'
+                    else:
+                        kms = getattr(self, '_kms_'+coord_list[-1])
+                        interpolator = varname+'(P'+coord_list[-1][1:]+')'
+
+                # Register in kamodo object
                 new_xvec_dependencies = {'time': 'hr', 'lon': 'deg',
                                          'lat': 'deg', 'height': 'km'}
-                new_varname = varname.split('_ilev')[0]
-                # Import and call custom interpolator
-                from ctipe_ilevinterp import PLevelInterp
-                interpolator = PLevelInterp(self, z, 'H_'+coord_list[-1])
-                # Register in kamodo object
-                self.variables['P'+coord_list[-1][1:]] = dict(units='m/m')
-                self = RU.register_interpolator(self,
-                                                'P'+coord_list[-1][1:],
-                                                interpolator,
-                                                xvec_dependencies)
-
-                # Use function composition to convert variable function
-                comp_string = varname+'(P'+coord_list[-1][1:]+')'
-                self[new_varname] = comp_string
                 self.variables[new_varname] = dict(units=units)
-                self.variables[new_varname]['xvec'] = new_xvec_dependencies
-                self._registered += 1
+                self = RU.register_interpolator(self, new_varname,
+                                                interpolator,
+                                                new_xvec_dependencies)
+                if varname in self.total_ilev:  # different if H vs not
+                    interp_ijk = self[new_varname]
+
+                # Create 'gridified' interpolators in the kamodo_object
+                if gridded_int:
+                    fake_data = zeros((len(self._time), len(lon), len(lat),
+                                       len(kms)))  # saves execution time
+                    self.variables[new_varname+'_ijk'] = dict(units=units)
+                    gridded_interpolator = RU.define_4d_gridded_interpolator(
+                        units, fake_data, self._time, lon, lat, kms,
+                        new_xvec_dependencies, interp_ijk)
+                    self = RU.register_interpolator(
+                        self, new_varname+'_ijk', gridded_interpolator,
+                        new_xvec_dependencies)
             return
 
     return MODEL

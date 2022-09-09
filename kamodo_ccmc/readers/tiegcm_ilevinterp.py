@@ -1,47 +1,68 @@
 # -*- coding: utf-8 -*-
 # The custom interpolator routine for TIEGCM
 from scipy.interpolate import interp1d
-from kamodo import kamodofy
-from numpy import NaN, vectorize, array
+from kamodo import kamodofy, get_defaults
+from numpy import NaN, vectorize, array, zeros, median
 
 
-def PLevelInterp(kamodo_object, c3, plev_name):
+def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
     '''Custom interpolator functionto convert from altitude in km to pressure
     level.
     Parameters:
-        kamodo_object - the TIEGCM kamodo object
-        var_name - the name of the variable as stored in the kamodo_object
-        c3 - a 1D array with the grid values for pressure level
-        plev_name - the name of the height function
+        kamodo_object - the CTIPe kamodo object
+        time - a 1D array with the grid values for time
+        longitude - a 1D array with the grid values for longitude
+        latitude - a 1D array with the grid values for latitude
+        ilev - a 1D array with the grid values for pressure level
+        plev_name - the name of the height function (e.g. 'H_ilev')
 
-    Output: an interpolator that accepts time, c1, c2, and pressure level and
-        returns the interpolated value for the variable given
+    Output: Two interpolators and a 1D array of the median height values for
+        each pressure level on the grid (in ilev). The first interpolator
+        accepts time, lon, lat, and pressure level and returns time, lon, lat,
+        and height. The second interpolator accepts the same arguments and
+        returns only the height. Both interpolators are 'kamodofied'.
     '''
     # Retrieve correct height function
-    h_func = getattr(kamodo_object, plev_name)
+    h_func = getattr(kamodo_object, plev_name+'_ijk')
     if plev_name in ['H_ilev', 'H_ilev1', 'H_geopot']:
         conv_factor = 100000.   # convert cm to km: 10^5
     elif plev_name == 'H_milev':
         conv_factor = 1.  # already in km
+    coord_list = list(get_defaults(h_func).keys())  # get name of pressure lev
+    print(coord_list)
+
+    # determine the median altitude for each pressure level
+    avg_kms = zeros(len(ilev))
+    for i in range(len(ilev)):
+        avg_kms[i] = median(h_func(**{plev_name[2:]: ilev[i]})/conv_factor)
 
     @vectorize
     def km_to_ilev(t, lon, lat, km):
         '''Inputs t, lon, lat, and km are floats;
         the interpolated pressure level is returned.'''
-        track = [[t, lon, lat, c3_val] for c3_val in c3]
-        km_vals = h_func(track)/conv_factor  # interpolate for all ilev values
-        km_interp = interp1d(km_vals, c3, bounds_error=False, fill_value=NaN)
+        # interpolate for all ilev values
+        km_vals = h_func(**{'time': t, 'lon': lon, 'lat': lat})/conv_factor
+        km_interp = interp1d(km_vals, ilev, bounds_error=False, fill_value=NaN)
         return km_interp(km)
 
     # Convert f(ilev) to f(km)
     @kamodofy(units='m/m')
-    def plevconvert(xvec):
+    def plevconvert(xvec_GDZsph4Dkm):
         '''Interpolator to convert from height to pressure level.
         Input xvec is a tuple or list of arrays/values.
         Returns the 4D position as a tuple of four 1D arrarys to feed into
         the original function.'''
-        t, lon, lat, km = array(xvec).T
+        t, lon, lat, km = array(xvec_GDZsph4Dkm).T
         out_ilev = km_to_ilev(t, lon, lat, km)
-        return t, lon, lat, array(out_ilev)
+        return t, lon, lat, out_ilev
 
-    return plevconvert
+    @kamodofy(units='m/m')
+    def plevconvert_ijk(xvec_GDZsph4Dkm):
+        '''Interpolator to convert from height to pressure level.
+        Input xvec is a tuple or list of arrays/values.
+        Returns the 4D position as a tuple of four 1D arrarys to feed into
+        the original function.'''
+        t, lon, lat, km = array(xvec_GDZsph4Dkm).T
+        return km_to_ilev(t, lon, lat, km)
+
+    return plevconvert, plevconvert_ijk, avg_kms
