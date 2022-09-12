@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # The custom interpolator routine for TIEGCM
 from scipy.interpolate import interp1d
-from kamodo import kamodofy, get_defaults
+from kamodo import kamodofy
 from numpy import NaN, vectorize, array, zeros, median
 
 
@@ -9,7 +9,7 @@ def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
     '''Custom interpolator functionto convert from altitude in km to pressure
     level.
     Parameters:
-        kamodo_object - the CTIPe kamodo object
+        kamodo_object - the TIEGCM kamodo object
         time - a 1D array with the grid values for time
         longitude - a 1D array with the grid values for longitude
         latitude - a 1D array with the grid values for latitude
@@ -28,8 +28,6 @@ def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
         conv_factor = 100000.   # convert cm to km: 10^5
     elif plev_name == 'H_milev':
         conv_factor = 1.  # already in km
-    coord_list = list(get_defaults(h_func).keys())  # get name of pressure lev
-    print(coord_list)
 
     # determine the median altitude for each pressure level
     avg_kms = zeros(len(ilev))
@@ -40,7 +38,7 @@ def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
     def km_to_ilev(t, lon, lat, km):
         '''Inputs t, lon, lat, and km are floats;
         the interpolated pressure level is returned.'''
-        # interpolate for all ilev values
+        # interpolate for all ilev values at t, lon, lat location
         km_vals = h_func(**{'time': t, 'lon': lon, 'lat': lat})/conv_factor
         km_interp = interp1d(km_vals, ilev, bounds_error=False, fill_value=NaN)
         return km_interp(km)
