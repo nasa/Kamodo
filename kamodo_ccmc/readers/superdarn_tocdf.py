@@ -16,18 +16,17 @@ from glob import glob
 import numpy as np
 from time import perf_counter
 from datetime import datetime, timezone
-#from astropy.constants import R_earth
 from netCDF4 import Dataset
 import re
 import os.path
 
-model_varnames={"Pot": ['V', 'kV'], "Vazm": ['theta_v', 'deg'],
-                "Vmag": ['v', 'm/s'],
-                # remaining variables are time series
-                "tilt": ['theta_Btilt', "deg"], 'Esw': ['E_sw', 'mV/m'],
-                'Bang': ['theta_B', 'deg'],
-                # these are the coordinate variables
-                'MLAT': ['MLAT', 'deg'], 'MLT': ['MLT', 'hr']}
+model_varnames = {"Pot": ['V', 'kV'], "Vazm": ['theta_v', 'deg'],
+                  "Vmag": ['v', 'm/s'],
+                  # remaining variables are time series
+                  "tilt": ['theta_Btilt', "deg"], 'Esw': ['E_sw', 'mV/m'],
+                  'Bang': ['theta_B', 'deg'],
+                  # these are the coordinate variables
+                  'MLAT': ['MLAT', 'deg'], 'MLT': ['MLT', 'hr']}
 
 
 def dts_to_hrs(datetime_string, filedate):
@@ -85,7 +84,7 @@ def ascii_reader(filename):
     Esw = float(bin_list[0].strip()[3:].strip().split(' ')[0])
     Bang = float(bin_list[1].strip()[4:].strip().split(' ')[0])
     tilt = float(bin_list[2].strip()[4:].strip().split(' ')[0])
-    var_list = re.split(' +',variable_keys)
+    var_list = re.split(' +', variable_keys)
     header_keys = ['tilt', 'Esw', 'Bang']
     variable_keys = [item for item in var_list if '[' not in item]
 
@@ -130,7 +129,7 @@ def df_data(df_files):
     lat = np.unique(file_data['MLAT']['data'])
     diff = min(abs(np.diff(lat)))
     if min(lat) > 0:
-          # N hemisphere data
+        # N hemisphere data
         lat = np.append(lat, 90.)
         lat = np.insert(lat, 0, [min(lat)-diff, min(lat)-diff/10.])
         # add a spot for a copy before a new NaN row
@@ -187,7 +186,7 @@ def df_data(df_files):
             tmp[:, :, -2] = variables[var][:, :, 0]
             tmp[:, :, -1] = np.NaN  # add NaNs on equator side
         variables[var] = tmp
-    
+
     # hemisphere spcific data wrangling complete. return data.
     return variables, coords, var3D_list, var1D_list
 
@@ -235,14 +234,14 @@ def _toCDF(files, file_prefix):
                 variables[var] = variables_N[var]
         else:
             for var in var3D_list:
-                variables[var] = variables_S[var]        
+                variables[var] = variables_S[var]
 
     # perform longitude wrapping in coordinate grid
     lon = coords['lon']
     lon_le180 = np.where(lon <= 180)[0]
     lon_ge180 = np.where(lon >= 180)[0]  # repeat 180 for -180 values
     # add a cushion value for proper interpolation range (-180 to 180)
-    if not 180. in lon:
+    if 180. not in lon:
         lon_le180 = np.append(lon_le180, lon_le180.max()+1)
         lon_ge180 = np.insert(lon_ge180, 0, lon_ge180.min()-1)
     lon_size = len(lon_le180) + len(lon_ge180)
@@ -314,7 +313,6 @@ def ea_data(ea_files):
     # get data from first file
     file_data = ascii_reader(ea_files[0])
     lat = np.unique(file_data['MLAT']['data'])
-    print(ea_files[0], lat)
 
     # Longitude array is different for each latitude value. Storing in dict
     lon = {}
@@ -348,7 +346,6 @@ def ea_data(ea_files):
     for var in var3D_list:
         for lat_val in lat:
             variables[var][lat_val] = np.array(variables[var][lat_val])
-            #print(var, lat_val, variables[var][lat_val].shape)  # should be (time, lon)
     for var in var1D_list:
         variables[var] = np.array(variables[var])
     coords = {'time': np.array(time), 'lon': lon, 'lat': lat}
@@ -386,12 +383,12 @@ def ea_data(ea_files):
         # perform scalar averaging for pole values (latitude wrapping)
         top = np.mean(variables[var][lat_pole], axis=1)  # same shape as time
         variables[var][new_vals[2]] = np.broadcast_to(top, (3, len(time))).T
-        
+
         # addind NaN on equator-side assuming the data never reaches it.
         variables[var][new_vals[1]] = variables[var][lat_equator]  # buffer row
         variables[var][new_vals[0]] = np.NaN * \
             np.ones(shape=variables[var][lat_equator].shape)
-        
+
     # hemisphere spcific data wrangling complete. return data.
     return variables, coords, var3D_list, var1D_list
 
@@ -449,7 +446,7 @@ def _toCDFGroup(files, file_prefix):
         lon_le180 = np.where(lon <= 180)[0]
         lon_ge180 = np.where(lon >= 180)[0]  # repeat 180 for -180 values
         # add a cushion value for proper interpolation range (-180 to 180)
-        if not 180. in lon:
+        if 180. not in lon:
             lon_le180 = np.append(lon_le180, lon_le180.max()+1)
             lon_ge180 = np.insert(lon_ge180, 0, lon_ge180.min()-1)
         lon_size = len(lon_le180) + len(lon_ge180)
@@ -458,7 +455,7 @@ def _toCDFGroup(files, file_prefix):
         tmp[len(lon_ge180):] = lon[lon_le180]
         coords['lon'][lat_val] = tmp
         new_shape = (len(coords['time']), len(coords['lon'][lat_val]))
-    
+
         # perform lon wrapping in variable data
         for var in var3D_list:
             # swap longitudes, repeat 180 values for -180 position
@@ -482,8 +479,8 @@ def _toCDFGroup(files, file_prefix):
     new_var[:] = coords['lat']  # store data for dimension in variable
     new_var.units = 'deg'
     # time: create dimension and variable
-    new_dim = data_out.createDimension('time', coords['time'].size)  # create dimension
-    new_var = data_out.createVariable('time', np.float32, 'time')  # variable
+    new_dim = data_out.createDimension('time', coords['time'].size)
+    new_var = data_out.createVariable('time', np.float32, 'time')
     new_var[:] = coords['time']
     new_var.units = 'hr'
 
@@ -507,18 +504,13 @@ def _toCDFGroup(files, file_prefix):
         # lon: create dimension and variable
         new_dim = new_group.createDimension('lon', coords['lon'][lat_val].size)
         new_var = new_group.createVariable('lon', np.float32, 'lon')
-        new_var[:] = coords['lon'][lat_val]  # store data for dimension in variable
+        new_var[:] = coords['lon'][lat_val]  # store data for dimension
         new_var.units = 'deg'
-        # time: create dimension and variable
-        #new_dim = new_group.createDimension('time', coords['time'].size)  # create dimension
-        #new_var = new_group.createVariable('time', np.float32, 'time')  # variable
-        #new_var[:] = coords['time']
-        #new_var.units = 'hr'
 
         # copy over 3D variables to file
         for variable_name in var3D_list:
             new_var = new_group.createVariable(variable_name, np.float32,
-                                              ('time', 'lon'))
+                                               ('time', 'lon'))
             new_data = variables[variable_name][lat_val]
             new_var[:] = new_data  # store data in variable
             units = [value[-1] for key, value in model_varnames.items()
@@ -527,12 +519,12 @@ def _toCDFGroup(files, file_prefix):
 
     # close file
     data_out.close()
-    return cdf_filename 
+    return cdf_filename
 
 
 def convert_files(file_prefix):
     '''Convert files of given pattern into one netCDF4 or h5 file'''
-    
+
     print('Converted data file not found. Converting files with ' +
           f'{file_prefix} prefix to a netCDF4 file.', end="")
     ftic = perf_counter()
