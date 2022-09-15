@@ -18,7 +18,7 @@ from time import perf_counter
 from datetime import datetime, timezone
 from netCDF4 import Dataset
 import re
-import os.path
+import os
 
 model_varnames = {"Pot": ['V', 'kV'], "Vazm": ['theta_v', 'deg'],
                   "Vmag": ['v', 'm/s'],
@@ -120,47 +120,52 @@ def ascii_reader(filename):
     return variables
 
 
-def df_data(df_files):
+def df_data(df_files, verbose=False):
     '''Read in data from one hemisphere and perform latitude wrapping only.
     Logic for default grid files.'''
 
-    # get data from first file, set lat/lon arrays
-    file_data = ascii_reader(df_files[0])
-    lat = np.unique(file_data['MLAT']['data'])
-    diff = min(abs(np.diff(lat)))
-    if min(lat) > 0:
-        # N hemisphere data
-        lat = np.append(lat, 90.)
-        lat = np.insert(lat, 0, [min(lat)-diff, min(lat)-diff/10.])
-        # add a spot for a copy before a new NaN row
-    else:
-        lat = np.insert(lat, 0, -90.)
-        lat = np.append(lat, [max(lat)+diff/10., max(lat)+diff])
-        # add a spot for a copy before a new NaN row
-    lon = np.unique(file_data['MLT']['data']) * 15.
-    # The interpolator later assigned makes the last numerical row also NaN,
-    # so adding a buffer row with a slightly different coordinate.
+    # latitude grid in each file is not identical. Find file with smallest grid
+    sizes = np.array([os.stat(file).st_size for file in df_files])
+    smallest_file = df_files[np.argmin(sizes)]
+    if verbose:
+        print(f'Getting coordinate grid from {smallest_file}.')
 
-    # set up net variables dictionary and time coordinate lists
-    time = [file_data['time']['data']]
-    coords = {'time': time, 'lon': lon, 'lat': lat}
+    # get coordinate data from smallest file
+    smallest_data = ascii_reader(smallest_file)
+    lat = np.unique(smallest_data['MLAT']['data'])
+    lon = np.unique(smallest_data['MLT']['data']) * 15.
     var1D_list = ['theta_Btilt', 'E_sw', 'theta_B']
     var3D_list = ['V', 'theta_v', 'v']
-    variables = {var: [np.reshape(file_data[var]['data'],
-                                  (lat.size-3, lon.size)).T]
+
+    # initialize data structures with data from first file
+    data = ascii_reader(df_files[0])
+    time = [data['time']['data']]
+    # some coordinate values are missing in random files. Find the matches.
+    idx = [np.where(data['MLAT']['data'] == lat_val)[0] for lat_val in lat]
+    idx = list(np.ravel(idx))
+    variables = {var: [np.reshape(data[var]['data'][idx],
+                                  (lat.size, lon.size)).T]
                  for var in var3D_list}  # reshape into lon/lat array
     for var in var1D_list:
-        variables[var] = [file_data[var]['data']]
+        variables[var] = [data[var]['data']]
 
     # loop through files and add data to variables dict
     for file in df_files[1:]:
         data = ascii_reader(file)
         time.append(data['time']['data'])
+        idx = [np.where(data['MLAT']['data'] == lat_val)[0] for lat_val in lat]
+        idx = list(np.ravel(idx))
+        if verbose:
+            # print out extra latitudes if verbose
+            file_lat = np.unique(data['MLAT']['data'])
+            extra_lat = [lat_val for lat_val in file_lat if lat_val not in lat]
+            if len(extra_lat) > 0:
+                print('Extra latitude value(s) found:', file, extra_lat)
         for var in var1D_list:
-            variables[var].append(data[var]['data'])
+            variables[var].append(data[var]['data'])  # 1D time series only
         for var in var3D_list:
-            variables[var].append(np.reshape(data[var]['data'],
-                                             (lat.size-3, lon.size)).T)
+            variables[var].append(np.reshape(data[var]['data'][idx],
+                                             (lat.size, lon.size)).T)
     for var in var1D_list+var3D_list:
         variables[var] = np.array(variables[var])
 
@@ -187,23 +192,40 @@ def df_data(df_files):
             tmp[:, :, -1] = np.NaN  # add NaNs on equator side
         variables[var] = tmp
 
+    # latitude wrapping in coordinate grid
+    diff = min(abs(np.diff(lat)))
+    if min(lat) > 0:
+        # N hemisphere data
+        lat = np.append(lat, 90.)
+        lat = np.insert(lat, 0, [min(lat)-diff, min(lat)-diff/10.])
+        # add a spot for a copy before a new NaN row
+    else:
+        lat = np.insert(lat, 0, -90.)
+        lat = np.append(lat, [max(lat)+diff/10., max(lat)+diff])
+        # add a spot for a copy before a new NaN row
+    # The interpolator later assigned makes the last numerical row also NaN,
+    # so adding a buffer row with a slightly different coordinate.
+
     # hemisphere spcific data wrangling complete. return data.
+    coords = {'time': np.array(time), 'lon': lon, 'lat': lat}
     return variables, coords, var3D_list, var1D_list
 
 
-def _toCDF(files, file_prefix):
+def _toCDF(files, file_prefix, verbose=False):
     '''Reads in data from all files, writes to a netcdf4 file. Used for uniform
     grid data files for faster data access.'''
 
     # Get data from both hemispheres
     files_N = [file for file in files if file[-8:] == '_Ndf.txt']
     if len(files_N) > 0:
-        variables_N, coords_N, var3D_list, var1D_list = df_data(files_N)
+        variables_N, coords_N, var3D_list, var1D_list = df_data(
+            files_N, verbose=verbose)
     else:
         print('No files found for the northern hemisphere.')
     files_S = [file for file in files if file[-8:] == '_Sdf.txt']
     if len(files_S) > 0:
-        variables_S, coords_S, var3D_list, var1D_list = df_data(files_S)
+        variables_S, coords_S, var3D_list, var1D_list = df_data(
+            files_S, verbose=verbose)
     else:
         print('No files found for the southern hemisphere.')
     if len(files_N) > 0 and len(files_S) > 0 and len(files_N) != len(files_S):
@@ -306,30 +328,39 @@ def _toCDF(files, file_prefix):
     return cdf_filename
 
 
-def ea_data(ea_files):
+def ea_data(ea_files, verbose=False):
     '''Read in data from one hemisphere and perform latitude wrapping only.
     Logic for equal area grid files.'''
 
-    # get data from first file
-    file_data = ascii_reader(ea_files[0])
-    lat = np.unique(file_data['MLAT']['data'])
+    # latitude grid in each file is not identical. Find file with smallest grid
+    sizes = np.array([os.stat(file).st_size for file in ea_files])
+    smallest_file = ea_files[np.argmin(sizes)]
+    if verbose:
+        print(f'Getting coordinate grid from {smallest_file}.')
+
+    # get coordinate data from smallest file
+    smallest_data = ascii_reader(smallest_file)
+    lat = np.unique(smallest_data['MLAT']['data'])
+    var1D_list = ['theta_Btilt', 'E_sw', 'theta_B']
+    var3D_list = ['V', 'theta_v', 'v']
 
     # Longitude array is different for each latitude value. Storing in dict
     lon = {}
     for lat_val in lat:
-        idx = np.where(file_data['MLAT']['data'] == lat_val)[0]
-        lon[lat_val] = np.array(file_data['MLT']['data'][idx]) * 15.
+        idx = np.where(smallest_data['MLAT']['data'] == lat_val)[0]
+        lon[lat_val] = np.array(smallest_data['MLT']['data'][idx]) * 15.
 
-    # set up net variables dictionary and time coordinate lists
-    time = [file_data['time']['data']]
+    # initialize data structures with data from first file
+    data = ascii_reader(ea_files[0])
+    time = [data['time']['data']]
     var1D_list = ['theta_Btilt', 'E_sw', 'theta_B']
     var3D_list = ['V', 'theta_v', 'v']
-    variables = {var: [file_data[var]['data']] for var in var1D_list}
+    variables = {var: [data[var]['data']] for var in var1D_list}
     for var in var3D_list:
         variables[var] = {}
         for lat_val in lat:
-            idx = np.where(file_data['MLAT']['data'] == lat_val)[0]
-            variables[var][lat_val] = [file_data[var]['data'][idx].T]
+            idx = np.where(data['MLAT']['data'] == lat_val)[0]
+            variables[var][lat_val] = [data[var]['data'][idx].T]
 
     # loop through files and add data to variables dict
     for file in ea_files[1:]:
@@ -341,6 +372,14 @@ def ea_data(ea_files):
             for lat_val in lat:
                 idx = np.where(data['MLAT']['data'] == lat_val)[0]
                 variables[var][lat_val].append(data[var]['data'][idx].T)
+        if verbose:  # print out extra latitudes if verbose
+            idx = [np.where(data['MLAT']['data'] == lat_val)[0]
+                   for lat_val in lat]
+            idx = list(np.ravel(idx))
+            file_lat = np.unique(data['MLAT']['data'])
+            extra_lat = [lat_val for lat_val in file_lat if lat_val not in lat]
+            if len(extra_lat) > 0:
+                print('Extra latitude value(s) found:', file, extra_lat)
 
     # convert to arrays and store
     for var in var3D_list:
@@ -393,7 +432,7 @@ def ea_data(ea_files):
     return variables, coords, var3D_list, var1D_list
 
 
-def _toCDFGroup(files, file_prefix):
+def _toCDFGroup(files, file_prefix, verbose=False):
     '''Reads in data from all files, writes to h5 files. Used for equal-area
     data files so that lon grids from different lat vals can be stored in
     groups.'''
@@ -401,12 +440,14 @@ def _toCDFGroup(files, file_prefix):
     # Get data from both hemispheres
     files_N = [file for file in files if file[-8:] == '_Nea.txt']
     if len(files_N) > 0:
-        variables_N, coords_N, var3D_list, var1D_list = ea_data(files_N)
+        variables_N, coords_N, var3D_list, var1D_list = ea_data(
+            files_N, verbose=verbose)
     else:
         print('No files found for the northern hemisphere.')
     files_S = [file for file in files if file[-8:] == '_Sea.txt']
     if len(files_S) > 0:
-        variables_S, coords_S, var3D_list, var1D_list = ea_data(files_S)
+        variables_S, coords_S, var3D_list, var1D_list = ea_data(
+            files_S, verbose=verbose)
     else:
         print('No files found for the southern hemisphere.')
     if len(files_N) > 0 and len(files_S) > 0 and len(files_N) != len(files_S):
@@ -443,8 +484,8 @@ def _toCDFGroup(files, file_prefix):
     for lat_val in coords['lat'][1:-1]:  # skip poles because already correct
         # Deal with lat_val specific coordinate grid first
         lon = coords['lon'][lat_val]
-        lon_le180 = np.where(lon <= 180)[0]
-        lon_ge180 = np.where(lon >= 180)[0]  # repeat 180 for -180 values
+        lon_le180 = np.where((lon <= 180) & (lon >= 0))[0]  # repeat 180
+        lon_ge180 = np.where((lon >= 180) & (lon <= 360))[0]  # for -180 values
         # add a cushion value for proper interpolation range (-180 to 180)
         if 180. not in lon:
             lon_le180 = np.append(lon_le180, lon_le180.max()+1)
@@ -522,7 +563,7 @@ def _toCDFGroup(files, file_prefix):
     return cdf_filename
 
 
-def convert_files(file_prefix):
+def convert_files(file_prefix, verbose=False):
     '''Convert files of given pattern into one netCDF4 or h5 file'''
 
     print('Converted data file not found. Converting files with ' +
@@ -531,11 +572,11 @@ def convert_files(file_prefix):
     files = sorted(glob(file_prefix+'*.txt'))
     if grid_type(files[0]):  # If grid is uniform, write to netCDF4
         print(' Uniform grid detected. ', end="")
-        out_file = _toCDF(files, file_prefix)
+        out_file = _toCDF(files, file_prefix, verbose=verbose)
     else:  # if grid is equal-area, write to a grouped netCDF4
         print(' Equal-area grid detected. ', end="")
-        out_file = _toCDFGroup(files, file_prefix)
+        out_file = _toCDFGroup(files, file_prefix, verbose=verbose)
     print(out_file)
     print(f'{len(files)} files with prefix {file_prefix} now combined into ' +
           f'{out_file} in {perf_counter()-ftic:.6f}s.')
-    return True
+    return out_file
