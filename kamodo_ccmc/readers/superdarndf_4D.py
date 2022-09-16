@@ -4,19 +4,19 @@ Written by Rebecca Ringuette, 2021
 from datetime import datetime, timedelta, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {"V": ['V', 'Electric potential', 0, 'MAG', 'sph',
+model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
                         ['time', 'lon', 'lat'], 'kV'],
                   "theta_v": ['theta_v', 'Azimuthal angle of convection ' +
-                              'velocity', 1, 'MAG', 'sph', ['time', 'lon',
+                              'velocity', 1, 'SM', 'sph', ['time', 'lon',
                                                             'lat'], 'deg'],
-                  "v": ['v', 'Magnetiude of convection velocity', 2, 'MAG',
+                  "v": ['v', 'SMnetiude of convection velocity', 2, 'SM',
                         'sph', ['time', 'lon', 'lat'], 'm/s'],
                   # remaining variables are time series
-                  "theta_Btilt": ['theta_Btilt', 'Dipole tilt', 3, 'MAG',
+                  "theta_Btilt": ['theta_Btilt', 'Dipole tilt', 3, 'SM',
                                   'sph', ['time'], 'deg'],
                   'E_sw': ['E_sw', 'Electric field of the solar wind', 4,
-                           'MAG', 'sph', ['time'], 'mV/m'],
-                  'theta_B': ['theta_B', 'IMF clock angle', 5, 'MAG', 'sph',
+                           'SM', 'sph', ['time'], 'mV/m'],
+                  'theta_B': ['theta_B', 'IMF clock angle', 5, 'SM', 'sph',
                               ['time'], 'deg']}
 
 

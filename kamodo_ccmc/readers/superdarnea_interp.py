@@ -48,8 +48,8 @@ def custom_interp(time_grid, lon_dict, lat_grid, data_dict, units):
         return lat_interp(lat)
 
     @kamodofy(units=units)
-    def total_interp(xvec_MAGsph3D):
-        t, lon, lat = array(xvec_MAGsph3D).T
+    def total_interp(xvec_SMsph3D):
+        t, lon, lat = array(xvec_SMsph3D).T
         return interp_i(t, lon, lat)
 
     return total_interp

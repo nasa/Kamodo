@@ -212,7 +212,7 @@ def df_data(df_files, verbose=False):
 
 
 def _toCDF(files, file_prefix, verbose=False):
-    '''Reads in data from all files, writes to a netcdf4 file. Used for uniform
+    '''Reads in data from all files, writes to a netcdf4 file. Used for default
     grid data files for faster data access.'''
 
     # Get data from both hemispheres
@@ -259,26 +259,15 @@ def _toCDF(files, file_prefix, verbose=False):
                 variables[var] = variables_S[var]
 
     # perform longitude wrapping in coordinate grid
-    lon = coords['lon']
-    lon_le180 = np.where(lon <= 180)[0]
-    lon_ge180 = np.where(lon >= 180)[0]  # repeat 180 for -180 values
-    # add a cushion value for proper interpolation range (-180 to 180)
-    if 180. not in lon:
-        lon_le180 = np.append(lon_le180, lon_le180.max()+1)
-        lon_ge180 = np.insert(lon_ge180, 0, lon_ge180.min()-1)
-    lon_size = len(lon_le180) + len(lon_ge180)
-    tmp = np.zeros(lon_size)
-    tmp[:len(lon_ge180)] = lon[lon_ge180] - 360.
-    tmp[len(lon_ge180):] = lon[lon_le180]
-    coords['lon'] = tmp
+    coords['lon'] = np.append(coords['lon'], 360.) - 180.
     new_shape = [len(coords['time']), len(coords['lon']), len(coords['lat'])]
 
     # perform lon wrapping in variable data
     for var in var3D_list:
         # swap longitudes, repeat 180 values for -180 position
         tmp = np.zeros(new_shape, dtype=float)
-        tmp[:, :len(lon_ge180), :] = variables[var][:, lon_ge180, :]
-        tmp[:, len(lon_ge180):, :] = variables[var][:, lon_le180, :]
+        tmp[:, :-1, :] = variables[var]
+        tmp[:, -1, :] = variables[var][:, 0, :]
         variables[var] = tmp
 
     # Data wrangling complete. Start new output file
@@ -483,27 +472,46 @@ def _toCDFGroup(files, file_prefix, verbose=False):
     # perform longitude wrapping in coordinate grid and variable data
     for lat_val in coords['lat'][1:-1]:  # skip poles because already correct
         # Deal with lat_val specific coordinate grid first
-        lon = coords['lon'][lat_val]
-        lon_le180 = np.where((lon <= 180) & (lon >= 0))[0]  # repeat 180
-        lon_ge180 = np.where((lon >= 180) & (lon <= 360))[0]  # for -180 values
-        # add a cushion value for proper interpolation range (-180 to 180)
-        if 180. not in lon:
-            lon_le180 = np.append(lon_le180, lon_le180.max()+1)
-            lon_ge180 = np.insert(lon_ge180, 0, lon_ge180.min()-1)
-        lon_size = len(lon_le180) + len(lon_ge180)
-        tmp = np.zeros(lon_size)
-        tmp[:len(lon_ge180)] = lon[lon_ge180] - 360.
-        tmp[len(lon_ge180):] = lon[lon_le180]
-        coords['lon'][lat_val] = tmp
+        lon_flag = ''
+        # new lon grids are linked and will change together
+        if max(coords['lon'][lat_val]) > 180.:
+            coords['lon'][lat_val] -= 180.
+        if min(coords['lon'][lat_val]) > -180.:  # extend left
+            diff = min(abs(np.diff(coords['lon'][lat_val])))
+            coords['lon'][lat_val] = np.insert(coords['lon'][lat_val], 0,
+                                               min(coords['lon'][lat_val]) -
+                                               diff)
+            lon_flag += 'L'
+        if max(coords['lon'][lat_val]) < 180.:  # extend right
+            diff = min(abs(np.diff(coords['lon'][lat_val])))
+            coords['lon'][lat_val] = np.append(coords['lon'][lat_val],
+                                               max(coords['lon'][lat_val]) +
+                                               diff)
+            lon_flag += 'R'
         new_shape = (len(coords['time']), len(coords['lon'][lat_val]))
 
         # perform lon wrapping in variable data
-        for var in var3D_list:
-            # swap longitudes, repeat 180 values for -180 position
-            tmp = np.zeros(new_shape, dtype=float)
-            tmp[:, :len(lon_ge180)] = variables[var][lat_val][:, lon_ge180]
-            tmp[:, len(lon_ge180):] = variables[var][lat_val][:, lon_le180]
-            variables[var][lat_val] = tmp
+        if lon_flag == '':
+            continue
+        if lon_flag == 'L':
+            for var in var3D_list:
+                tmp = np.zeros(new_shape, dtype=float)
+                tmp[:, 1:] = variables[var][lat_val]
+                tmp[:, 0] = variables[var][lat_val][:, -1]
+                variables[var][lat_val] = tmp
+        elif lon_flag == 'R':
+            for var in var3D_list:
+                tmp = np.zeros(new_shape, dtype=float)
+                tmp[:, :-1] = variables[var][lat_val]
+                tmp[:, -1] = variables[var][lat_val][:, 0]
+                variables[var][lat_val] = tmp
+        elif lon_flag == 'LR':
+            for var in var3D_list:
+                tmp = np.zeros(new_shape, dtype=float)
+                tmp[:, 1:-1] = variables[var][lat_val]
+                tmp[:, 0] = variables[var][lat_val][:, -1]
+                tmp[:, -1] = variables[var][lat_val][:, 0]
+                variables[var][lat_val] = tmp
 
     # Data wrangling complete. Start new output file
     cdf_filename = file_prefix+'_ea.nc'
