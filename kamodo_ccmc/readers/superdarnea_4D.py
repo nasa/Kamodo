@@ -4,47 +4,20 @@ Written by Rebecca Ringuette, 2021
 from datetime import datetime, timedelta, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'Ne': ['N_e', 'electron number density',
-                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                         '1/m**3'],
-                  'Te': ['T_e', 'electron temperature',
-                         1, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                         'K'],
-                  'Ti': ['T_i', 'ion temperature',
-                         2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                         'K'],
-                  'Tn': ['T_n', 'neutral temperature',
-                         3, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                         'K'],
-                  'O+': ['N_Oplus', 'number density of atomic oxygen ion',
-                         4, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                         '1/m**3'],
-                  'H+': ['N_Hplus', 'number density of atomic hydrogen ion',
-                         5, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                         '1/m**3'],
-                  'He+': ['N_Heplus', 'number density of atomic helium ion',
-                          6, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                          '1/m**3'],
-                  'O2+': ['N_O2plus', 'number density of molecular oxygen ion',
-                          7, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                          '1/m**3'],
-                  'NO+': ['N_NOplus', 'number density of molecular nitric ' +
-                          'oxide', 8, 'GDZ', 'sph', ['time', 'lon', 'lat',
-                                                     'height'], '1/m**3'],
-                  'N+': ['N_Nplus', 'number density of atomic nitrogen ion',
-                         9, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
-                         '1/m**3'],
-                  'TEC': ['TEC', 'vertical total electron content (height ' +
-                          'integrated from bottom to top boundary)',
-                          10, 'GDZ', 'sph', ['time', 'lon', 'lat'],
-                          '10**16/m**2'],
-                  'NmF2': ['NmF2', 'maximum electron number density in F2 ' +
-                           'layer', 11, 'GDZ', 'sph', ['time', 'lon', 'lat'],
-                           '1/m**3'],
-                  'HmF2': ['HmF2', 'height of maximum electron number ' +
-                           'density in F2 layer', 12, 'GDZ', 'sph',
-                           ['time', 'lon', 'lat'], 'km']
-                  }
+model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
+                        ['time', 'lon', 'lat'], 'kV'],
+                  "theta_v": ['theta_v', 'Azimuthal angle of convection ' +
+                              'velocity', 1, 'SM', 'sph', ['time', 'lon',
+                                                            'lat'], 'deg'],
+                  "v": ['v', 'SMnetiude of convection velocity', 2, 'SM',
+                        'sph', ['time', 'lon', 'lat'], 'm/s'],
+                  # remaining variables are time series
+                  "theta_Btilt": ['theta_Btilt', 'Dipole tilt', 3, 'SM',
+                                  'sph', ['time'], 'deg'],
+                  'E_sw': ['E_sw', 'Electric field of the solar wind', 4,
+                           'SM', 'sph', ['time'], 'mV/m'],
+                  'theta_B': ['theta_B', 'IMF clock angle', 5, 'SM', 'sph',
+                              ['time'], 'deg']}
 
 
 def ts_to_hrs(time_val, filedate):
@@ -55,31 +28,32 @@ def ts_to_hrs(time_val, filedate):
 
 # times from file converted to seconds since midnight of filedate
 # plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
-# filedate is self.filedate from iri object
+# filedate is self.filedate from superdarn object
 # converts to hours since midnight of filedate for plotting
 def MODEL():
 
     from kamodo import Kamodo
     from netCDF4 import Dataset
-    from os.path import basename
-    from numpy import array, transpose, NaN, unique, append, zeros, abs, diff
-    from numpy import where
+    from os.path import basename, isfile
+    from numpy import array, where, NaN, unique, append, zeros, abs, diff
+    from numpy import linspace, ndarray
     from time import perf_counter
-    from astropy.constants import R_earth
-    from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
-        '''IRI model data reader.
+        '''SuperDARN model data reader for the default coordinate grid.
 
         Inputs:
-            full_filename3d: a string representing the file pattern of the
-                model output data.
-                Note: This reader takes the full filename of the 3D output
-                file, typically of the naming convention
-                file_dir+'IRI.3D.YYYYDDD.nc',
-                where YYYY is the four digit year and DDD is the three digit
-                day of year (e.g. 2017148 for May 28, 2017).
+            full_filenamedf: a string representing the file pattern of the
+                model output data for the default coordinate grid format.
+                Note: This reader takes the file prefix, typically of
+                the naming convention
+                file_dir+'modelYYYYMMDD',
+                where YYYY is the four digit year, MM is the two digit month,
+                and DD is the two digit day (e.g. 20200505 for May 5, 2020).
+                All files with the default grid should be in the chosen
+                directory, with all files from the equal-area grid
+                (if generated) in a separate directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
@@ -120,47 +94,50 @@ def MODEL():
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
         '''
-        def __init__(self, full_filename3d, variables_requested=[],
+        def __init__(self, file_prefixea, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
                      fulltime=True, verbose=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
-            self.modelname = 'IRI'
+            self.modelname = 'SuperDARN_ea'
             t0 = perf_counter()
 
-            # collect filenames
-            filename = basename(full_filename3d)
-            file_dir = full_filename3d.split(filename)[0]
-            if '.2D.' in filename:  # require that input filename be 3D file
-                full_filename2d = full_filename3d
-                # can't replace in place
-                f = full_filename3d.replace('.2D.', '.3D.')
-                full_filename3d = f
-            else:
-                full_filename2d = full_filename3d.replace('.3D.', '.2D.')
-            self.filename = full_filename3d + ',' + full_filename2d
+            # check for prepared file of given prefix
+            t0 = perf_counter()
+            if isfile(file_prefixea + '_ea.nc'):   # file already prepared!
+                cdf_file = file_prefixea + '_ea.nc'  # input file name
+                self.conversion_test = True
+            else:   # file not prepared,  prepare it
+                from kamodo_ccmc.readers.superdarn_tocdf import \
+                    convert_files
+                cdf_file = convert_files(file_prefixea)
+                self.conversion_test = True
+            filename = basename(cdf_file)
+            file_dir = cdf_file.split(filename)[0]
+            self.filename = cdf_file
 
             # establish time attributes first
-            iri3D = Dataset(full_filename3d, 'r')
-            # convert to hours since midnight of file
-            time = array(iri3D.variables['time']) / 60.
+            cdf_data = Dataset(cdf_file, 'r')
+            # hours since midnight of file
+            time = array(cdf_data.variables['time'])
             # datetime object for midnight on date
-            self.filedate = datetime(int(filename[-10:-6]), 1, 1, 0, 0, 0
-                                     ).replace(tzinfo=timezone.utc) + \
-                timedelta(days=int(filename[-6:-3]) - 1)
+            self.filedate = datetime(
+                int(file_prefixea[-8:-4]), int(file_prefixea[-4:-2]),
+                int(file_prefixea[-2:]), 0, 0, 0
+                ).replace(tzinfo=timezone.utc)
             # strings with timezone info chopped off (UTC anyway).
             # Format: ‘YYYY-MM-DD HH:MM:SS’
             self.datetimes = [
-                (self.filedate+timedelta(hours=time[0])).isoformat(
-                    sep=' ')[:19],
-                (self.filedate+timedelta(hours=time[-1])).isoformat(
-                    sep=' ')[:19]]
+                (self.filedate + timedelta(seconds=int(time[0]*3600.))
+                 ).isoformat(sep=' ')[:19],
+                (self.filedate + timedelta(seconds=int(time[-1]*3600.))
+                 ).isoformat(sep=' ')[:19]]
             self.filetimes = [datetime.timestamp(datetime.strptime(
                 dt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)) for dt
                 in self.datetimes]   # utc timestamp
             self.dt = diff(time).max()*3600.  # convert time resolution to sec
 
             if filetime and not fulltime:
-                iri3D.close()
+                cdf_data.close()
                 return  # return times as is to prevent recursion
 
             # if variables are given as integers, convert to standard names
@@ -175,14 +152,14 @@ def MODEL():
                 # find other files with same pattern
                 from glob import glob
 
-                file_pattern = file_dir + 'IRI.3D.*.nc'  # returns a string
+                file_pattern = file_dir + 'model*_ea.nc'  # returns a string
                 files = sorted(glob(file_pattern))  # method may change for AWS
                 filenames = unique([basename(f) for f in files])
 
                 # find closest file by utc timestamp
-                # iri has an open time at the end
+                # superdarn has an open time at the end
                 # need a beginning time from the closest file
-                # files are automatically sorted by YYMMDD
+                # files are automatically sorted by YYYYMMDD
                 # next file is next in the list
                 current_idx = where(filenames == filename)[0]
                 if current_idx+1 == len(files):
@@ -190,7 +167,7 @@ def MODEL():
                         print('No later file available.')
                     filecheck = False
                     if filetime:
-                        iri3D.close()
+                        cdf_data.close()
                         return
                 else:
                     # +1 for adding an end time
@@ -207,7 +184,7 @@ def MODEL():
 
                         # time only version if returning time for searching
                         if filetime:
-                            iri3D.close()
+                            cdf_data.close()
                             return  # return object with additional time
 
                         # get kamodo object with same requested variables
@@ -227,7 +204,7 @@ def MODEL():
                                   f'{diff(time).max()*3600.:.1f}s.')
                         filecheck = False
                         if filetime:
-                            iri3D.close()
+                            cdf_data.close()
                             return
 
             # perform initial check on variables_requested list
@@ -240,54 +217,62 @@ def MODEL():
                     print('Variable name(s) not recognized:', err_list)
 
             # collect variable list
-            iri2D = Dataset(full_filename2d, 'r')
+            sample_groupname = list(cdf_data.groups.keys())[0]
+            file_variables = list(cdf_data.variables.keys()) +\
+                list(cdf_data.groups[sample_groupname].variables.keys())
             if len(variables_requested) > 0 and variables_requested != 'all':
-                gvar_list_2d = [key for key, value in model_varnames.items()
-                                if value[0] in variables_requested and
-                                key in iri2D.variables.keys()]
-                gvar_list_3d = [key for key, value in model_varnames.items()
-                                if value[0] in variables_requested and
-                                key in iri3D.variables.keys()]
+                gvar_list = [key for key, value in model_varnames.items()
+                             if value[0] in variables_requested and
+                             key in file_variables]
 
                 # check for variables requested but not available
-                if len(gvar_list_2d)+len(gvar_list_3d) != \
-                        len(variables_requested):
+                if len(gvar_list) != len(variables_requested):
                     err_list = [value[0] for key, value in
                                 model_varnames.items() if value[0] in
-                                variables_requested and key not in gvar_list_2d
-                                and key not in gvar_list_3d]
+                                variables_requested and key not in gvar_list]
                     if len(err_list) > 0:
                         print('Some requested variables are not available:',
                               err_list)
             else:  # only input variables on the avoid_list if requested
-                gvar_list_2d = [key for key in iri2D.variables.keys()
-                                if key in model_varnames.keys()]
-                gvar_list_3d = [key for key in iri3D.variables.keys()
-                                if key in model_varnames.keys()]
+                gvar_list = [key for key in file_variables
+                             if key in model_varnames.keys()]
                 # returns list of variables included in data files
                 if not fulltime and variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in
-                                     gvar_list_2d+gvar_list_3d}
-                    iri3D.close()
-                    iri2D.close()
+                                     gvar_list}
+                    cdf_data.close()
                     return
 
-            # store data for each variable desired
-            variables_2d = {model_varnames[var][0]: {
+            # retrieve latitude grid
+            self._lat = array(cdf_data.variables['lat'])
+
+            # store data for each 1D variable desired
+            variables = {model_varnames[var][0]: {
                 'units': model_varnames[var][-1],
-                'data': array(iri2D.variables[var])} for var in gvar_list_2d}
-            variables_3d = {model_varnames[var][0]: {
-                'units': model_varnames[var][-1],
-                'data': array(iri3D.variables[var])} for var in gvar_list_3d}
-            variables = variables_3d
-            for key in variables_2d:
-                variables[key] = variables_2d[key]
+                'data': array(cdf_data.variables[var])} for var in gvar_list
+                if len(model_varnames[var][5]) == 1}
+            # gives an empty dictionary if no 1D variables are requested
+
+            # collect 3D data
+            var3D_list = [model_varnames[var][0] for var in gvar_list
+                          if len(model_varnames[var][5]) == 3]
+            lat_keys = [str(lat_val).replace('.', '_').replace('-', 'n')
+                        if lat_val < 0 else 'p'+str(lat_val).replace('.', '_')
+                        for lat_val in self._lat]  # e.g. 'n75_5' for -75.5
+            for var in var3D_list:
+                variables[var] = {'units': model_varnames[var][-1]}
+                variables[var]['data'] = {
+                    lat_val: array(cdf_data.groups[lat_key][var])
+                    for lat_key, lat_val in zip(lat_keys, self._lat)}
+
+            # retrieve dictionary of longitude grids. Keys are lat values.
+            self._lon = {lat_val: array(cdf_data.groups[lat_key]['lon']) for
+                         lat_key, lat_val in zip(lat_keys, self._lat)}
 
             # prepare and return data
             if not fulltime:
-                iri3D.close()
-                iri2D.close()
+                cdf_data.close()
                 variables['time'] = self.filetimes[0]
                 self.short_data = variables
                 return
@@ -299,16 +284,7 @@ def MODEL():
                 self._time = append(time, new_time)
             else:
                 self._time = time
-
-            # collect data and make dimensional grid from 3D file
-            lon = array(iri3D.variables['lon'])  # 0 to 360
-            lon_le180 = where(lon <= 180)[0]
-            lon_ge180 = where(lon >= 180)[0]  # repeat 180 for -180 values
-            self._lon = lon - 180.
-            self._lat = array(iri3D.variables['lat'])
-            self._height = array(iri3D.variables['ht'])
-            iri3D.close()   # close netCDF4 files
-            iri2D.close()
+            cdf_data.close()
 
             # store a few items
             self.missing_value = NaN
@@ -324,58 +300,42 @@ def MODEL():
             varname_list = [key for key in variables.keys()]
             self.variables = {}
             for varname in varname_list:
-                if len(variables[varname]['data'].shape) == 3:
+                if isinstance(variables[varname]['data'], dict):  # 3D var
                     if filecheck:  # if neighbor found
-                        # append data for last time stamp
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1, :, :] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1, :, :] =\
-                            short_data[varname]['data'][0, :, :]
-                        variables[varname]['data'] = new_data  # save
-
-                    # shift longitude
-                    data_shape = list(variables[varname]['data'].shape)
-                    new_data = zeros(data_shape)
-                    new_data[:, :, :len(lon_ge180)] = \
-                        variables[varname]['data'][:, :, lon_ge180]
-                    new_data[:, :, len(lon_ge180)-1:] = \
-                        variables[varname]['data'][:, :, lon_le180]
-                    # (t, lat, lon) -> (t, lon, lat)
-                    variable = transpose(new_data, (0, 2, 1))
+                        # append data for last time stamp for each lat value
+                        for lat_val in self._lat:
+                            data_shape =\
+                                list(variables[varname]['data'][lat_val].shape)
+                            data_shape[0] += 1  # add space for time
+                            new_data = zeros(data_shape)
+                            # put in current data
+                            new_data[:-1, :, :] =\
+                                variables[varname]['data'][lat_val]
+                            # add in data for additional time
+                            new_data[-1, :, :] =\
+                                short_data[varname]['data'][lat_val][0, :, :]
+                            variables[varname]['data'][lat_val] = new_data
                     self.variables[varname] = dict(
-                        units=variables[varname]['units'], data=variable)
+                        units=variables[varname]['units'],
+                        data=variables[varname]['data'])
                     self.register_3D_variable(self.variables[varname]['units'],
                                               self.variables[varname]['data'],
                                               varname, gridded_int)
-                elif len(variables[varname]['data'].shape) == 4:
+                elif isinstance(variables[varname]['data'], ndarray):  # 1D var
                     if filecheck:
                         # append data for last time stamp, transpose
                         data_shape = list(variables[varname]['data'].shape)
                         data_shape[0] += 1  # add space for time
                         new_data = zeros(data_shape)
                         # put in current data
-                        new_data[:-1, :, :, :] = variables[varname]['data']
+                        new_data[:-1] = variables[varname]['data']
                         # add in data for additional time
-                        new_data[-1, :, :, :] =\
-                            short_data[varname]['data'][0, :, :, :]
+                        new_data[-1] = short_data[varname]['data'][0]
                         variables[varname]['data'] = new_data  # save
-
-                    # shift longitude
-                    data_shape = list(variables[varname]['data'].shape)
-                    new_data = zeros(data_shape)
-                    new_data[:, :, :, :len(lon_ge180)] = \
-                        variables[varname]['data'][:, :, :, lon_ge180]
-                    new_data[:, :, :, len(lon_ge180)-1:] = \
-                        variables[varname]['data'][:, :, :, lon_le180]
-                    # (t, h, lat, lon) -> (t, lon, lat, h)
-                    variable = transpose(new_data, (0, 3, 2, 1))
                     self.variables[varname] = dict(
-                        units=variables[varname]['units'], data=variable)
-                    self.register_4D_variable(self.variables[varname]['units'],
+                        units=variables[varname]['units'],
+                        data=variables[varname]['data'])
+                    self.register_1D_variable(self.variables[varname]['units'],
                                               self.variables[varname]['data'],
                                               varname, gridded_int)
             if verbose:
@@ -391,21 +351,41 @@ def MODEL():
 
             # define and register the interpolators
             xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
-            self = regdef_3D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int)
+
+            # variable is a dictionary = {lat_val: array}
+            # need an interpolator for each lat_val
+            # then a 1D interpolator for the output values vs latitude
+            from kamodo_ccmc.readers.superdarnea_interp import custom_interp
+            interp = custom_interp(self._time, self._lon, self._lat, variable,
+                                   units)
+
+            # Register in kamodo object, with gridded version if desired
+            self = RU.register_interpolator(self, varname, interp,
+                                            xvec_dependencies)
+            if gridded_int:
+                fake_lon = linspace(-180, 180, 20)  # sample lon grid
+                fake_data = zeros((len(self._time), len(fake_lon),
+                                   len(self._lat)))  # saves execution time
+                self.variables[varname+'_ijk'] = dict(units=units)
+                gridded_interpolator = RU.define_3d_gridded_interpolator(
+                    units, fake_data, self._time, fake_lon, self._lat,
+                    xvec_dependencies, interp)
+                self = RU.register_interpolator(
+                    self, varname+'_ijk', gridded_interpolator,
+                    xvec_dependencies)
             return
 
-        # define and register a 4D variable
-        def register_4D_variable(self, units, variable, varname, gridded_int):
+        # define and register a 1D variable
+        def register_1D_variable(self, units, variable, varname, gridded_int):
             """Registers a 4d interpolator with 4d signature"""
 
             # define and register the fast interpolator
-            xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                 'height': 'km'}
-            self = regdef_4D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, self._height,
-                                           varname, xvec_dependencies,
-                                           gridded_int)
+            xvec_dependencies = {'time': 'hr'}
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'1D'
+            self = RU.regdef_1D_interpolators(self, units, variable,
+                                              self._time, varname,
+                                              xvec_dependencies, gridded_int,
+                                              coord_str)
             return
     return MODEL

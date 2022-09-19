@@ -332,7 +332,7 @@ def TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence,
 # want to enable call of this from C++ for flexibility, so return only one item
 # keep so users can call this if they have their own satellite trajectory data
 def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
-                    coord_sys, high_res=20., output_name='', plot_coord='GEO',
+                    coord_sys, output_name='', plot_coord='GEO',
                     verbose=False, _print_units=True):
     '''Call satellite flythrough wrapper specific to the model chosen.
     Parameters:
@@ -347,9 +347,6 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         (lon, lat, radius (R_E) or altitude (km)) for spherical coordinates.
     coord_sys: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', 'SPH',
         'RLL', etc, combined with '-sph' or '-car'. E.g. 'SM-car' or 'GDZ-sph'.
-    high_res: the accuracy of the conversion from radius or altitude to
-        pressure level. Ignore if no conversion is needed for the variable(s)
-        selected. Default is 20.
     output_name: complete path with filename (with the extension) for the file
         to write the results to. Plotting filenames are determined by
         output_name - extension + variable names + plot type (1D or 3D).
@@ -414,12 +411,20 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     # prepare files for run
     U.Prepare_Files(model, file_dir)
 
+    # ignore variables with 'ilev' in the name
+    clean_var = [var for var in variable_list if 'ilev' not in var]
+    if len(variable_list) != len(clean_var):
+        print('Pressure dependent variables ignored. Please request the ' +
+              'height dependent versions instead.')
+        if len(clean_var) == 0:
+            return
+
     # get interpolated results
     # coord_type should be one of SpacePy's or AstroPy's coordinates
     # coord_grid is either 'sph' or 'car'
     results = U.Model_SatelliteFlythrough(model, file_dir, variable_list,
                                           sat_time, c1, c2, c3,
-                                          coord_type, coord_grid, high_res,
+                                          coord_type, coord_grid,
                                           verbose=verbose)
 
     # remove requested variables not found in the data
@@ -485,7 +490,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
 
 def FakeFlight(start_time, stop_time, model, file_dir, variable_list,
                max_lat=65., min_lat=-65., lon_perorbit=363., max_height=450.,
-               min_height=400., p=0.01, n=2., high_res=20., verbose=False,
+               min_height=400., p=0.01, n=2., verbose=False,
                output_name='', plot_coord='GEO'):
     '''Generates a sample trajectory and then flies that trajectory through the
     model data chosen.
@@ -510,9 +515,6 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list,
             as a percentage of the min_height value: p =  (default=0.01).
         n: the time cadence of the sample trajectory generated
             (default = 2 seconds)
-        high_res: the accuracy of the conversion from radius or altitude to
-            pressure level. Ignore if no conversion is needed for the
-            variable(s) selected. Default is 20.
         output_name: complete path with filename (with the extension) for the
             file to write the results to. Plotting filenames are determined by
             output_name - extension + variable names + plot type (1D or 3D).
@@ -551,15 +553,15 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list,
     results = ModelFlythrough(model, file_dir, variable_list,
                               sat_dict['sat_time'], sat_dict['c1'],
                               sat_dict['c2'], sat_dict['c3'],
-                              coord_sys, high_res=high_res,
-                              verbose=verbose, output_name=output_name,
+                              coord_sys, verbose=verbose,
+                              output_name=output_name,
                               plot_coord=plot_coord)
     return results
 
 
 def RealFlight(dataset, start, stop, model, file_dir, variable_list,
                coord_type='GEO', output_name='', plot_coord='GEO',
-               high_res=20., verbose=False):
+               verbose=False):
     '''
     Retrieves the trajectory for the satellite requested and then flies that
     trajectory through the model data requested.
@@ -572,17 +574,11 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list,
     variable_list: List of standardized variable names. Corresponding integers
         are allowed. See model variable output for details.
     coord_type: Pick from GEO, GSM, GSE, or SM for the satellite trajectory.
-    high_res: the accuracy of the conversion from radius or altitude to
-        pressure level. Ignore if no conversion is needed for the variable(s)
-        selected. Default is 20.
     output_name: complete path with filename (with the extension) for the file
         to write the results to. Plotting filenames are determined by
         output_name - extension + variable names + plot type (1D or 3D).
         Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
         separated data, or 'txt' for tab separated data files.
-    high_res: the accuracy of the conversion from radius or altitude to
-        pressure level. Ignore if no conversion is needed for the variable(s)
-        selected. Default is 20.
     plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
         integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
         system the plot will be generated in. Only plots in cartesian
@@ -616,12 +612,12 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list,
                               sat_dict['c2'], sat_dict['c3'],
                               coord_sys, output_name=output_name,
                               plot_coord=plot_coord,
-                              high_res=high_res, verbose=verbose)
+                              verbose=verbose)
     return results
 
 
 def TLEFlight(tle_file, start, stop, time_cadence, model, file_dir,
-              variable_list, output_name='', plot_coord='GEO', high_res=20.,
+              variable_list, output_name='', plot_coord='GEO',
               method='forward', verbose=False):
     '''
     Use sgp4 to calculate a satellite trajectory given TLEs, then fly the
@@ -644,17 +640,11 @@ def TLEFlight(tle_file, start, stop, time_cadence, model, file_dir,
             integers are allowed. See model variable output for details.
         coord_type: Pick from GEO, GSM, GSE, or SM for the satellite
             trajectory.
-        high_res: the accuracy of the conversion from radius or altitude to
-            pressure level. Ignore if no conversion is needed for the
-            variable(s) selected. Default is 20.
         output_name: complete path with filename (with the extension) for the
             file to write the results to. Plotting filenames are determined by
             output_name - extension + variable names + plot type (1D or 3D).
             Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
             separated data, or 'txt' for tab separated data files.
-        high_res: the accuracy of the conversion from radius or altitude to
-            pressure level. Ignore if no conversion is needed for the
-            variable(s) selected. Default is 20.
         plot_coord: Any of the coordinate systems in SpacePy or AstroPy.
             See the ConvertCoord function for more information on the choices
             of string values.
@@ -691,13 +681,12 @@ def TLEFlight(tle_file, start, stop, time_cadence, model, file_dir,
                               sat_dict['sat_time'], sat_dict['c1'],
                               sat_dict['c2'], sat_dict['c3'],
                               coord_sys, output_name=output_name,
-                              plot_coord=plot_coord, high_res=high_res,
-                              verbose=verbose)
+                              plot_coord=plot_coord, verbose=verbose)
     return results
 
 
-def MyFlight(traj_file, model, file_dir, variable_list,
-             output_name='', plot_coord='GEO', high_res=20., verbose=False):
+def MyFlight(traj_file, model, file_dir, variable_list, output_name='',
+             plot_coord='GEO', verbose=False):
     '''Read in a trajectory from a file, then fly through the model data
     selected.
 
@@ -717,9 +706,6 @@ def MyFlight(traj_file, model, file_dir, variable_list,
         output_name - extension + variable names + plot type (1D or 3D).
         Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
         separated data, or 'txt' for tab separated data files.
-    high_res: the accuracy of the conversion from radius or altitude to
-        pressure level. Ignore if no conversion is needed for the variable(s)
-        selected. Default is 20.
     plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
         integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
         system the plot will be generated in. Only plots in cartesian
@@ -760,7 +746,7 @@ def MyFlight(traj_file, model, file_dir, variable_list,
                               traj_data['c1']['data'], traj_data['c2']['data'],
                               traj_data['c3']['data'], coord_sys,
                               output_name=output_name, plot_coord=plot_coord,
-                              high_res=high_res, verbose=verbose)
+                              verbose=verbose)
 
     return results
 
@@ -802,9 +788,8 @@ if __name__ == '__main__':
             min_height = float(argv[11])
             p = float(argv[12])
             n = float(argv[13])
-            high_res = float(argv[14])
-            output_name = argv[15]
-            plot_coord = argv[16]
+            output_name = argv[14]
+            plot_coord = argv[15]
 
             # check input
             print(f'\nstart_time: {start_time}, \nstop_time: {stop_time}, ' +
@@ -819,7 +804,7 @@ if __name__ == '__main__':
                                  variable_list, max_lat=max_lat,
                                  min_lat=min_lat, lon_perorbit=lon_perorbit,
                                  max_height=max_height, min_height=min_height,
-                                 p=p, n=n, high_res=high_res, verbose=False,
+                                 p=p, n=n, verbose=False,
                                  output_name=output_name,
                                  plot_coord=plot_coord)
 
@@ -839,7 +824,6 @@ if __name__ == '__main__':
             coord_type = argv[8]
             output_name = argv[9]
             plot_coord = argv[10]
-            high_res = float(argv[11])
 
             # check input
             print(f'\ndataset: {dataset}, \nstart: {start}, \nstop: {stop},' +
@@ -847,13 +831,12 @@ if __name__ == '__main__':
                   f'\nvariable_list: {variable_list}, ' +
                   f'\ncoord_type: {coord_type},' +
                   f'\noutput_name: {output_name}, ' +
-                  f'\nplot_coord: {plot_coord}, ' +
-                  f'\nhigh_res: {high_res}\n')
+                  f'\nplot_coord: {plot_coord}n')
 
             results = RealFlight(dataset, start, stop, model, file_dir,
                                  variable_list, coord_type=coord_type,
                                  output_name=output_name,
-                                 plot_coord=plot_coord, high_res=high_res)
+                                 plot_coord=plot_coord)
 
         elif argv[1] == 'TLEFlight':  # gather variables and call TLEFlight
             tle_file = argv[2]
@@ -872,8 +855,7 @@ if __name__ == '__main__':
             coord_type = argv[9]
             output_name = argv[10]
             plot_coord = argv[11]
-            high_res = float(argv[12])
-            method = argv[13]
+            method = argv[12]
 
             # check input
             print(f'\ntle_file: {tle_file}, \nstart: {start}, ' +
@@ -884,13 +866,12 @@ if __name__ == '__main__':
                   f'\ncoord_type: {coord_type},' +
                   f'\noutput_name: {output_name}, ' +
                   f'\nplot_coord: {plot_coord}, ' +
-                  f'\nhigh_res: {high_res}, method: {method}\n')
+                  f'\nmethod: {method}\n')
 
             results = TLEFlight(tle_file, start, stop, time_cadence,
                                 model, file_dir, variable_list,
                                 coord_type=coord_type, output_name=output_name,
-                                plot_coord=plot_coord, high_res=high_res,
-                                method=method)
+                                plot_coord=plot_coord, method=method)
 
         elif argv[1] == 'MyFlight':  # gather variables and call MyFlight
             traj_file = argv[2]
@@ -906,19 +887,17 @@ if __name__ == '__main__':
             variable_list = temp_str.split(',')   # ['rho','N_n']
             output_name = argv[7]
             plot_coord = argv[8]
-            high_res = float(argv[9])
 
             # check inputs
             print(f'\ntraj_file: {traj_file}, \nfile_type: {file_type},' +
                   f'\nmodel: {model}, \nfile_dir: {file_dir},' +
                   f'\nvariable_list: {variable_list}, ' +
                   f'\noutput_name: {output_name}, ' +
-                  f'\nplot_coord: {plot_coord}, \nhigh_res: {high_res}\n')
+                  f'\nplot_coord: {plot_coord}\n')
 
             results = MyFlight(traj_file, file_type,
                                model, file_dir, variable_list,
-                               output_name=output_name, plot_coord=plot_coord,
-                               high_res=high_res)
+                               output_name=output_name, plot_coord=plot_coord)
         else:
             print('Call signature not recognized.')
     else:

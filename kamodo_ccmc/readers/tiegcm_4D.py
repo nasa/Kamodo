@@ -1,5 +1,6 @@
 '''
-TIEGCM Kamodo reader, adapted to new structure for satellite flythrough software
+TIEGCM Kamodo reader, adapted to new structure for satellite flythrough
+    software
 Initial version - Asher Pembroke (?)
 Initial version of model_varnames contributed by Zachary Waldron
 New code: Rebecca Ringuette (June 2021 and on)
@@ -8,106 +9,243 @@ NOTE:
     The current logic for variables that depend on imlev slices off e36 values
         in self._imlev coordinate array. This only works because there is one
         variable that depends on imlev: H_imlev. The logic on lines 311-313
-        will have to be reworked a bit if other variables depend on imlev later.
+        will have to be reworked a bit if other variables depend on imlev
+        later.
 '''
 from numpy import vectorize
 from datetime import datetime, timezone, timedelta
 
-model_varnames = {  # 4D Variables, vertical coordinate on midpoint levels (lev)
-                  "ZGMID": ["H_ilev", 'height dependent on primary pressure level',
-                            0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "cm"],    # geometric height- interpolated to the mid points
-                  "TN": ["T_n", 'neutral temperature',
+model_varnames = {  # 4D Variables, vert coordinate on midpoint levels (ilev)
+                  # geometric height- interpolated to the mid points
+                  "ZGMID": ["H_ilev",
+                            'height dependent on primary pressure level',
+                            0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                            "cm"],
+                  "TN": ["T_n_ilev", 'neutral temperature',
                          1, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "K"],
-                  "O2": ["mmr_O2", 'mass mixing ratio of molecular oxygen',
-                         2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
-                  "O1": ["mmr_O", 'mass mixing ratio of atomic oxygen',
+                  "TN2": ["T_n", 'neutral temperature', 1, 'GDZ', 'sph',
+                          ['time', 'lon', 'lat', 'height'], "K"],
+                  "O2": ["mmr_O2_ilev",
+                         'mass mixing ratio of molecular oxygen', 2, 'GDZ',
+                         'sph', ['time', 'lon', 'lat', 'ilev'], ""],
+                  "O22": ["mmr_O2", 'mass mixing ratio of molecular oxygen',
+                          2, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                          ""],
+                  "O1": ["mmr_O_ilev", 'mass mixing ratio of atomic oxygen',
                          3, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
-                  "N2": ["mmr_N2", 'mass mixing ratio of molecular nitrogen',
-                         4, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
-                  "HE": ["mmr_He", 'mass mixing ratio of atomic helium',
+                  "O12": ["mmr_O", 'mass mixing ratio of atomic oxygen', 3,
+                          'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], ""],
+                  "N2": ["mmr_N2_ilev",
+                         'mass mixing ratio of molecular nitrogen', 4, 'GDZ',
+                         'sph', ['time', 'lon', 'lat', 'ilev'], ""],
+                  "N22": ["mmr_N2", 'mass mixing ratio of molecular nitrogen',
+                          4, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                          ""],
+                  "HE": ["mmr_He_ilev", 'mass mixing ratio of atomic helium',
                          5, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
-                  "NO": ["mmr_NO", 'mass mixing ratio of molecular nitric oxide',
-                         6, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
-                  "N4S": ["mmr_Nstate4S", 'mass mixing ratio of atomic nitrogen (4S state)',
+                  "HE2": ["mmr_He", 'mass mixing ratio of atomic helium', 5,
+                          'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], ""],
+                  "NO": ["mmr_NO_ilev",
+                         'mass mixing ratio of molecular nitric oxide', 6,
+                         'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
+                  "NO2": ["mmr_NO",
+                          'mass mixing ratio of molecular nitric oxide', 6,
+                          'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], ""],
+                  "N4S": ["mmr_Nstate4S_ilev",
+                          'mass mixing ratio of atomic nitrogen (4S state)',
                           7, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
-                  "N2D": ["mmr_Nstate2D", 'mass mixing ratio of atomic nitrogen (2D state)',
+                  "N4S2": ["mmr_Nstate4S",
+                           'mass mixing ratio of atomic nitrogen (4S state)',
+                           7, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                           ""],
+                  "N2D": ["mmr_Nstate2D_ilev",
+                          'mass mixing ratio of atomic nitrogen (2D state)',
                           8, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ""],
-                  "TE": ["T_e", 'electron temperature',
-                         9, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "K"],
-                  "TI": ["T_i", 'ion temperature',
-                         10, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "K"],
-                  "O2P": ["N_O2plus", 'number density of molecular oxygen ion',
-                          11, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "1/cm**3"],
-                  "OP": ["N_Oplus", 'number density of atomic oxygen ion',
-                         12, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "1/cm**3"],
-                  "N2N": ["N_N2", 'number density of molecular nitrogen',
-                          13, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "1/cm**3"],
-                  "CO2_COOL": ["Q_CO2cool", 'cooling rate of carbon dioxide',
-                               14, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "erg/g/s"],
-                  "NO_COOL": ["Q_NOcool", 'cooling rate of nitric oxide',
-                              15, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "erg/g/s"],
-                  "UN": ["v_neast", 'zonal neutral wind velocity (east)',
-                         16, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "cm/s"],
-                  "VN": ["v_nnorth", 'meridional neutral wind velocity (north)',
-                         17, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], "cm/s"],
-                  # "O2P_ELD": ['O2P_ELD', '???',18,'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ''],     #NO DESCRIPTION GIVEN
-                  # "N2P_ELD": ['N2P_ELD', '???',19,'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ''],      #NO DESCRIPTION GIVEN
-                  "NPLUS": ['N_Nplus', 'number density of atomic nitrogen ion',
-                            20, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
-                  # "NOP_ELD": ['NOP_ELD', '???',21,'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ''],    #NO DESCRIPTION GIVEN
-                  "SIGMA_PED": ['sigma_P', 'Pedersen conductivity',
-                                22, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'S/m'],
-                  "SIGMA_HAL": ['sigma_H', 'Hall conductivity',
-                                23, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'S/m'],
-                  "QJOULE": ['Q_Joule', 'joule heating',
-                             24, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'erg/g/s'],
-                  "O_N2": ['OtoN2', 'Oxygen/molecular nitrogen ratio',
-                           25, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ''],
-                  # "N2D_ELD": ['N2D_ELD', '???',26,'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ''],  #NO DESCRIPTION GIVEN
-                  "O2N": ['N_O2', 'number density of molecular oxygen',
-                          27, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
+                  "N2D2": ["mmr_Nstate2D",
+                           'mass mixing ratio of atomic nitrogen (2D state)',
+                           8, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                           ""],
+                  "TE": ["T_e_ilev", 'electron temperature', 9, 'GDZ', 'sph',
+                         ['time', 'lon', 'lat', 'ilev'], "K"],
+                  "TE2": ["T_e", 'electron temperature', 9, 'GDZ', 'sph',
+                          ['time', 'lon', 'lat', 'height'], "K"],
+                  "TI": ["T_i_ilev", 'ion temperature', 10, 'GDZ', 'sph',
+                         ['time', 'lon', 'lat', 'ilev'], "K"],
+                  "TI2": ["T_i", 'ion temperature', 10, 'GDZ', 'sph',
+                          ['time', 'lon', 'lat', 'height'], "K"],
+                  "O2P": ["N_O2plus_ilev",
+                          'number density of molecular oxygen ion', 11, 'GDZ',
+                          'sph', ['time', 'lon', 'lat', 'ilev'], "1/cm**3"],
+                  "O2P2": ["N_O2plus",
+                           'number density of molecular oxygen ion', 11, 'GDZ',
+                           'sph', ['time', 'lon', 'lat', 'height'], "1/cm**3"],
+                  "OP": ["N_Oplus_ilev", 'number density of atomic oxygen ion',
+                         12, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                         "1/cm**3"],
+                  "OP2": ["N_Oplus", 'number density of atomic oxygen ion',
+                          12, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                          "1/cm**3"],
+                  "N2N": ["N_N2_ilev", 'number density of molecular nitrogen',
+                          13, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                          "1/cm**3"],
+                  "N2N2": ["N_N2", 'number density of molecular nitrogen',
+                           13, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                           "1/cm**3"],
+                  "CO2_COOL": ["Q_CO2cool_ilev",
+                               'cooling rate of carbon dioxide', 14, 'GDZ',
+                               'sph', ['time', 'lon', 'lat', 'ilev'],
+                               "erg/g/s"],
+                  "CO2_COOL2": ["Q_CO2cool", 'cooling rate of carbon dioxide',
+                                14, 'GDZ', 'sph',
+                                ['time', 'lon', 'lat', 'height'], "erg/g/s"],
+                  "NO_COOL": ["Q_NOcool_ilev", 'cooling rate of nitric oxide',
+                              15, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                              "erg/g/s"],
+                  "NO_COOL2": ["Q_NOcool", 'cooling rate of nitric oxide',
+                               15, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                  'height'], "erg/g/s"],
+                  "UN": ["v_neast_ilev", 'zonal neutral wind velocity (east)',
+                         16, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                         "cm/s"],
+                  "UN2": ["v_neast", 'zonal neutral wind velocity (east)',
+                          16, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                          "cm/s"],
+                  "VN": ["v_nnorth_ilev",
+                         'meridional neutral wind velocity (north)', 17, 'GDZ',
+                         'sph', ['time', 'lon', 'lat', 'ilev'], "cm/s"],
+                  "VN2": ["v_nnorth",
+                          'meridional neutral wind velocity (north)', 17,
+                          'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                          "cm/s"],
+                  # "O2P_ELD": ['O2P_ELD', '???',18,'GDZ', 'sph',
+                  # ['time', 'lon', 'lat', 'ilev'], ''], #NO DESCRIPTION GIVEN
+                  # "N2P_ELD": ['N2P_ELD', '???',19,'GDZ', 'sph',
+                  # ['time', 'lon', 'lat', 'ilev'], ''], #NO DESCRIPTION GIVEN
+                  "NPLUS": ['N_Nplus_ilev',
+                            'number density of atomic nitrogen ion', 20, 'GDZ',
+                            'sph', ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
+                  "NPLUS2": ['N_Nplus',
+                             'number density of atomic nitrogen ion', 20,
+                             'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                             '1/cm**3'],
+                  # "NOP_ELD": ['NOP_ELD', '???',21,'GDZ', 'sph',
+                  # ['time', 'lon', 'lat', 'ilev'], ''], #NO DESCRIPTION GIVEN
+                  "SIGMA_PED": ['sigma_P_ilev', 'Pedersen conductivity', 22,
+                                'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                                'S/m'],
+                  "SIGMA_PED2": ['sigma_P', 'Pedersen conductivity', 22, 'GDZ',
+                                 'sph', ['time', 'lon', 'lat', 'height'],
+                                 'S/m'],
+                  "SIGMA_HAL": ['sigma_H_ilev', 'Hall conductivity', 23, 'GDZ',
+                                'sph', ['time', 'lon', 'lat', 'ilev'], 'S/m'],
+                  "SIGMA_HAL2": ['sigma_H', 'Hall conductivity', 23, 'GDZ',
+                                 'sph', ['time', 'lon', 'lat', 'height'],
+                                 'S/m'],
+                  "QJOULE": ['Q_Joule_ilev', 'joule heating', 24, 'GDZ', 'sph',
+                             ['time', 'lon', 'lat', 'ilev'], 'erg/g/s'],
+                  "QJOULE2": ['Q_Joule', 'joule heating', 24, 'GDZ', 'sph',
+                              ['time', 'lon', 'lat', 'height'], 'erg/g/s'],
+                  "O_N2": ['OtoN2_ilev', 'Oxygen/molecular nitrogen ratio', 25,
+                           'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], ''],
+                  "O_N22": ['OtoN2', 'Oxygen/molecular nitrogen ratio', 25,
+                            'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                            ''],
+                  # "N2D_ELD": ['N2D_ELD', '???',26,'GDZ', 'sph',
+                  # ['time', 'lon', 'lat', 'ilev'], ''],  #NO DESCRIPTION GIVEN
+                  "O2N": ['N_O2_ilev', 'number density of molecular oxygen',
+                          27, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                          '1/cm**3'],
+                  "O2N2": ['N_O2', 'number density of molecular oxygen', 27,
+                           'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                           '1/cm**3'],
 
-                  # 4D Variables, vertical coordinate on interface levels (ilev)
-                  "DEN": ["rho", 'total mass density',
-                          28, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], "g/cm**3"],
-                  "ZG": ["H_ilev1", 'height dependent on secondary pressure level',
-                         29, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], "cm"],
-                  "Z": ["H_geopot", 'geopotential height',
-                        30, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], "cm"],
-                  "NE": ["N_e", 'electron number density',
-                         31, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], "1/cm**3"],
-                  "OMEGA": ["omega", 'Vertical motion frequency',
-                            32, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], "1/s"],
-                  "POTEN": ["V", 'electric potential',
-                            33, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], "V"],
-                  "UI_ExB": ["v_iExBeast", 'zonal ExB ion velocity (east)',
-                             34, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'cm/s'],
-                  "VI_ExB": ["v_iExBnorth", 'meridional ExB ion velocity (north)',
-                             35, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'cm/s'],
-                  "WI_ExB": ["v_iExBup", 'vertical ExB ion velocity (up)',
-                             36, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], 'cm/s'],
+                  # 4D Variables, vert coordinate on interface levels (ilev1)
+                  "DEN": ["rho_ilev1", 'total mass density', 28, 'GDZ', 'sph',
+                          ['time', 'lon', 'lat', 'ilev1'], "g/cm**3"],
+                  "DEN2": ["rho", 'total mass density', 28, 'GDZ', 'sph',
+                           ['time', 'lon', 'lat', 'height'], "g/cm**3"],
+                  "ZG": ["H_ilev1",
+                         'height dependent on secondary pressure level', 29,
+                         'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'], "cm"],
+                  "Z": ["H_geopot", 'geopotential height', 30, 'GDZ', 'sph',
+                        ['time', 'lon', 'lat', 'ilev1'], "cm"],
+                  "NE": ["N_e_ilev", 'electron number density', 31, 'GDZ',
+                         'sph', ['time', 'lon', 'lat', 'ilev1'], "1/cm**3"],
+                  "NE2": ["N_e", 'electron number density', 31, 'GDZ', 'sph',
+                          ['time', 'lon', 'lat', 'height'], "1/cm**3"],
+                  "OMEGA": ["omega_ilev", 'Vertical motion frequency', 32,
+                            'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'],
+                            "1/s"],
+                  "OMEGA2": ["omega", 'Vertical motion frequency', 32, 'GDZ',
+                             'sph', ['time', 'lon', 'lat', 'height'], "1/s"],
+                  "POTEN": ["V_ilev", 'electric potential', 33, 'GDZ', 'sph',
+                            ['time', 'lon', 'lat', 'ilev1'], "V"],
+                  "POTEN2": ["V", 'electric potential', 33, 'GDZ', 'sph',
+                             ['time', 'lon', 'lat', 'height'], "V"],
+                  "UI_ExB": ["v_iExBeast_ilev",
+                             'zonal ExB ion velocity (east)', 34, 'GDZ', 'sph',
+                             ['time', 'lon', 'lat', 'ilev1'], 'cm/s'],
+                  "UI_ExB2": ["v_iExBeast", 'zonal ExB ion velocity (east)',
+                              34, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                 'height'], 'cm/s'],
+                  "VI_ExB": ["v_iExBnorth_ilev",
+                             'meridional ExB ion velocity (north)', 35, 'GDZ',
+                             'sph', ['time', 'lon', 'lat', 'ilev1'], 'cm/s'],
+                  "VI_ExB2": ["v_iExBnorth",
+                              'meridional ExB ion velocity (north)', 35, 'GDZ',
+                              'sph', ['time', 'lon', 'lat', 'height'], 'cm/s'],
+                  "WI_ExB": ["v_iExBup_ilev", 'vertical ExB ion velocity (up)',
+                             36, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev1'],
+                             'cm/s'],
+                  "WI_ExB2": ["v_iExBup", 'vertical ExB ion velocity (up)',
+                              36, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                 'height'], 'cm/s'],
 
-                  # 4D Variables, vertical coordinate on interface mag levels (imlev)
-                  "ZMAG": ["H_milev", 'height dependent on geomagnetic pressure level',
-                           37, 'MAG', 'sph', ['time', 'mlon', 'mlat', 'milev'], "km"],
+                  # 4D Variables, vert coord on interface mag levels (imlev)
+                  "ZMAG": ["H_milev",
+                           'height dependent on geomagnetic pressure level',
+                           37, 'MAG', 'sph', ['time', 'mlon', 'mlat', 'milev'],
+                           "km"],
 
                   # 3D Variables,    (time, lat, lon)
-                  "TEC": ["TEC", 'vertical total electron content (height integrated from bottom to top boundary)',
+                  "TEC": ["TEC", 'vertical total electron content (height ' +
+                          'integrated from bottom to top boundary)',
                           38, 'GDZ', 'sph', ['time', 'lon', 'lat'], "1/cm**2"],
-                  # "TLBC": ["T_nLBC", 'Lower boundary condition for T_n',39,'GDZ', 'sph', ['time', 'lon', 'lat'], "K"],       #  Lower boundary condition for TN
-                  # "ULBC": ["v_neastLBC", 'Lower boundary condition for v_n east component',40,'GDZ', 'sph', ['time', 'lon', 'lat'], "cm/s"],    #  Lower boundary condition for UN
-                  # "VLBC": ["v_nnorthLBC", 'Lower boundary condition for v_n north component',41,'GDZ', 'sph', ['time', 'lon', 'lat'], "cm/s"],    #  Lower boundary condition for VN
-                  # "TLBC_NM": ["T_nLBCNminus1", 'Lower boundary condition for T_n at t=N-1',42,'GDZ', 'sph', ['time', 'lon', 'lat'], "K"],  #  Lower boundary condition for TN (TIME N-1)
-                  # "ULBC_NM": ["v_neastLBCNminus1", 'Lower boundary condition for v_n north component at t=N-1',43,'GDZ', 'sph', ['time', 'lon', 'lat'], "cm/s"],  #  Lower boundary condition for UN (TIME N-1)
-                  # "VLBC_NM": ["v_nnorthLBCNminus1", 'Lower boundary condition for v_n east component at t=N-1',44,'GDZ', 'sph', ['time', 'lon', 'lat'], "cm/s"],  #  Lower boundary condition for VN (TIME N-1)
-                  "QJOULE_INTEG": ["W_JouleH", 'height integrated joule heating',
-                                   45, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'erg/cm**2/s'],
-                  "EFLUX": ['Phi_E', 'energy flux',
-                            46, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'erg/cm**2/s'],
-                  "HMF2": ['HmF2', 'height of maximum electron number density in F2 layer',
-                           47, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'km'],
-                  "NMF2": ['NmF2', 'maximum electron number density in F2 layer',
-                           48, 'GDZ', 'sph', ['time', 'lon', 'lat'], '1/cm**3'],
+                  # Lower boundary condition for TN
+                  # "TLBC": ["T_nLBC", 'Lower boundary condition for T_n',39,
+                  # 'GDZ', 'sph', ['time', 'lon', 'lat'], "K"],
+                  # Lower boundary condition for UN
+                  # "ULBC": ["v_neastLBC", 'Lower boundary condition for v_n
+                  # east component',40,'GDZ', 'sph', ['time', 'lon', 'lat'],
+                  # "cm/s"],
+                  # Lower boundary condition for VN
+                  # "VLBC": ["v_nnorthLBC", 'Lower boundary condition for v_n
+                  # north component',41,'GDZ', 'sph', ['time', 'lon', 'lat'],
+                  # "cm/s"],
+                  # Lower boundary condition for TN (TIME N-1)
+                  # "TLBC_NM": ["T_nLBCNminus1", 'Lower boundary condition for
+                  # T_n at t=N-1',42,'GDZ', 'sph', ['time', 'lon', 'lat'],
+                  # "K"],
+                  # Lower boundary condition for UN (TIME N-1)
+                  # "ULBC_NM": ["v_neastLBCNminus1", 'Lower boundary condition
+                  # for v_n north component at t=N-1',43,'GDZ', 'sph', ['time',
+                  # 'lon', 'lat'], "cm/s"],
+                  # Lower boundary condition for VN (TIME N-1)
+                  # "VLBC_NM": ["v_nnorthLBCNminus1", 'Lower boundary condition
+                  # for v_n east component at t=N-1',44,'GDZ', 'sph', ['time',
+                  # 'lon', 'lat'], "cm/s"],
+                  "QJOULE_INTEG": ["W_JouleH",
+                                   'height integrated joule heating', 45,
+                                   'GDZ', 'sph', ['time', 'lon', 'lat'],
+                                   'erg/cm**2/s'],
+                  "EFLUX": ['Phi_E', 'energy flux', 46, 'GDZ', 'sph',
+                            ['time', 'lon', 'lat'], 'erg/cm**2/s'],
+                  "HMF2": ['HmF2', 'height of maximum electron number ' +
+                           'density in F2 layer', 47, 'GDZ', 'sph',
+                           ['time', 'lon', 'lat'], 'km'],
+                  "NMF2": ['NmF2', 'maximum electron number density in F2 ' +
+                           'layer', 48, 'GDZ', 'sph', ['time', 'lon', 'lat'],
+                           '1/cm**3'],
                   }
 
 
@@ -141,15 +279,18 @@ def year_mtime_todts(year, mtime):
 
 
 def year_mtime_todate(year, mtime):
-    '''Use year and mtime to determine the date in the file. Returns a datetime object.'''
+    '''Use year and mtime to determine the date in the file.
+    Returns a datetime object.'''
 
     date_string = datetime.strftime(year_mtime_todt(year, mtime), '%Y-%m-%d')
-    return datetime.strptime(date_string, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+    return datetime.strptime(date_string, '%Y-%m-%d').replace(
+        tzinfo=timezone.utc)
 
 
 @vectorize
 def year_mtime_tohrs(year, day, hour, minute, filedate):
-    '''Convert year and mtime to hours since midnight using predetermined datetime object.'''
+    '''Convert year and mtime to hours since midnight using predetermined
+    datetime object.'''
 
     mtime = [day, hour, minute]
     return (year_mtime_todt(year, mtime) - filedate).total_seconds()/3600.
@@ -170,24 +311,25 @@ def MODEL():
     from numpy import pi as nppi
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators
-    from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
         '''TIEGCM model data reader.
 
         Inputs:
-            full_filename: a string representing the file pattern of the model
+            full_filename: a string representing the file name of the model
                 output data.
-                Note: This reader takes a file pattern of the format
-                file_dir+'sXXX.nc', where XXX is a three digit number.
-            variables_requested = a list of variable name strings chosen from the
-                model_varnames dictionary in this script, specifically the first
-                item in the list associated with a given key.
-                - If empty, the reader functionalizes all possible variables (default)
-                - If 'all', the reader returns the model_varnames dictionary above
-                    for only the variables present in the given files. Note: the
-                    fulltime keyword must be False to acheive this behavior.
+                Note: This reader takes a file name of the format
+                file_dir+'*.nc'.
+            variables_requested = a list of variable name strings chosen from
+                the model_varnames dictionary in this script, specifically the
+                first item in the list associated with a given key.
+                - If empty, the reader functionalizes all possible variables
+                (default)
+                - If 'all', the reader returns the model_varnames dictionary
+                    above for only the variables present in the given files.
+                    Note: the fulltime keyword must be False to acheive this
+                    behavior.
             filetime = boolean (default = False)
                 - if False, the script fully executes.
                 - If True, the script only executes far enough to determine the
@@ -195,8 +337,8 @@ def MODEL():
                 Note: The behavior of the script is determined jointly by the
                     filetime and fulltime keyword values.
             printfiles = boolean (default = False)
-                - If False, the filenames associated with the data retrieved ARE
-                    NOT printed.
+                - If False, the filenames associated with the data retrieved
+                    ARE NOT printed.
                 - If True, the filenames associated with the data retrieved ARE
                     printed.
             gridded_int = boolean (default = True)
@@ -205,14 +347,16 @@ def MODEL():
                 - If False, the variables chosen are functionalized in only the
                     standard method.
             fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is included
-                    in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is included.
+                - If True, linear interpolation in time between files is
+                    included in the returned interpolator functions.
+                - If False, no linear interpolation in time between files is
+                    included.
             verbose = boolean (False)
-                - If False, script execution and the underlying Kamodo execution
-                    is quiet except for specified messages.
+                - If False, script execution and the underlying Kamodo
+                    execution is quiet except for specified messages.
                 - If True, be prepared for a plethora of messages.
-        All inputs are described in further detail in KamodoOnboardingInstructions.pdf.
+        All inputs are described in further detail in
+            KamodoOnboardingInstructions.pdf.
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
@@ -235,9 +379,11 @@ def MODEL():
             self.filedate = year_mtime_todt0(year[0], mtime[0])
             # strings in format = YYYY-MM-DD HH:MM:SS
             self.datetimes = [year_mtime_todts(y, m) for y, m
-                              in zip([year[0], year[-1]], [mtime[0], mtime[-1]])]
+                              in zip([year[0], year[-1]], [mtime[0],
+                                                           mtime[-1]])]
             # timestamps in UTC
-            self.filetimes = [dts_to_ts(file_dts) for file_dts in self.datetimes]
+            self.filetimes = [dts_to_ts(file_dts) for file_dts in
+                              self.datetimes]
             time = year_mtime_tohrs(year, day, hour, minute, self.filedate)
             if len(time) > 1:
                 self.dt = diff(time).max()*3600.  # time is in hours
@@ -250,8 +396,9 @@ def MODEL():
             # if variables are given as integers, convert to standard names
             if len(variables_requested) > 0:
                 if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in model_varnames.items()
-                               if value[2] in variables_requested]
+                    tmp_var = [value[0] for key, value in
+                               model_varnames.items() if value[2] in
+                               variables_requested]
                     variables_requested = tmp_var
 
             if fulltime:  # add boundary time (default value)
@@ -273,9 +420,11 @@ def MODEL():
                         return
                 else:
                     min_filename = file_dir+filenames[current_idx-1][0]
-                    kamodo_test = MODEL(min_filename, filetime=True, fulltime=False)
+                    kamodo_test = MODEL(min_filename, filetime=True,
+                                        fulltime=False)
                     time_test = abs(kamodo_test.filetimes[1]-self.filetimes[0])
-                    if time_test <= self.dt or (self.dt == 0. and time_test <= 3600.*6.):
+                    if time_test <= self.dt or (self.dt == 0. and
+                                                time_test <= 3600.*6.):
                         # if nearest file time at least within one timestep
                         filecheck = True
                         # add time at beginning
@@ -288,30 +437,46 @@ def MODEL():
 
                         # get kamodo object with same requested variables
                         if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to find closest file.')
-                        kamodo_neighbor = MODEL(min_filename,
-                                                variables_requested=variables_requested,
-                                                fulltime=False)
+                            print(f'Took {perf_counter()-t0:.3f}s to find ' +
+                                  'closest file.')
+                        kamodo_neighbor = MODEL(
+                            min_filename,
+                            variables_requested=variables_requested,
+                            fulltime=False)
                         short_data = kamodo_neighbor.short_data
                         if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to get data from previous file.')
+                            print(f'Took {perf_counter()-t0:.3f}s to get ' +
+                                  'data from previous file.')
                     else:
                         if verbose:
-                            print(f'No earlier file found within {self.dt:.1f}s')
+                            print('No earlier file found within ' +
+                                  f'{self.dt:.1f}s')
                         filecheck = False
                         if filetime:
                             return
 
-            # These lists are the standardized variable name
-            self.ilev1_list = [value[0] for key, value in model_varnames.items()
-                               if value[5][-1] == 'ilev1']
-            self.ilev_list = [value[0] for key, value in model_varnames.items()
-                              if value[5][-1] == 'ilev']
-            self.milev_list = [value[0] for key, value in model_varnames.items()
-                               if value[5][-1] == 'milev']
+            # These lists are the standardized variable name.
+            # The only milev variable is H_milev.
+            ilev1_list = [value[0] for key, value in model_varnames.items()
+                          if value[5][-1] == 'ilev1']
+            ilev1_replace = [item.split('_ilev1')[0] for item in ilev1_list if
+                             item != 'H_ilev1']
+            ilev_list = [value[0] for key, value in model_varnames.items()
+                         if value[5][-1] == 'ilev']
+            ilev_replace = [item.split('_ilev')[0] for item in ilev_list if
+                            item != 'H_ilev']
+            # milev_list = [value[0] for key, value in model_varnames.items()
+            #               if value[5][-1] == 'milev']
+            self.total_ilev = [item for item in ilev_list + ilev1_list if item
+                               not in ['H_ilev', 'H_ilev1']]
+            self.total_replace = ilev_replace + ilev1_replace
+            # dictionary mapping to navigate related variable names
+            self.ilev_map = {item1: item2 for item1, item2 in
+                             zip(self.total_replace, self.total_ilev)}
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and fulltime and variables_requested != 'all':
+            if len(variables_requested) > 0 and fulltime and (
+                    variables_requested != 'all'):
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in
                             test_list]
@@ -320,38 +485,44 @@ def MODEL():
 
             # translate from standardized variables to names in file
             # remove variables requested that are not in the file
-            ilev_check = False  # flag to check if H_ilev needs to be bootstrapped
             if len(variables_requested) > 0 and variables_requested != 'all':
+                # add ilev version of variables to the list, adding H_ilev(1)
+                add_ilev = [var+'_ilev' for var in variables_requested if var
+                            in ilev_replace]
+                add_ilev1 = [var+'_ilev1' for var in variables_requested if var
+                             in ilev1_replace]
+                if len(add_ilev) > 0:
+                    add_ilev += ['H_ilev']
+                if len(add_ilev1) > 0:
+                    add_ilev1 += ['H_ilev1']
+                new_var = variables_requested + add_ilev + add_ilev1
+                short_var = [item for item in new_var if item not
+                             in self.ilev_map.keys()]  # remove replaced items
                 gvar_list = [key for key, value in model_varnames.items()
-                             if value[0] in variables_requested and
-                             key in cdf_data.variables.keys()]
+                             if value[0] in short_var and key in
+                             cdf_data.variables.keys()]  # file variable names
 
                 # check for variables requested but not available
-                if len(gvar_list) != len(variables_requested):
-                    err_list = [value[0] for key, value in model_varnames.items()
-                                if value[0] in variables_requested and
-                                key not in cdf_data.variables.keys()]
+                if len(gvar_list) != len(short_var):
+                    err_list = [value[0] for key, value in
+                                model_varnames.items() if value[0] in
+                                short_var and key not in
+                                cdf_data.variables.keys()]
                     if len(err_list) > 0:
-                        print('Some requested variables are not available:',
+                        print('Some requested variables are not available: ',
                               err_list)
+                    if 'H_ilev' in err_list or 'H_ilev1' in err_list:
+                        other_name = ['H_ilev', 'H_ilev1']
+                        err_name = [name for name in other_name if name in
+                                    err_list][0]
+                        other_name.remove(err_name)  # see first element
+                        gvar_name = [key for key, value in
+                                     model_varnames.items() if value[0] ==
+                                     other_name[0]]
+                        gvar_list += gvar_name  # add other height name to list
+                        print(f'Retrieving the {other_name[0]} variable' +
+                              ' instead.')
 
-                # check that the appropriate height variables are added
-                check_list = [key for key, value in model_varnames.items()
-                              if value[0] in self.ilev1_list and key in gvar_list]
-                if 'ZG' not in gvar_list and len(check_list) > 0:
-                    gvar_list.append('ZG')
-                check_list = [key for key, value in model_varnames.items()
-                              if value[0] in self.ilev_list and key in gvar_list]
-                if 'ZGMID' not in gvar_list and len(check_list) > 0:
-                    if 'ZGMID' in cdf_data.variables.keys():
-                        gvar_list.append('ZGMID')  # no ZGMID in files from CCMC!
-                    else:
-                        ilev_check = True
-                        gvar_list.append('ZG')  # bootstrap from H_ilev1
-                check_list = [key for key, value in model_varnames.items()
-                              if value[0] in self.milev_list and key in gvar_list]
-                if 'ZMAG' not in gvar_list and len(check_list) > 0:
-                    gvar_list.append('ZMAG')
             else:  # only input variables on the avoid_list if requested
                 avoid_list = ['TLBC', 'ULBC', 'VLBC', 'TLBC_NM', 'ULBC_NM',
                               'VLBC_NM', 'NOP_ELD', 'O2P_ELD', 'N2P_ELD',
@@ -361,13 +532,31 @@ def MODEL():
                              key not in avoid_list]
                 if not fulltime and variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
-                                     model_varnames.items() if key in gvar_list}
+                                     model_varnames.items() if key in
+                                     gvar_list}
+                    # add non-ilev versions of the variables in the files
+                    key_list = list(self.var_dict.keys())
+                    for var_key in key_list:
+                        if var_key in self.total_ilev:
+                            # retrieve equivalent non-ilev variable name
+                            new_key = [key for key, value in
+                                       self.ilev_map.items() if value ==
+                                       var_key][0]
+                            # retrieve key for model_varnames mapping
+                            model_key = [key for key, value in
+                                         model_varnames.items() if
+                                         value[0] == new_key][0]
+                            # add to returned dictionary
+                            self.var_dict[model_varnames[model_key][0]] =\
+                                model_varnames[model_key][1:]
+
+                    cdf_data.close()
                     return
 
             # Store the requested variables into a dictionary
-            variables = {model_varnames[key][0]: {'units': model_varnames[key][-1],
-                                                  'data': array(cdf_data.variables[key])}
-                         for key in gvar_list}
+            variables = {model_varnames[key][0]: {
+                'units': model_varnames[key][-1],
+                'data': array(cdf_data.variables[key])} for key in gvar_list}
 
             # prepare and return data only for last timestamp
             if not fulltime:
@@ -393,8 +582,8 @@ def MODEL():
                 self._time = time
 
             # store coordinates
-            lat = array(cdf_data.variables['lat'])  # NOT FULL RANGE IN LATITIUDE
-            lat = insert(lat, 0, -90)  # insert a grid point at beginning (before -87.5)
+            lat = array(cdf_data.variables['lat'])  # NOT FULL RANGE IN LAT
+            lat = insert(lat, 0, -90)  # insert a grid point before -87.5
             self._lat = append(lat, 90.)   # and at the end (after 87.5)
             lon = array(cdf_data.variables['lon'])  # NOT WRAPPED IN LONGITUDE
             self._lon = append(lon, 180.)  # add 180. to end of array
@@ -407,9 +596,28 @@ def MODEL():
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
 
+            # Check for presence of necessary height variables in varname_list.
+            varname_list = [key for key in variables.keys()]
+            ilev1_check = unique([True for item in varname_list if 'ilev1' ==
+                                  item[-5:]])
+            ilev_check = unique([True for item in varname_list if 'ilev' ==
+                                 item[-4:]])
+            if ilev1_check and 'H_ilev1' not in varname_list:
+                self.ilev_sub = 'H_ilev1'  # name of H missing
+            elif ilev_check and 'H_ilev' not in varname_list:
+                self.ilev_sub = 'H_ilev'
+            else:
+                self.ilev_sub = False
+
             # register interpolators for each requested variable
-            # store original list b/c gridded interpolators change key listing
-            varname_list, self.variables = [key for key in variables.keys()], {}
+            # rearrange to deal with H_ilev and H_ilev1 first if there
+            if 'H_ilev' in varname_list:
+                varname_list.remove('H_ilev')
+                varname_list = ['H_ilev'] + varname_list
+            if 'H_ilev1' in varname_list:
+                varname_list.remove('H_ilev1')
+                varname_list = ['H_ilev1'] + varname_list
+            self.variables = {}
             t_reg = perf_counter()
             for varname in varname_list:
                 if len(variables[varname]['data'].shape) == 3:
@@ -421,14 +629,16 @@ def MODEL():
                         # put in current data
                         new_data[1:, :, :] = variables[varname]['data']
                         # add in data for additional time
-                        new_data[0, :, :] = short_data[varname]['data'][-1, :, :]
+                        new_data[0, :, :] = \
+                            short_data[varname]['data'][-1, :, :]
                         # (t,lat,lon) -> (t,lon,lat)
                         variable = transpose(new_data, (0, 2, 1))
                     else:
                         # (t,lat,lon) -> (t,lon,lat)
-                        variable = transpose(variables[varname]['data'], (0, 2, 1))
-                    self.variables[varname] = dict(units=variables[varname]['units'],
-                                                   data=variable)
+                        variable = transpose(variables[varname]['data'],
+                                             (0, 2, 1))
+                    self.variables[varname] = dict(
+                        units=variables[varname]['units'], data=variable)
                     self.register_3D_variable(self.variables[varname]['units'],
                                               self.variables[varname]['data'],
                                               varname, gridded_int)
@@ -441,35 +651,26 @@ def MODEL():
                         # put in current data
                         new_data[1:, :, :, :] = variables[varname]['data']
                         # add in data for additional time
-                        new_data[0, :, :, :] = short_data[varname]['data'][-1, :, :, :]
+                        new_data[0, :, :, :] = \
+                            short_data[varname]['data'][-1, :, :, :]
                         # (t,h,lat,lon) -> (t,lon,lat,h)
                         variable = transpose(new_data, (0, 3, 2, 1))
                     else:
                         # (t,h,lat,lon) -> (t,lon,lat,h)
-                        variable = transpose(variables[varname]['data'], (0, 3, 2, 1))
-                    self.variables[varname] = dict(units=variables[varname]['units'],
-                                                   data=variable)
+                        variable = transpose(variables[varname]['data'],
+                                             (0, 3, 2, 1))
+                    self.variables[varname] = dict(
+                        units=variables[varname]['units'], data=variable)
                     self.register_4D_variable(self.variables[varname]['units'],
                                               self.variables[varname]['data'],
                                               varname, gridded_int,
                                               verbose=verbose)
-            if ilev_check:  # if need to bootstrap H_ilev from H_ilev1, do so
-                self.variables['H_ilev'] = dict(units=variables['H_ilev1']['units'],
-                                                data=variables['H_ilev1']['data'])
-                self['H_ilev'] = 'H_ilev1'  # copy over interpolators, etc.
-                self.variables['H_ilev']['xvec'] = self.variables['H_ilev1']['xvec']
-                if gridded_int:
-                    self.variables['H_ilev_ijk'] = dict(units=variables['H_ilev1']['units'],
-                                                        data=variables['H_ilev1']['data'])
-                    self['H_ilev_ijk'] = 'H_ilev1_ijk'
-                    self.variables['H_ilev_ijk']['xvec'] = self.variables['H_ilev1_ijk']['xvec']
-                self._registered += 1
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
             if verbose:
-                print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy ' +
-                      f'{len(varname_list)} variables.')
+                print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
+                      f' {len(varname_list)} variables.')
 
         def wrap_3Dlatlon(self, varname, variable):
             '''Wraps the data array in longitude (-180=180), and latitude'''
@@ -483,10 +684,12 @@ def MODEL():
             # wrapping in latitude for scalar variables
             # put in top values
             top = mean(tmp_arr[:, :-1, 1], axis=1)  # same shape as time axis
-            tmp_arr[:, :-1, 0] = broadcast_to(top, (shape_list[1]-1, shape_list[0])).T
+            tmp_arr[:, :-1, 0] = broadcast_to(top, (shape_list[1]-1,
+                                                    shape_list[0])).T
             # same for bottom, reusing variable names
             top = mean(tmp_arr[:, :-1, -2], axis=1)  # same shape as time axis
-            tmp_arr[:, :-1, -1] = broadcast_to(top, (shape_list[1]-1, shape_list[0])).T
+            tmp_arr[:, :-1, -1] = broadcast_to(top, (shape_list[1]-1,
+                                                     shape_list[0])).T
 
             # wrap in longitude after to prevent double counting in average
             tmp_arr[:, -1, :] = tmp_arr[:, 0, :]
@@ -494,7 +697,8 @@ def MODEL():
             return tmp_arr
 
         def wrap_4Dlatlon(self, varname, variable):
-            '''Wraps the data array in longitude (-180=180), and latitude (0=-2, -1=1)'''
+            '''Wraps the data array in longitude (-180=180), and latitude
+            (0=-2, -1=1)'''
 
             shape_list = list(variable.shape)  # time, lon, lat, ilev
             shape_list[2] += 2  # need two more places in latitude
@@ -505,61 +709,69 @@ def MODEL():
             # wrapping in latitude for scalar and cartesian/radial variables
             if varname not in ['u_n', 'v_n', 'u_iExB', 'v_iExB']:
                 # put in top values
-                top = mean(tmp_arr[:, :-1, 1, :], axis=1)  # average over longitudes
+                top = mean(tmp_arr[:, :-1, 1, :], axis=1)  # average over lon
                 tmp_arr[:, :-1, 0, :] = transpose(broadcast_to(
-                    top, (shape_list[1]-1, shape_list[0], shape_list[3])), (1, 0, 2))
+                    top, (shape_list[1]-1, shape_list[0], shape_list[3])),
+                    (1, 0, 2))
                 # same for bottom, reusing variable names
-                top = mean(tmp_arr[:, :-1, -2, :], axis=1)  # average over longitudes
+                top = mean(tmp_arr[:, :-1, -2, :], axis=1)  # average over lon
                 tmp_arr[:, :-1, -1, :] = transpose(broadcast_to(
-                    top, (shape_list[1]-1, shape_list[0], shape_list[3])), (1, 0, 2))
+                    top, (shape_list[1]-1, shape_list[0], shape_list[3])),
+                    (1, 0, 2))
             # wrapping in latitude for relevant vector variables
             elif varname in ['u_n', 'v_n', 'u_iExB', 'v_iExB']:
                 # calculate net vector magnitude for top
-                tmp_arr[:, :-1, 0, :] = self.vector_average4D(tmp_arr[:, :-1, 1, :],
-                                                              shape_list,
-                                                              varname,
-                                                              self._lat[0])
+                tmp_arr[:, :-1, 0, :] = self.vector_average4D(
+                    tmp_arr[:, :-1, 1, :], shape_list, varname, self._lat[0])
                 # repeat for bottom
-                tmp_arr[:, :-1, -1, :] = self.vector_average4D(tmp_arr[:, :-1, -2, :],
-                                                               shape_list,
-                                                               varname,
-                                                               self._lat[-1])
-            tmp_arr[:, -1, :, :] = tmp_arr[:, 0, :, :]  # wrap value in longitude
+                tmp_arr[:, :-1, -1, :] = self.vector_average4D(
+                    tmp_arr[:, :-1, -2, :], shape_list, varname, self._lat[-1])
+            tmp_arr[:, -1, :, :] = tmp_arr[:, 0, :, :]  # wrap value in lon
             self.variables[varname]['data'] = tmp_arr  # store result
             return tmp_arr
 
         def vector_average4D(self, top, shape_list, varname, latval):
-            '''find vector average at pole for array with shape (time, lon, height)'''
+            '''find vector average at pole for array with shape (time, lon,
+            height)'''
 
             # find net x and y components, final array shapes are (t, lon, ht)
             lon_arr = transpose(broadcast_to(self._lon[:-1],
                                              (shape_list[0], shape_list[3],
                                               shape_list[1]-1)), (0, 2, 1))
             # need to put 'old' shape at end in broadcast_to call ^
-            xval = sum(top*cos((lon_arr+180.)*nppi/180.), axis=1)  # same shape as
-            yval = sum(top*sin((lon_arr+180.)*nppi/180.), axis=1)  # time and vertical
-            xarr = transpose(broadcast_to(xval, (shape_list[1]-1, shape_list[0],
+            xval = sum(top*cos((lon_arr+180.)*nppi/180.), axis=1)  # same shape
+            yval = sum(top*sin((lon_arr+180.)*nppi/180.), axis=1)  # as t and z
+            xarr = transpose(broadcast_to(xval, (shape_list[1]-1,
+                                                 shape_list[0],
                                                  shape_list[3])), (1, 0, 2))
-            yarr = transpose(broadcast_to(yval, (shape_list[1]-1, shape_list[0],
+            yarr = transpose(broadcast_to(yval, (shape_list[1]-1,
+                                                 shape_list[0],
                                                  shape_list[3])), (1, 0, 2))
 
             # convert to proper unit vector (see wiki on spherical coordinates)
-            if 'u' in varname:  # Zonal/east components -> convert to psi_hat vector (longitude)
+            if 'u' in varname:
+                # Zonal/east components -> convert to psi_hat vector (lon)
                 # -xsin(psi)+ycos(psi), psi = longitude (0 to 360)
-                new_top = -xarr*sin((lon_arr+180.)*nppi/180.) + yarr*cos((lon_arr+180.)*nppi/180.)
-            elif 'v' in varname:  # meridional/north -> convert to theta_hat vector (latitude)
-                # xcos(psi)cos(theta)+ysin(psi)cos(theta), sin(theta) is always zero at the poles
+                new_top = -xarr*sin((lon_arr+180.)*nppi/180.) +\
+                    yarr*cos((lon_arr+180.)*nppi/180.)
+            elif 'v' in varname:
+                # meridional/north -> convert to theta_hat vector (latitude)
+                # xcos(psi)cos(theta)+ysin(psi)cos(theta)
+                # sin(theta) is always zero at the poles
                 # theta = latitude (0 to 180), psi = longitude (0 to 360)
-                new_top = xarr*cos((lon_arr+180.)*nppi/180.)*cos((90.-latval)*nppi/180.) +\
-                    yarr*sin((lon_arr+180.)*nppi/180.)*cos((90.-latval)*nppi/180.)
+                new_top = xarr * cos((lon_arr+180.) * nppi/180.) *\
+                    cos((90.-latval)*nppi/180.) + yarr *\
+                    sin((lon_arr+180.) * nppi/180.) * cos((90.-latval) *
+                                                          nppi/180.)
 
-            # flip lon around so values match longitude location (to keep zero reference point true)
+            # flip lon around so values match lon location (keep zero ref true)
             zero_idx = min(where(self._lon >= 0.)[0])  # find splitting index
             # create empty array for destination
             top = zeros((shape_list[0], shape_list[1]-1, shape_list[3]))
-            div = (shape_list[1]-1) % 2  # deal with even or odd number of longitudes
-            top[:, :zero_idx-div, :] = new_top[:, zero_idx:, :]  # move last half to first half
-            top[:, zero_idx-div:, :] = new_top[:, :zero_idx, :]  # and vice versa
+            div = (shape_list[1]-1) % 2  # deal with even or odd number of lon
+            # move last half to first half and vice versa
+            top[:, :zero_idx-div, :] = new_top[:, zero_idx:, :]
+            top[:, zero_idx-div:, :] = new_top[:, :zero_idx, :]
             return top
 
         # Define and register a 3D variable --------------------------
@@ -569,9 +781,12 @@ def MODEL():
             # define and register the interpolators
             xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
             wrapped_data = self.wrap_3Dlatlon(varname, variable)
-            self = regdef_3D_interpolators(self, units, wrapped_data, self._time,
-                                           self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int)
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'3D'
+            self = RU.regdef_3D_interpolators(self, units, wrapped_data,
+                                              self._time, self._lon, self._lat,
+                                              varname, xvec_dependencies,
+                                              gridded_int, coord_str)
             return
 
         # Define and register a 4D variable -------------------------------
@@ -580,47 +795,114 @@ def MODEL():
             """Registers a 4d interpolator with 4d signature"""
 
             # Get the correct coordinates
-            if varname in self.ilev1_list:
+            coord_list = [value[5] for key, value in model_varnames.items()
+                          if value[0] == varname][0]
+            if 'ilev1' in coord_list and hasattr(self, '_ilev1'):
                 h = self._ilev1
                 coord_lat, coord_lon = self._lat, self._lon
                 xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
                                      'ilev1': 'm/m'}
-            elif varname in self.ilev_list:
+            elif 'ilev' in coord_list and hasattr(self, '_ilev'):
                 h = self._ilev
                 coord_lat, coord_lon = self._lat, self._lon
                 xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
                                      'ilev': 'm/m'}
-            elif varname in self.milev_list:
+            elif 'milev' in coord_list and hasattr(self, '_milev'):
                 h = self._milev
                 coord_lat, coord_lon = self._mlat, self._mlon
-                xvec_dependencies = {'time': 'hr', 'mlon': 'deg', 'mlat': 'deg',
-                                     'milev': 'm/m'}
-            else:
-                print(varname, 'error')
+                xvec_dependencies = {'time': 'hr', 'mlon': 'deg',
+                                     'mlat': 'deg', 'milev': 'm/m'}
 
             # define and register the interpolators
             if 'lat' in xvec_dependencies.keys():
                 wrapped_data = self.wrap_4Dlatlon(varname, variable)
             else:
                 top_shape = list(variable[:, :, :, -1].shape)
-                top_size = top_shape[0]*top_shape[1]*top_shape[2]  # 3D array
+                top_size = top_shape[0] * top_shape[1] * top_shape[2]  # 3D arr
                 idx_top = where(variable[:, :, :, -1] > 1e+35)[0]
                 tmp_data = variable
                 while top_size == len(idx_top):   # remove undefined top row(s)
                     if verbose:
-                        print(f'All values at max milev are 1e+36 for {varname}.' +
-                              ' Slicing off top array.')
+                        print('All values at max milev are 1e+36 for ' +
+                              f'{varname}. Slicing off top array.')
                     if self._milev.shape[0] == len(tmp_data[0, 0, 0, :]):
                         self._milev = self._milev[0:-1]
                     tmp_data = tmp_data[:, :, :, 0:-1]
                     top_shape = list(tmp_data[:, :, :, -1].shape)
-                    top_size = top_shape[0]*top_shape[1]*top_shape[2]  # 3D array
+                    top_size = top_shape[0]*top_shape[1]*top_shape[2]  # 3D
                     idx_top = where(tmp_data[:, :, :, -1] > 1e+35)[0]
                 wrapped_data = tmp_data
                 h = self._milev
-            self = regdef_4D_interpolators(self, units, wrapped_data,
-                                           self._time, coord_lon, coord_lat, h,
-                                           varname, xvec_dependencies,
-                                           gridded_int)
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'4D'
+            # need H functions to be gridded regardless of gridded_int value
+            h_grid = True if varname in ['H_ilev', 'H_ilev1'] else gridded_int
+            self = RU.regdef_4D_interpolators(self, units, wrapped_data,
+                                              self._time, coord_lon, coord_lat,
+                                              h, varname, xvec_dependencies,
+                                              h_grid, coord_str)
+
+            # perform substitution if needed
+            if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
+                other_name = ['H_ilev', 'H_ilev1']
+                other_name.remove(varname)  # first element is the other name
+                print(f'{other_name[0]} missing in data and is needed to ' +
+                      'convert the requested variables to depend on height.' +
+                      f' Using {varname} instead.')
+                xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
+                                     other_name[0][2:]: 'm/m'}
+                self.variables[other_name[0]] = dict(units=units,
+                                                     data=variable)
+                # register the other variable by linking to this one
+                self = RU.register_interpolator(self, other_name[0], varname,
+                                                xvec_dependencies)
+
+            # create pressure level -> km function once per ilev type
+            if varname in ['H_ilev', 'H_ilev1'] or varname in self.total_ilev:
+                if varname in ['H_ilev', 'H_ilev1']:  # create custom interp
+                    new_varname = 'P'+coord_list[-1][1:]
+                    # Import and call custom interpolator
+                    from tiegcm_ilevinterp import PLevelInterp
+                    interpolator, interp_ijk, kms = PLevelInterp(
+                        self, self._time, coord_lon, coord_lat, h,
+                        'H_'+coord_list[-1])
+                    setattr(self, '_kms_'+coord_list[-1], kms)
+                    units = 'm/m'
+                    # kms is a 1D array of the median height values in km
+                else:  # define by function composition
+                    new_varname = varname.split('_ilev')[0]
+                    interpolator = varname+'(P'+coord_list[-1][1:]+')'
+                    # substitute kms array if height was also substituted
+                    if isinstance(self.ilev_sub, str):
+                        other_name = ['ilev', 'ilev1']
+                        other_name.remove(self.ilev_sub[2:])
+                        kms = getattr(self, '_kms_'+other_name[0])
+                        interpolator = varname+'(P'+other_name[0][1:]+')'
+                    else:
+                        kms = getattr(self, '_kms_'+coord_list[-1])
+                        interpolator = varname+'(P'+coord_list[-1][1:]+')'
+
+                # Register in kamodo object
+                new_xvec_dependencies = {'time': 'hr', 'lon': 'deg',
+                                         'lat': 'deg', 'height': 'km'}
+                self.variables[new_varname] = dict(units=units)
+                self = RU.register_interpolator(self, new_varname,
+                                                interpolator,
+                                                new_xvec_dependencies)
+                if varname in self.total_ilev:  # different if H vs not
+                    interp_ijk = self[new_varname]
+
+                # Create 'gridified' interpolators in the kamodo_object
+                if gridded_int:
+                    fake_data = zeros((len(self._time), len(coord_lon),
+                                       len(coord_lat), len(kms)))  # saves time
+                    self.variables[new_varname+'_ijk'] = dict(units=units)
+                    gridded_interpolator = RU.define_4d_gridded_interpolator(
+                        units, fake_data, self._time, coord_lon, coord_lat,
+                        kms, new_xvec_dependencies, interp_ijk)
+                    self = RU.register_interpolator(
+                        self, new_varname+'_ijk', gridded_interpolator,
+                        new_xvec_dependencies)
             return
+
     return MODEL

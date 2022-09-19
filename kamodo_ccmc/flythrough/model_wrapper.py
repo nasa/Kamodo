@@ -5,7 +5,7 @@ from os.path import basename
 import numpy as np
 
 model_dict = {0: 'CTIPe', 1: 'GITM', 2: 'IRI', 3: 'SWMF_IE', 4: 'TIEGCM',
-              5: 'OpenGGCM_GM', 6: 'AMGeO'}
+              5: 'OpenGGCM_GM', 6: 'AMGeO', 7: 'SuperDARN_df'}  # SuperDARN_ea
 
 
 def convert_model_string(model_int):
@@ -69,6 +69,14 @@ def Choose_Model(model):
 
     elif model == 'AMGeO':
         import kamodo_ccmc.readers.amgeo_4D as module
+        return module
+
+    elif model == 'SuperDARN_df':
+        import kamodo_ccmc.readers.superdarndf_4D as module
+        return module
+
+    elif model == 'SuperDARN_ea':
+        import kamodo_ccmc.readers.superdarnea_4D as module
         return module
 
     else:
@@ -143,6 +151,16 @@ def FileSearch(model, file_dir, call_type='normal'):
         files = sorted(glob(file_dir+'*.h5'))
         file_patterns = unique([file_dir + basename(f).split('.h5')[0][:-1]
                                 for f in files])
+        return file_patterns
+
+    elif model == 'SuperDARN_df':
+        files = sorted(glob(file_dir+'model*_df.nc'))
+        file_patterns = unique([file_dir + basename(f)[:-6] for f in files])
+        return file_patterns        
+
+    elif model == 'SuperDARN_ea':
+        files = sorted(glob(file_dir+'model*_ea.nc'))
+        file_patterns = unique([file_dir + basename(f)[:-6] for f in files])
         return file_patterns
 
     else:
