@@ -43,16 +43,16 @@ def define_1d_interpolator(units, variable, t, coord_str):
     '''
 
     rgi = interp1d(t, variable, bounds_error=False, fill_value=NaN)
-    param_xvec = forge.FParameter(name='xvec_'+coord_str,
-                                  interface_name='xvec',
+    param_xvec = forge.FParameter(name='t_'+coord_str,
+                                  interface_name='t',
                                   kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
                                   default=t)
 
-    @forge.replace('xvec', param_xvec)
+    @forge.replace('t', param_xvec)
     @kamodofy(units=units, data=variable)
-    def interpolator(xvec):
+    def interpolator(t):
         """Interpolates 1d variable without A grid"""
-        return rgi(xvec)
+        return rgi(t)
     return interpolator
 
 

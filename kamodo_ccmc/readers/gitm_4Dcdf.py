@@ -713,9 +713,11 @@ def MODEL():
 
             # define and register the interpolators
             xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'3D'
             self = regdef_3D_interpolators(self, units, variable, time, lon,
                                            lat, varname, xvec_dependencies,
-                                           gridded_int)
+                                           gridded_int, coord_str)
             return
 
         # define and register a 4D variable -----------------------------------
@@ -735,8 +737,11 @@ def MODEL():
             # define and register the interpolators
             xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
                                  'height': 'km'}
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'4D'
             self = regdef_4D_interpolators(self, units, variable, time, lon,
                                            lat, height, varname,
-                                           xvec_dependencies, gridded_int)
+                                           xvec_dependencies, gridded_int,
+                                           coord_str)
             return
     return MODEL

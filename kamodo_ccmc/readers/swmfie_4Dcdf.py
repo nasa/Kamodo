@@ -398,8 +398,11 @@ def MODEL():
 
             # define and register the interpolators
             xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]+'3D'
             self = regdef_3D_interpolators(self, units, variable, self._time,
                                            self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int)
+                                           xvec_dependencies, gridded_int,
+                                           coord_str)
             return
     return MODEL
