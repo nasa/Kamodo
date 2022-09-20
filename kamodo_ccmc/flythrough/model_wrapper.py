@@ -5,7 +5,8 @@ from os.path import basename
 import numpy as np
 
 model_dict = {0: 'CTIPe', 1: 'GITM', 2: 'IRI', 3: 'SWMF_IE', 4: 'TIEGCM',
-              5: 'OpenGGCM_GM', 6: 'AMGeO', 7: 'SuperDARN_df'}  # SuperDARN_ea
+              5: 'OpenGGCM_GM', 6: 'AMGeO', 7: 'SuperDARN_df',
+              8: 'SuperDARN_ea', 9: 'ADELPHI'}
 
 
 def convert_model_string(model_int):
@@ -77,6 +78,10 @@ def Choose_Model(model):
 
     elif model == 'SuperDARN_ea':
         import kamodo_ccmc.readers.superdarnea_4D as module
+        return module
+
+    elif model == 'ADELPHI':
+        import kamodo_ccmc.readers.adelphi_4D as module
         return module
 
     else:
@@ -162,6 +167,10 @@ def FileSearch(model, file_dir, call_type='normal'):
         files = sorted(glob(file_dir+'model*_ea.nc'))
         file_patterns = unique([file_dir + basename(f)[:-6] for f in files])
         return file_patterns
+
+    elif model == 'ADELPHI':
+        return file_dir + 'ADELPHI_2D_MAG'
+        # ONLY WORKS IF THE NAMING CONVENTION IS THIS
 
     else:
         raise AttributeError('Model not yet added.')
