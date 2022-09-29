@@ -6,7 +6,7 @@ import numpy as np
 
 model_dict = {0: 'CTIPe', 1: 'GITM', 2: 'IRI', 3: 'SWMF_IE', 4: 'TIEGCM',
               5: 'OpenGGCM_GM', 6: 'AMGeO', 7: 'SuperDARN_df',
-              8: 'SuperDARN_ea', 9: 'ADELPHI'}
+              8: 'SuperDARN_ea', 9: 'ADELPHI', 10: 'WACCMX'}
 
 
 def convert_model_string(model_int):
@@ -84,6 +84,10 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.adelphi_4D as module
         return module
 
+    elif model == 'WACCMX':
+        import kamodo_ccmc.readers.waccmx_4D as module
+        return module
+
     else:
         raise AttributeError('Model not yet added.')
 
@@ -120,7 +124,7 @@ def FileSearch(model, file_dir, call_type='normal'):
         return file_dir+'IRI.3D.*.nc'
 
     elif model == 'GITM':  # whole day version of filesearch
-        files = sorted(glob(file_dir+'*'))  # next line returns prefix list
+        files = sorted(glob(file_dir+'*.bin'))  # next line returns prefix list
         if call_type == 'normal':  # give prefix for full day files
             file_patterns = unique([file_dir+'*'+basename(f)[7:13] for f in
                                     files if 'GITM' not in basename(f) and
@@ -171,6 +175,11 @@ def FileSearch(model, file_dir, call_type='normal'):
     elif model == 'ADELPHI':
         return file_dir + 'ADELPHI_2D_MAG'
         # ONLY WORKS IF THE NAMING CONVENTION IS THIS
+
+    elif model == 'WACCMX':
+        files = sorted(glob(file_dir+'*.h1.*.nc'))
+        file_patterns = unique([file_dir + basename(f) for f in files])
+        return file_patterns        
 
     else:
         raise AttributeError('Model not yet added.')
@@ -266,6 +275,91 @@ def File_Variables(model, file_dir, return_dict=False):
                 print(f"{key} : '{value}'")
             print()
         return
+
+
+def Variable_Search(search_string, model='', file_dir='', return_dict=False):
+    '''Search variable descriptions for the given string. If the model string
+    is set, the chosen model will be searched. If file_dir is set to the
+    directory where some model data is stored, the files available in that
+    model data will be searched. If neither is set, then all model variables
+    will be searched. Searching all of the model variables will take additional
+    time as the model library grows. All searches are performed using lower
+    case text (e.g. "temperature" not "Temperature").
+    
+    Returns a dictionary with information that varies per call type if 
+    return_dict is True. Default is to print the information to the screen
+    and return nothing (return_dict=False).
+    - if neither model nor file_dir is set, the dictionary will have the model
+        names as keys and the value will be a dictionary with the variable
+        names as keys and the variable description, coordinate dependencies,
+        and variable units as the value.
+    - if only the model value is set, then the dictionary will have the
+        variable names as keys and the variable description, coordinate
+        dependencies, and variable units as the value.
+    - if the model and file_dir values are set, then the dictionary will have
+        the file names (or prefixes) as keys and the value will be a dictionary
+        with the variable names as keys and the variable description,
+        coordinate dependencies, and variable units as the value.
+        
+        '''
+
+
+    if model == '' and file_dir == '':
+        new_dict = {model: Variable_Search(search_string, model=model,
+                                           return_dict=True) for 
+                     key, model in model_dict.items()}
+        if not return_dict:
+            for model, value in new_dict.items():
+                print('\n'+model+':')
+                if value == {}:
+                    print(f'No {search_string} variables found.')
+                else:
+                    for name, values in value.items():
+                        print(name+':', values)
+            return None
+        else:
+            return new_dict
+    elif file_dir == '' and model != '':
+        var_dict = Model_Variables(model, return_dict=True)
+        new_dict = {key: [value[0], value[-2], value[-1]] for key, value in
+                    var_dict.items() if search_string in value[0].lower()}
+        if not return_dict:
+            for key, value in new_dict.items():
+                print(key+':', value)
+            return None
+        else:
+            return new_dict
+    elif file_dir != '' and model != '':
+        file_var_dict = File_Variables(model, file_dir, return_dict=True)
+        new_dict = {file: {name: [value1[0], value1[-2], value1[-1]] for
+                           name, value1 in value0.items() if search_string in
+                           value1[0].lower()}
+                    for file, value0 in file_var_dict.items()}
+        if not return_dict:
+            for file, value in new_dict.items():
+                print('\n'+file+':')
+                for name, values in value.items():
+                    print(name+':', values)
+            return None
+        else:
+            return new_dict
+    if file_dir != '' and model == '':  # EXPERIMENTAL!!
+        print('Warning! This setting of this function is experimental. ' +
+              'Executing it in this way may have unintended consequences, ' +
+              'such as strange file conversion attempts due to mismatched ' +
+              'data and readers. Proceed at your own risk.')
+        model_list = [value for key, value in model_dict.items()]
+        for model in model_list:
+            try:
+                new_dict = Variable_Search(search_string, model=model,
+                                           file_dir=file_dir)
+                print(f'Search successful for {model} model.')
+                return None
+            except:
+                pass
+            print('Not able to determine what model the chosen data comes ' +
+                  'from.')
+            return None
 
 
 def File_Times(model, file_dir, print_output=True):
