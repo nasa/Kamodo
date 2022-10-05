@@ -3,11 +3,14 @@
 Created on Mon Apr 26 18:17:56 2021
 @author: rringuet
 Convert data in CTIPe output files to wrapped versions
+Oct 3: Add timestep from earlier file
+Oct 5: calculate median height in km for each pressure level and store
 """
-from numpy import transpose, zeros, array, append, where
+from numpy import transpose, zeros, array, append, where, insert, median
 from time import perf_counter
 from netCDF4 import Dataset
-from os.path import isfile
+from os.path import isfile, basename
+from datetime import datetime, timedelta
 
 file_varnames = {'density': ['rho', 0, ['time', 'lon_d', 'lat_d', 'lev'],
                              'kg/m**3'],
@@ -20,6 +23,8 @@ file_varnames = {'density': ['rho', 0, ['time', 'lon_d', 'lat_d', 'lev'],
                  'height_d': ['H_lev', 4, ['time', 'lon_d', 'lat_d', 'lev'],
                               'm'],
                  'height_n': ['H_ilev', 5, ['time', 'lon_n', 'lat_n', 'ilev'],
+                              'm'],
+                 'height': ['H_ilev', 5, ['time', 'lon_n', 'lat_n', 'ilev'],
                               'm'],
                  'meridional_neutral_wind': ['Vn_lat', 6, ['time', 'lon_n',
                                                            'lat_n', 'ilev'],
@@ -113,6 +118,48 @@ file_varnames = {'density': ['rho', 0, ['time', 'lon_d', 'lat_d', 'lev'],
                                                     'V/m']}
 
 
+def convert_all(file_prefix):
+    '''Get all data from last timestep of previous file. Finds first file
+    and converts them all in order.'''
+
+    # find first file
+    print(file_prefix)
+    file_date = basename(file_prefix)  # YYYY-MM-DD
+    file_dir = file_prefix.split(file_date)[0]
+    earlier_date = datetime.strptime(file_date, '%Y-%m-%d') - timedelta(days=1)
+    new_file_date = datetime.strftime(earlier_date, '%Y-%m-%d')
+    filetype_list = ['-plot-density.nc', '-plot-height.nc', '-plot-neutral.nc']
+    files = [file_dir+new_file_date+filetype for filetype in filetype_list]
+    while sum([isfile(file) for file in files]) > 1:
+        good_files = files
+        earlier_date -= timedelta(days=1)
+        new_file_date = datetime.strftime(earlier_date, '%Y-%m-%d')
+        files = [file_dir+new_file_date+filetype for filetype in filetype_list]
+    else:
+        good_files = [file_dir+file_date+filetype for filetype in
+                      filetype_list]
+
+    # convert first file with an empty first time step
+    new_file, in_ddict, in_hdict, in_ndict, last_time = \
+        ctipe_combine_files(good_files, verbose=False)
+
+    # convert remaining file groups while adding a timestep from the previous
+    first_file_prefix = good_files[0].split('-plot-density.nc')[0]
+    file_date = basename(first_file_prefix)
+    later_date = datetime.strptime(file_date, '%Y-%m-%d') + timedelta(days=1)
+    new_file_date = datetime.strftime(later_date, '%Y-%m-%d')
+    files = [file_dir+new_file_date+filetype for filetype in filetype_list]
+    while sum([isfile(file) for file in files]) > 1:
+        new_file, in_ddict, in_hdict, in_ndict, last_time = \
+            ctipe_combine_files(files, in_ddict=in_ddict, in_hdict=in_hdict,
+                                in_ndict=in_ndict, earlier_time=last_time,
+                                verbose=False)
+        later_date += timedelta(days=1)
+        new_file_date = datetime.strftime(later_date, '%Y-%m-%d')
+        files = [file_dir+new_file_date+filetype for filetype in filetype_list]
+    return file_prefix + '.nc'
+
+
 def ctipe_wrap_variables(var_dict, variable_name, lon):
     '''wrap variables in longitude and transpose as needed for ctipe model
     output'''
@@ -149,16 +196,16 @@ def ctipe_wrap_variables(var_dict, variable_name, lon):
     return var_dict
 
 
-def ctipe_combine_files(file_prefix, verbose=False):
+def ctipe_combine_files(files, in_ddict=None, in_hdict=None, in_ndict=None,
+                        earlier_time=None, verbose=False):
     '''Combine data from 3 files, wrapping in longitude and transposing as
     necessary.'''
 
     tic = perf_counter()
     dim_dict = {}
     # determine file names of group
-    filetype_list = ['-plot-density.nc', '-plot-height.nc', '-plot-neutral.nc']
-    filename_density, filename_height, filename_neutral = [
-        file_prefix+filetype for filetype in filetype_list]
+    filename_density, filename_height, filename_neutral = files
+    file_prefix = filename_density.split('-plot-density.nc')[0]
 
     # open data files, retrieve data, and close. wrap longitude
     if isfile(filename_density):
@@ -193,6 +240,19 @@ def ctipe_combine_files(file_prefix, verbose=False):
             if key in d_dict.keys():
                 del d_dict[key]
 
+        # add time to beginning of arrays if earlier file existed
+        if in_ddict != None:
+            for key in in_ddict.keys():
+                d_dict[key]['data'] = insert(d_dict[key]['data'], 0,
+                                             in_ddict[key]['data'], axis=0)
+                d_dict[key]['size'] = d_dict[key]['data'].shape
+
+        # Calculate median height for each pressure level and store
+        dim_dict['km_lev'] = {'size': len(dim_dict['lev']['data']),
+                              'datatype': float,
+                              'data': median(d_dict['height_d']['data'],
+                                             axis=[0,1,2])/1000.}
+
     if isfile(filename_height):
         ctipe_height = Dataset(filename_height)  # in meters
         h_dict = {key: {'data': array(ctipe_height.variables[key]),
@@ -223,6 +283,13 @@ def ctipe_combine_files(file_prefix, verbose=False):
         for key in ['time', 'lat', 'lon', 'elat', 'elon', 'ht', 'plev']:
             if key in h_dict.keys():
                 del h_dict[key]
+
+        # add time to beginning of arrays if earlier file existed
+        if in_hdict != None:
+            for key in in_hdict.keys():
+                h_dict[key]['data'] = insert(h_dict[key]['data'], 0,
+                                             in_hdict[key]['data'], axis=0)
+                h_dict[key]['size'] = h_dict[key]['data'].shape
 
     if isfile(filename_neutral):
         ctipe_neutral = Dataset(filename_neutral)
@@ -261,6 +328,31 @@ def ctipe_combine_files(file_prefix, verbose=False):
             if key in n_dict.keys():
                 del n_dict[key]
 
+        # add time to beginning of arrays if earlier file existed
+        if in_ndict != None:
+            for key in in_ndict.keys():
+                n_dict[key]['data'] = insert(n_dict[key]['data'], 0,
+                                             in_ndict[key]['data'], axis=0)
+                n_dict[key]['size'] = n_dict[key]['data'].shape
+
+        # Calculate median height for each pressure level and store
+        # neutral height data sometimes has different names
+        if 'height' in n_dict.keys():
+            hkey = 'height'
+        elif 'height_n' in n_dict.keys():
+            hkey = 'height_n'
+        dim_dict['km_ilev'] = {'size': len(dim_dict['ilev']['data']),
+                               'datatype': float, 'data':
+                                   median(n_dict[hkey]['data'],
+                                                     axis=[0,1,2])/1000.}
+
+    # add time value to time dimension if previous file existed
+    if in_ddict != None or in_hdict != None or in_ndict != None:
+        dim_dict['time']['size'] += 1
+        dim_dict['time']['data'] = insert(dim_dict['time']['data'], 0,
+                                          earlier_time)
+        print('Earlier time added')
+
     # initialize single output file
     data_out = Dataset(file_prefix+'.nc', 'w', format='NETCDF4')
     data_out.model = 'CTIPe'
@@ -277,14 +369,17 @@ def ctipe_combine_files(file_prefix, verbose=False):
         new_var = data_out.createVariable(dim, dim_dict[dim]['datatype'],
                                           tuple((dim, )))
         new_var[:] = dim_dict[dim]['data']
+    last_time = dim_dict['time']['data'][-1]
     if verbose:
         print('Dimensions complete.\n')
 
     # add variable data from density file to output file
     if isfile(filename_density):
-        for key in d_dict.keys():
+        key_list = list(d_dict.keys())
+        for key in key_list:
             if key in ['ZMAG', 'mean_molecular_mass'] or key not in\
                     file_varnames.keys():
+                del d_dict[key]
                 continue  # using Rmt in neutral file
             if verbose:
                 print(key, file_varnames[key][2])
@@ -292,13 +387,19 @@ def ctipe_combine_files(file_prefix, verbose=False):
                                               d_dict[key]['datatype'],
                                               tuple(file_varnames[key][2]))
             new_var[:] = d_dict[key]['data']
+            tmp = d_dict[key]['data'][-1]
+            d_dict[key]['data'] = tmp  # save last time step for next file
         if verbose:
             print('Density file complete.\n')
+    else:
+        d_dict = None
 
     # add variable data from height file to output file
     if isfile(filename_height):
-        for key in h_dict.keys():
+        key_list = list(h_dict.keys())
+        for key in key_list:
             if key == 'ZMAG' or key not in file_varnames.keys():
+                del h_dict[key]
                 continue  # no other variables depend on ZMAG, so ignore
             if verbose:
                 print(key, file_varnames[key][2])
@@ -306,12 +407,17 @@ def ctipe_combine_files(file_prefix, verbose=False):
                                               h_dict[key]['datatype'],
                                               tuple(file_varnames[key][2]))
             new_var[:] = h_dict[key]['data']
+            tmp = h_dict[key]['data'][-1]
+            h_dict[key]['data'] = tmp  # save last time step for next file
         if verbose:
             print('Height file complete.\n')
+    else:
+        h_dict = None
 
     # add variable data from neutral file to output file
     if isfile(filename_neutral):
-        for key in n_dict.keys():
+        key_list = list(n_dict.keys())
+        for key in key_list:
             if key in ['ZMAG', 'electron_density', 'atomic_oxygen_ion_density',
                        'atomic_hydrogen_ion_density'] or key not in\
                     file_varnames.keys():
@@ -321,24 +427,33 @@ def ctipe_combine_files(file_prefix, verbose=False):
                                                       n_dict[key]['datatype'],
                                                       tuple(tmp))
                     new_var[:] = n_dict[key]['data']
+                    tmp = n_dict[key]['data'][-1]
+                    n_dict[key]['data'] = tmp  # save last time step for next file
+                else:
+                    del n_dict[key]
                 continue
+            else:
+                new_var = data_out.createVariable(file_varnames[key][0],
+                                                  n_dict[key]['datatype'],
+                                                  tuple(file_varnames[key][2]))
+                new_var[:] = n_dict[key]['data']
+                tmp = n_dict[key]['data'][-1]
+                n_dict[key]['data'] = tmp  # save last time step for next file
             if verbose:
                 print(key, file_varnames[key][2])
-            new_var = data_out.createVariable(file_varnames[key][0],
-                                              n_dict[key]['datatype'],
-                                              tuple(file_varnames[key][2]))
-            new_var[:] = n_dict[key]['data']
         if verbose:
             print('Neutral file complete.\n')
+    else:
+        n_dict = None
 
-    # close file
+    # close file and return data for last time step
     print(f"Data for {file_prefix} converted in {perf_counter()-tic:.6f}s.")
     data_out.close()
-    return file_prefix+'.nc'
+    return file_prefix+'.nc', d_dict, h_dict, n_dict, last_time
 
 
 if __name__ == '__main__':
     # define file names (input and output)
-    file_dir = 'C:/Users/rringuet/Kamodo_WinDev1/CTIPe/Data/'
+    file_dir = 'C:/Users/rringuet/Kamodo_Data/CTIPe/Data/'
     file_prefix = file_dir+'2015-03-18'
     new_filename = ctipe_combine_files(file_prefix)

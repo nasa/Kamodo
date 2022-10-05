@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # The custom interpolator routine for CTIPe
 from scipy.interpolate import interp1d
-from kamodo import kamodofy, get_defaults
-from numpy import NaN, vectorize, array, zeros, median
+from kamodo import kamodofy
+from numpy import NaN, vectorize, array
 
 
 def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
@@ -23,13 +23,7 @@ def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
         returns only the height. Both interpolators are 'kamodofied'.
     '''
     # Retrieve correct height function (gridded version)
-    h_func = getattr(kamodo_object, plev_name + '_ijk')
-    coord_list = list(get_defaults(h_func).keys())  # get name of pressure lev
-
-    # determine the median altitude for each pressure level
-    avg_kms = zeros(len(ilev))
-    for i in range(len(ilev)):
-        avg_kms[i] = median(h_func(**{coord_list[-1]: ilev[i]})/1000.)
+    h_func = getattr(kamodo_object, plev_name+'_ijk')
 
     @vectorize
     def km_to_ilev(t, lon, lat, km):
@@ -49,7 +43,7 @@ def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
         the original function.'''
         t, lon, lat, km = array(xvec_GDZsph4Dkm).T
         out_ilev = km_to_ilev(t, lon, lat, km)
-        return t, lon, lat, out_ilev
+        return array([t, lon, lat, out_ilev]).T
 
     @kamodofy(units='m/m')
     def plevconvert_ijk(xvec_GDZsph4Dkm):
@@ -60,4 +54,4 @@ def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
         t, lon, lat, km = array(xvec_GDZsph4Dkm).T
         return km_to_ilev(t, lon, lat, km)
 
-    return plevconvert, plevconvert_ijk, avg_kms
+    return plevconvert, plevconvert_ijk

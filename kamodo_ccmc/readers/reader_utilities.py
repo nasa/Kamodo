@@ -4,279 +4,13 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
-from scipy.interpolate import RegularGridInterpolator, interp1d
-from numpy import NaN
+from numpy import NaN, vectorize, append, array, ravel
+from scipy.interpolate import RegularGridInterpolator as rgiND
+from scipy.interpolate import interp1d as rgi1D
 import forge
-from datetime import datetime, timezone
 
 
-def dts_to_hrs(datetime_string, filedate):
-    '''Convert datetime string to hours since midnight in filedate datetime
-    object.
-
-    Inputs:
-        datetime_string: A string of format 'YY-MM-DD HH:mm:SS', where YY is
-            the two digit year, MM is the two digit month, DD is the two digit
-            day, HH is the two digit hour assuming A 24 hour convention, mm is
-            the two digit minute, and SS is the two digit second. The string
-            should correspond to the UTC date-time to be converted into hours.
-        filedate: A datetime object in UTC corresponding to midnight on the
-            desired date.
-    Output: The number of hours since midnight (float).
-    '''
-
-    return (datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S'
-                              ).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
-def define_1d_interpolator(units, variable, t, coord_str):
-    '''Define interpolators for 1D variables uniformly.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 1D array of data values.
-        t: A 1D array of utc timestamp values.
-    Output: A kamodofied function to interpolate over the data given. See
-        Kamodo core documentation for more details.
-    '''
-
-    rgi = interp1d(t, variable, bounds_error=False, fill_value=NaN)
-    param_xvec = forge.FParameter(name='t_'+coord_str,
-                                  interface_name='t',
-                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
-                                  default=t)
-
-    @forge.replace('t', param_xvec)
-    @kamodofy(units=units, data=variable)
-    def interpolator(t):
-        """Interpolates 1d variable without A grid"""
-        return rgi(t)
-    return interpolator
-
-
-def define_2d_interpolator(units, variable, lon, lat, coord_str):
-    '''Define interpolators for 2D variables uniformly.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 3D array of data values.
-        lon: A 1D array of longitude or X values. This could also be time.
-        lat: A 1D array of latitude or Y values.
-    Output: A kamodofied function to interpolate over the data given. See
-        Kamodo core documentation for more details.
-    '''
-
-    rgi = RegularGridInterpolator((lon, lat),
-                                  variable, bounds_error=False, fill_value=NaN)
-    track = [[loni, lati] for loni, lati in zip(lon, lat)]
-    param_xvec = forge.FParameter(name='xvec_'+coord_str,
-                                  interface_name='xvec',
-                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
-                                  default=track)
-
-    @forge.replace('xvec', param_xvec)
-    @kamodofy(units=units, data=variable)
-    def interpolator(xvec):
-        """Interpolates 3d variable without A grid"""
-        return rgi(xvec)
-    return interpolator
-
-
-def define_2d_gridded_interpolator(units, variable, lon, lat,
-                                   xvec_dependencies, function):
-    '''Define interpolators for 2D variables uniformly, gridded version.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 3D array of data values.
-        t: A 1D array of utc timestamp values.
-        lon: A 1D array of longitude or X values.
-        lat: A 1D array of latitude or Y values.
-        xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies =
-            {'time':'hr','lon':'deg',...} or similar.
-        function: An ungridded kamodofied function, typically produced by the
-            define_3d_interpolator function above.
-    Output: A kamodofied gridded function to interpolate over the data given.
-        See Kamodo core documentation for more details.
-    '''
-
-    if 'x' in xvec_dependencies.keys() or 'X' in xvec_dependencies.keys():
-        interpolator_grid = kamodofy(gridify(function, x=lon, y=lat),
-                                     units=units, data=variable,
-                                     arg_units=xvec_dependencies)
-    else:
-        interpolator_grid = kamodofy(gridify(function, lon=lon, lat=lat),
-                                     units=units, data=variable,
-                                     arg_units=xvec_dependencies)
-    return interpolator_grid
-
-
-def define_3d_interpolator(units, variable, t, lon, lat, coord_str):
-    '''Define interpolators for 3D variables uniformly.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 3D array of data values.
-        t: A 1D array of utc timestamp values.
-        lon: A 1D array of longitude or X values.
-        lat: A 1D array of latitude or Y values.
-    Output: A kamodofied function to interpolate over the data given. See
-        Kamodo core documentation for more details.
-    '''
-
-    rgi = RegularGridInterpolator((t, lon, lat),
-                                  variable, bounds_error=False, fill_value=NaN)
-    track = [[ti, loni, lati] for ti, loni, lati in zip(t, lon, lat)]
-    param_xvec = forge.FParameter(name='xvec_'+coord_str,
-                                  interface_name='xvec',
-                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
-                                  default=track)
-
-    @forge.replace('xvec', param_xvec)
-    @kamodofy(units=units, data=variable)
-    def interpolator(xvec):
-        """Interpolates 3d variable without A grid"""
-        return rgi(xvec)
-    return interpolator
-
-
-def define_3d_gridded_interpolator(units, variable, t, lon, lat,
-                                   xvec_dependencies, function):
-    '''Define interpolators for 3D variables uniformly, gridded version.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 3D array of data values.
-        t: A 1D array of utc timestamp values.
-        lon: A 1D array of longitude or X values.
-        lat: A 1D array of latitude or Y values.
-        xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies =
-            {'time':'hr','lon':'deg',...} or similar.
-        function: An ungridded kamodofied function, typically produced by the
-            define_3d_interpolator function above.
-    Output: A kamodofied gridded function to interpolate over the data given.
-        See Kamodo core documentation for more details.
-    '''
-
-    if 'Elat' in xvec_dependencies.keys():
-        interpolator_grid = kamodofy(gridify(function, time=t, Elon=lon,
-                                             Elat=lat),
-                                     units=units, data=variable,
-                                     arg_units=xvec_dependencies)
-    elif 'x' in xvec_dependencies.keys() or 'X' in xvec_dependencies.keys():
-        interpolator_grid = kamodofy(gridify(function, time=t, x=lon, y=lat),
-                                     units=units, data=variable,
-                                     arg_units=xvec_dependencies)
-    else:
-        interpolator_grid = kamodofy(gridify(function, time=t, lon=lon,
-                                             lat=lat),
-                                     units=units, data=variable,
-                                     arg_units=xvec_dependencies)
-    return interpolator_grid
-
-
-def define_4d_interpolator(units, variable, t, lon, lat, ht, coord_str):
-    '''Define interpolators for 4D variables uniformly.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 4D array of data values.
-        t: A 1D array of utc timestamp values.
-        lon: A 1D array of longitude or X values.
-        lat: A 1D array of latitude or Y values.
-        ht: A 1D array of height, radius, pressure level, or Z values.
-    Output: A kamodofied function to interpolate over the data given. See
-        Kamodo core documentation for more details.
-    '''
-
-    rgi = RegularGridInterpolator((t, lon, lat, ht),
-                                  variable, bounds_error=False, fill_value=NaN)
-    track = [[ti, loni, lati, hti] for ti, loni, lati, hti in
-             zip(t, lon, lat, ht)]
-    param_xvec = forge.FParameter(name='xvec_'+coord_str,
-                                  interface_name='xvec',
-                                  kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
-                                  default=track)
-
-    @forge.replace('xvec', param_xvec)
-    @kamodofy(units=units, data=variable)
-    def interpolator(xvec):
-        """Interpolates 4d variable without a grid"""
-        return rgi(xvec)
-    return interpolator
-
-
-def define_4d_gridded_interpolator(units, variable, t, lon, lat, ht,
-                                   xvec_dependencies, function):
-    '''Define interpolators for 4D variables uniformly, gridded version.
-
-    Inputs:
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 4D array of data values.
-        t: A 1D array of utc timestamp values.
-        lon: A 1D array of longitude or X values.
-        lat: A 1D array of latitude or Y values.
-        ht: A 1D array of height, radius, pressure level, or Z values.
-        xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies =
-            {'time':'hr','lon':'deg',...} or similar.
-        function: An ungridded kamodofied function, typically produced by the
-            define_4d_interpolator function above.
-    Output: A kamodofied gridded function to interpolate over the data given.
-        See Kamodo core documentation for more details.
-    '''
-
-    if 'ilev' in xvec_dependencies.keys():
-        interpolator_grid = kamodofy(gridify(function, time=t, lon=lon,
-                                             lat=lat, ilev=ht), units=units,
-                                     data=variable,
-                                     arg_units=xvec_dependencies)
-    elif 'ilev1' in xvec_dependencies.keys():
-        interpolator_grid = kamodofy(gridify(function, time=t, lon=lon,
-                                             lat=lat, ilev1=ht), units=units,
-                                     data=variable,
-                                     arg_units=xvec_dependencies)
-    elif 'milev' in xvec_dependencies.keys():
-        if 'mlat' in xvec_dependencies.keys() and 'mlon' in\
-                xvec_dependencies.keys():
-            interpolator_grid = kamodofy(gridify(function, time=t, mlon=lon,
-                                                 mlat=lat, milev=ht),
-                                         units=units, data=variable,
-                                         arg_units=xvec_dependencies)
-        else:   # not used yet by any model *******************************
-            interpolator_grid = kamodofy(gridify(function, time=t, lon=lon,
-                                                 lat=lat, milev=ht),
-                                         units=units, data=variable,
-                                         arg_units=xvec_dependencies)
-    elif 'radius' in xvec_dependencies.keys():
-        interpolator_grid = kamodofy(gridify(function, time=t, lon=lon,
-                                             lat=lat, radius=ht), units=units,
-                                     data=variable,
-                                     arg_units=xvec_dependencies)
-    elif 'x' in xvec_dependencies.keys() or 'X' in xvec_dependencies.keys():
-        interpolator_grid = kamodofy(gridify(function, time=t, x=lon, y=lat,
-                                             z=ht), units=units, data=variable,
-                                     arg_units=xvec_dependencies)
-    else:
-        interpolator_grid = kamodofy(gridify(function, time=t, lon=lon,
-                                             lat=lat, height=ht), units=units,
-                                     data=variable,
-                                     arg_units=xvec_dependencies)
-    return interpolator_grid
-
-
-def register_interpolator(kamodo_object, varname, interpolator,
-                          xvec_dependencies):
+def register_interpolator(kamodo_object, varname, interpolator, coord_units):
     '''Register interpolators for each variable.
 
     Inputs:
@@ -285,129 +19,238 @@ def register_interpolator(kamodo_object, varname, interpolator,
             associated with the given interpolator.
         - interpolator: A kamodofied function produced by one of the functions
             above (gridded or non-gridded).
-        - xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies =
+        - coord_units: A dictionary of key, value pairs indicating the
+            argument units. In this case, coord_units =
             {'time':'hr','lon':'deg',...} or similar.
     Output: The same kamodo object given, except with the new function
         included.
     '''
 
     kamodo_object[varname] = interpolator
-    kamodo_object.variables[varname]['xvec'] = xvec_dependencies
+    kamodo_object.variables[varname]['xvec'] = coord_units
     kamodo_object._registered += 1
     return kamodo_object
 
 
-def regdef_1D_interpolators(kamodo_object, units, variable, t, varname,
-                            xvec_dependencies, gridded_int, coord_str):
-    '''Calls all necessary functions to register and define 1D interpolators.
-
+def define_griddedinterp(data_dict, coord_units, coord_data, interp):
+    '''Define a gridded interpolator.
     Inputs:
-        kamodo_object: A kamodo object produced by the Kamodo core package.
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 1D array of data values.
-        t: A 1D array of utc timestamp values.
-        varname: A string indicating the standardized variable name associated
-            with the given interpolator.
-        xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies = {'time':'hr'}
-            typically.
-        gridded_int: A boolean. If True, A gridded version of the standard
-            interpolator is created and registered. If False, only the standard
-            interpolator is created and registered.
-    Output: The same kamodo object given, except with the new function(s)
-        included.
+        data_dict: a dictionary containing the data information.
+            {'units': 'data_units', 'data': data_array}
+            data_array should have the same shape as (c1, c2, c3, ..., cN) 
+        coord_units: a dictionary containing the coordinate information.
+            {'name_of_coord1': coord1_units', 'name_of_coord2': 'coord2_units',
+             etc...}. All units should be strings.
+        coord_data: a dictionary containing the coordinate data.
+            {'name_of_coord1': coord1_data', 'name_of_coord2': 'coord2_data',
+             etc...}. All arrays should be 1D arrays.
+        rgi: an interpolator
+    Returns: a gridded kamodo interpolator
+    '''
+    interpolator_grid = kamodofy(gridify(interp, **coord_data),
+                                 units=data_dict['units'],
+                                 data=data_dict['data'], arg_units=coord_units)
+    return interpolator_grid
+
+
+def create_interp(coord_data, data_dict):
+    '''Create an interpolator depending on the dimensions of the input.
+    Inputs:
+        coord_data: a dictionary containing the coordinate data.
+            {'name_of_coord1': coord1_data', 'name_of_coord2': 'coord2_data',
+             etc...}. All arrays should be 1D arrays.
+        data_dict: a dictionary containing the data information.
+            {'units': 'data_units', 'data': data_array}
+            data_array should have the same shape as (c1, c2, c3, ..., cN)
+        Note: The dataset must also depend upon ALL of the coordinate arrays
+            given.
+    Output: an interpolator created with the given dataset and coordinates.
+    '''
+    
+    # determine the number of coordinates, create the interpolator
+    coord_list = [value for key, value in coord_data.items()]  # list of arrays
+    n_coords = len(coord_data.keys())
+    if n_coords == 1:
+        rgi = rgi1D(*coord_list, data_dict['data'],
+                          bounds_error=False, fill_value=NaN)
+    else:
+        rgi = rgiND(coord_list, data_dict['data'],
+                                      bounds_error=False, fill_value=NaN)
+
+    # wrap in a function and return the function
+    def interp(xvec):
+        return rgi(xvec)
+    return interp
+
+
+def create_funcsig(coord_data, coord_str):
+    '''Create a custom function signature based on the dimensions and the
+    coordinate string given (e.g. "SMcar").
+    Inputs:
+        coord_data: a dictionary containing the coordinate data.
+            {'name_of_coord1': coord1_data', 'name_of_coord2': 'coord2_data',
+             etc...}. All arrays should be 1D arrays.
+        coord_str: a string indicating the coordinate system of the data
+            (e.g. "SMcar" or "GEOsph").
+    Outputs: A forge parameter object.
+    '''
+    
+    # determine the number of coordinates
+    n_coords = len(coord_data.keys())
+    if n_coords == 1:
+        # prepare the custom function signature
+        if coord_str != '':
+            coord_name = list(coord_data.keys())[0]+'_'+coord_str
+        else:
+            coord_name = list(coord_data.keys())[0]
+    else:
+        # prepare the custom function signature
+        if 'sph' in coord_str:
+            coord_name = 'rvec_'+coord_str+str(n_coords)+'D'
+        else:
+            coord_name = 'xvec_'+coord_str+str(n_coords)+'D'
+    # e.g. 'xvec_SMcar4D' or 'rvecGEOsph3D'
+    param_xvec = forge.FParameter(
+        name=coord_name, interface_name='xvec',
+        kind=forge.FParameter.POSITIONAL_OR_KEYWORD)
+    return param_xvec
+
+
+def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
+                          data_dict, gridded_int, coord_str):
+    '''Determine and call the correct functionalize routine.
+    Inputs:
+        kamodo_object: the previously created kamodo object.
+        coord_dict: a dictionary containing the coordinate information.
+            {'name_of_coord1': {'units': 'coord1_units', 'data': coord1_data},
+             'name_of_coord2': {'units': 'coord2_units', 'data': coord2_data},
+             etc...}
+            coordX_data should be a 1D array. All others should be strings.
+        variable_name: a string giving the LaTeX representation of the variable
+        data_dict: a dictionary containing the data information.
+            {'units': 'data_units', 'data': data_array}
+            data_array should have the same shape as (c1, c2, c3, ..., cN)
+        Note: The dataset must also depend upon ALL of the coordinate arrays
+            given.
+        
+        gridded_int: True to create a gridded interpolator (necessary for
+            plotting higher dimensions and slicing). False otherwise.
+        coord_str: a string indicating the coordinate system of the data
+            (e.g. "SMcar" or "GEOsph").
+
+    Output: A kamodo object with the functionalized dataset added.
     '''
 
-    interpolator = define_1d_interpolator(units, variable, t, coord_str)
-    kamodo_object = register_interpolator(kamodo_object, varname, interpolator,
-                                          xvec_dependencies)
+    # split the coord_dict into data and units
+    coord_data = {key: value['data'] for key, value in coord_dict.items()}
+    coord_units = {key: value['units'] for key, value in coord_dict.items()}
 
-    # do not bother with a gridded interpolator for 1D functions
+    # create interpolator function and function signature
+    interp = create_interp(coord_data, data_dict)
+    param_xvec = create_funcsig(coord_data, coord_str)
+
+    # Functionalize the dataset
+    new_interp = forge.replace('xvec', param_xvec)(interp)
+    interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
+             arg_units=coord_units)(new_interp)
+    kamodo_object = register_interpolator(kamodo_object, variable_name, interp,
+                                          coord_units)
+
+    # Add gridded version if requested, even for 1D functions
+    if gridded_int:
+        interp_grid = define_griddedinterp(data_dict, coord_units, coord_data,
+                                           interp)
+        kamodo_object.variables[variable_name+'_ijk'] = data_dict
+        kamodo_object = register_interpolator(kamodo_object,
+                                              variable_name+'_ijk',
+                                              interp_grid, coord_units)
     return kamodo_object
 
 
-def regdef_3D_interpolators(kamodo_object, units, variable, t, lon, lat,
-                            varname, xvec_dependencies, gridded_int,
-                            coord_str):
-    '''Calls all necessary functions to register and define 3D interpolators.
-
+def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
+                  gridded_int, coord_str):
+    '''Create a functionalized interpolator by splitting into timesteps.
     Inputs:
-        kamodo_object: A kamodo object produced by the Kamodo core package.
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 1D array of data values.
-        t: A 1D array of utc timestamp values.
-        lon: A 1D array of longitude or X values.
-        lat: A 1D array of latitude or Y values.
-        varname: A string indicating the standardized variable name associated
-            with the given interpolator.
-        xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies = {'time':'hr'}
-            typically.
-        gridded_int: A boolean. If True, A gridded version of the standard
-            interpolator is created and registered. If False, only the standard
-            interpolator is created and registered.
-    Output: The same kamodo object given, except with the new function(s)
-        included.
+        kamodo_object: the previously created kamodo object.
+        coord_dict: a dictionary containing the coordinate information.
+            {'name_of_coord1': {'units': 'coord1_units', 'data': coord1_data},
+             'name_of_coord2': {'units': 'coord2_units', 'data': coord2_data},
+             etc...}
+            coordX_data should be a 1D array. All others should be strings.
+        variable_name: a string giving the LaTeX representation of the variable
+        data_dict: a dictionary containing the data information.
+            {'units': 'data_units', 'data': data_array}
+            data_array should have the same shape as (c1, c2, c3, ..., cN)
+        Note: The dataset must also depend upon ALL of the coordinate arrays
+            given.
+        
+        gridded_int: True to create a gridded interpolator (necessary for
+            plotting higher dimensions and slicing). False otherwise.
+        coord_str: a string indicating the coordinate system of the data
+            (e.g. "SMcar" or "GEOsph").
+
+    Output: A kamodo object with the functionalized dataset added.    
     '''
+    
+    # create a list of interpolators per timestep, not storing the data, and 
+    # interpolate from there. such as done in superdarnea_interp.py
+    # Assumes that time is the first dimension
+    # Assumes that data_dict['data'] is a cdf_data.variable object
+    # does this also work for h5 files? ******************************************************
 
-    interpolator = define_3d_interpolator(units, variable, t, lon, lat,
-                                          coord_str)
-    kamodo_object = register_interpolator(kamodo_object, varname, interpolator,
-                                          xvec_dependencies)
+    # split the coord_dict into data and units
+    coord_data = {key: value['data'] for key, value in coord_dict.items()}
+    coord_units = {key: value['units'] for key, value in coord_dict.items()}
+    coord_list = [value for key, value in coord_data.items()]  # list of arrays
+    
+    # Create ND interpolators for each time grid value
+    if len(coord_list) > 2:
+        time_interps = [rgiND(coord_list[1:], array(data_dict['data'][i]),
+                              bounds_error=False, fill_value=NaN) for i in
+                        range(len(coord_list[0])-1)]
+    elif len(coord_list) <= 2:  # call normal routine and return
+        data_dict['data'] = array(data_dict['data'])  # ensure it is an array
+        return Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
+                                  data_dict, gridded_int, coord_str)
 
-    # define and register the gridded interpolator if desired
+    @vectorize
+    def interp_i(*args):
+
+        position = [*args]  # time coordinate value must be first
+        # Choose indices of time grid values surrounding desired time
+        idx = sorted(append(coord_list[0], position[0])).index(position[0])  # get location
+        if idx > 1 and idx < len(coord_list[0])-1:  # middle somewhere
+            idx_list = [idx-1, idx, idx+1]
+        elif idx <= 1:  # beginning
+            idx_list = [0, 1, 2]
+        elif idx > 1 and idx >= len(coord_list[0])-1:  # at end
+            idx_list = [idx-2, idx-1, idx]
+
+        # Interpolate values for chosen latitude grid values
+        interp_values = ravel([time_interps[i]([*position[1:]]) for i in idx_list])
+        time_interp = rgi1D(coord_list[0][idx_list], interp_values,
+                              bounds_error=False, fill_value=NaN)
+        return time_interp(position[0])
+
+    # retrieve the updated function signature
+    param_xvec = create_funcsig(coord_data, coord_str)
+
+    @forge.replace('xvec', param_xvec)
+    @kamodofy(units=data_dict['units'], data=data_dict['data'],
+              arg_units=coord_units)
+    def total_interp(xvec):
+        return interp_i(*array(xvec).T)
+
+    # register the interpolator in the kamodo object
+    kamodo_object = register_interpolator(kamodo_object, variable_name,
+                                          total_interp, coord_units)
+
+    # Add gridded version if requested, even for 1D functions
     if gridded_int:
-        kamodo_object.variables[varname+'_ijk'] = dict(units=units,
-                                                       data=variable)
-        gridded_interpolator = define_3d_gridded_interpolator(
-            units, variable, t, lon, lat, xvec_dependencies, interpolator)
-        kamodo_object = register_interpolator(kamodo_object, varname+'_ijk',
-                                              gridded_interpolator,
-                                              xvec_dependencies)
-    return kamodo_object
-
-
-def regdef_4D_interpolators(kamodo_object, units, variable, t, lon, lat, z,
-                            varname, xvec_dependencies, gridded_int,
-                            coord_str):
-    '''Calls all necessary functions to register and define 4D interpolators.
-
-    Inputs:
-        kamodo_object: A kamodo object produced by the Kamodo core package.
-        units: A string representing the units of the data in the variable
-            array.
-        variable: A 1D array of data values.
-        t: A 1D array of utc timestamp values.
-        lon: A 1D array of longitude or X values.
-        lat: A 1D array of latitude or Y values.
-        z: A 1D array of height, radius, pressure level, or Z values.
-        varname: A string indicating the standardized variable name associated
-            with the given interpolator.
-        xvec_dependencies: A dictionary of key, value pairs indicating the
-            argument units. In this case, xvec_dependencies = {'time':'hr'}
-            typically.
-        gridded_int: A boolean. If True, A gridded version of the standard
-            interpolator is created and registered. If False, only the standard
-            interpolator is created and registered.
-    Output: The same kamodo object given, except with the new function(s)
-        included.
-    '''
-
-    interpolator = define_4d_interpolator(units, variable, t, lon, lat, z,
-                                          coord_str)
-    kamodo_object = register_interpolator(kamodo_object, varname, interpolator,
-                                          xvec_dependencies)
-
-    # define and register the gridded interpolator if desired
-    if gridded_int:
-        kamodo_object.variables[varname+'_ijk'] = dict(units=units,
-                                                       data=variable)
-        gridded_interpolator = define_4d_gridded_interpolator(
-            units, variable, t, lon, lat, z, xvec_dependencies, interpolator)
-        kamodo_object = register_interpolator(kamodo_object, varname+'_ijk',
-                                              gridded_interpolator,
-                                              xvec_dependencies)
+        interp = define_griddedinterp(data_dict, coord_units, coord_data,
+                                      total_interp)
+        kamodo_object.variables[variable_name+'_ijk'] = data_dict
+        kamodo_object = register_interpolator(kamodo_object,
+                                              variable_name+'_ijk', interp,
+                                              coord_units)
     return kamodo_object
