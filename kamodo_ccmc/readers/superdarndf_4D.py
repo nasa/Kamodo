@@ -35,10 +35,9 @@ def MODEL():
     from kamodo import Kamodo
     from netCDF4 import Dataset
     from os.path import basename, isfile
-    from numpy import array, where, NaN, unique, append, zeros, abs, diff
+    from numpy import array, NaN, diff
     from time import perf_counter
-    from kamodo_ccmc.readers.reader_utilities import regdef_1D_interpolators
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators
+    from kamodo_ccmc.readers.reader_utilities import Functionalize_Dataset
 
     class MODEL(Kamodo):
         '''SuperDARN model data reader for the default coordinate grid.
@@ -136,7 +135,7 @@ def MODEL():
                 in self.datetimes]   # utc timestamp
             self.dt = diff(time).max()*3600.  # convert time resolution to sec
 
-            if filetime and not fulltime:
+            if filetime:
                 cdf_data.close()
                 return  # return times as is to prevent recursion
 
@@ -147,65 +146,6 @@ def MODEL():
                                model_varnames.items()
                                if value[2] in variables_requested]
                     variables_requested = tmp_var
-
-            if fulltime:  # add boundary time (default value)
-                # find other files with same pattern
-                from glob import glob
-
-                file_pattern = file_dir + 'model*_df.nc'  # returns a string
-                files = sorted(glob(file_pattern))  # method may change for AWS
-                filenames = unique([basename(f) for f in files])
-
-                # find closest file by utc timestamp
-                # superdarn has an open time at the end
-                # need a beginning time from the closest file
-                # files are automatically sorted by YYYYMMDD
-                # next file is next in the list
-                current_idx = where(filenames == filename)[0]
-                if current_idx+1 == len(files):
-                    if verbose:
-                        print('No later file available.')
-                    filecheck = False
-                    if filetime:
-                        cdf_data.close()
-                        return
-                else:
-                    # +1 for adding an end time
-                    min_file = file_dir + filenames[current_idx+1][0]
-                    kamodo_test = MODEL(min_file, filetime=True,
-                                        fulltime=False)
-                    time_test = abs(kamodo_test.filetimes[0] -
-                                    self.filetimes[1])
-                    # if nearest file time at least within one timestep
-                    if time_test <= self.dt:
-                        filecheck = True
-                        self.datetimes[1] = kamodo_test.datetimes[0]
-                        self.filetimes[1] = kamodo_test.filetimes[0]
-
-                        # time only version if returning time for searching
-                        if filetime:
-                            cdf_data.close()
-                            return  # return object with additional time
-
-                        # get kamodo object with same requested variables
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to find ' +
-                                  'closest file.')
-                        kamodo_neighbor = MODEL(
-                            min_file, variables_requested=variables_requested,
-                            fulltime=False)
-                        short_data = kamodo_neighbor.short_data
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to get ' +
-                                  'data from closest file.')
-                    else:
-                        if verbose:
-                            print('No later file found within ' +
-                                  f'{diff(time).max()*3600.:.1f}s.')
-                        filecheck = False
-                        if filetime:
-                            cdf_data.close()
-                            return
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and fulltime and \
@@ -254,14 +194,7 @@ def MODEL():
                 return
 
             # Store coordinate data as class attributes
-            if filecheck:
-                # new time in hours since midnight
-                new_time = ts_to_hrs(short_data['time'], self.filedate)
-                self._time = append(time, new_time)
-            else:
-                self._time = time
-
-            # collect data and make dimensional grid from 3D file
+            self._time = time
             self._lon = array(cdf_data.variables['lon'])  # -180 to 180
             self._lat = array(cdf_data.variables['lat'])
             cdf_data.close()
@@ -280,72 +213,27 @@ def MODEL():
             varname_list = [key for key in variables.keys()]
             self.variables = {}
             for varname in varname_list:
+                self.variables[varname] = dict(
+                    units=variables[varname]['units'],
+                    data=variables[varname]['data'])
+                coord_str = [value[3]+value[4] for key, value in
+                             model_varnames.items() if value[0] == varname][0]
+                # set coordinate dictionary
                 if len(variables[varname]['data'].shape) == 3:
-                    if filecheck:  # if neighbor found
-                        # append data for last time stamp
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1, :, :] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1, :, :] =\
-                            short_data[varname]['data'][0, :, :]
-                        variables[varname]['data'] = new_data  # save
-                    self.variables[varname] = dict(
-                        units=variables[varname]['units'],
-                        data=variables[varname]['data'])
-                    self.register_3D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int)
+                    coord_dict = {'time': {'units': 'hr', 'data': self._time},
+                                  'lon': {'units': 'deg', 'data': self._lon},
+                                  'lat': {'units': 'deg', 'data': self._lat}}
                 elif len(variables[varname]['data'].shape) == 1:
-                    if filecheck:
-                        # append data for last time stamp, transpose
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1] = short_data[varname]['data'][0]
-                        variables[varname]['data'] = new_data  # save
-                    self.variables[varname] = dict(
-                        units=variables[varname]['units'],
-                        data=variables[varname]['data'])
-                    self.register_1D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int)
+                    coord_dict = {'time': {'units': 'hr', 'data': self._time}}
+                # functionalize the variable dataset
+                self = Functionalize_Dataset(self, coord_dict, varname,
+                                             self.variables[varname],
+                                             gridded_int, coord_str)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
             if verbose:
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
-
-        # define and register a 3D variable
-        def register_3D_variable(self, units, variable, varname, gridded_int):
-            """Registers a 3d interpolator with 3d signature"""
-
-            # define and register the interpolators
-            xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'3D'
-            self = regdef_3D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int,
-                                           coord_str)
-            return
-
-        # define and register a 1D variable
-        def register_1D_variable(self, units, variable, varname, gridded_int):
-            """Registers a 4d interpolator with 4d signature"""
-
-            # define and register the fast interpolator
-            xvec_dependencies = {'time': 'hr'}
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'1D'
-            self = regdef_1D_interpolators(self, units, variable, self._time,
-                                           varname, xvec_dependencies,
-                                           gridded_int, coord_str)
             return
     return MODEL

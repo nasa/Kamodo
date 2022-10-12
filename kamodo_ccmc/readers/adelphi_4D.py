@@ -4,38 +4,45 @@ Written by Rebecca Ringuette, 2021
 from datetime import datetime, timedelta, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'PED': ['Sigma_P', 'missing',
-                         0, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                         'S'],
-                  'HALL': ['Sigma_H', 'missing',
-                         1, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                         'S'],
-                  'PHI': ['phi', 'missing',
-                         2, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                         'V'],
-                  'EEAST': ['E_east', 'missing',
-                         3, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                         'V/m'],
-                  'ENORTH': ['E_north', 'missing',
+model_varnames = {'PED': ['Sigma_P', 'Pedersen conductance ', 0, 'MAG', 'sph',
+                          ['time', 'lon', 'lat'], 'S'],
+                  'HALL': ['Sigma_H', 'hall Conductance',
+                           1, 'MAG', 'sph', ['time', 'lon', 'lat'],
+                           'S'],
+                  'PHI': ['phi', 'Electric potential',
+                          2, 'MAG', 'sph', ['time', 'lon', 'lat'],
+                          'kV'],
+                  'EEAST': ['E_east', 'electric field in eastern direction ' +
+                            '(increasing longitude) ',
+                            3, 'MAG', 'sph', ['time', 'lon', 'lat'],
+                         'mV/m'],
+                  'ENORTH': ['E_north', 'electric field in north direction ' +
+                             '(increasing latitude) ',
                          4, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                         'V/m'],
-                  'JEAST': ['J_east', 'missing',
+                         'mV/m'],
+                  'JEAST': ['J_east', 'electric current in eastern direction' +
+                            '(increasing longitude) (height integrated ' +
+                            'current density)',
                          5, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                         ''],
-                  'JNORTH': ['J_north', 'missing',
+                         'A/m'],
+                  'JNORTH': ['J_north', 'electric current in north direction' +
+                             ' (increasing latitude) (height integrated ' +
+                             'current density)',
                           6, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                          ''],
-                  'EFLUX': ['Phi', 'missing',
+                          'A/m'],
+                  'EFLUX': ['Phi', 'energy flux',
                           7, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                          'V*m'],
-                  'JHEAT': ['J_heat', 'missing', 8, 'MAG', 'sph',
-                            ['time', 'lon', 'lat'], ''],
-                  'JRIN': ['JR_in', 'missing',
+                          'mW/m**2'],
+                  'JHEAT': ['J_heat', 'Joule hating rate ', 8, 'MAG', 'sph',
+                            ['time', 'lon', 'lat'], 'mW/m**2'],
+                  'JRIN': ['J_Rin', 'Input radial current',
                          9, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                         ''],
-                  'JROUT': ['JR_out', 'missing',
+                         'mA/m**2'],
+                  'JROUT': ['J_Rout', 'model-generated radial current ' +
+                            'would be identical to J_Rin if the model were ' +
+                            'perfect',
                           10, 'MAG', 'sph', ['time', 'lon', 'lat'],
-                          ''],
+                          'mA/m**2'],
                   }
 
 
@@ -54,21 +61,20 @@ def MODEL():
     from kamodo import Kamodo
     from netCDF4 import Dataset
     from os.path import basename, isfile
-    from numpy import array, transpose, NaN, unique, append, zeros, abs, diff
-    from numpy import where
+    from numpy import array, NaN, diff, count_nonzero, broadcast_to, mean
+    from numpy import delete, sum, cos, sin, pi
     from time import perf_counter
-    from astropy.constants import R_earth
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
-        '''IRI model data reader.
+        '''ADELPHI model data reader.
 
         Inputs:
             file_prefix: a string representing the file pattern of the
                 model output data.
                 Note: This reader takes the file prefix of the output
                 file, typically of the naming convention
-                file_dir+''ADELPHI_2D_MAG_YYYYMMDD',
+                file_dir+'ADELPHI_2D_MAG_YYYYMMDD',
                 where YYYY is the four digit year, MM is the two digit month,
                 and DD is the two digit day. (e.g. 20170528 for May 28, 2017).
             variables_requested = a list of variable name strings chosen from
@@ -118,21 +124,16 @@ def MODEL():
             self.modelname = 'ADELPHI'
             t0 = perf_counter()
 
-            # collect filenames
-            filename = basename(file_prefix)
-            file_dir = file_prefix.split(filename)[0]
-
             # check for prepared file of given prefix
             t0 = perf_counter()
+            cdf_file = file_prefix + '.nc'  # input file name
             if isfile(file_prefix + '.nc'):   # file already prepared!
-                cdf_file = file_prefix + '.nc'  # input file name
                 self.conversion_test = True
             else:   # file not prepared,  prepare it
-                from kamodo_ccmc.readers.adelphi_tocdf import to_CDF
-                cdf_file = to_CDF(file_prefix)
-                self.conversion_test = True
-            filename = basename(cdf_file)
-            file_dir = cdf_file.split(filename)[0]
+                filename = basename(file_prefix)
+                file_dir = file_prefix.split(filename)[0]
+                from kamodo_ccmc.readers.adelphi_tocdf import convert_all
+                self.conversion_test = convert_all(file_dir)
             self.filename = cdf_file
 
             # establish time attributes first
@@ -155,7 +156,7 @@ def MODEL():
                 in self.datetimes]   # utc timestamp
             self.dt = diff(time).max()*3600.  # convert time resolution to sec
 
-            if filetime and not fulltime:
+            if filetime:
                 cdf_data.close()
                 return  # return times as is to prevent recursion
 
@@ -166,65 +167,6 @@ def MODEL():
                                model_varnames.items()
                                if value[2] in variables_requested]
                     variables_requested = tmp_var
-
-            if fulltime:  # add boundary time (default value)
-                # find other files with same pattern
-                from glob import glob
-
-                file_pattern = file_dir + 'ADELPHI_2D_MAG_*.nc'  # string
-                files = sorted(glob(file_pattern))  # method may change for AWS
-                filenames = unique([basename(f) for f in files])
-
-                # find closest file by utc timestamp
-                # adelphi has an open time at the end
-                # need a beginning time from the closest file
-                # files are automatically sorted by YYMMDD
-                # next file is next in the list
-                current_idx = where(filenames == filename)[0]
-                if current_idx+1 == len(files):
-                    if verbose:
-                        print('No later file available.')
-                    filecheck = False
-                    if filetime:
-                        cdf_data.close()
-                        return
-                else:
-                    # +1 for adding an end time
-                    min_file = file_dir + filenames[current_idx+1][0]
-                    kamodo_test = MODEL(min_file, filetime=True,
-                                        fulltime=False)
-                    time_test = abs(kamodo_test.filetimes[0] -
-                                    self.filetimes[1])
-                    # if nearest file time at least within one timestep
-                    if time_test <= self.dt:
-                        filecheck = True
-                        self.datetimes[1] = kamodo_test.datetimes[0]
-                        self.filetimes[1] = kamodo_test.filetimes[0]
-
-                        # time only version if returning time for searching
-                        if filetime:
-                            cdf_data.close()
-                            return  # return object with additional time
-
-                        # get kamodo object with same requested variables
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to find ' +
-                                  'closest file.')
-                        kamodo_neighbor = MODEL(
-                            min_file, variables_requested=variables_requested,
-                            fulltime=False)
-                        short_data = kamodo_neighbor.short_data
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to get ' +
-                                  'data from closest file.')
-                    else:
-                        if verbose:
-                            print('No later file found within ' +
-                                  f'{diff(time).max()*3600.:.1f}s.')
-                        filecheck = False
-                        if filetime:
-                            cdf_data.close()
-                            return
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and fulltime and \
@@ -265,22 +207,8 @@ def MODEL():
                 'units': model_varnames[var][-1],
                 'data': array(cdf_data.variables[var])} for var in gvar_list}
 
-            # prepare and return data
-            if not fulltime:
-                cdf_data.close()
-                variables['time'] = self.filetimes[0]
-                self.short_data = variables
-                return
-
             # Store coordinate data as class attributes
-            if filecheck:
-                # new time in hours since midnight
-                new_time = ts_to_hrs(short_data['time'], self.filedate)
-                self._time = append(time, new_time)
-            else:
-                self._time = time
-
-            # collect data and make dimensional grid from 3D file
+            self._time = time
             self._lon = array(cdf_data.variables['lon'])  # 0 to 360
             self._lat = array(cdf_data.variables['lat'])  # -180 to 180
             cdf_data.close()
@@ -300,24 +228,10 @@ def MODEL():
             self.variables = {}
             for varname in varname_list:
                 if len(variables[varname]['data'].shape) == 3:
-                    if filecheck:  # if neighbor found
-                        # append data for last time stamp
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1, :, :] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1, :, :] =\
-                            short_data[varname]['data'][0, :, :]
-                        variables[varname]['data'] = new_data  # save
-
                     self.variables[varname] = dict(
                         units=variables[varname]['units'],
                         data=variables[varname]['data'])
-                    self.register_3D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int)
+                    self.register_3D_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -325,18 +239,110 @@ def MODEL():
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
+        def vector_average3D(top, shape_list, varname, latval, lon):
+            '''find vector average at pole for array with shape (time, lon,
+            height)'''
+        
+            # CAN NOT TEST BECAUSE NUMBERS ARE ALL ZEROS!!!
+            # find net x and y components, final array shapes are (t, lon, ht)
+            lon_arr = broadcast_to(lon[1:], (shape_list[0], shape_list[1]-1))  # reverse and .T?
+            # need to put 'old' shape at end in broadcast_to call ^
+            xval = sum(top*cos((lon_arr+180.)*pi/180.), axis=1)  # same shape
+            yval = sum(top*sin((lon_arr+180.)*pi/180.), axis=1)  # as t and z
+            xarr = broadcast_to(xval, (shape_list[1]-1, shape_list[0])).T
+            yarr = broadcast_to(yval, (shape_list[1]-1, shape_list[0])).T
+        
+            # convert to proper unit vector (see wiki on spherical coordinates)
+            if 'EAST' in varname:
+                # Zonal/east components -> convert to psi_hat vector (lon)
+                # -xsin(psi)+ycos(psi), psi = longitude (0 to 360)
+                new_top = -xarr*sin((lon_arr+180.)*pi/180.) +\
+                    yarr*cos((lon_arr+180.)*pi/180.)
+            elif 'NORTH' in varname:
+                # meridional/north -> convert to theta_hat vector (latitude)
+                # xcos(psi)cos(theta)+ysin(psi)cos(theta)
+                # sin(theta) is always zero at the poles
+                # theta = latitude (0 to 180), psi = longitude (0 to 360)
+                new_top = xarr * cos((lon_arr+180.) * pi/180.) *\
+                    cos((90.-latval)*pi/180.) + yarr *\
+                    sin((lon_arr+180.) * pi/180.) * cos((90.-latval) * pi/180.)
+            return new_top
+
         # define and register a 3D variable
-        def register_3D_variable(self, units, variable, varname, gridded_int):
+        def register_3D_variable(self, varname, gridded_int):
             """Registers a 3d interpolator with 3d signature"""
 
             # define and register the interpolators
-            xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
+            coord_dict = {'time': {'units': 'hr', 'data': self._time},
+                          'lon': {'units': 'deg', 'data': self._lon},
+                          'lat': {'units': 'deg', 'data': self._lat}}
             coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'3D'
-            self = regdef_3D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int,
-                                           coord_str)
+                         model_varnames.items() if value[0] == varname][0]
+
+            # slice off zeros at each pole before averaging and functionalizing
+            # find first latitude row that is nonzero, only near poles
+            # this purposefully ignores the buffer rows near the equator
+            # this is not in the file converter due to the dynamic nature of 
+            #   the latitude grid.
+            # south pole at beginning
+            SP_idx, slice_idx = 1, []
+            zero_check = count_nonzero(
+                self.variable[varname]['data'][:, :, SP_idx])
+            while zero_check == 0:
+                slice_idx.append(SP_idx)
+                SP_idx += 1
+                zero_check = count_nonzero(
+                    self.variable[varname]['data'][:, :, SP_idx])
+            # north pole at the end
+            NP_idx = -2
+            zero_check = count_nonzero(
+                self.variable[varname]['data'][:, :, NP_idx])
+            while zero_check == 0:
+                slice_idx.append(NP_idx)
+                NP_idx -= 1
+                zero_check = count_nonzero(
+                    self.variable[varname]['data'][:, :, NP_idx])
+            # remove 'extra' latitude values from coordinate grid and from data
+            coord_dict['lat']['data'] = delete(coord_dict['lat']['data'],
+                                               slice_idx)
+            self.variable[varname]['data'] = delete(
+                self.variable[varname]['data'], slice_idx, axis=2)
+
+            # perform scalar averaging at the poles
+            new_shape = (len(coord_dict['time']['data']),
+                         len(coord_dict['lon']['data']),
+                         len(coord_dict['lat']['data']))
+            if varname not in ['E_east', 'E_north', 'J_east', 'J_north']:
+                # south pole
+                top = mean(self.variable[varname]['data'][:, 1:, 1],
+                           axis=1)  # same shape as time axis
+                self.variable[varname]['data'][:, 1:, 0] = broadcast_to(
+                    top, (new_shape[1]-1, new_shape[0])).T
+                # north pole
+                top = mean(self.variable[varname]['data'][:, 1:, -2],
+                           axis=1)  # same shape as time axis
+                self.variable[varname]['data'][:, 1:, -1] = broadcast_to(
+                    top, (new_shape[1]-1, new_shape[0])).T
+            else:  # perform vector averaging at the poles
+                # calculate net vector magnitude for south pole
+                self.variable[varname]['data'][:, 1:, 0] = \
+                    self.vector_average3D(
+                        self.variable[varname]['data'][:, 1:, 1],
+                        list(self.variable[varname]['data'].shape), varname,
+                        coord_dict['lat']['data'][0],
+                        coord_dict['lon']['data'])
+                # repeat for north pole
+                self.variable[varname]['data'][:, 1:, -1] = \
+                    self.vector_average3D(
+                        self.variable[varname]['data'][:, 1:, -2],
+                        list(self.variable[varname]['data'].shape), varname,
+                        coord_dict['lat']['data'][-1],
+                        coord_dict['lon']['data'])
+
+            # now functionalize the cleaned data
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname],
+                                            gridded_int, coord_str)
             return
 
     return MODEL

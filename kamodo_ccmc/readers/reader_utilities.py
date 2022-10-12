@@ -4,7 +4,7 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
-from numpy import NaN, vectorize, append, array, ravel
+from numpy import NaN, vectorize, append, array, ravel, argsort
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -204,30 +204,58 @@ def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
     coord_list = [value for key, value in coord_data.items()]  # list of arrays
     
     # Create ND interpolators for each time grid value
-    if len(coord_list) > 2:
-        time_interps = [rgiND(coord_list[1:], array(data_dict['data'][i]),
-                              bounds_error=False, fill_value=NaN) for i in
-                        range(len(coord_list[0])-1)]
-    elif len(coord_list) <= 2:  # call normal routine and return
+    if len(coord_list) <= 2:  # call normal routine and return
         data_dict['data'] = array(data_dict['data'])  # ensure it is an array
         return Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                                   data_dict, gridded_int, coord_str)
+    else:
+        time_interps = [rgiND(coord_list[1:], array(data_dict['data'][i]),
+                              bounds_error=False, fill_value=NaN) for i in
+                        [0, 1]]  # start with three times
+        idx_map = [0, 1]
 
     @vectorize
-    def interp_i(*args):
+    def interp_i(*args, time_interps=time_interps,
+                 idx_map=idx_map):
 
         position = [*args]  # time coordinate value must be first
         # Choose indices of time grid values surrounding desired time
         idx = sorted(append(coord_list[0], position[0])).index(position[0])  # get location
         if idx > 1 and idx < len(coord_list[0])-1:  # middle somewhere
-            idx_list = [idx-1, idx, idx+1]
+            idx_list = [idx-1, idx]
         elif idx <= 1:  # beginning
-            idx_list = [0, 1, 2]
+            idx_list = [0, 1]
         elif idx > 1 and idx >= len(coord_list[0])-1:  # at end
-            idx_list = [idx-2, idx-1, idx]
+            idx_list = [len(coord_list[0])-2, len(coord_list[0])-1]
 
         # Interpolate values for chosen latitude grid values
-        interp_values = ravel([time_interps[i]([*position[1:]]) for i in idx_list])
+        for i in idx_list:
+            if i not in idx_map:
+                print('Adding idx ', i)
+                try:  # allow for memory errors
+                    idx_map.append(i)
+                    time_interps.append(rgiND(coord_list[1:],
+                                             array(data_dict['data'][i]),
+                                             bounds_error=False, fill_value=NaN))
+                except MemoryError:  # remove two(?) items first
+                    print('Avoiding memory error...')
+                    if abs(i-idx_map[0]) > 2:
+                        idx_map.pop(0)
+                        time_interps.pop(0)
+                        idx_map.pop(0)
+                        time_interps.pop(0)
+                    else:
+                        idx_map.pop(-1)
+                        time_interps.pop(-1)
+                        idx_map.pop(-1)
+                        time_interps.pop(-1)
+                    idx_map.append(i)
+                    time_interps.append(rgiND(coord_list[1:],
+                                             array(data_dict['data'][i]),
+                                             bounds_error=False, fill_value=NaN))                    
+        interp_location = [idx_map.index(val) for val in idx_list]
+        interp_values = ravel(array([time_interps[i]([*position[1:]])
+                                     for i in interp_location]))
         time_interp = rgi1D(coord_list[0][idx_list], interp_values,
                               bounds_error=False, fill_value=NaN)
         return time_interp(position[0])

@@ -29,6 +29,22 @@ model_varnames = {"Pot": ['V', 'kV'], "Vazm": ['theta_v', 'deg'],
                   'MLAT': ['MLAT', 'deg'], 'MLT': ['MLT', 'hr']}
 
 
+def convert_all(file_dir):
+    '''SuperDARN has an open timestep at the end. Convert all files, starting at
+    the end, and copy the first time step to be the last time step of the
+    previous file.'''
+    
+    files = sorted(glob(file_dir + '*.txt'))  # want YYYYMMDD
+    file_patterns = np.unique([file.split(file_dir)[0].split('-')[0]
+                               for file in files])
+    file_patterns = np.flip(file_patterns)  # go backwards
+    t0_dict = None
+    
+    for file_prefix in file_patterns:
+        new_file, t0_dict = convert_files(file_prefix, t0_dict)
+    return True  # after testing, use a try/except to return false if something breaks
+
+
 def dts_to_hrs(datetime_string, filedate):
     '''Get hours since midnight from datetime string'''
     return (datetime.strptime(datetime_string,
@@ -211,7 +227,7 @@ def df_data(df_files, verbose=False):
     return variables, coords, var3D_list, var1D_list
 
 
-def _toCDF(files, file_prefix, verbose=False):
+def _toCDF(files, file_prefix, t0_dict, verbose=False):
     '''Reads in data from all files, writes to a netcdf4 file. Used for default
     grid data files for faster data access.'''
 
@@ -268,7 +284,7 @@ def _toCDF(files, file_prefix, verbose=False):
         tmp = np.zeros(new_shape, dtype=float)
         tmp[:, :-1, :] = variables[var]
         tmp[:, -1, :] = variables[var][:, 0, :]
-        variables[var] = tmp
+        variables[var] = tmp        
 
     # Data wrangling complete. Start new output file
     cdf_filename = file_prefix+'_df.nc'
@@ -289,32 +305,41 @@ def _toCDF(files, file_prefix, verbose=False):
     new_var = data_out.createVariable('lat', np.float32, 'lat')
     new_var[:] = coords['lat']  # store data for dimension in variable
     new_var.units = 'deg'
+    # add time at end if given, save beg time data for next file
+    if t0_dict != None:
+        coords['time'] = np.append(coords['time'], t0_dict['time'])
+    out_dict = {'time': coords['time'][0]+24.}
     # time: create dimension and variable
-    new_dim = data_out.createDimension('time', len(files))  # create dimension
+    new_dim = data_out.createDimension('time', len(coords['time']))  # create dimension
     new_var = data_out.createVariable('time', np.float32, 'time')  # variable
     new_var[:] = coords['time']
     new_var.units = 'hr'
 
     # copy over variables to file
     for variable_name in variables.keys():
+        # add/save last/first time data
+        if t0_dict != None:
+            variables[variable_name] = np.append(variables[variable_name],
+                                                 t0_dict[variable_name],
+                                                 axis=0)
+        out_dict[variable_name] = variables[variable_name][0]
+        # write to file
         if variable_name in var3D_list:
             new_var = data_out.createVariable(variable_name, np.float32,
                                               ('time', 'lon', 'lat'))
-            new_data = variables[variable_name]
         elif variable_name in var1D_list:
             new_var = data_out.createVariable(variable_name, np.float32,
                                               ('time'))
-            new_data = variables[variable_name]
         else:
             continue
-        new_var[:] = new_data  # store data in variable
+        new_var[:] = variables[variable_name]  # store data in variable
         units = [value[-1] for key, value in model_varnames.items()
                  if value[0] == variable_name][0]
         new_var.units = units
 
     # close file
     data_out.close()
-    return cdf_filename
+    return cdf_filename, out_dict
 
 
 def ea_data(ea_files, verbose=False):
@@ -421,7 +446,7 @@ def ea_data(ea_files, verbose=False):
     return variables, coords, var3D_list, var1D_list
 
 
-def _toCDFGroup(files, file_prefix, verbose=False):
+def _toCDFGroup(files, file_prefix, t0_dict, verbose=False):
     '''Reads in data from all files, writes to h5 files. Used for equal-area
     data files so that lon grids from different lat vals can be stored in
     groups.'''
@@ -527,6 +552,10 @@ def _toCDFGroup(files, file_prefix, verbose=False):
     new_var = data_out.createVariable('lat', np.float32, 'lat')
     new_var[:] = coords['lat']  # store data for dimension in variable
     new_var.units = 'deg'
+    # add time at end if given, save beg time
+    if t0_dict != None:
+        coords['time'] = np.append(coords['time'], t0_dict['time'])
+    out_dict = {'time': coords['time'][0]+24.}
     # time: create dimension and variable
     new_dim = data_out.createDimension('time', coords['time'].size)
     new_var = data_out.createVariable('time', np.float32, 'time')
@@ -535,13 +564,20 @@ def _toCDFGroup(files, file_prefix, verbose=False):
 
     # copy over 1D variables to file
     for variable_name in var1D_list:
+        if t0_dict != None:
+            variables[variable_name] = np.append(variables[variable_name],
+                                                 t0_dict[variable_name])
+        out_dict[variable_name] = variables[variable_name][0]
         new_var = data_out.createVariable(variable_name, np.float32,
                                           ('time'))
-        new_data = variables[variable_name]
-        new_var[:] = new_data  # store data in variable
+        new_var[:] = variables[variable_name]  # store data in variable
         units = [value[-1] for key, value in model_varnames.items()
                  if value[0] == variable_name][0]
         new_var.units = units
+
+    # initialize out_dict structure per latitude value
+    for variable_name in var3D_list:
+        out_dict[variable_name] = {}
 
     # Group lon and 3D data by lat values
     for lat_val in coords['lat']:
@@ -558,6 +594,14 @@ def _toCDFGroup(files, file_prefix, verbose=False):
 
         # copy over 3D variables to file
         for variable_name in var3D_list:
+            # add time at end if given, save first time for next file
+            if t0_dict != None:
+                variables[variable_name][lat_val] = \
+                    np.append(variables[variable_name][lat_val],
+                              t0_dict[variable_name][lat_val], axis=0)
+            out_dict[variable_name][lat_val] = \
+                variables[variable_name][lat_val][0]
+            # output to file
             new_var = new_group.createVariable(variable_name, np.float32,
                                                ('time', 'lon'))
             new_data = variables[variable_name][lat_val]
@@ -568,10 +612,10 @@ def _toCDFGroup(files, file_prefix, verbose=False):
 
     # close file
     data_out.close()
-    return cdf_filename
+    return cdf_filename, out_dict
 
 
-def convert_files(file_prefix, verbose=False):
+def convert_files(file_prefix, t0_dict, verbose=False):
     '''Convert files of given pattern into one netCDF4 or h5 file'''
 
     print('Converted data file not found. Converting files with ' +
@@ -580,11 +624,13 @@ def convert_files(file_prefix, verbose=False):
     files = sorted(glob(file_prefix+'*.txt'))
     if grid_type(files[0]):  # If grid is uniform, write to netCDF4
         print(' Uniform grid detected. ', end="")
-        out_file = _toCDF(files, file_prefix, verbose=verbose)
+        out_file, out_dict = _toCDF(files, file_prefix, t0_dict,
+                                   verbose=verbose)
     else:  # if grid is equal-area, write to a grouped netCDF4
         print(' Equal-area grid detected. ', end="")
-        out_file = _toCDFGroup(files, file_prefix, verbose=verbose)
+        out_file, out_dict = _toCDFGroup(files, file_prefix, t0_dict,
+                               verbose=verbose)
     print(out_file)
     print(f'{len(files)} files with prefix {file_prefix} now combined into ' +
           f'{out_file} in {perf_counter()-ftic:.6f}s.')
-    return out_file
+    return out_file, out_dict

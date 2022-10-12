@@ -52,7 +52,7 @@ def PLevelInterp(kamodo_object, time, longitude, latitude, ilev, plev_name):
         the original function.'''
         t, lon, lat, km = array(xvec_GDZsph4Dkm).T
         out_ilev = km_to_ilev(t, lon, lat, km)
-        return t, lon, lat, out_ilev
+        return array([t, lon, lat, out_ilev]).T
 
     @kamodofy(units='m/m')
     def plevconvert_ijk(xvec_GDZsph4Dkm):

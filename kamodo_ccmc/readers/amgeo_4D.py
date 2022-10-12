@@ -103,8 +103,7 @@ def MODEL():
     from numpy import sum as npsum
     from time import perf_counter
     from astropy.constants import R_earth
-    from kamodo_ccmc.readers.reader_utilities import regdef_1D_interpolators
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
         '''AmGEO model data reader.
@@ -429,41 +428,24 @@ def MODEL():
             for varname in varname_list:
                 if len(variables[varname]['data'].shape) == 1:
                     if filecheck:  # if neighbor found
-                        # append data for last time stamp, transpose
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1] = short_data[varname]['data'][0]
-                        variable = new_data  # no transposing needed
-                    else:
-                        variable = variables[varname]['data']
+                        # append data for last time stamp
+                        variables[varname]['data'] = append(
+                            variables[varname]['data'],
+                            short_data[varname]['data'][0])
                     self.variables[varname] = dict(
-                        units=variables[varname]['units'], data=variable)
-                    self.register_1D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int)
+                        units=variables[varname]['units'],
+                        data=variables[varname]['data'])
+                    self.register_1D_variable(varname, gridded_int)
                 elif len(variables[varname]['data'].shape) == 3:
                     if filecheck:
-                        # append data for last time stamp, transpose
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1, :, :] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1, :, :] = \
-                            short_data[varname]['data'][0, :, :]
-                        variable = new_data  # no transposing needed
-                    else:
-                        variable = variables[varname]['data']
+                        # append data for last time stamp
+                        variables[varname]['data'] = append(
+                            variables[varname]['data'],
+                            short_data[varname]['data'][0, :, :], axis=0)
                     self.variables[varname] = dict(
-                        units=variables[varname]['units'], data=variable)
-                    self.register_3D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int, hemi)
+                        units=variables[varname]['units'],
+                        data=variables[varname]['data'])
+                    self.register_3D_variable(varname, gridded_int, hemi)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -546,16 +528,16 @@ def MODEL():
             return new_top
 
         # define and register a 1D variable
-        def register_1D_variable(self, units, variable, varname, gridded_int):
+        def register_1D_variable(self, varname, gridded_int):
             """Registers a 1d interpolator with 1d signature"""
 
             # define and register the interpolators
-            xvec_dependencies = {'time': 'hr'}
+            coord_dict = {'time': {'units': 'hr', 'data': self._time}}
             coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'1D'
-            self = regdef_1D_interpolators(self, units, variable, self._time,
-                                           varname, xvec_dependencies,
-                                           gridded_int, coord_str)
+                         model_varnames.items() if value[0] == varname][0]
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname],
+                                            gridded_int, coord_str)
             return
 
         # define and register a 3D variable
@@ -564,13 +546,15 @@ def MODEL():
             """Registers a 3d interpolator with 3d signature"""
 
             # define and register the fast interpolator
-            xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
-            variable = self.wrap3Dlat(varname, variable, hemi)
+            coord_dict = {'time': {'units': 'hr', 'data': self._time},
+                          'lon': {'units': 'deg', 'data': self._lon},
+                          'lat': {'units': 'deg', 'data': self._lat}}
+            self.variable[varname]['data'] = \
+                self.wrap3Dlat(varname, self.variable[varname]['data'], hemi)
             coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'3D'
-            self = regdef_3D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int,
-                                           coord_str)
+                         model_varnames.items() if value[0] == varname][0]
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname],
+                                            gridded_int, coord_str)
             return
     return MODEL

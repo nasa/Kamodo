@@ -639,9 +639,7 @@ def MODEL():
                                              (0, 2, 1))
                     self.variables[varname] = dict(
                         units=variables[varname]['units'], data=variable)
-                    self.register_3D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int)
+                    self.register_3D_variable(varname, gridded_int)
                 elif len(variables[varname]['data'].shape) == 4:
                     if filecheck:
                         # append data for first time stamp, transpose
@@ -661,9 +659,7 @@ def MODEL():
                                              (0, 3, 2, 1))
                     self.variables[varname] = dict(
                         units=variables[varname]['units'], data=variable)
-                    self.register_4D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int,
+                    self.register_4D_variable(varname, gridded_int,
                                               verbose=verbose)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
@@ -790,37 +786,35 @@ def MODEL():
             return
 
         # Define and register a 4D variable -------------------------------
-        def register_4D_variable(self, units, variable, varname, gridded_int,
-                                 verbose=False):
+        def register_4D_variable(self, varname, gridded_int, verbose=False):
             """Registers a 4d interpolator with 4d signature"""
 
             # Get the correct coordinates
             coord_list = [value[5] for key, value in model_varnames.items()
                           if value[0] == varname][0]
+            coord_dict = {key: {} for key in coord_list}
+            coord_dict['time'] = {'units': 'hr', 'data': self._time}
+            if 'milev' in coord_list and hasattr(self, '_milev'):
+                coord_dict['mlon'] = {'units': 'deg', 'data': self._mlon}
+                coord_dict['mlat'] = {'units': 'deg', 'data': self._mlat1}
+                coord_dict['milev'] = {'units': 'm/m', 'data': self._milev}
+            else:
+                coord_dict['lon'] = {'units': 'deg', 'data': self._lon}
+                coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
             if 'ilev1' in coord_list and hasattr(self, '_ilev1'):
-                h = self._ilev1
-                coord_lat, coord_lon = self._lat, self._lon
-                xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                     'ilev1': 'm/m'}
+                coord_dict['ilev1'] = {'units': 'm/m', 'data': self._ilev1}
             elif 'ilev' in coord_list and hasattr(self, '_ilev'):
-                h = self._ilev
-                coord_lat, coord_lon = self._lat, self._lon
-                xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                     'ilev': 'm/m'}
-            elif 'milev' in coord_list and hasattr(self, '_milev'):
-                h = self._milev
-                coord_lat, coord_lon = self._mlat, self._mlon
-                xvec_dependencies = {'time': 'hr', 'mlon': 'deg',
-                                     'mlat': 'deg', 'milev': 'm/m'}
+                coord_dict['ilev'] = {'units': 'm/m', 'data': self._ilev}
 
             # define and register the interpolators
-            if 'lat' in xvec_dependencies.keys():
-                wrapped_data = self.wrap_4Dlatlon(varname, variable)
+            if 'lat' in coord_dict.keys():
+                self.variables[varname]['data'] = self.wrap_4Dlatlon(
+                    varname, self.variables[varname]['data'])
             else:
-                top_shape = list(variable[:, :, :, -1].shape)
+                tmp_data = self.variables[varname]['data']
+                top_shape = list(tmp_data[:, :, :, -1].shape)
                 top_size = top_shape[0] * top_shape[1] * top_shape[2]  # 3D arr
-                idx_top = where(variable[:, :, :, -1] > 1e+35)[0]
-                tmp_data = variable
+                idx_top = where(tmp_data[:, :, :, -1] > 1e+35)[0]
                 while top_size == len(idx_top):   # remove undefined top row(s)
                     if verbose:
                         print('All values at max milev are 1e+36 for ' +
@@ -831,16 +825,15 @@ def MODEL():
                     top_shape = list(tmp_data[:, :, :, -1].shape)
                     top_size = top_shape[0]*top_shape[1]*top_shape[2]  # 3D
                     idx_top = where(tmp_data[:, :, :, -1] > 1e+35)[0]
-                wrapped_data = tmp_data
-                h = self._milev
+                self.variables[varname]['data'] = tmp_data
+                coord_dict['milev']['data'] = self._milev
             coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'4D'
+                         model_varnames.items() if value[0] == varname][0]
             # need H functions to be gridded regardless of gridded_int value
             h_grid = True if varname in ['H_ilev', 'H_ilev1'] else gridded_int
-            self = RU.regdef_4D_interpolators(self, units, wrapped_data,
-                                              self._time, coord_lon, coord_lat,
-                                              h, varname, xvec_dependencies,
-                                              h_grid, coord_str)
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname], h_grid,
+                                            coord_str)
 
             # perform substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
@@ -849,23 +842,27 @@ def MODEL():
                 print(f'{other_name[0]} missing in data and is needed to ' +
                       'convert the requested variables to depend on height.' +
                       f' Using {varname} instead.')
-                xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                     other_name[0][2:]: 'm/m'}
-                self.variables[other_name[0]] = dict(units=units,
-                                                     data=variable)
+                del coord_dict[other_name[0]]
+                # e.g. set ilev1 grid equal to ilev grid if H_ilev1 is missing
+                coord_dict[varname[2:]] = {
+                    'units': 'm/m', 'data': getattr(self, other_name[0][2:])}
+                coord_units = {key: value['units'] for key, value in
+                               coord_dict.items()}
+                self.variables[other_name[0]] = self.variables[varname]
                 # register the other variable by linking to this one
                 self = RU.register_interpolator(self, other_name[0], varname,
-                                                xvec_dependencies)
+                                                coord_units)
 
             # create pressure level -> km function once per ilev type
             if varname in ['H_ilev', 'H_ilev1'] or varname in self.total_ilev:
                 if varname in ['H_ilev', 'H_ilev1']:  # create custom interp
                     new_varname = 'P'+coord_list[-1][1:]
+                    coord_data = [value['data'] for key, value in
+                                  coord_dict.items()]
                     # Import and call custom interpolator
                     from tiegcm_ilevinterp import PLevelInterp
                     interpolator, interp_ijk, kms = PLevelInterp(
-                        self, self._time, coord_lon, coord_lat, h,
-                        'H_'+coord_list[-1])
+                        self, *coord_data, 'H_'+coord_list[-1])
                     setattr(self, '_kms_'+coord_list[-1], kms)
                     units = 'm/m'
                     # kms is a 1D array of the median height values in km
@@ -883,26 +880,30 @@ def MODEL():
                         interpolator = varname+'(P'+coord_list[-1][1:]+')'
 
                 # Register in kamodo object
-                new_xvec_dependencies = {'time': 'hr', 'lon': 'deg',
-                                         'lat': 'deg', 'height': 'km'}
+                new_coord_units = {'time': 'hr', 'lon': 'deg',
+                                   'lat': 'deg', 'height': 'km'}
                 self.variables[new_varname] = dict(units=units)
                 self = RU.register_interpolator(self, new_varname,
                                                 interpolator,
-                                                new_xvec_dependencies)
+                                                new_coord_units)
                 if varname in self.total_ilev:  # different if H vs not
                     interp_ijk = self[new_varname]
 
                 # Create 'gridified' interpolators in the kamodo_object
                 if gridded_int:
-                    fake_data = zeros((len(self._time), len(coord_lon),
-                                       len(coord_lat), len(kms)))  # saves time
-                    self.variables[new_varname+'_ijk'] = dict(units=units)
-                    gridded_interpolator = RU.define_4d_gridded_interpolator(
-                        units, fake_data, self._time, coord_lon, coord_lat,
-                        kms, new_xvec_dependencies, interp_ijk)
+                    fake_data = zeros((2, 2, 2, 2))  # avoiding computation
+                    coord_data = {key: value['data'] for key, value in
+                                  coord_dict.items() if key in
+                                  new_coord_units.keys()}  # exclude ilev
+                    coord_data['height'] = kms
+                    self.variables[new_varname+'_ijk'] = {'data': fake_data,
+                        'units': units}
+                    gridded_interpolator = RU.define_griddedinterp(
+                        self.variables[new_varname+'_ijk'], new_coord_units,
+                        coord_data, interp_ijk)
                     self = RU.register_interpolator(
                         self, new_varname+'_ijk', gridded_interpolator,
-                        new_xvec_dependencies)
+                        new_coord_units)
             return
 
     return MODEL

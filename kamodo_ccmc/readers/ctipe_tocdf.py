@@ -6,7 +6,7 @@ Convert data in CTIPe output files to wrapped versions
 Oct 3: Add timestep from earlier file
 Oct 5: calculate median height in km for each pressure level and store
 """
-from numpy import transpose, zeros, array, append, where, insert, median
+from numpy import transpose, array, append, where, insert, median
 from time import perf_counter
 from netCDF4 import Dataset
 from os.path import isfile, basename
@@ -173,26 +173,15 @@ def ctipe_wrap_variables(var_dict, variable_name, lon):
         pass  # want in (time, lon, lat)
     # 3D variable, wrap and shift in longitude then transpose
     elif len(var_dict['data'].shape) == 3:
-        shape_list = list(var_dict['data'].shape)  # time, lat, lon
-        shape_list[2] += 1  # need one more place in longitude
-        tmp_arr = zeros(shape_list)  # array to set-up wrapped data in
-        tmp_arr[:, :, :len(lon_ge180)] = var_dict['data'][:, :, lon_ge180]
-        tmp_arr[:, :, len(lon_ge180):] = var_dict['data'][:, :, lon_le180]
+        tmp = var_dict['data'][:, :, lon_ge180+lon_le180]
         # (t,lat,lon) -> (t,lon,lat)
-        var_dict['data'] = transpose(tmp_arr, (0, 2, 1))
-        var_dict['size'] = (shape_list[0], shape_list[2], shape_list[1])
+        var_dict['data'] = transpose(tmp, (0, 2, 1))
+        var_dict['size'] = var_dict['data'].shape
     elif len(var_dict['data'].shape) == 4:  # 4D variables
-        shape_list = list(var_dict['data'].shape)  # time, lat, lon, height
-        shape_list[3] += 1  # need one more place in longitude
-        tmp_arr = zeros(shape_list)  # array to set-up wrapped data in
-        tmp_arr[:, :, :, :len(lon_ge180)] = var_dict['data'][:, :, :,
-                                                             lon_ge180]
-        tmp_arr[:, :, :, len(lon_ge180):] = var_dict['data'][:, :, :,
-                                                             lon_le180]
+        tmp = var_dict['data'][:, :, :, lon_ge180+lon_le180]
         # (t,h,lat,lon) -> (t,lon,lat,h)
-        var_dict['data'] = transpose(tmp_arr, (0, 3, 2, 1))
-        var_dict['size'] = (shape_list[0], shape_list[3], shape_list[2],
-                            shape_list[1])
+        var_dict['data'] = transpose(tmp, (0, 3, 2, 1))
+        var_dict['size'] = var_dict['data'].shape
     return var_dict
 
 
@@ -251,7 +240,7 @@ def ctipe_combine_files(files, in_ddict=None, in_hdict=None, in_ndict=None,
         dim_dict['km_lev'] = {'size': len(dim_dict['lev']['data']),
                               'datatype': float,
                               'data': median(d_dict['height_d']['data'],
-                                             axis=[0,1,2])/1000.}
+                                             axis=[0, 1, 2])/1000.}
 
     if isfile(filename_height):
         ctipe_height = Dataset(filename_height)  # in meters
@@ -344,7 +333,7 @@ def ctipe_combine_files(files, in_ddict=None, in_hdict=None, in_ndict=None,
         dim_dict['km_ilev'] = {'size': len(dim_dict['ilev']['data']),
                                'datatype': float, 'data':
                                    median(n_dict[hkey]['data'],
-                                                     axis=[0,1,2])/1000.}
+                                                     axis=[0, 1, 2])/1000.}
 
     # add time value to time dimension if previous file existed
     if in_ddict != None or in_hdict != None or in_ndict != None:
@@ -450,10 +439,3 @@ def ctipe_combine_files(files, in_ddict=None, in_hdict=None, in_ndict=None,
     print(f"Data for {file_prefix} converted in {perf_counter()-tic:.6f}s.")
     data_out.close()
     return file_prefix+'.nc', d_dict, h_dict, n_dict, last_time
-
-
-if __name__ == '__main__':
-    # define file names (input and output)
-    file_dir = 'C:/Users/rringuet/Kamodo_Data/CTIPe/Data/'
-    file_prefix = file_dir+'2015-03-18'
-    new_filename = ctipe_combine_files(file_prefix)

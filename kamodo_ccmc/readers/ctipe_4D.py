@@ -305,7 +305,7 @@ def MODEL():
                 cdf_file = full_file_prefix+'.nc'  # input file name
                 self.conversion_test = True
             else:   # file not prepared,  prepare it
-                from kamodo_ccmc.readers.ctipe_tocdf_testing2 import convert_all
+                from kamodo_ccmc.readers.ctipe_tocdf import convert_all
                 cdf_file = convert_all(full_file_prefix)
                 self.conversion_test = True
 
@@ -563,6 +563,8 @@ def MODEL():
             # need H functions to be gridded regardless of gridded_int value
             # time_interp does not behave well in func composition
             if varname in ['H_ilev', 'H_ilev1']:  # pull entire array in
+                # This is 2x faster for inversion than the time_interp method
+                # T_n_ijk 2D slice: 2.15s this way vs 5.22s the time_interp way
                 self.variables[varname]['data'] = array(
                     self.variables[varname]['data'])
                 self = RU.Functionalize_Dataset(self, coord_dict, varname,
@@ -615,7 +617,7 @@ def MODEL():
 
                 # Register in kamodo object
                 new_coord_units = {'time': 'hr', 'lon': 'deg',
-                                         'lat': 'deg', 'height': 'km'}
+                                   'lat': 'deg', 'height': 'km'}
                 self.variables[new_varname] = {'units': units}
                 self = RU.register_interpolator(self, new_varname,
                                                 interpolator,

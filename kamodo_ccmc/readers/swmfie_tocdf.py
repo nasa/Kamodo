@@ -41,6 +41,28 @@ Documentation variables:
 (added directly to object for documentation purposes)
 '''
 
+def convert_all(file_dir):
+    '''SWMF-IE has an open timestep at the end. Convert all files, starting at
+    the end, and copy the first time step to be the last time step of the
+    previous file.'''
+
+    print('NetCDF version of data not found. Converting files in ' +
+          f'{file_dir} prefix to netCDF.')
+    ftic = perf_counter()
+    files = sorted(glob(file_dir + '*.tec'))  # want YYYYMMDD
+    file_patterns = np.unique([file_dir+
+                               file.split(file_dir)[-1].split('-')[0]
+                               for file in files])
+    file_patterns = np.flip(file_patterns)  # go backwards
+    t0_dict = None
+
+    # convert and return    
+    for file_prefix in file_patterns:
+        t0_dict = convertSWMFIE_toCDF(file_prefix, t0_dict)
+    print(f'{len(files)} files in {file_dir} now combined into ' +
+          f'{len(file_patterns)} files in {perf_counter()-ftic:.6f}s.')
+    return True  # after testing, use a try/except to return false if something breaks
+
 
 @np.vectorize
 def dts_to_hrs(datetime_string, filedate):
@@ -256,7 +278,7 @@ def _read_SWMFIE(file_prefix, verbose=False):
     return files, coords, variables, var_units, filedate
 
 
-def _toCDF(filename, files, coords, variables, var_units, filedate):
+def _toCDF(filename, files, coords, variables, var_units, filedate, t0_dict):
     '''Write data ro a netCDF4 file.'''
 
     # start new wrapped output object
@@ -266,22 +288,32 @@ def _toCDF(filename, files, coords, variables, var_units, filedate):
     data_out.model = 'SWMF_IE'
     data_out.filedate = filedate.strftime('%Y-%m-%d %H:%M:%S')
     for dim in coords.keys():
+        # set units
+        if dim == 'radius':
+            units = 'R_E'
+        elif dim == 'time':
+            units = 'hr'
+            if t0_dict != None:
+                coords['time'] = np.append(coords['time'], t0_dict['time'])
+            out_dict = {'time': coords['time'][0]+24.}
+        else:
+            units = 'deg'
+            
         # create dimension
         new_dim = data_out.createDimension(dim, coords[dim].size)
         # create variable
         new_var = data_out.createVariable(dim, np.float64, dim)
         new_var[:] = coords[dim]  # store data for dimension in variable
-        if dim == 'radius':
-            units = 'R_E'
-        elif dim == 'time':
-            units = 'hr'
-        else:
-            units = 'deg'
         new_var.units = units
 
     # copy over variables to file
     var_1D = ['theta_Btilt', 'psi_Btilt']
     for variable_name in variables.keys():
+        if t0_dict != None:
+            variables[variable_name] = np.append(variables[variable_name],
+                                                 t0_dict[variable_name],
+                                                 axis=0)
+        out_dict[variable_name] = variables[variable_name][0]  # save t=0 vals
         if len(variables[variable_name].shape) == 3:
             new_var = data_out.createVariable(variable_name, np.float64,
                                               ('time', 'lon', 'lat'))
@@ -295,21 +327,16 @@ def _toCDF(filename, files, coords, variables, var_units, filedate):
         new_var[:] = new_data  # store data in variable
         new_var.units = var_units[variable_name]
     data_out.close()
-    return cdf_filename
+    return cdf_filename, out_dict
 
 
-def convertSWMFIE_toCDF(file_prefix):
+def convertSWMFIE_toCDF(file_prefix, t0_dict):
     '''Convert files of given pattern into one netCDF4 file'''
 
-    print('NetCDF version of data not found. Converting files with ' +
-          f'{file_prefix} prefix to netCDF.')
-    ftic = perf_counter()
     files, coords, variables, var_units, filedate = _read_SWMFIE(file_prefix,
                                                                  verbose=True)
     if coords == 0:
         return False  # if only one file, perform a clean return
-    cdf_filename = _toCDF(file_prefix, files, coords, variables, var_units,
-                          filedate)
-    print(f'{len(files)} files with prefix {file_prefix} now combined into ' +
-          f'{cdf_filename} in {perf_counter()-ftic:.6f}s.')
-    return True
+    cdf_filename, out_dict = _toCDF(file_prefix, files, coords, variables,
+                                    var_units, filedate, t0_dict)
+    return out_dict

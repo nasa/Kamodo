@@ -98,11 +98,11 @@ def ts_to_hrs(time_val, filedate):
 
 
 def MODEL():
-    from numpy import array, NaN, abs, unique, append, zeros, diff, where
+    from numpy import array, NaN, diff
     from time import perf_counter
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
         '''SWMF_IE model data reader.
@@ -165,8 +165,8 @@ def MODEL():
             file_dir = full_file_prefix.split(file_prefix)[0]
             if not isfile(full_file_prefix+'.nc'):
                 from kamodo_ccmc.readers.swmfie_tocdf import \
-                    convertSWMFIE_toCDF
-                test = convertSWMFIE_toCDF(full_file_prefix)
+                    convert_all
+                test = convert_all(file_dir)
                 if not test:
                     self.conversion_test = test
                     return    # if file conversion fails, return
@@ -175,12 +175,6 @@ def MODEL():
             else:
                 self.conversion_test = True
             t0 = perf_counter()
-
-            # determine type of prefix: for a day or for a hour
-            if '-' in file_prefix:
-                day_flag = False
-            else:
-                day_flag = True
 
             # establish time attributes first for file searching
             file_datestr = file_prefix[3:11]
@@ -206,7 +200,7 @@ def MODEL():
             else:
                 self.dt = 0
 
-            if filetime and not fulltime:
+            if filetime:
                 return  # return times as is to prevent recursion
 
             # if variables are given as integers, convert to standard names
@@ -216,70 +210,6 @@ def MODEL():
                                model_varnames.items()
                                if value[2] in variables_requested]
                     variables_requested = tmp_var
-
-            if fulltime:  # add boundary time (default value)
-                # find other files with same pattern
-                from glob import glob
-
-                files = sorted(glob(file_dir+'i_e*'))
-                if day_flag:
-                    file_prefixes = unique([basename(f)[:11] for f in files
-                                            if '.nc' not in basename(f)])
-                else:  # give prefix for hourly files
-                    file_prefixes = unique([basename(f)[:14] for f in files
-                                            if '.nc' not in basename(f)])
-
-                # find closest file by utc timestamp
-                # swmf_ie has an open time at the end
-                current_idx = where(file_prefixes == file_prefix)[0]
-                if current_idx+1 == len(file_prefixes):
-                    if verbose:
-                        print('No later file available.')
-                    filecheck = False
-                    if filetime:
-                        return
-                else:
-                    # +1 for adding an end time
-                    min_file_prefix = file_dir+file_prefixes[current_idx+1][0]
-                    kamodo_test = MODEL(min_file_prefix, filetime=True,
-                                        fulltime=False)
-                    if not kamodo_test.conversion_test:
-                        if verbose:
-                            print('No later file available.')
-                        filecheck = False
-                        if filetime:
-                            return
-                    else:
-                        time_test = abs(kamodo_test.filetimes[0] -
-                                        self.filetimes[1])
-                        if time_test <= self.dt:
-                            filecheck = True
-                            self.datetimes[1] = kamodo_test.datetimes[0]
-                            self.filetimes[1] = kamodo_test.filetimes[0]
-
-                            # time only version if returning time for searching
-                            if filetime:
-                                return
-
-                            # get kamodo object with same requested variables
-                            if verbose:
-                                print(f'Took {perf_counter()-t0:.3f}s to ' +
-                                      'find closest file.')
-                            kamodo_neighbor = MODEL(
-                                min_file_prefix,
-                                variables_requested=variables_requested,
-                                fulltime=False)
-                            short_data = kamodo_neighbor.short_data
-                            if verbose:
-                                print(f'Took {perf_counter()-t0:.3f}s to get' +
-                                      ' data from closest file.')
-                        else:
-                            if verbose:
-                                print('No later file found within ' +
-                                      f'{self.dt:.1f}s.')
-                            filecheck = False
-                            if filetime:
-                                return
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and fulltime and\
@@ -324,15 +254,6 @@ def MODEL():
             self.theta_Btilt = array(cdf_data.variables['theta_Btilt'])
             self.psi_Btilt = array(cdf_data.variables['psi_Btilt'])
 
-            # prepare and return data only
-            if not fulltime:
-                cdf_data.close()
-                variables['time'] = self.filetimes[0]
-                variables['theta_Btilt'] = self.theta_Btilt[0]
-                variables['psi_Btilt'] = self.psi_Btilt[0]
-                self.short_data = variables
-                return
-
             # return if only one file found - interpolator code will break
             if len(files) < 2:
                 print('Not enough files found with given file prefix.')
@@ -349,14 +270,7 @@ def MODEL():
                     print(file)
 
             # Store coordinate data as class attributes
-            if filecheck:
-                # new time in hours since midnight
-                new_time = ts_to_hrs(short_data['time'], self.filedate)
-                self._time = append(t, new_time)
-            else:
-                self._time = t
-
-            # store coordinate data
+            self._time = t
             self._lat = array(cdf_data.variables['lat'])
             self._lon = array(cdf_data.variables['lon'])
             cdf_data.close()
@@ -369,22 +283,10 @@ def MODEL():
             self.variables = {}
             t_reg = perf_counter()
             for varname in varname_list:  # all are 3D variables
-                if filecheck:  # if neighbor found
-                    # append data for first time stamp, transpose
-                    data_shape = list(variables[varname]['data'].shape)
-                    data_shape[0] += 1  # add space for time
-                    new_data = zeros(data_shape)
-                    # put in current data
-                    new_data[:-1, :, :] = variables[varname]['data']
-                    # add in data for additional time
-                    new_data[-1, :, :] = short_data[varname]['data'][0, :, :]
-                else:
-                    new_data = variables[varname]['data']
                 self.variables[varname] = dict(
-                    units=variables[varname]['units'], data=new_data)
-                self.register_3D_variable(self.variables[varname]['units'],
-                                          self.variables[varname]['data'],
-                                          varname, gridded_int)
+                    units=variables[varname]['units'],
+                    data=variables[varname]['data'])
+                self.register_3D_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -393,16 +295,17 @@ def MODEL():
                       f' {len(gvar_list)} variables.')
 
         # define and register a 3D variable------------------------------------
-        def register_3D_variable(self, units, variable, varname, gridded_int):
+        def register_3D_variable(self, varname, gridded_int):
             """Registers a 3d interpolator with 3d signature"""
 
             # define and register the interpolators
-            xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
+            coord_dict = {'time': {'units': 'hr', 'data': self._time},
+                          'lon': {'units': 'deg', 'data': self._lon},
+                          'lat': {'units': 'deg', 'data': self._lat}}
             coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'3D'
-            self = regdef_3D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int,
-                                           coord_str)
+                         model_varnames.items() if value[0] == varname][0]
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname],
+                                            gridded_int, coord_str)
             return
     return MODEL

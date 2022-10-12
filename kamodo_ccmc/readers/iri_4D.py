@@ -65,9 +65,7 @@ def MODEL():
     from numpy import array, transpose, NaN, unique, append, zeros, abs, diff
     from numpy import where
     from time import perf_counter
-    from astropy.constants import R_earth
-    from kamodo_ccmc.readers.reader_utilities import regdef_4D_interpolators
-    from kamodo_ccmc.readers.reader_utilities import regdef_3D_interpolators
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
         '''IRI model data reader.
@@ -327,57 +325,31 @@ def MODEL():
                 if len(variables[varname]['data'].shape) == 3:
                     if filecheck:  # if neighbor found
                         # append data for last time stamp
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1, :, :] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1, :, :] =\
-                            short_data[varname]['data'][0, :, :]
-                        variables[varname]['data'] = new_data  # save
+                        variables[varname]['data'] = append(
+                            variables[varname]['data'],
+                            short_data[varname]['data'][0, :, :], axis=0)
 
                     # shift longitude
-                    data_shape = list(variables[varname]['data'].shape)
-                    new_data = zeros(data_shape)
-                    new_data[:, :, :len(lon_ge180)] = \
-                        variables[varname]['data'][:, :, lon_ge180]
-                    new_data[:, :, len(lon_ge180)-1:] = \
-                        variables[varname]['data'][:, :, lon_le180]
+                    tmp = variables[varname][:, :, lon_ge180+lon_le180]
                     # (t, lat, lon) -> (t, lon, lat)
-                    variable = transpose(new_data, (0, 2, 1))
+                    variable = transpose(tmp, (0, 2, 1))
                     self.variables[varname] = dict(
                         units=variables[varname]['units'], data=variable)
-                    self.register_3D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int)
+                    self.register_3D_variable(varname, gridded_int)
                 elif len(variables[varname]['data'].shape) == 4:
                     if filecheck:
-                        # append data for last time stamp, transpose
-                        data_shape = list(variables[varname]['data'].shape)
-                        data_shape[0] += 1  # add space for time
-                        new_data = zeros(data_shape)
-                        # put in current data
-                        new_data[:-1, :, :, :] = variables[varname]['data']
-                        # add in data for additional time
-                        new_data[-1, :, :, :] =\
-                            short_data[varname]['data'][0, :, :, :]
-                        variables[varname]['data'] = new_data  # save
+                        # append data for last time stamp
+                        variables[varname]['data'] = append(
+                            variables[varname]['data'],
+                            short_data[varname]['data'][0, :, :], axis=0)
 
                     # shift longitude
-                    data_shape = list(variables[varname]['data'].shape)
-                    new_data = zeros(data_shape)
-                    new_data[:, :, :, :len(lon_ge180)] = \
-                        variables[varname]['data'][:, :, :, lon_ge180]
-                    new_data[:, :, :, len(lon_ge180)-1:] = \
-                        variables[varname]['data'][:, :, :, lon_le180]
+                    tmp = variables[varname][:, :, :, lon_ge180+lon_le180]
                     # (t, h, lat, lon) -> (t, lon, lat, h)
-                    variable = transpose(new_data, (0, 3, 2, 1))
+                    variable = transpose(tmp, (0, 3, 2, 1))
                     self.variables[varname] = dict(
                         units=variables[varname]['units'], data=variable)
-                    self.register_4D_variable(self.variables[varname]['units'],
-                                              self.variables[varname]['data'],
-                                              varname, gridded_int)
+                    self.register_4D_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -386,31 +358,33 @@ def MODEL():
                       f' {len(varname_list)} variables.')
 
         # define and register a 3D variable
-        def register_3D_variable(self, units, variable, varname, gridded_int):
+        def register_3D_variable(self, varname, gridded_int):
             """Registers a 3d interpolator with 3d signature"""
 
             # define and register the interpolators
-            xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg'}
+            coord_dict = {'time': {'units': 'hr', 'data': self._time},
+                          'lon': {'units': 'deg', 'data': self._lon},
+                          'lat': {'units': 'deg', 'data': self._lat}}
             coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'3D'
-            self = regdef_3D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, varname,
-                                           xvec_dependencies, gridded_int,
-                                           coord_str)
+                         model_varnames.items() if value[0] == varname][0]
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname],
+                                            gridded_int, coord_str)
             return
 
         # define and register a 4D variable
-        def register_4D_variable(self, units, variable, varname, gridded_int):
+        def register_4D_variable(self, varname, gridded_int):
             """Registers a 4d interpolator with 4d signature"""
 
             # define and register the fast interpolator
-            xvec_dependencies = {'time': 'hr', 'lon': 'deg', 'lat': 'deg',
-                                 'height': 'km'}
+            coord_dict = {'time': {'units': 'hr', 'data': self._time},
+                          'lon': {'units': 'deg', 'data': self._lon},
+                          'lat': {'units': 'deg', 'data': self._lat},
+                          'height': {'units': 'km', 'data': self._height}}
             coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]+'4D'
-            self = regdef_4D_interpolators(self, units, variable, self._time,
-                                           self._lon, self._lat, self._height,
-                                           varname, xvec_dependencies,
-                                           gridded_int, coord_str)
+                         model_varnames.items() if value[0] == varname][0]
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname],
+                                            gridded_int, coord_str)
             return
     return MODEL
