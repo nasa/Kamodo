@@ -101,8 +101,13 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                         ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'e_2': ['e', 'e concentration', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'height'], 'mol/mol'],
-                  'RHO_CLUBB': ['rho', 'Air density', 0, 'GDZ', 'sph',
+                  'RHO_CLUBB': ['rho_ilev1', 'Air density', 0, 'GDZ', 'sph',
                                 ['time', 'lon', 'lat', 'ilev1'], 'kg/m**3'],
+                  'RHO_CLUBB_lev': ['rho_ilev', 'Air density', 0, 'GDZ', 'sph',
+                                    ['time', 'lon', 'lat', 'ilev'], 'kg/m**3'],
+                  'RHO_CLUBB_lev_2': ['rho', 'Air density', 0, 'GDZ', 'sph',
+                                      ['time', 'lon', 'lat', 'height'],
+                                       'kg/m**3'],
 
                   # variables in h1 files also in h3 files
                   'Z3GM': ['H_geomet_ilev', 'Geometric height', 0, 'GDZ', 'sph',
@@ -140,9 +145,9 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                   'NO_2': ['NO', 'NO concentration', 0, 'GDZ', 'sph',
                          ['time', 'lon', 'lat', 'height'], 'mol/mol'],
                   'OpDens': ['N_Oplus_ilev', 'O+ Number Density', 0, 'GDZ', 'sph',
-                             ['time', 'lon', 'lat', 'ilev'], 'cm^3'],
+                             ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
                   'OpDens_2': ['N_Oplus', 'O+ Number Density', 0, 'GDZ', 'sph',
-                             ['time', 'lon', 'lat', 'height'], 'cm^3'],
+                             ['time', 'lon', 'lat', 'height'], '1/cm**3'],
                   'QCO2': ['Q_CO2_ilev', 'CO2 cooling', 0, 'GDZ', 'sph',
                            ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'QCO2_2': ['Q_CO2', 'CO2 cooling', 0, 'GDZ', 'sph',
@@ -174,7 +179,7 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                   'SolIonRate_Tot': ['SolIonRate_Tot_ilev', 'reaction rate group', 0, 'GDZ', 'sph', 
                                       ['time', 'lon', 'lat', 'ilev'], '1/cm**3/s'],  # molecules/cm**3/s
                   'SolIonRate_Tot_2': ['SolIonRate_Tot', 'reaction rate group', 0, 'GDZ', 'sph', 
-                                      ['time', 'lon', 'lat', 'ilev'], '1/cm**3/s'],  # molecules/cm**3/s
+                                      ['time', 'lon', 'lat', 'height'], '1/cm**3/s'],  # molecules/cm**3/s
                   'TTGW': ['TTGW_ilev', 'T tendency - gravity wave drag', 0, 'GDZ', 'sph', 
                             ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'TTGW_2': ['TTGW', 'T tendency - gravity wave drag', 0, 'GDZ', 'sph', 
@@ -290,7 +295,7 @@ gvar_keys = {'h1': ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr',
                     'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ElecColDens', 'H',
                     'O', 'O2', 'OMEGA', 'PHIM2D', 'PS', 'T', 'TElec', 'TIon',
                     'U', 'UI', 'V', 'VI', 'WI', 'Z3', 'e', 'RHO_CLUBB',
-                    'Z3GM'],
+                    'RHO_CLUBB_lev', 'Z3GM'],
              # keys in h2 files that are not in the h1 files
              'h2': ['ED1', 'ED2', 'EDens', 'ElecColDens', 'HMF2', 'NMF2',
                     'OPLUS', 'TElec', 'TIon', 'UI', 'VI', 'WI', 'Z3'],
@@ -308,7 +313,8 @@ gvar_keys = {'h1': ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr',
                     'V_24_COS', 'V_24_SIN']}
 # set up pressure level and height dependent equivalent variables
 ilev_list = [value[0] for key, value in model_varnames.items()
-              if value[5][-1] == 'ilev']
+             if value[5][-1] == 'ilev' if value not in
+             ['H_geopot_ilev', 'H_geomet_ilev']]
 ilev_replace = [item.split('_ilev')[0] for item in ilev_list if
                 item not in ['H_geopot_ilev', 'H_geomet_ilev']]
 
@@ -346,7 +352,8 @@ def MODEL():
 
     from kamodo import Kamodo
     from netCDF4 import Dataset
-    from os.path import isfile, basename
+    from os.path import isfile, basename, getsize
+    import psutil  # for memory vs file size comparison
     from numpy import array, NaN, zeros, diff
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
@@ -430,12 +437,6 @@ def MODEL():
                                                   '.h'+str(n)+'v2.')):
                     hx_files.append(full_filenameh1.replace('.h1v2.',
                                                             '.h'+str(n)+'v2.'))
-            # create km calc file (h0) if DNE, first time only
-            if not isfile(hx_files[0]):  # check for h0v2 file with km grid
-                from waccmx_ilevinterp import calc_km
-                self.km_check = calc_km(hx_files)
-            else:
-                self.km_check = True
             self.filename = ''.join([file+',' for file in hx_files])[:-1]
 
             # establish time attributes first
@@ -490,7 +491,6 @@ def MODEL():
 
             # collect variable list per file
             self.gvar_dict, gvar_list, self.err_list = {}, [], []
-            total_vars_possible = []
             # dict[key] = [gvar_list, file] for each type of file
             self.total_ilev = [item for item in ilev_list if item
                                not in ['H_geopot_ilev', 'H_geomet_ilev']]
@@ -550,25 +550,29 @@ def MODEL():
                 for var in self.gvar_dict['h1'][0]:
                     variables[model_varnames[var][0]] =  {
                         'units': model_varnames[var][-1],
-                        'data': cdf_datah1.variables[var]}
+                        'data': cdf_datah1.variables[var],
+                        'file': self.gvar_dict['h1'][1]}
             if self.gvar_dict['h2'][1] != '':
                 cdf_datah2 = Dataset(self.gvar_dict['h2'][1])
                 for var in self.gvar_dict['h2'][0]:
                     variables[model_varnames[var][0]] =  {
                         'units': model_varnames[var][-1],
-                        'data': cdf_datah2.variables[var]}
+                        'data': cdf_datah2.variables[var],
+                        'file': self.gvar_dict['h2'][1]}
             if self.gvar_dict['h3'][1] != '':
                 cdf_datah3 = Dataset(self.gvar_dict['h3'][1])
                 for var in self.gvar_dict['h3'][0]:
                     variables[model_varnames[var][0]] =  {
                         'units': model_varnames[var][-1],
-                        'data': cdf_datah3.variables[var]}            
+                        'data': cdf_datah3.variables[var],
+                        'file': self.gvar_dict['h3'][1]} 
             if self.gvar_dict['h4'][1] != '':
                 cdf_datah4 = Dataset(self.gvar_dict['h4'][1])
                 for var in self.gvar_dict['h4'][0]:
                     variables[model_varnames[var][0]] =  {
                         'units': model_varnames[var][-1],
-                        'data': cdf_datah4.variables[var]}            
+                        'data': cdf_datah4.variables[var],
+                        'file': self.gvar_dict['h4'][1]}            
 
             # retrieve dimensional grid from h1 file
             cdf_data = Dataset(hx_files[1], 'r')
@@ -600,11 +604,10 @@ def MODEL():
                     self._mlon = array(cdf_data.variables['mlon'])
                     self._mlat = array(cdf_data.variables['mlat'])
             cdf_data.close()   # close netCDF4 file
-            # retrieve the median km grid from h0 file
-            if self.km_check:
-                cdf_data = Dataset(hx_files[0])
-                self._km_ilev = array(cdf_data.variables['km_ilev'])
-                cdf_data.close()
+            # retrieve the median km grid from h0v2 file
+            cdf_data = Dataset(hx_files[0])
+            self._km_ilev = array(cdf_data.variables['km_ilev'])
+            cdf_data.close()
 
             # store a few items
             self.missing_value = NaN
@@ -778,7 +781,7 @@ def MODEL():
                          model_varnames.items() if value[0] == varname][0]
             # need H functions to be gridded regardless of gridded_int value
             if varname == 'H_geopot_ilev':  # pull entire array in
-                # is this faster for inversion than the time_interp method?
+                # This is faster for inversion than the time_interp method.
                 array_t0 = perf_counter()
                 self.variables[varname]['data'] = array(
                     self.variables[varname]['data'])
@@ -787,10 +790,19 @@ def MODEL():
                 self = RU.Functionalize_Dataset(self, coord_dict, varname,
                                                 self.variables[varname], True,
                                                 coord_str)
-            else:
+            elif (getsize(self.variables[varname]['file']) > 
+                  psutil.virtual_memory().available):  # if memory small....
                 self = RU.time_interp(self, coord_dict, varname,
                                       self.variables[varname], gridded_int,
                                       coord_str)
+                print('File is larger than available memory. ' +
+                      f'Using lazy interpolation for {varname}.')
+            else:  # if enough memory, go for it
+                self.variables[varname]['data'] = array(
+                    self.variables[varname]['data'])
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str)
 
             # create pressure level -> km function once per ilev type
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:
@@ -810,10 +822,6 @@ def MODEL():
                     new_varname = varname.split('_ilev')[0]
                     interpolator = varname+'(P'+coord_list[-1][1:]+')'
                     units = self.variables[varname]['units']
-                if varname == 'H_geopot_ilev' and not self.km_check:
-                    print('Can not make height-dependent ' +
-                          'interpolators without the height function.')
-                    pass  # do I need something here? gridded will break!
 
                 # Register in kamodo object
                 new_coord_units = {'time': 'hr', 'lon': 'deg',
