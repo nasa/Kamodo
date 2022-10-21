@@ -6,7 +6,7 @@ import numpy as np
 
 model_dict = {0: 'CTIPe', 1: 'GITM', 2: 'IRI', 3: 'SWMF_IE', 4: 'TIEGCM',
               5: 'OpenGGCM_GM', 6: 'AMGeO', 7: 'SuperDARN_df',
-              8: 'SuperDARN_ea', 9: 'ADELPHI', 10: 'WACCMX'}
+              8: 'SuperDARN_ea', 9: 'ADELPHI', 10: 'WACCMX', 11: 'WAMIPE'}
 
 
 def convert_model_string(model_int):
@@ -86,6 +86,10 @@ def Choose_Model(model):
 
     elif model == 'WACCMX':
         import kamodo_ccmc.readers.waccmx_4D as module
+        return module
+
+    elif model == 'WAMIPE':
+        import kamodo_ccmc.readers.wamipe_4D as module
         return module
 
     else:
@@ -177,10 +181,16 @@ def FileSearch(model, file_dir, call_type='normal'):
         # ONLY WORKS IF THE NAMING CONVENTION IS THIS
 
     elif model == 'WACCMX':
-        files = sorted(glob(file_dir+'*.h1.*.nc'))
+        files = sorted(glob(file_dir+'*.h1v2.*.nc'))
+        if len(files) == 0:  # no files converted yet
+            files = sorted(glob(file_dir+'*.h1.*.nc'))
         file_patterns = unique([file_dir + basename(f) for f in files])
         return file_patterns        
 
+    elif model == 'WAMIPE':
+        print('This model reader only needs the file directory.')
+        return file_dir  
+    
     else:
         raise AttributeError('Model not yet added.')
 
@@ -321,7 +331,8 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
             return new_dict
     elif file_dir == '' and model != '':
         var_dict = Model_Variables(model, return_dict=True)
-        new_dict = {key: [value[0], value[-2], value[-1]] for key, value in
+        new_dict = {key: [value[0], value[-4]+'-'+value[-3], value[-2],
+                          value[-1]] for key, value in
                     var_dict.items() if search_string in value[0].lower()}
         if not return_dict:
             for key, value in new_dict.items():
@@ -331,7 +342,8 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
             return new_dict
     elif file_dir != '' and model != '':
         file_var_dict = File_Variables(model, file_dir, return_dict=True)
-        new_dict = {file: {name: [value1[0], value1[-2], value1[-1]] for
+        new_dict = {file: {name: [value1[0], value[-4]+'-'+value[-3],
+                                  value1[-2], value1[-1]] for
                            name, value1 in value0.items() if search_string in
                            value1[0].lower()}
                     for file, value0 in file_var_dict.items()}
