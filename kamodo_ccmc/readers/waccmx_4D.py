@@ -572,11 +572,11 @@ def MODEL():
                     variables[model_varnames[var][0]] =  {
                         'units': model_varnames[var][-1],
                         'data': cdf_datah4.variables[var],
-                        'file': self.gvar_dict['h4'][1]}            
+                        'file': self.gvar_dict['h4'][1]}
 
             # retrieve dimensional grid from h1 file
             cdf_data = Dataset(hx_files[1], 'r')
-            self._lon = array(cdf_data.variables['lon'])  # 0 to almost 360
+            self._lon = array(cdf_data.variables['lon'])  # -180 to 180
             self._lat = array(cdf_data.variables['lat'])
             # primary pressure level coordinate
             ilev_check = [value[0] for key, value in model_varnames.items()
@@ -629,7 +629,8 @@ def MODEL():
             for varname in varname_list:
                 self.variables[varname] = dict(
                     units=variables[varname]['units'],
-                    data=variables[varname]['data'])
+                    data=variables[varname]['data'],
+                    file=variables[varname]['file'])
                 # register the variables
                 if len(variables[varname]['data'].shape) == 1:  # time series
                     print('1D:', varname, perf_counter()-t0)
@@ -639,7 +640,10 @@ def MODEL():
                     self.register_3D_variable(varname, gridded_int)
                 elif len(variables[varname]['data'].shape) == 4:  # time + 3D
                     print('4D:', varname, perf_counter()-t0)
-                    self.register_4D_variable(varname, gridded_int)
+                    memory_check = getsize(self.variables[varname]['file']) >\
+                          psutil.virtual_memory().available
+                    self.register_4D_variable(varname, gridded_int, 
+                                              memory_check)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -761,7 +765,7 @@ def MODEL():
             return
 
         # define and register a 4D variable
-        def register_4D_variable(self, varname, gridded_int):
+        def register_4D_variable(self, varname, gridded_int, memory_check):
             """Registers a 4d interpolator with 4d signature"""
 
             # determine coordinate variables by coord list
@@ -790,13 +794,10 @@ def MODEL():
                 self = RU.Functionalize_Dataset(self, coord_dict, varname,
                                                 self.variables[varname], True,
                                                 coord_str)
-            elif (getsize(self.variables[varname]['file']) > 
-                  psutil.virtual_memory().available):  # if memory small....
+            elif memory_check:  # if memory small....
                 self = RU.time_interp(self, coord_dict, varname,
                                       self.variables[varname], gridded_int,
                                       coord_str)
-                print('File is larger than available memory. ' +
-                      f'Using lazy interpolation for {varname}.')
             else:  # if enough memory, go for it
                 self.variables[varname]['data'] = array(
                     self.variables[varname]['data'])
@@ -806,8 +807,8 @@ def MODEL():
 
             # create pressure level -> km function once per ilev type
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:
-                if varname == 'H_geopot_ilev' and self.km_check:  # create custom interp
-                    t_invert = perf_counter()
+                if varname == 'H_geopot_ilev' and hasattr(self, '_km_ilev'):
+                    t_invert = perf_counter()  # create custom interp
                     print('Inverting H(ilev) function for grid shape '+
                           f"{self.variables[varname]['data'].shape}...", end="")
                     new_varname = 'P'+coord_list[-1][1:]

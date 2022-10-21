@@ -4,7 +4,7 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
-from numpy import NaN, vectorize, append, array, ravel, argsort
+from numpy import NaN, vectorize, append, array, ravel
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -168,7 +168,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
 
 
 def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
-                  gridded_int, coord_str):
+                  gridded_int, coord_str, func=None):
     '''Create a functionalized interpolator by splitting into timesteps.
     Inputs:
         kamodo_object: the previously created kamodo object.
@@ -188,6 +188,9 @@ def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
             plotting higher dimensions and slicing). False otherwise.
         coord_str: a string indicating the coordinate system of the data
             (e.g. "SMcar" or "GEOsph").
+        func: a function defining the logic to be executed on a given time
+            slice (e.g. converting to an array and then transposing it).
+            Default is to only convert to an array (e.g. func=None).
 
     Output: A kamodo object with the functionalized dataset added.    
     '''
@@ -209,9 +212,13 @@ def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
         return Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                                   data_dict, gridded_int, coord_str)
     else:
-        time_interps = [rgiND(coord_list[1:], array(data_dict['data'][i]),
+        if func == None:  # define the default operation
+            def func(cdf_data_object):
+                return array(cdf_data_object)
+        # create the interpolators and map for the first two time steps
+        time_interps = [rgiND(coord_list[1:], func(data_dict['data'][i]),
                               bounds_error=False, fill_value=NaN) for i in
-                        [0, 1]]  # start with three times
+                        [0, 1]]  # start with two times
         idx_map = [0, 1]
 
     @vectorize
@@ -228,15 +235,17 @@ def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
         elif idx > 1 and idx >= len(coord_list[0])-1:  # at end
             idx_list = [len(coord_list[0])-2, len(coord_list[0])-1]
 
-        # Interpolate values for chosen latitude grid values
+        # Interpolate values for chosen time grid values
         for i in idx_list:
             if i not in idx_map:
+                print(idx, idx_list, idx_map)
                 print('Adding idx ', i)
                 try:  # allow for memory errors
                     idx_map.append(i)
                     time_interps.append(rgiND(coord_list[1:],
-                                             array(data_dict['data'][i]),
-                                             bounds_error=False, fill_value=NaN))
+                                              func(data_dict['data'][i]),
+                                              bounds_error=False,
+                                              fill_value=NaN))
                 except MemoryError:  # remove two(?) items first
                     print('Avoiding memory error...')
                     if abs(i-idx_map[0]) > 2:

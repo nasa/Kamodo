@@ -421,7 +421,7 @@ def MODEL():
             # Store the requested variables into a dictionary
             variables = {model_varnames[key][0]:
                          {'units': model_varnames[key][-1],
-                          'data': cdf_data.variables[key]}
+                          'data': array(cdf_data.variables[key])}
                          for key in gvar_list}  # key = standardized name
 
             # print files to screen if option requested
@@ -451,6 +451,7 @@ def MODEL():
                 self._height = array(cdf_data.variables['height'])  # height
                 self._lon = array(cdf_data.variables['lon_h'])
                 self._lat = array(cdf_data.variables['lat_h'])
+            cdf_data.close()
 
             # Check for presence of necessary height variables in varname_list.
             varname_list = [key for key in variables.keys()]
@@ -513,8 +514,6 @@ def MODEL():
             # define and register the interpolators, pull 3D data into arrays
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            self.variables[varname]['data'] = array(
-                self.variables[varname]['data'])
             self = RU.Functionalize_Dataset(self, coord_dict, varname,
                                             self.variables[varname],
                                             gridded_int, coord_str)
@@ -561,19 +560,11 @@ def MODEL():
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
             # need H functions to be gridded regardless of gridded_int value
-            # time_interp does not behave well in func composition
-            if varname in ['H_ilev', 'H_ilev1']:  # pull entire array in
-                # This is 2x faster for inversion than the time_interp method
-                # T_n_ijk 2D slice: 2.15s this way vs 5.22s the time_interp way
-                self.variables[varname]['data'] = array(
-                    self.variables[varname]['data'])
-                self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                                self.variables[varname], True,
-                                                coord_str)
-            else:
-                self = RU.time_interp(self, coord_dict, varname,
-                                      self.variables[varname], gridded_int,
-                                      coord_str)
+            if varname in ['H_ilev', 'H_ilev1']:
+                gridded_int = True
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname],
+                                            gridded_int, coord_str)
 
             # perform substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:

@@ -240,14 +240,19 @@ def convert_files(file, check_first, in_dict=None, time_in=None,
                     # wrap and shift in longitude, different for mlon!
                     if 'mlon' in dim_list:  # only wrap and don't shift
                         tmp = insert(variable, variable.shape[-1],
-                                     variable[:, :, 0], axis=3)
+                                     variable[:, :, 0], axis=2)
                     else:  # use normal longitude shifting and wrapping
                         tmp = variable[:, :, lon_ge180+lon_le180]
                     variable = transpose(tmp, (0, 2, 1))
                     new_dims = tuple([dim_list[0], dim_list[2], dim_list[1]])
                 else:  # nothing special needed for time series data, just copy
                     new_dims = tuple(dim_list)
-
+                
+                # write variable to file
+                new_var = data_out.createVariable(
+                    var, cdf_data.variables[var].datatype, new_dims)
+                new_var[:] = variable
+                
             # loop through time for 4D to save memory
             elif len(dim_list) == 4:
                 # set output aside BEFORE data wrangling
@@ -321,7 +326,9 @@ def convert_files(file, check_first, in_dict=None, time_in=None,
                           f'{len_time}')
                     new_var_lev[i] = ko.rho_ilev_ijk(ilev=lev)
                     del ko['rho_ilev_ijk'], ko['rho_ilev']
-                del rho_dict, coord_dict  # keep memory usage clean
+                # clean memory before continuing
+                del ko, rho_dims, rho_dict, coord_dict, lev
+                new_var_lev = None
             var_end = perf_counter()
             print(f'done in {var_end-var_start}s.')
         cdf_data.close()
