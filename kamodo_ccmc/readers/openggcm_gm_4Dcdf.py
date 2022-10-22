@@ -274,7 +274,7 @@ def MODEL():
                 grid_list.remove('_z_ez')
             for grid in grid_list:
                 # store coordinate data
-                setattr(self, grid, getattr(cdf_data, grid).values)
+                setattr(self, grid, array(cdf_data.variables[grid]))
             # leave cdf file open
 
             # register interpolators for each variable

@@ -282,42 +282,15 @@ model_varnames = {'r_Ar': ['mmr_Ar', 'mass mixing ratio of argon/neutrals',
                   }
 
 
-def dts_to_hrs(datetime_string, filedate):
-    '''Get hours since midnight from datetime string'''
-    return (datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S'
-                              ).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
-def filename_to_dts(filename, string_date):
-    '''Get datetime string in format "YYYY-MM-SS HH:mm:SS" from filename'''
-    mmhhss = filename.split('_t')[-1].split('_')[1].split('.bin')[0]
-    return string_date+' '+mmhhss[:2]+':'+mmhhss[2:4]+':'+mmhhss[4:]
-
-
-def filename_to_hrs(filename, string_date, filedate):
-    '''Get hrs since midnight from filename.'''
-    dts = filename_to_dts(filename, string_date)  # datetime string
-    dt = datetime.strptime(dts, '%Y-%m-%d %H:%M:%S'
-                                                ).replace(tzinfo=timezone.utc)
-    return (dt-filedate).total_seconds()/3600.
-
-
 def dts_to_ts(file_dts):
     '''Get datetime timestamp in UTC from datetime string'''
     return datetime.timestamp(datetime.strptime(file_dts, '%Y-%m-%d %H:%M:%S'
                                                 ).replace(tzinfo=timezone.utc))
 
-
-def hrs_to_ts(hrs, filedate):
-    '''Add hours to filedate and return utc timestamp.'''
-    return datetime.timestamp(filedate+timedelta(hours=hrs))
-
-
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
+def hrs_to_dts(filedate, time_hrs):
+    '''Convert time in hrs since midnight UTC to datetime string.'''
+    return (filedate + timedelta(hours=float(time_hrs))).strftime(
+        '%Y-%m-%d %H:%M:%S')
 
 
 def MODEL():
@@ -400,17 +373,16 @@ def MODEL():
             if not self.conversion_test:
                 return
 
+            t0 = perf_counter()  # begin timer
             # figure out types of files present (e.g. 2DTEC, 3DALL, 3DLST, etc)
             total_files = sorted(glob(file_dir+'*.nc'))
             self.patterns = sorted(unique([basename(f).split('_t')[0] for f in
                                     total_files]))
+            print(self.patterns)
+            pattern_files = sorted(glob(file_dir+self.patterns[0]+'*.nc'))
 
-            t0 = perf_counter()
-            # establish time attributes first for file searching, preferring 3D
-            for file in total_files:
-                if '3D' in file:
-                    cdf_file = file  # need to get reference height correct
-            cdf_data = Dataset(cdf_file, 'r')
+            # establish date of first file
+            cdf_data = Dataset(total_files[0], 'r')
             string_date = cdf_data.filedate
             cdf_data.close()
             self.filedate = datetime.strptime(string_date+' 00:00:00',
@@ -418,13 +390,14 @@ def MODEL():
                                               ).replace(tzinfo=timezone.utc)
 
             # establish beginning and end times of files found
-            time_files = sorted(glob(file_dir+self.patterns[-1]+'*.nc'))
-            # strings in format = YYYY-MM-DD HH:MM:SS
-            time = array([filename_to_hrs(filename, string_date, self.filedate)
-                          for filename in time_files])  # hrs since midnight
-            self._time = time
-            self.datetimes = [filename_to_dts(filename, string_date) for
-                              filename in [time_files[0], time_files[-1]]]
+            time = []
+            for f in pattern_files:  # collect time grid from files
+                cdf_data = Dataset(f)  # one value per file
+                time.append(array(cdf_data.variables['time'])[0])
+                cdf_data.close()
+            self._time = array(time)  # num hrs since midnight on first day
+            self.datetimes = [hrs_to_dts(self.filedate, self._time[0]),
+                              hrs_to_dts(self.filedate, self._time[-1])]
             # timestamps in UTC
             self.filetimes = [dts_to_ts(file_dts) for file_dts in
                               self.datetimes]
@@ -433,7 +406,7 @@ def MODEL():
             else:
                 self.dt = 0
 
-            if filetime and not fulltime:
+            if filetime:
                 return  # return times as is to prevent infinite recursion
 
             # if variables are given as integers, convert to standard names
@@ -473,9 +446,12 @@ def MODEL():
                 cdf_data = Dataset(pattern_files[0], 'r')
                 setattr(self, '_lat'+pattern, array(cdf_data.variables['lat']))
                 setattr(self, '_lon'+pattern, array(cdf_data.variables['lon']))
+                print(len(getattr(self, '_lon'+pattern)), getattr(self, '_lon'+pattern))
+                print(len(getattr(self, '_lat'+pattern)), getattr(self, '_lat'+pattern))
                 if '2D' not in pattern:
                     setattr(self, '_height'+pattern,
                             array(cdf_data.variables['height']))
+                    print(len(getattr(self, '_height'+pattern)))
 
                 # check var_list for variables not possible in this file set
                 if len(variables_requested) > 0 and\
@@ -518,6 +494,8 @@ def MODEL():
                             'units': cdf_data.variables[key].units,
                             'data': [cdf_data.variables[key]]}
                             for key in gvar_list}
+                        print(gvar_list[0],
+                              array(cdf_data.variables[gvar_list[0]]).shape)
                     else:  # append cdf_data objects for each time step
                         for key in gvar_list:
                             variables[model_varnames[key][0]]['data'].append(
@@ -549,6 +527,8 @@ def MODEL():
             t_reg = perf_counter()
             # store original list b/c gridded interpolators change keys list
             varname_list = [key for key in self.variables.keys()]
+            print(varname_list)
+            print(self.varfiles)
             for varname in varname_list:
                 # determine which file the variable came from, retrieve the coords
                 coord_list = [value[-2] for key, value in
@@ -557,11 +537,11 @@ def MODEL():
                 for i in range(len(self.patterns)-1, -1, -1):  # go backwards
                     if varname in self.varfiles[self.patterns[i]]:
                         # get the correct coordinates
-                        coord_dict['lat'] = {
-                            'data': getattr(self, '_lat'+self.patterns[i]),
-                            'units': 'deg'}
                         coord_dict['lon'] = {
                             'data': getattr(self, '_lon'+self.patterns[i]),
+                            'units': 'deg'}
+                        coord_dict['lat'] = {
+                            'data': getattr(self, '_lat'+self.patterns[i]),
                             'units': 'deg'}
                         if len(coord_list) == 4:
                             coord_dict['height'] = {
@@ -576,7 +556,6 @@ def MODEL():
                 self = RU.time_interp(self, coord_dict, varname,
                                       self.variables[varname], gridded_int,
                                       coord_str)
-                return
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
