@@ -65,7 +65,7 @@ def Choose_Model(model):
         return module
 
     elif model == 'OpenGGCM_GM':
-        import kamodo_ccmc.readers.openggcm_gm_4Dcdf_xarray as module
+        import kamodo_ccmc.readers.openggcm_gm_4Dcdf as module
         return module
 
     elif model == 'AMGeO':
@@ -127,17 +127,8 @@ def FileSearch(model, file_dir, call_type='normal'):
     elif model == 'IRI':
         return file_dir+'IRI.3D.*.nc'
 
-    elif model == 'GITM':  # whole day version of filesearch
-        files = sorted(glob(file_dir+'*.bin'))  # next line returns prefix list
-        if call_type == 'normal':  # give prefix for full day files
-            file_patterns = unique([file_dir+'*'+basename(f)[7:13] for f in
-                                    files if 'GITM' not in basename(f) and
-                                    '.nc' not in basename(f)])
-        else:  # give prefix for hourly files
-            file_patterns = unique([file_dir+'*'+basename(f)[7:16] for f in
-                                    files if '.nc' not in basename(f) and
-                                    'GITM' not in basename(f)])
-        return file_patterns
+    elif model == 'GITM':
+        return file_dir
 
     elif model == 'SWMF_IE':
         files = sorted(glob(file_dir+'i_e*'))  # next line returns prefix list
@@ -188,7 +179,6 @@ def FileSearch(model, file_dir, call_type='normal'):
         return file_patterns        
 
     elif model == 'WAMIPE':
-        print('This model reader only needs the file directory.')
         return file_dir  
     
     else:
