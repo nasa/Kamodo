@@ -117,7 +117,8 @@ def create_funcsig(coord_data, coord_str):
 
 
 def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
-                          data_dict, gridded_int, coord_str):
+                          data_dict, gridded_int, coord_str, interp_flag=0,
+                          func=None, start_idx=None):
     '''Determine and call the correct functionalize routine.
     Inputs:
         kamodo_object: the previously created kamodo object.
@@ -137,6 +138,37 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
             plotting higher dimensions and slicing). False otherwise.
         coord_str: a string indicating the coordinate system of the data
             (e.g. "SMcar" or "GEOsph").
+        interp_flag: the method of interpolation required. 
+            Options: 
+                0: (default option) assumes the given data_dict['data'] is an
+                    N-dimensional numpy array and creates a standard scipy
+                    interpolator to functionalize the data. 
+                1: Assumes the given data_dict['data'] is a list of cdf or h5
+                    file objects with data for one time slice per object.
+                    Lazy interpolation is applied on top of the standard scipy
+                    interpolators (one per time slice).
+                2: Assumes the given data_dict['data'] is a list of cdf or h5
+                    file objects with data for a range of times per object.
+                    Lazy chunked interpolation is applied on top of the
+                    standard scipy interpolators (one per time chunk).
+                    Interpolation between time chunks occurs automatically.
+        func: a function defining the logic to be executed on a given time
+            slice or chunk (e.g. converting to an array and then transposing
+            it). 
+            *** Only needed for interp_flag greater than zero. ***
+            - For interp_flag=1, the default (None) is to convert to a numpy
+            array.
+            - For interp_flag=2, the default (None) is to do nothing. The chunks
+            will be converted to arrays during the preparation to
+            interpolate between time chunks.
+            - This option is useful when a dataset's shape order does not match
+            the required order (e.g. t, lat, lon -> t, lon, lat) and allows
+            such operations to be done on the fly.
+        start_idx: a list of indices indicating the position of the start times
+            for each data chunk in the time grid (coord_dict['time']['data']).
+            *** Only needed for interpolation over time chunks. ***
+            The length should be one longer than the number of chunks, with the
+            last value equal to the length of the time grid.
 
     Output: A kamodo object with the functionalized dataset added.
     '''
@@ -145,18 +177,28 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     coord_data = {key: value['data'] for key, value in coord_dict.items()}
     coord_units = {key: value['units'] for key, value in coord_dict.items()}
 
-    # create interpolator function and function signature
-    interp = create_interp(coord_data, data_dict)
+    # create a functionalized interpolator and modified function signature
     param_xvec = create_funcsig(coord_data, coord_str)
+    if interp_flag == 0:  # standard logic
+        interp = create_interp(coord_data, data_dict)
+        new_interp = forge.replace('xvec', param_xvec)(interp)
+        interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
+                 arg_units=coord_units)(new_interp)
+    # otherwise, retrieve special interpolator and functionalize
+    else:
+        if interp_flag == 1:
+            interp = time_interp(coord_dict, data_dict, func)
+        elif interp_flag == 2:
+            interp = multitime_interp(coord_dict, data_dict, start_idx, func)
+        @forge.replace('xvec', param_xvec)
+        @kamodofy(units=data_dict['units'], data=data_dict['data'],
+                  arg_units=coord_units)
+        def total_interp(xvec):
+            return interp(*array(xvec).T)
 
-    # Functionalize the dataset
-    new_interp = forge.replace('xvec', param_xvec)(interp)
-    interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
-             arg_units=coord_units)(new_interp)
+    # Register and add gridded version if requested, even for 1D functions
     kamodo_object = register_interpolator(kamodo_object, variable_name, interp,
                                           coord_units)
-
-    # Add gridded version if requested, even for 1D functions
     if gridded_int:
         interp_grid = define_griddedinterp(data_dict, coord_units, coord_data,
                                            interp)
@@ -167,32 +209,24 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     return kamodo_object
 
 
-def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
-                  gridded_int, coord_str, func=None):
+def time_interp(coord_dict, data_dict, func=None):
     '''Create a functionalized interpolator by splitting into timesteps.
     Inputs:
-        kamodo_object: the previously created kamodo object.
         coord_dict: a dictionary containing the coordinate information.
             {'name_of_coord1': {'units': 'coord1_units', 'data': coord1_data},
              'name_of_coord2': {'units': 'coord2_units', 'data': coord2_data},
              etc...}
             coordX_data should be a 1D array. All others should be strings.
-        variable_name: a string giving the LaTeX representation of the variable
         data_dict: a dictionary containing the data information.
             {'units': 'data_units', 'data': data_array}
             data_array should have the same shape as (c1, c2, c3, ..., cN)
-        Note: The dataset must also depend upon ALL of the coordinate arrays
-            given.
-        
-        gridded_int: True to create a gridded interpolator (necessary for
-            plotting higher dimensions and slicing). False otherwise.
-        coord_str: a string indicating the coordinate system of the data
-            (e.g. "SMcar" or "GEOsph").
+            Note: The dataset must also depend upon ALL of the coordinate
+                arrays given.
         func: a function defining the logic to be executed on a given time
             slice (e.g. converting to an array and then transposing it).
             Default is to only convert to an array (e.g. func=None).
 
-    Output: A kamodo object with the functionalized dataset added.    
+    Output: A lazy time interpolator. 
     '''
     
     # create a list of interpolators per timestep, not storing the data, and 
@@ -202,24 +236,25 @@ def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
     # does this also work for h5 files? ******************************************************
 
     # split the coord_dict into data and units
-    coord_data = {key: value['data'] for key, value in coord_dict.items()}
-    coord_units = {key: value['units'] for key, value in coord_dict.items()}
-    coord_list = [value for key, value in coord_data.items()]  # list of arrays
-    
-    # Create ND interpolators for each time grid value
-    if len(coord_list) <= 2:  # call normal routine and return
-        data_dict['data'] = array(data_dict['data'])  # ensure it is an array
-        return Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
-                                  data_dict, gridded_int, coord_str)
-    else:
-        if func == None:  # define the default operation
-            def func(cdf_data_object):
-                return array(cdf_data_object)
-        # create the interpolators and map for the first two time steps
-        time_interps = [rgiND(coord_list[1:], func(data_dict['data'][i]),
-                              bounds_error=False, fill_value=NaN) for i in
-                        [0, 1]]  # start with two times
-        idx_map = [0, 1]
+    coord_list = [value['data'] for key, value in coord_dict.items()]  # list of arrays
+    idx_map, time_interps = [], []  # initialize variables
+    if func == None:  # define the default operation
+        def func(cdf_data_object):
+            return array(cdf_data_object)
+
+    # define method for how to add time slices to memory
+    def add_timeinterp(i):
+        idx_map.append(i)
+        if len(coord_list) > 1:
+            time_interps.append(rgiND(coord_list[1:],
+                                      func(data_dict['data'][i]),
+                                      bounds_error=False, fill_value=NaN))
+        else:  # has to be different for time series data
+            ''''***TEST THIS. DON'T NEED AN INTERPOLATOR FOR A SINGLE POINT!***'''
+            def dummy_1D(spatial_position):
+                return func(data_dict['data'][i])
+            time_interps.append(dummy_1D)
+        return time_interps, idx_map
 
     @vectorize
     def interp_i(*args, time_interps=time_interps,
@@ -238,30 +273,24 @@ def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
         # Interpolate values for chosen time grid values
         for i in idx_list:
             if i not in idx_map:
+                len_map = len(idx_map)  # length before adding another
                 print(idx, idx_list, idx_map)
                 print('Adding idx ', i)
                 try:  # allow for memory errors
-                    idx_map.append(i)
-                    time_interps.append(rgiND(coord_list[1:],
-                                              func(data_dict['data'][i]),
-                                              bounds_error=False,
-                                              fill_value=NaN))
-                except MemoryError:  # remove two(?) items first
+                    time_interps, idx_map = add_timeinterp(i)
+                except MemoryError:  # remove one time slice first
                     print('Avoiding memory error...')
-                    if abs(i-idx_map[0]) > 2:
-                        idx_map.pop(0)
-                        time_interps.pop(0)
-                        idx_map.pop(0)
-                        time_interps.pop(0)
+                    if len_map == 0:
+                        print('Not enough memory to load one time slice. ' +
+                              'Please close some applications.')
+                    elif len_map < 2:  # tried to add a second slice but failed
+                        print('Not enough memory to load two time slices. ' +
+                              'Please close some applications.')
+                    elif abs(i-idx_map[0]) > 2:
+                        del idx_map[0], time_interps[0]
                     else:
-                        idx_map.pop(-1)
-                        time_interps.pop(-1)
-                        idx_map.pop(-1)
-                        time_interps.pop(-1)
-                    idx_map.append(i)
-                    time_interps.append(rgiND(coord_list[1:],
-                                             array(data_dict['data'][i]),
-                                             bounds_error=False, fill_value=NaN))                    
+                        del idx_map[-1], time_interps[-1]
+                    time_interps, idx_map = add_timeinterp(i)                   
         interp_location = [idx_map.index(val) for val in idx_list]
         interp_values = ravel(array([time_interps[i]([*position[1:]])
                                      for i in interp_location]))
@@ -269,25 +298,106 @@ def time_interp(kamodo_object, coord_dict, variable_name, data_dict,
                               bounds_error=False, fill_value=NaN)
         return time_interp(position[0])
 
-    # retrieve the updated function signature
-    param_xvec = create_funcsig(coord_data, coord_str)
+    return interp_i
 
-    @forge.replace('xvec', param_xvec)
-    @kamodofy(units=data_dict['units'], data=data_dict['data'],
-              arg_units=coord_units)
-    def total_interp(xvec):
-        return interp_i(*array(xvec).T)
 
-    # register the interpolator in the kamodo object
-    kamodo_object = register_interpolator(kamodo_object, variable_name,
-                                          total_interp, coord_units)
+def multitime_interp(coord_dict, data_dict, start_idx, func=None):
+    '''Create a functionalized interpolator by splitting into timesteps.
+    Inputs:
+        coord_dict: a dictionary containing the coordinate information.
+            {'name_of_coord1': {'units': 'coord1_units', 'data': coord1_data},
+             'name_of_coord2': {'units': 'coord2_units', 'data': coord2_data},
+             etc...}
+            coordX_data should be a 1D array. All others should be strings.
+        data_dict: a dictionary containing the data information.
+            {'units': 'data_units', 'data': data_array}
+            data_array should have the same shape as (c1, c2, c3, ..., cN)
+            Note: The dataset must also depend upon ALL of the coordinate
+                arrays given.
+        start_idx: a list of indices indicating the position of the start times
+            for each data chunk in the time grid (coord_dict['time']['data']).
+            The length of start_idx should be one longer than the number of
+            chunks, with the last value equal to the length of the time grid.
+            Interpolation between time chunks is taken care of by appending
+            the first time slice of the next time chunk to the end of the
+            current time chunk (see func description).
+        func: a function defining the logic to be executed on a given time
+            slice after converting to an array (e.g. transposing an array).
+            The logic in this routine separately converts each time chunk into
+            an array while preparing the data for interpolation between time
+            chunks. Default is to do nothing (e.g. func=None).
 
-    # Add gridded version if requested, even for 1D functions
-    if gridded_int:
-        interp = define_griddedinterp(data_dict, coord_units, coord_data,
-                                      total_interp)
-        kamodo_object.variables[variable_name+'_ijk'] = data_dict
-        kamodo_object = register_interpolator(kamodo_object,
-                                              variable_name+'_ijk', interp,
-                                              coord_units)
-    return kamodo_object
+    Output: A time-chunked lazy interpolator.
+    '''
+    
+    # create a list of interpolators per time chunk, not storing the data, and 
+    # interpolate from there. such as done in superdarnea_interp.py
+    # Assumes that time is the first dimension.
+    # Assumes that data_dict['data'][i] is a cdf_data.variable object with 
+    # multiple time slices.
+    # does this also work for h5 files???????????????????????????????????????????????????
+
+    # split the coord_dict into data and units, initialize variables/func
+    coord_list = [value['data'] for key, value in coord_dict.items()]  # list of arrays
+    start_times = coord_list[0][start_idx[:-1]]
+    idx_map, time_interps = [], []  # initialize variables
+    if func == None:  # define the default operation
+        def func(array_object):
+            return array_object
+
+    # define method for how to add time chunks to memory
+    def add_timeinterp(i):
+        idx_map.append(i)
+        # set up to interpolate between time chunks
+        if i < len(start_times)-1:  # append 1st time slice from next chunk
+            data = append(array(data_dict['data'][i]),
+                         [array(data_dict['data'][i+1][0])], axis=0)
+        else:
+            data = array(data_dict['data'][i])  # at the end, so take as is
+        start_i, end_i = start_idx[i], start_idx[i+1]  # indices for time chunk
+        if len(coord_list) > 1:
+            coord_list_i = [coord_list[0][start_i:end_i]] + [*coord_list[1:]]
+
+            time_interps.append(rgiND(coord_list_i, func(data),
+                                      bounds_error=False, fill_value=NaN))
+        else:  # has to be different for time series data
+            time_interps.append(rgi1D(coord_list[0][start_i:end_i],
+                                      func(data_dict['data'][i]),
+                                      bounds_error=False, fill_value=NaN))
+        return time_interps, idx_map
+    
+    @vectorize
+    def interp_i(*args, time_interps=time_interps,
+                 idx_map=idx_map):
+
+        position = [*args]  # time coordinate value must be first
+        # get location of interpolator
+        idx = sorted(append(start_times, position[0])).index(position[0])
+        if idx > 0 and idx < len(start_times)-1:  # middle somewhere
+            i = idx-1
+        elif idx == 0:  # beginning
+            i = 0
+        elif idx == len(start_times)-1:  # at end
+            i = len(start_times)-1
+
+        # Interpolate values for chosen time chunk
+        if i not in idx_map:
+            print(idx, i, idx_map)
+            print('Adding idx ', i)
+            len_map = len(idx_map)
+            try:  # allow for memory errors
+                time_interps, idx_map = add_timeinterp(i)
+            except MemoryError:  # remove two(?) items first
+                print('Avoiding memory error...')
+                if len_map == 0:  # tried but failed
+                    print('Not enough memory to load a time chunk. ' +
+                          'Please close some applications.')
+                elif i != idx_map[0]:
+                    del idx_map[0], time_interps[0]
+                else:
+                    del idx_map[-1], time_interps[-1]
+                time_interps, idx_map = add_timeinterp(i)             
+        interp_location = idx_map.index(i)
+        return time_interps[interp_location](*position)  # single time chunk
+
+    return interp_i

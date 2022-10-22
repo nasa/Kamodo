@@ -300,7 +300,7 @@ def MODEL():
     from numpy import array, unique, NaN, diff
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    import kamodo_ccmc.readers.reader_utilities as RU
+    from kamodo_ccmc.readers.reader_utilities import Functionalize_Dataset
 
     class MODEL(Kamodo):
         '''GITM model data reader.
@@ -446,12 +446,9 @@ def MODEL():
                 cdf_data = Dataset(pattern_files[0], 'r')
                 setattr(self, '_lat'+pattern, array(cdf_data.variables['lat']))
                 setattr(self, '_lon'+pattern, array(cdf_data.variables['lon']))
-                print(len(getattr(self, '_lon'+pattern)), getattr(self, '_lon'+pattern))
-                print(len(getattr(self, '_lat'+pattern)), getattr(self, '_lat'+pattern))
                 if '2D' not in pattern:
                     setattr(self, '_height'+pattern,
                             array(cdf_data.variables['height']))
-                    print(len(getattr(self, '_height'+pattern)))
 
                 # check var_list for variables not possible in this file set
                 if len(variables_requested) > 0 and\
@@ -494,8 +491,6 @@ def MODEL():
                             'units': cdf_data.variables[key].units,
                             'data': [cdf_data.variables[key]]}
                             for key in gvar_list}
-                        print(gvar_list[0],
-                              array(cdf_data.variables[gvar_list[0]]).shape)
                     else:  # append cdf_data objects for each time step
                         for key in gvar_list:
                             variables[model_varnames[key][0]]['data'].append(
@@ -518,7 +513,7 @@ def MODEL():
                 for file in self.filename:
                     print(file)
 
-            # return if only one file found - interpolator code will break
+            # return if only one time found - interpolator code will break
             if len(self._time) < 2:
                 print('Not enough times found in given directory.')
                 return
@@ -527,8 +522,6 @@ def MODEL():
             t_reg = perf_counter()
             # store original list b/c gridded interpolators change keys list
             varname_list = [key for key in self.variables.keys()]
-            print(varname_list)
-            print(self.varfiles)
             for varname in varname_list:
                 # determine which file the variable came from, retrieve the coords
                 coord_list = [value[-2] for key, value in
@@ -553,9 +546,10 @@ def MODEL():
                 # define and register the interpolators
                 coord_str = [value[3]+value[4] for key, value in
                              model_varnames.items() if value[0] == varname][0]
-                self = RU.time_interp(self, coord_dict, varname,
-                                      self.variables[varname], gridded_int,
-                                      coord_str)
+                self = Functionalize_Dataset(self, coord_dict, varname,
+                                             self.variables[varname],
+                                             gridded_int, coord_str,
+                                             interp_flag=1)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
