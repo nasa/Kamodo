@@ -158,8 +158,8 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
             *** Only needed for interp_flag greater than zero. ***
             - For interp_flag=1, the default (None) is to convert to a numpy
             array.
-            - For interp_flag=2, the default (None) is to do nothing. The chunks
-            will be converted to arrays during the preparation to
+            - For interp_flag=2, the default (None) is to do nothing. The
+            chunks will be converted to arrays during the preparation to
             interpolate between time chunks.
             - This option is useful when a dataset's shape order does not match
             the required order (e.g. t, lat, lon -> t, lon, lat) and allows
@@ -181,20 +181,13 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     param_xvec = create_funcsig(coord_data, coord_str)
     if interp_flag == 0:  # standard logic
         interp = create_interp(coord_data, data_dict)
-        new_interp = forge.replace('xvec', param_xvec)(interp)
-        interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
-                 arg_units=coord_units)(new_interp)
-    # otherwise, retrieve special interpolator and functionalize
-    else:
-        if interp_flag == 1:
-            interp = time_interp(coord_dict, data_dict, func)
-        elif interp_flag == 2:
-            interp = multitime_interp(coord_dict, data_dict, start_idx, func)
-        @forge.replace('xvec', param_xvec)
-        @kamodofy(units=data_dict['units'], data=data_dict['data'],
-                  arg_units=coord_units)
-        def total_interp(xvec):
-            return interp(*array(xvec).T)
+    elif interp_flag == 1:
+        interp = time_interp(coord_dict, data_dict, func)
+    elif interp_flag == 2:
+        interp = multitime_interp(coord_dict, data_dict, start_idx, func)
+    new_interp = forge.replace('xvec', param_xvec)(interp)
+    interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
+             arg_units=coord_units)(new_interp)
 
     # Register and add gridded version if requested, even for 1D functions
     kamodo_object = register_interpolator(kamodo_object, variable_name, interp,
@@ -228,7 +221,7 @@ def time_interp(coord_dict, data_dict, func=None):
 
     Output: A lazy time interpolator. 
     '''
-    
+
     # create a list of interpolators per timestep, not storing the data, and 
     # interpolate from there. such as done in superdarnea_interp.py
     # Assumes that time is the first dimension
@@ -298,7 +291,9 @@ def time_interp(coord_dict, data_dict, func=None):
                               bounds_error=False, fill_value=NaN)
         return time_interp(position[0])
 
-    return interp_i
+    def interp(xvec):
+        return interp_i(*array(xvec).T)
+    return interp
 
 
 def multitime_interp(coord_dict, data_dict, start_idx, func=None):
@@ -400,4 +395,7 @@ def multitime_interp(coord_dict, data_dict, start_idx, func=None):
         interp_location = idx_map.index(i)
         return time_interps[interp_location](*position)  # single time chunk
 
-    return interp_i
+    def interp(xvec):
+        return interp_i(*array(xvec).T)
+
+    return interp

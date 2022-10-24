@@ -290,27 +290,27 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
 
 # lists of known variables per file type
 # assume h1 file is always present
-gvar_keys = {'h1': ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr',
-                    'sol_tsi', 'colat_crit1', 'colat_crit2', 'ED1', 'ED2',
-                    'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ElecColDens', 'H',
-                    'O', 'O2', 'OMEGA', 'PHIM2D', 'PS', 'T', 'TElec', 'TIon',
-                    'U', 'UI', 'V', 'VI', 'WI', 'Z3', 'e', 'RHO_CLUBB',
-                    'RHO_CLUBB_lev', 'Z3GM'],
+gvar_keys = {'h1v2': ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr',
+                      'sol_tsi', 'colat_crit1', 'colat_crit2', 'ED1', 'ED2',
+                      'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ElecColDens', 'H',
+                      'O', 'O2', 'OMEGA', 'PHIM2D', 'PS', 'T', 'TElec', 'TIon',
+                      'U', 'UI', 'V', 'VI', 'WI', 'Z3', 'e', 'RHO_CLUBB',
+                      'RHO_CLUBB_lev', 'Z3GM'],
              # keys in h2 files that are not in the h1 files
-             'h2': ['ED1', 'ED2', 'EDens', 'ElecColDens', 'HMF2', 'NMF2',
-                    'OPLUS', 'TElec', 'TIon', 'UI', 'VI', 'WI', 'Z3'],
+             'h2v2': ['ED1', 'ED2', 'EDens', 'ElecColDens', 'HMF2', 'NMF2',
+                      'OPLUS', 'TElec', 'TIon', 'UI', 'VI', 'WI', 'Z3'],
              # keys in h3 files that are not in the h1 files
-             'h3': ['CO2', 'EDens', 'EKGW', 'N', 'NO', 'OpDens', 'QCO2',
-                    'QHC2S', 'QJOULE', 'QNO', 'QO3', 'QO3P', 'QRS_TOT',
-                    'SolIonRate_Tot', 'TTGW', 'UTGW_TOTAL', 'Z3GM'],
+             'h3v2': ['CO2', 'EDens', 'EKGW', 'N', 'NO', 'OpDens', 'QCO2',
+                      'QHC2S', 'QJOULE', 'QNO', 'QO3', 'QO3P', 'QRS_TOT',
+                      'SolIonRate_Tot', 'TTGW', 'UTGW_TOTAL', 'Z3GM'],
              # keys in the h4 files that are not in the h1 or h3 files
-             'h4': ['OMEGA_08_COS', 'OMEGA_08_SIN', 'OMEGA_12_COS',
-                    'OMEGA_12_SIN', 'OMEGA_24_COS', 'OMEGA_24_SIN',
-                    'T_08_COS', 'T_08_SIN', 'T_12_COS', 'T_12_SIN',
-                    'T_24_COS', 'T_24_SIN', 'U_08_COS', 'U_08_SIN',
-                    'U_12_COS', 'U_12_SIN', 'U_24_COS', 'U_24_SIN',
-                    'V_08_COS', 'V_08_SIN', 'V_12_COS', 'V_12_SIN',
-                    'V_24_COS', 'V_24_SIN']}
+             'h4v2': ['OMEGA_08_COS', 'OMEGA_08_SIN', 'OMEGA_12_COS',
+                      'OMEGA_12_SIN', 'OMEGA_24_COS', 'OMEGA_24_SIN',
+                      'T_08_COS', 'T_08_SIN', 'T_12_COS', 'T_12_SIN',
+                      'T_24_COS', 'T_24_SIN', 'U_08_COS', 'U_08_SIN',
+                      'U_12_COS', 'U_12_SIN', 'U_24_COS', 'U_24_SIN',
+                      'V_08_COS', 'V_08_SIN', 'V_12_COS', 'V_12_SIN',
+                      'V_24_COS', 'V_24_SIN']}
 # set up pressure level and height dependent equivalent variables
 ilev_list = [value[0] for key, value in model_varnames.items()
              if value[5][-1] == 'ilev' if value not in
@@ -353,10 +353,13 @@ def MODEL():
     from kamodo import Kamodo
     from netCDF4 import Dataset
     from os.path import isfile, basename, getsize
+    from glob import glob
     import psutil  # for memory vs file size comparison
-    from numpy import array, NaN, zeros, diff
+    from numpy import array, NaN, zeros, diff, median
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
+    from waccmx_tocdf import convert_all
+
 
     class MODEL(Kamodo):
         '''WACCM-X model data reader.
@@ -408,7 +411,7 @@ def MODEL():
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
         '''
-        def __init__(self, full_filenameh1, variables_requested=[],
+        def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
                      fulltime=True, verbose=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
@@ -416,43 +419,29 @@ def MODEL():
             t0 = perf_counter()
 
             # Check for converted files. If not present, convert all in dir
-            if '.h1v2.' not in full_filenameh1:
-                full_filenameh1 = full_filenameh1.replace('.h1.', '.h1v2.')
-            if not isfile(full_filenameh1):
-                from waccmx_tocdf import convert_all
-                filename = basename(full_filenameh1)
-                file_dir = full_filenameh1.split(filename)[0]
-                self.conversion_test = convert_all(file_dir)
-                if not self.conversion_test:
-                    return
-            else:
-                self.conversion_test = True
+            self.conversion_test, file_dict = convert_all(file_dir)
+            if not self.conversion_test:
+                return
+            self.filename = ''.join([file+',' for key, file in
+                                     file_dict.items()])[:-1]
 
-            # collect filenames
-            hx_files = [full_filenameh1.replace('.h1v2.', '.h0v2.'),
-                        full_filenameh1]
-            # search for other files at same time
-            for n in [2, 3, 4]:
-                if isfile(full_filenameh1.replace('.h1v2.',
-                                                  '.h'+str(n)+'v2.')):
-                    hx_files.append(full_filenameh1.replace('.h1v2.',
-                                                            '.h'+str(n)+'v2.'))
-            self.filename = ''.join([file+',' for file in hx_files])[:-1]
-
-            # establish time attributes first
-            cdf_data = Dataset(hx_files[1], 'r')
-            # date is in days since 1979-01-01 00:00:00
-            date = array(cdf_data.variables['time'])
-            # hrs since midnight
-            time = array(cdf_data.variables['datesec'])/3600.
-            if time[-1] == 0.:
-                time[-1] = 24.  # CCMC files have 0 at the end instead of 24
-            if time[0] == 24.:
-                time[0] = 0.  # Other files have the opposite problem
-            self._time = time
+            # establish time attributes first, one value per file
+            date, datesec, time = [], [], []
+            for file in file_dict['h1v2']:
+                cdf_data = Dataset(file)
+                date.append(array(cdf_data.variables['time'])[0])
+                datesec.append(array(cdf_data.variables['datesec'])[0])
+                cdf_data.close()
+            date = array(date)  # date is in days since 1979-01-01 00:00:00
+            datesec = array(datesec)  # seconds since midnight on same day
             # datetime object for midnight on date
             self.filedate = datetime(1979, 1, 1, tzinfo=timezone.utc) +\
                 timedelta(days=int(date[0]))
+            date -= int(date.min())  # reset to be from beginning of run
+            for i in len(date):
+                time.append(int(date[i])*24. + datesec[i]/3600.)  # hrs
+                print(date[i], datesec[i], time[i])
+            self._time = array(time)
             # strings with timezone info chopped off (UTC anyway).
             # Format: ‘YYYY-MM-DD HH:MM:SS’
             self.datetimes = [
@@ -467,7 +456,6 @@ def MODEL():
                 self.dt = diff(time).max()*3600.  # convert time res to sec
             else:
                 self.dt = 3600.
-            cdf_data.close()  # save on memory
 
             if filetime:  # boundary time added in file conversion process
                 return  # return times as is to prevent recursion
@@ -503,7 +491,8 @@ def MODEL():
                 # variables are requested from that file.
                 for key in gvar_keys.keys():
                     self.gvar_dict[key] = self.somefile_variables(
-                        key, gvar_keys[key], variables_requested, hx_files[1:])
+                        key, gvar_keys[key], variables_requested,
+                        file_dict)
                     gvar_list += self.gvar_dict[key][0]
                 net_err = [value[0] for key, value in model_varnames.items()
                            if key not in gvar_list and value[0] in
@@ -511,11 +500,11 @@ def MODEL():
                 if len(net_err) > 0:
                     print('Some requested variables are not available: ',
                           net_err)
-            else:  # BROKEN NEED TO FIX ********************************************
+            else:  # collect defaults
                 # collect lists per file type
                 for key in gvar_keys.keys():
                     self.gvar_dict[key] = self.allfile_variables(
-                        key, gvar_keys[key], hx_files[1:])
+                        key, gvar_keys[key], file_dict[key][0])
                     gvar_list += self.gvar_dict[key][0]
                     print(gvar_list)
 
@@ -543,39 +532,28 @@ def MODEL():
                     return
 
             # store data for each variable desired
-            # need to leave files open, so need unique names for cdf_data 
-            variables = {}
-            if self.gvar_dict['h1'][1] != '':
-                cdf_datah1 = Dataset(self.gvar_dict['h1'][1])
-                for var in self.gvar_dict['h1'][0]:
-                    variables[model_varnames[var][0]] =  {
-                        'units': model_varnames[var][-1],
-                        'data': cdf_datah1.variables[var],
-                        'file': self.gvar_dict['h1'][1]}
-            if self.gvar_dict['h2'][1] != '':
-                cdf_datah2 = Dataset(self.gvar_dict['h2'][1])
-                for var in self.gvar_dict['h2'][0]:
-                    variables[model_varnames[var][0]] =  {
-                        'units': model_varnames[var][-1],
-                        'data': cdf_datah2.variables[var],
-                        'file': self.gvar_dict['h2'][1]}
-            if self.gvar_dict['h3'][1] != '':
-                cdf_datah3 = Dataset(self.gvar_dict['h3'][1])
-                for var in self.gvar_dict['h3'][0]:
-                    variables[model_varnames[var][0]] =  {
-                        'units': model_varnames[var][-1],
-                        'data': cdf_datah3.variables[var],
-                        'file': self.gvar_dict['h3'][1]} 
-            if self.gvar_dict['h4'][1] != '':
-                cdf_datah4 = Dataset(self.gvar_dict['h4'][1])
-                for var in self.gvar_dict['h4'][0]:
-                    variables[model_varnames[var][0]] =  {
-                        'units': model_varnames[var][-1],
-                        'data': cdf_datah4.variables[var],
-                        'file': self.gvar_dict['h4'][1]}
+            # need to leave files open
+            variables, km = {}, None
+            for t in len(self._time):  # collect time slices in a list
+                for key in file_dict.keys():
+                    cdf_datah = Dataset(file_dict[key][t])  # single time step
+                    if 'Z3' in self.gvar_dict[key][0]:  # file variable names
+                        if t == 0:  # get km_ilev grid (diff for each time)
+                            km = [array(cdf_datah.variables['km_ilev'])]
+                        else:
+                            km.append(array(cdf_datah.variables['km_ilev']))
+                    for var in self.gvar_dict[key][0]:
+                        if t == 0:
+                            variables[model_varnames[var][0]] =  {
+                                'units': model_varnames[var][-1],
+                                'data': [cdf_datah.variables[var]]}
+                        else:
+                            variables[model_varnames[var][0]]['data'].append(
+                                cdf_datah.variables[var])
+            self._km_ilev = median(array(km), axis=1)  # median of time axis
 
-            # retrieve dimensional grid from h1 file
-            cdf_data = Dataset(hx_files[1], 'r')
+            # retrieve dimensional grid from first h1 file
+            cdf_data = Dataset(file_dict['h1v2'][0], 'r')
             self._lon = array(cdf_data.variables['lon'])  # -180 to 180
             self._lat = array(cdf_data.variables['lat'])
             # primary pressure level coordinate
@@ -600,14 +578,11 @@ def MODEL():
                     self._mlat = array(cdf_data.variables['mlat'])
                 else:  # use h2 file
                     cdf_data.close()  # close h1 file
-                    cdf_data = Dataset(hx_files[2])  # open h2/h3 file
+                    next_key = list(file_dict.keys())[1]
+                    cdf_data = Dataset(file_dict[next_key][0])  # h2/h3 file
                     self._mlon = array(cdf_data.variables['mlon'])
                     self._mlat = array(cdf_data.variables['mlat'])
             cdf_data.close()   # close netCDF4 file
-            # retrieve the median km grid from h0v2 file
-            cdf_data = Dataset(hx_files[0])
-            self._km_ilev = array(cdf_data.variables['km_ilev'])
-            cdf_data.close()
 
             # store a few items
             self.missing_value = NaN
@@ -629,8 +604,7 @@ def MODEL():
             for varname in varname_list:
                 self.variables[varname] = dict(
                     units=variables[varname]['units'],
-                    data=variables[varname]['data'],
-                    file=variables[varname]['file'])
+                    data=variables[varname]['data'])
                 # register the variables
                 if len(variables[varname]['data'].shape) == 1:  # time series
                     print('1D:', varname, perf_counter()-t0)
@@ -640,10 +614,7 @@ def MODEL():
                     self.register_3D_variable(varname, gridded_int)
                 elif len(variables[varname]['data'].shape) == 4:  # time + 3D
                     print('4D:', varname, perf_counter()-t0)
-                    memory_check = getsize(self.variables[varname]['file']) >\
-                          psutil.virtual_memory().available
-                    self.register_4D_variable(varname, gridded_int, 
-                                              memory_check)
+                    self.register_4D_variable(varname, gridded_int) 
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -682,7 +653,7 @@ def MODEL():
 
         # select desired variables from given file type
         def somefile_variables(self, h_type, g_varkeys_h, variables_requested,
-                               hx_files):
+                               file_dict):
             '''Add variables from desired file if file exists and if variables
             are requested.
             Inputs:
@@ -692,35 +663,33 @@ def MODEL():
                 - variables_requested: a list of desired LaTeX variable names.
                 - hx_files: a list of files for a given day.
             '''
-            hfile = [file for file in hx_files if h_type in file]
-            if len(hfile) > 0:
-                cdf_datah = Dataset(hfile[0])
+            if h_type in file_dict.keys():
+                cdf_datah = Dataset(file_dict[h_type][0])
                 cdf_datah_keys = list(cdf_datah.variables.keys())
                 cdf_datah.close()
                 gvar_listh = self.variable_checks(variables_requested,
                                                   g_varkeys_h, cdf_datah_keys)
-                return [gvar_listh, hfile[0]]
-            elif len(hfile) == 0:
+                return [gvar_listh, file_dict[h_type]]
+            else:  # collect error list
                 gvar_listh = self.variable_checks(variables_requested,
                                                   g_varkeys_h, [])
                 return [gvar_listh, '']
 
         # return list of variables available in chosen file type
-        def allfile_variables(self, h_type, g_varkeys_h, hx_files):
+        def allfile_variables(self, h_type, g_varkeys_h, file_dict):
             '''Return list of variables from desired file if file exists.
             Inputs:
                 - h_type is one of 'h2', 'h3', 'h4'.
                 - g_varkeysh is a list of variables names known to exist in the
                     given file type.
             '''
-            hfile = [file for file in hx_files if h_type in file]
-            if len(hfile) > 0:
-                cdf_datah = Dataset(hfile[0])
+            if h_type in file_dict.keys():
+                cdf_datah = Dataset(file_dict[h_type][0])
                 gvar_listh = [key for key, value in model_varnames.items()
                               if key in cdf_datah.variables.keys() and key in
                               g_varkeys_h]
                 cdf_datah.close()
-                return [gvar_listh, hfile[0]]
+                return [gvar_listh, file_dict[h_type]]
             else:
                 print(h_type + ' file missing. The following variables ' +
                       f'cannot be accessed: {g_varkeys_h}')
@@ -728,15 +697,21 @@ def MODEL():
 
         # define and register a 1D variable
         def register_1D_variable(self, varname, gridded_int):
-            """Registers a 3d interpolator with 3d signature"""
+            """Registers a 1d interpolator with 1d signature. Converts list of
+            cdf objects into a 1D array of values"""
 
             # define and register the interpolators
             coord_dict = {'time': {'units': 'hr', 'data': self._time}}
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
+            tmp = []
+            for cdf in self.variables[varname]['data']:
+                tmp.append(array(cdf)[0])  # single value per object
+            self.variables[varname]['data'] = array(tmp)
             self = RU.Functionalize_Dataset(self, coord_dict, varname,
                                             self.variables[varname],
-                                            gridded_int, coord_str)
+                                            gridded_int, coord_str,
+                                            interp_flag=0)  # single array
             return
 
         # define and register a 3D variable
@@ -757,15 +732,14 @@ def MODEL():
             # define and register the interpolators
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            self.variables[varname]['data'] = array(
-                self.variables[varname]['data'])
             self = RU.Functionalize_Dataset(self, coord_dict, varname,
                                             self.variables[varname],
-                                            gridded_int, coord_str)
+                                            gridded_int, coord_str,
+                                            interp_flag=1)  # series of t slice
             return
 
         # define and register a 4D variable
-        def register_4D_variable(self, varname, gridded_int, memory_check):
+        def register_4D_variable(self, varname, gridded_int):
             """Registers a 4d interpolator with 4d signature"""
 
             # determine coordinate variables by coord list
@@ -784,26 +758,10 @@ def MODEL():
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
             # need H functions to be gridded regardless of gridded_int value
-            if varname == 'H_geopot_ilev':  # pull entire array in
-                # This is faster for inversion than the time_interp method.
-                array_t0 = perf_counter()
-                self.variables[varname]['data'] = array(
-                    self.variables[varname]['data'])
-                print(f'Took {perf_counter()-array_t0}s to convert ' +
-                      'H_geopot_ilev to an array.')
-                self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                                self.variables[varname], True,
-                                                coord_str)
-            elif memory_check:  # if memory small....
-                self = RU.time_interp(self, coord_dict, varname,
-                                      self.variables[varname], gridded_int,
-                                      coord_str)
-            else:  # if enough memory, go for it
-                self.variables[varname]['data'] = array(
-                    self.variables[varname]['data'])
-                self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                                self.variables[varname],
-                                                gridded_int, coord_str)
+            h_grid = [True if varname=='H_geopot_ilev' else gridded_int][0]
+            self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                            self.variables[varname], h_grid,
+                                            coord_str, interp_flag=1)
 
             # create pressure level -> km function once per ilev type
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:

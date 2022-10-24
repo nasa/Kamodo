@@ -5,11 +5,13 @@ Created on Thu Oct  6 15:05:37 2022
 Data is already in netCDF4, but is too large to handle transposing and adding
     the neighboring time step to the arrays. Doing here.
 """
-from numpy import transpose, array, append, where, insert, median
+from numpy import array, append, where, insert, median, transpose
 from glob import glob
 from time import perf_counter
 from netCDF4 import Dataset
 from os.path import isfile
+import kamodo_ccmc.readers.reader_utilities as RU
+from kamodo import Kamodo
 
 # variable names to keep
 var_list = ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr', 'sol_tsi',
@@ -28,66 +30,53 @@ var_list = ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr', 'sol_tsi',
 def convert_all(file_dir):
     '''Get all data from last timestep of previous file. Finds first file
     and converts them all in order. The CCMC files have an open time at the
-    beginning, but the 1979 files have an open time at the end.'''
+    beginning, but the 1979 files have an open time at the end. Converts into
+    one file per time step with all coords in first file only.'''
 
     # find first file and associated files
-    print(f'Converting files found in {file_dir}. ', end="")
+    print(f'Converting new files found in {file_dir}. ', end="")
     t0 = perf_counter()
     files = sorted(glob(file_dir+'*.h1.*.nc'))
     
-    # check for time convention: open at beginning or end?
-    cdf_data = Dataset(files[0])
-    check_first = cdf_data['datesec'][0]
-    check_last = cdf_data['datesec'][-1]
-    print(array(cdf_data['datesec']))
-    cdf_data.close()
-    #cdf_data = Dataset(files[-1])
-    #print(array(cdf_data['datesec']))
-    #check_last = cdf_data['datesec'].shape[0]
-    #cdf_data.close()
-
     # collect file types/lists of each type
     file_dict = {}
     for n in [1, 2, 3, 4]:
         if isfile(files[0].replace('h1', 'h'+str(n))):
             file_dict['h'+str(n)] = sorted(glob(file_dir+'*.h'+str(n)+'.*.nc'))
-
-    # put in the right cycling order based on time convention
-    if check_first == check_last:
-        print('help!')
-        stop
-    elif check_last == 0:  # open time at beginning, go forwards (already good)
-        check_first = True  # cycle forwards
-    elif check_first == 0:  # open time at the end, go backwards
-        for key in file_dict.keys():
-            file_dict[key].reverse()
-        check_first = False  # cycle backwards
-    print('check_first:', check_first, check_last)
-    print('File order:', file_dict)
+            file_dict['h'+str(n)+'v2'] = []
 
     # convert files while adding a timestep from the previous, one type at a time
     for key in file_dict.keys():
-        out_dict, time_out = None, None
+        first_file = True  # write coords to file for first file only
         for file in file_dict[key]:
-            # convert next file with a time step from the previous file
+            # skip if already converted
+            file_pattern = file[:-8].replace(key, key+'v2')
+            files = sorted(glob(file_pattern+'*.nc'))
+            if len(files) > 0:
+                file_dict[key+'v2'].extend(files)
+                first_file = False
+                continue
             #try:
-            out_dict, time_out = convert_files(
-                    file, check_first, in_dict=out_dict, time_in=time_out)
+            convert_files(file, first_file)
+            first_file = False  # save space and don't write coords to file
+            new_files = sorted(glob(file_pattern+'*.nc'))
+            file_dict[key+'v2'].extend(new_files)
             #except:
-            #    return False
-            print('convert_all', time_out, out_dict.keys())
-
+            #    print('File conversion failed for', file)
+            #    return False, file_dict
+        if first_file:  # no new files found of pattern 'key'
+            print('No new files found of pattern', key)
+    for n in [1, 2, 3, 4]:
+        del file_dict['h'+str(n)]  # return only lists of hnv2 files
     print(f'Completed in {perf_counter()-t0}s.')
-    return True
+
+    return True, file_dict
 
 
-def convert_files(file, check_first, in_dict=None, time_in=None,
-                  verbose=False):
-    '''Loop through files and perform data wranging. This includes adding a
-    neighboring time step for each variable and transposing into the expected
-    coordinate order (time, lon, lat, ilev). This is too avoid performing
-    memory intensive calculations each time the reader is executed.
-    check_first = True if open time at beg, False if open at end.'''
+def convert_files(file, first_file):
+    '''Loop through files and perform data wranging. Split into one file per
+    timestep. The coordinates are only written to the first file to save space.
+    '''
 
     print('Converting', file)
     t_file = perf_counter()
@@ -96,84 +85,35 @@ def convert_files(file, check_first, in_dict=None, time_in=None,
     for n in [1, 2, 3, 4]:
         if '.h'+str(n)+'.' in file:
             new_file = file.replace('.h'+str(n)+'.', '.h'+str(n)+'v2.')
-            h0_file = file.replace('.h'+str(n)+'.', '.h0v2.')
 
     # too memory intensive to wrangle as a whole
     # try having both in and out files open
     cdf_data = Dataset(file)
     # get variable list set up
-    cdf_list = ['datesec'] + [key for key in cdf_data.variables.keys()
-                              if key in var_list]
-    if 'Z3' in cdf_list:
-        cdf_list.remove('Z3')
-        cdf_list = ['Z3'] + cdf_list  # do Z3 before others if memory fails
-
-        # perform km averaging and write to h0 file
-        # retrieve variable and calculate the median height
-        km_time = perf_counter()
-        datatype = cdf_data.variables['Z3'].datatype
-        height = array(cdf_data.variables['Z3'])
-        km = median(array(height), axis=[0, 2, 3])/1000.  # time, ilev, lat, lon
-    
-        # save in a netCDF4 file with the name h0
-        data_out = Dataset(h0_file, 'w', format='NETCDF3_64BIT_OFFSET')
-        data_out.model = 'WACCM-X'
-        new_dim = data_out.createDimension('km_ilev', len(km))
-        new_var = data_out.createVariable('km_ilev', datatype,
-                                          tuple(['km_ilev']))
-        new_var[:] = km
-        data_out.close()
-        print(f'Height inversion grid calculated in {perf_counter()-km_time}s.')
-    if 'RHO_CLUBB' in cdf_list:
-        cdf_list.remove('RHO_CLUBB')
-        cdf_list.insert(0, 'RHO_CLUBB')  # do first
+    cdf_list = [key for key in cdf_data.variables.keys() if key in var_list]
     print(cdf_list)
 
-    # send to next file if only one timestep
-    if cdf_data.variables['time'].shape[0] == 1:  # just send to next file
-        time_out = array(cdf_data.variables['time'])
-        print('One time value detected.')
-
-        # loop through variables
-        out_dict = {var: array(cdf_data.variables[var]) for var in
-                    cdf_list}  # output single time as input time for next
-        if 'datesec' in out_dict.keys():
-            print('datesec before', out_dict['datesec'])
-        #if 'datesec' in out_dict.keys() and check_first:  don't need to change b/c already zero!
-            #out_dict['datesec'] -= 86400
-        if 'datesec' in out_dict.keys() and not check_first:
-            out_dict['datesec'] += 86400
-        if 'datesec' in out_dict.keys():
-            print('datesec after', out_dict['datesec'])
-
-    # perform data wrangling and save to a new file
-    else:
+    # perform data wrangling and save to one file per timestep
+    # save coords for ilev interpolation later
+    time = array(cdf_data.variables['time'])  # hrs since Jan 1, 1979 at 12am.
+    datesec = array(cdf_data.variables['datesec'])  # seconds since midnight
+    coord_dict = {'lon': {'data': [], 'units': 'deg'},
+                  'lat': {'data': [], 'units': 'deg'},
+                  'ilev': {'data': [], 'units': 'm/m'}}
+    lev = array(cdf_data.variables['lev'])
+    for t in range(len(time)):
         # format needed to allow for large files
-        data_out = Dataset(new_file, 'w', format='NETCDF3_64BIT_OFFSET')
-
+        t_counter = perf_counter()
+        time_filename = new_file[:-8] + str(f'{datesec[t]:05}') + '.nc'
+        data_out = Dataset(time_filename, 'w', format='NETCDF3_64BIT_OFFSET')
+        
         # loop through dimensions
         for dim in cdf_data.dimensions.keys():
             if dim == 'nbnd' or dim == 'chars':
                 continue  # skip these dimensions
             tmp = array(cdf_data.variables[dim])
-            # add time at beginning, save last time for output
-            if dim == 'time':
-                if check_first:
-                    time_out = tmp[-1]
-                else:
-                    time_out = tmp[0]
-                print('time_out:', time_out)
-                print('time_in:', time_in)
-                if time_in != None and check_first:  # add time at beg
-                    out = insert(tmp, 0, time_in)
-                    print('new time')
-                elif time_in != None and not check_first:  # at end
-                    out = insert(tmp, len(tmp), time_in)
-                    print('new time')
-                else:
-                    out = tmp
             # prep for longitude wrapping
-            elif (dim == 'lon'):
+            if (dim == 'lon'):
                 lon_le180 = list(where(tmp <= 180)[0])
                 lon_ge180 = list(where(tmp >= 180)[0])  # repeat 180 for -180 values
                 out = append(tmp, 360.) - 180.
@@ -182,160 +122,85 @@ def convert_files(file, check_first, in_dict=None, time_in=None,
                 out = append(tmp, 180.)
             else: # loop through other dimensions without changing anything
                 out = tmp
-            print(dim, len(out), ', ')
-            if dim == 'time':  # use unlimited length for time to save memory
-                new_dim = data_out.createDimension(dim, None)
-                len_time = len(out)
+            if dim in coord_dict.keys():
+                coord_dict[dim]['data'] = out
+            if t == 0:
+                print(dim, len(out), ', ')
+            if dim == 'time':  # use one time per file
+                new_dim = data_out.createDimension(dim, 1)
+                new_var = data_out.createVariable(
+                    dim, cdf_data.variables[dim].datatype, (dim, ))
+                new_var[:] = time[t]
             else:
                 new_dim = data_out.createDimension(dim, len(out))
-            new_var = data_out.createVariable(
-                dim, cdf_data.variables[dim].datatype, (dim, ))
-            new_var[:] = out
-        time_dim = perf_counter()
-        print(f'Dimensions complete in {time_dim-t_file}s.')
-            
+                if first_file:  # only write coords for first file.
+                    new_var = data_out.createVariable(
+                        dim, cdf_data.variables[dim].datatype, (dim, ))
+                    new_var[:] = out
+    
         # loop through variables
-        out_dict = {}
         for var in cdf_list:
             var_start = perf_counter()
-            print(f'Converting {var}', end="")
             dim_list = cdf_data.variables[var].dimensions
-            print(f'{dim_list}...', end="")
+            datatype = cdf_data.variables[var].datatype
+            # (ilev,) lat/mlat, lon/mlon -> lon/mlon, lat/mlat, (ilev)
+            tmp = array(cdf_data.variables[var][t]).T  # also fine for 1D
             if len(dim_list) < 4:
-                variable = array(cdf_data.variables[var])
-                # set output aside BEFORE data wrangling
-                if check_first:
-                    # deal with time grid (seconds since midnight)
-                    if var == 'datesec':  # open at beg
-                        print('before', variable[-1], end="")
-                        out_dict[var] = variable[-1]  # sec since 12am, already zero!
-                        variable[-1] += 86400  # need to be at end of day, not zero
-                        print('after', out_dict[var], end="")
-                    else:
-                        out_dict[var] = variable[-1]  # save last time for output
-                else:
-                    if var == 'datesec':  # open at end
-                        print('before', variable[0], end="")
-                        out_dict[var] = variable[0] + 86400  # sec since 12am
-                        print('after', out_dict[var], end="")
-                    else:
-                        out_dict[var] = variable[0]  # save first time for output
-    
-                # add data from earlier/later file
-                if in_dict != None:  
-                    if var == 'datesec':
-                        print('before', variable, in_dict[var])
-                    if check_first:
-                        variable = insert(variable, 0, in_dict[var], axis=0)
-                        print('earlier time added...', end="")
-                    else:
-                        variable = insert(variable, variable.shape[0],
-                                          in_dict[var], axis=0)
-                        print('later time added...', end="")
-                    if var == 'datesec':
-                        print('after', variable)
-
-                # time, lat/mlat, lon/mlon -> time, lon/mlon, lat/mlat
                 if len(dim_list) == 3:
                     # wrap and shift in longitude, different for mlon!
                     if 'mlon' in dim_list:  # only wrap and don't shift
-                        tmp = insert(variable, variable.shape[-1],
-                                     variable[:, :, 0], axis=2)
+                        variable = insert(tmp, tmp.shape[0],
+                                     tmp[0], axis=0)
                     else:  # use normal longitude shifting and wrapping
-                        tmp = variable[:, :, lon_ge180+lon_le180]
-                    variable = transpose(tmp, (0, 2, 1))
+                        variable = tmp[lon_ge180+lon_le180]
                     new_dims = tuple([dim_list[0], dim_list[2], dim_list[1]])
                 else:  # nothing special needed for time series data, just copy
                     new_dims = tuple(dim_list)
-                
-                # write variable to file
-                new_var = data_out.createVariable(
-                    var, cdf_data.variables[var].datatype, new_dims)
-                new_var[:] = variable
-                
-            # loop through time for 4D to save memory
+                    variable = tmp
             elif len(dim_list) == 4:
-                # set output aside BEFORE data wrangling
-                cdf_var = cdf_data.variables[var]  # do NOT convert to array yet
-                if check_first:
-                    out_dict[var] = array(cdf_var[-1])  # save last time
-                else:
-                    out_dict[var] = array(cdf_var[0])  # save first time
-
-                # initialize file output variable before time looping
                 # (time,) ilev, lat, lon -> (time,) lon, lat, ilev
                 new_dims = tuple([dim_list[0], dim_list[3], dim_list[2],
                                  dim_list[1]])
-                new_var = data_out.createVariable(
-                    var, cdf_data.variables[var].datatype, new_dims)
+                # wrap and shift in longitude (all 4D variables)
+                variable = tmp[lon_ge180+lon_le180]
+            
+            # write data for time step to file
+            new_var = data_out.createVariable(var, datatype, new_dims)
+            new_var[:] = variable
 
-                # move copied time data to file first, set iterators
-                if in_dict != None:
-                    # wrap and shift in longitude (all 4D variables)
-                    tmp = in_dict[var][:, :, lon_ge180+lon_le180]
-                    variable = transpose(tmp, (2, 1, 0))
-                    if check_first:
-                        new_var[0] = variable
-                        t_range = range(1, len_time)
-                    else:
-                        new_var[len_time-1] = variable
-                        t_range = range(0, len_time-1)
-                    cdf_range = range(0, len_time-1)  # added time not in file
-                else:
-                    cdf_range, t_range = range(0, len_time), range(0, len_time)
-
-                # loop through time dimension and copy over to new file
-                for i, j in zip(cdf_range, t_range):
-                    # wrap and shift in longitude (all 4D variables)
-                    tmp = array(cdf_var[i])[:, :, lon_ge180+lon_le180]
-                    variable = transpose(tmp, (2, 1, 0))
-                    new_var[j] = variable
+            # calculate km_ilev grid and store as km_ilev
+            if var == 'Z3':
+                # retrieve variable and calculate the median height
+                km = median(variable, axis=[0, 1])/1000.  # lon, lat, ilev
+                new_dim = data_out.createDimension('km_ilev', len(km))
+                new_var = data_out.createVariable('km_ilev', datatype,
+                                                  tuple(['km_ilev']))
+                new_var[:] = km
 
             # perform ilev -> lev interpolation for air density
             if var == 'RHO_CLUBB':  # convert from ilev grid to lev grid
-                # prepare variables for the gridify decorator, one per time
-                lev = array(data_out.variables['lev'])
-                coord_dict = {'lon': {'data': array(data_out.variables['lon']),
-                                      'units': 'deg'},
-                              'lat': {'data': array(data_out.variables['lat']),
-                                      'units': 'deg'},
-                              'ilev': {
-                                  'data': array(data_out.variables['ilev']),
-                                  'units': 'm/m'}}
+                # initialize new variable in output file
+                new_dims = tuple([dim_list[0], dim_list[3], dim_list[2],
+                                  'lev'])
+                new_var = data_out.createVariable(var+'_lev', datatype,
+                                                  new_dims)
 
-                # initialize object for a gridded interpolator
-                from kamodo import Kamodo
+                # initialize object for a gridded interpolator and create
                 ko = Kamodo()
                 ko.variables, ko._registered = {}, 0
                 ko.variables['rho_ilev'] = {'units': 'kg/m**3'}
-                import kamodo_ccmc.readers.reader_utilities as RU
-
-                # initialize new variable in output file
-                rho_dims = tuple([dim_list[0], dim_list[3], dim_list[2],
-                                  'lev'])
-                new_var_lev = data_out.createVariable(
-                    var+'_lev', cdf_data.variables[var].datatype, rho_dims)
-                
-                for i in range(len_time):
-                    # copy over array (+ added time) into dict
-                    rho_dict = {'data': array(new_var[i]), 'units': 'kg/m**3'}
-                    ko = RU.Functionalize_Dataset(ko, coord_dict, 'rho_ilev',
-                                                  rho_dict, True, 'GDZsph')
-                    # interpolate onto lev grid and save
-                    print(f'\nInterpolating for time number {i} out of ' +
-                          f'{len_time}')
-                    new_var_lev[i] = ko.rho_ilev_ijk(ilev=lev)
-                    del ko['rho_ilev_ijk'], ko['rho_ilev']
-                # clean memory before continuing
-                del ko, rho_dims, rho_dict, coord_dict, lev
-                new_var_lev = None
-            var_end = perf_counter()
-            print(f'done in {var_end-var_start}s.')
-        cdf_data.close()
-        data_out.close()
-        del cdf_data
-        del data_out
-        print(f'{file} converted in {perf_counter()-t_file}s.\n')
+                ko = RU.Functionalize_Dataset(ko, coord_dict, 'rho_ilev',
+                                              {'data': variable, 'units':
+                                               'kg/m**3'}, True, 'GDZsph')
+                # interpolate onto lev grid and save
+                new_data = transpose(ko.rho_ilev_ijk(ilev=lev), axes=(1, 0, 2))
+                new_var[:] = new_data
+                del ko  # clean memory before continuing
+        data_out.close()  # close per time step
+        print(f'Time {t} out of {len(time)} times done in ' +
+              f'{perf_counter()-t_counter}s.')
+    cdf_data.close()
+    print(f'{file} converted in {perf_counter()-t_file}s.\n')
     
     # all done. return.
-    return out_dict, time_out
+    return None
