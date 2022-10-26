@@ -28,6 +28,7 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev):
         the interpolated pressure level is returned.'''
         # interpolate for all ilev values
         km_vals = h_func(**{'time': t, 'lon': lon, 'lat': lat})/1000.  # km
+        print(t, lon, lat, km)
         km_interp = interp1d(km_vals, ilev, bounds_error=False, fill_value=NaN)
         return km_interp(km)
 

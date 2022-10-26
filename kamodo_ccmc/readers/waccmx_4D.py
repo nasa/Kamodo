@@ -351,11 +351,9 @@ def ts_to_hrs(time_val, filedate):
 def MODEL():
 
     from kamodo import Kamodo
-    from netCDF4 import Dataset
-    from os.path import isfile, basename, getsize
     from glob import glob
-    import psutil  # for memory vs file size comparison
-    from numpy import array, NaN, zeros, diff, median
+    from netCDF4 import Dataset
+    from numpy import array, NaN, zeros, diff, median, squeeze
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
     from waccmx_tocdf import convert_all
@@ -365,12 +363,9 @@ def MODEL():
         '''WACCM-X model data reader.
 
         Inputs:
-            full_filenameh1: a string representing the file pattern of the
+            file_dir: a string representing the file directory of the
                 model output data.
-                Note: This reader takes the full filename of the 3D output
-                file, typically of the naming convention
-                file_dir + '....h1v2.....nc' or file_dir+'....h1.....nc'
-                (E.g. ftest.FXHIST.f19_f19_mg16.001.cam.h1.1979-01-04-00000.nc)
+                Note: This reader 'walks' the entire dataset in the directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
@@ -422,26 +417,30 @@ def MODEL():
             self.conversion_test, file_dict = convert_all(file_dir)
             if not self.conversion_test:
                 return
-            self.filename = ''.join([file+',' for key, file in
-                                     file_dict.items()])[:-1]
+            file_list = []
+            for key, files in file_dict.items():
+                file_list.extend(files)
+            self.filename = ''.join([f+',' for f in file_list])[:-1]
 
             # establish time attributes first, one value per file
-            date, datesec, time = [], [], []
-            for file in file_dict['h1v2']:
-                cdf_data = Dataset(file)
-                date.append(array(cdf_data.variables['time'])[0])
-                datesec.append(array(cdf_data.variables['datesec'])[0])
-                cdf_data.close()
-            date = array(date)  # date is in days since 1979-01-01 00:00:00
-            datesec = array(datesec)  # seconds since midnight on same day
+            # different time grids in diff file patterns
+            for key in file_dict.keys():
+                date, datesec, time = [], [], []
+                for file in file_dict[key]:
+                    cdf_data = Dataset(file)
+                    date.append(array(cdf_data.variables['time'])[0])
+                    datesec.append(array(cdf_data.variables['datesec'])[0])
+                    cdf_data.close()
+                date = array(date)  # date is in days since 1979-01-01 00:00:00
+                datesec = array(datesec)  # seconds since midnight on same day
+                date -= int(date.min())  # reset to be from beginning of run
+                for i in range(len(date)):
+                    time.append(int(date[i])*24. + datesec[i]/3600.)  # hrs
+                setattr(self, '_time_'+key, array(time))
+            self._time = self._time_h1v2  # set default as time from h1 files
             # datetime object for midnight on date
             self.filedate = datetime(1979, 1, 1, tzinfo=timezone.utc) +\
                 timedelta(days=int(date[0]))
-            date -= int(date.min())  # reset to be from beginning of run
-            for i in len(date):
-                time.append(int(date[i])*24. + datesec[i]/3600.)  # hrs
-                print(date[i], datesec[i], time[i])
-            self._time = array(time)
             # strings with timezone info chopped off (UTC anyway).
             # Format: ‘YYYY-MM-DD HH:MM:SS’
             self.datetimes = [
@@ -504,16 +503,14 @@ def MODEL():
                 # collect lists per file type
                 for key in gvar_keys.keys():
                     self.gvar_dict[key] = self.allfile_variables(
-                        key, gvar_keys[key], file_dict[key][0])
+                        key, gvar_keys[key], file_dict)
                     gvar_list += self.gvar_dict[key][0]
-                    print(gvar_list)
 
                 # returns list of variables included in data files
                 if not fulltime and variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in
                                      gvar_list}
-                    print(self.var_dict)
                     # add non-ilev versions of the variables in the files
                     key_list = list(self.var_dict.keys())
                     for var_key in key_list:
@@ -531,11 +528,28 @@ def MODEL():
                                 model_varnames[model_key][1:]
                     return
 
-            # store data for each variable desired
-            # need to leave files open
+            # store data for each variable desired and all coordinate grids
+            # need to leave files open for variable data
             variables, km = {}, None
-            for t in len(self._time):  # collect time slices in a list
-                for key in file_dict.keys():
+            for key in file_dict.keys():
+                # collect dimensions from first file
+                time = getattr(self, '_time_'+key)  # time already calculated
+                cdf_datah = Dataset(file_dict[key][0])
+                for dim in cdf_datah.dimensions.keys():
+                    if dim == 'ilev':
+                        name = 'ilev1'
+                    elif dim == 'lev':
+                        name = 'ilev'
+                    elif dim == 'time':
+                        continue  # time already calculated, don't overwrite
+                    else:
+                        name = dim
+                    setattr(self, '_'+name+'_'+key,
+                            array(cdf_datah.variables[dim]))
+                cdf_datah.close()  # close for dimensions data since now arrays
+                
+                # collect data from all files
+                for t in range(len(time)):
                     cdf_datah = Dataset(file_dict[key][t])  # single time step
                     if 'Z3' in self.gvar_dict[key][0]:  # file variable names
                         if t == 0:  # get km_ilev grid (diff for each time)
@@ -548,41 +562,23 @@ def MODEL():
                                 'units': model_varnames[var][-1],
                                 'data': [cdf_datah.variables[var]]}
                         else:
+                            if var == 'Z3':
+                                continue  # skip in favor of chunked version
                             variables[model_varnames[var][0]]['data'].append(
                                 cdf_datah.variables[var])
-            self._km_ilev = median(array(km), axis=1)  # median of time axis
+            self._km_ilev = median(array(km), axis=0)  # median of time axis
 
-            # retrieve dimensional grid from first h1 file
-            cdf_data = Dataset(file_dict['h1v2'][0], 'r')
-            self._lon = array(cdf_data.variables['lon'])  # -180 to 180
-            self._lat = array(cdf_data.variables['lat'])
-            # primary pressure level coordinate
-            ilev_check = [value[0] for key, value in model_varnames.items()
-                          if key in gvar_list and value[5][-1] == 'ilev']
-            if len(ilev_check) > 0:
-                self._ilev = array(cdf_data.variables['lev'])
-            # secondary pressure level coordinate
-            ilev1_check = [value[0] for key, value in model_varnames.items()
-                          if key in gvar_list and value[5][-1] == 'ilev1']
-            if len(ilev1_check) > 0:
-                self._ilev1 = array(cdf_data.variables['ilev'])    
-            # magnetic longitude and latitude
-            precheck = {value[0]:value[5] for key, value in
-                        model_varnames.items() if key in gvar_list and
-                        len(value[5]) == 3}  # mlon only occurs for time + 2D
-            mlon_check = [key for key, value in precheck.items() if
-                          value[1] == 'mlon']
-            if len(mlon_check) > 0:
-                if 'mlon' in cdf_data.variables.keys():
-                    self._mlon = array(cdf_data.variables['mlon'])
-                    self._mlat = array(cdf_data.variables['mlat'])
-                else:  # use h2 file
-                    cdf_data.close()  # close h1 file
-                    next_key = list(file_dict.keys())[1]
-                    cdf_data = Dataset(file_dict[next_key][0])  # h2/h3 file
-                    self._mlon = array(cdf_data.variables['mlon'])
-                    self._mlat = array(cdf_data.variables['mlat'])
-            cdf_data.close()   # close netCDF4 file
+            # collect chunked H_ilev function from h0v2 files
+            h0_files = sorted(glob(file_dir+'*.h0v2.*.nc'))
+            # does this stay open?
+            variables['H_geopot_ilev']['data'] = [Dataset(f).variables['Z3']
+                                                  for f in h0_files]
+            self.start_idx = [0]
+            for f in h0_files:  # determine starting indices of each time chunk
+                c = Dataset(f)
+                self.start_idx.append(self.start_idx[-1] +
+                                      len(c.variables['time'].shape[0]))
+                c.close()
 
             # store a few items
             self.missing_value = NaN
@@ -605,16 +601,14 @@ def MODEL():
                 self.variables[varname] = dict(
                     units=variables[varname]['units'],
                     data=variables[varname]['data'])
+                # determine which time grid applies, preferring h1 files
+                for key in self.gvar_dict.keys():
+                    gvar = [key for key, value in model_varnames.items() if
+                            value[0] == varname][0]
+                    if gvar in self.gvar_dict[key][0]:
+                        break
                 # register the variables
-                if len(variables[varname]['data'].shape) == 1:  # time series
-                    print('1D:', varname, perf_counter()-t0)
-                    self.register_1D_variable(varname, gridded_int) 
-                elif len(variables[varname]['data'].shape) == 3:  # time + 2D
-                    print('3D:', varname, perf_counter()-t0)
-                    self.register_3D_variable(varname, gridded_int)
-                elif len(variables[varname]['data'].shape) == 4:  # time + 3D
-                    print('4D:', varname, perf_counter()-t0)
-                    self.register_4D_variable(varname, gridded_int) 
+                self.register_variable(varname, gridded_int, key) 
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -691,95 +685,80 @@ def MODEL():
                 cdf_datah.close()
                 return [gvar_listh, file_dict[h_type]]
             else:
-                print(h_type + ' file missing. The following variables ' +
-                      f'cannot be accessed: {g_varkeys_h}')
+                #print(h_type + ' file missing. The following variables ' +
+                #      f'cannot be accessed: {g_varkeys_h}')
                 return [[], '']
 
-        # define and register a 1D variable
-        def register_1D_variable(self, varname, gridded_int):
-            """Registers a 1d interpolator with 1d signature. Converts list of
-            cdf objects into a 1D array of values"""
-
-            # define and register the interpolators
-            coord_dict = {'time': {'units': 'hr', 'data': self._time}}
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
-            tmp = []
-            for cdf in self.variables[varname]['data']:
-                tmp.append(array(cdf)[0])  # single value per object
-            self.variables[varname]['data'] = array(tmp)
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str,
-                                            interp_flag=0)  # single array
-            return
-
-        # define and register a 3D variable
-        def register_3D_variable(self, varname, gridded_int):
-            """Registers a 3d interpolator with 3d signature"""
-
-            # determine coordinate variables and xvec by coord list
-            coord_list = [value[5] for key, value in model_varnames.items()
+        # dimension agnostic registration
+        def register_variable(self, varname, gridded_int, key):
+            '''Registers and functionalizes the dataset. Converts to a 1D
+            numpy array for time series data.'''
+            
+            # create the coordinate dictionary
+            coord_list = [value[-2] for key, value in model_varnames.items()
                           if value[0] == varname][0]
-            coord_dict = {'time': {'units': 'hr', 'data': self._time}}
-            if 'lat' in coord_list:   # 3D variables come from neutral file
-                coord_dict['lon'] = {'units': 'deg', 'data': self._lon}
-                coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
-            if 'mlat' in coord_list:
-                coord_dict['mlon'] = {'units': 'deg', 'data': self._mlon}
-                coord_dict['mlat'] = {'units': 'deg', 'data': self._mlat}
-
-            # define and register the interpolators
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str,
-                                            interp_flag=1)  # series of t slice
-            return
+            coord_dict = {'time': {'units': 'hr', 'data':
+                                   getattr(self, '_time_'+key)}}
+            if len(coord_list) == 1:  # convert 1D to array and functionalize
+                tmp = []
+                for cdf in self.variables[varname]['data']:
+                    tmp.append(array(cdf)[0])  # single value per object
+                self.variables[varname]['data'] = array(tmp)
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str,
+                                                interp_flag=0)  # single array
+                return
+            for coord in coord_list[1:]:
+                coord_dict[coord] = {'data': getattr(self,
+                                                     '_'+coord+'_'+key)}
+                if coord in ['lat', 'lon', 'mlon', 'mlat']:
+                    coord_dict[coord]['units'] = 'deg'
+                if coord in ['ilev', 'ilev1']:
+                    coord_dict[coord]['units'] = 'hPa'
 
-        # define and register a 4D variable
-        def register_4D_variable(self, varname, gridded_int):
-            """Registers a 4d interpolator with 4d signature"""
-
-            # determine coordinate variables by coord list
-            coord_list = [value[5] for key, value in model_varnames.items()
-                          if value[0] == varname][0]
-            coord_dict = {'time': {'units': 'hr', 'data': self._time},
-                          'lon': {'units': 'deg', 'data': self._lon},
-                          'lat': {'units': 'deg', 'data': self._lat}}
-            # both pressure level grids are present, just not both H functions
-            if 'ilev1' in coord_list and hasattr(self, '_ilev1'):
-                coord_dict['ilev1'] = {'units': 'hPa', 'data': self._ilev1}
-            if 'ilev' in coord_list and hasattr(self, '_ilev'):
-                coord_dict['ilev'] = {'units': 'hPa', 'data': self._ilev}
-
-            # define and register the fast interpolator
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
-            # need H functions to be gridded regardless of gridded_int value
-            h_grid = [True if varname=='H_geopot_ilev' else gridded_int][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname], h_grid,
-                                            coord_str, interp_flag=1)
+            if varname != 'H_geopot_ilev':
+                # determine the operation to occur on each time slice
+                def func(cdf_data_object):
+                    tmp = array(cdf_data_object)
+                    return squeeze(tmp)
+    
+                # functionalize the 3D or 4D dataset, series of time slices
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str,
+                                                interp_flag=1, func=func)
+            else:
+                # function composition is too slow on top of a sliced interp
+                # using chunked H_geopot_ilev instead
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str,
+                                                interp_flag=2,
+                                                start_idx=self.start_idx)
+                
+            if len(coord_list) < 4:  # remaining logic is for 4D data.
+                return
 
             # create pressure level -> km function once per ilev type
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:
                 if varname == 'H_geopot_ilev' and hasattr(self, '_km_ilev'):
                     t_invert = perf_counter()  # create custom interp
-                    print('Inverting H(ilev) function for grid shape '+
-                          f"{self.variables[varname]['data'].shape}...", end="")
-                    new_varname = 'P'+coord_list[-1][1:]
+                    print('Inverting H(ilev) function ...', end="")
+                    new_varname = 'Plev'  # only one possible
                     # Import and call custom interpolator
                     from waccmx_ilevinterp import PLevelInterp
                     interpolator, interp_ijk = PLevelInterp(
-                        self['H_geopot_ilev_ijk'], self._time, self._lon,
-                        self._lat, self._ilev)
+                        self['H_geopot_ilev_ijk'], coord_dict['time']['data'],
+                        coord_dict['lon']['data'], coord_dict['lat']['data'],
+                        coord_dict['ilev']['data'])
                     units = 'hPa'
                     print(f'done in {perf_counter()-t_invert} s.')
                 elif varname != 'H_geopot_ilev':  # define by function composition
                     new_varname = varname.split('_ilev')[0]
-                    interpolator = varname+'(P'+coord_list[-1][1:]+')'
+                    interpolator = varname+'(Plev)'
                     units = self.variables[varname]['units']
 
                 # Register in kamodo object

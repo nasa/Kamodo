@@ -296,31 +296,25 @@ def time_interp(coord_dict, data_dict, func=None):
     return interp
 
 
-def multitime_interp(coord_dict, data_dict, start_idx, func=None):
+def multitime_interp(coord_dict, data_dict, start_times, func):
     '''Create a functionalized interpolator by splitting into timesteps.
     Inputs:
         coord_dict: a dictionary containing the coordinate information.
             {'name_of_coord1': {'units': 'coord1_units', 'data': coord1_data},
              'name_of_coord2': {'units': 'coord2_units', 'data': coord2_data},
-             etc...}
+             etc...}  # time not given
             coordX_data should be a 1D array. All others should be strings.
         data_dict: a dictionary containing the data information.
-            {'units': 'data_units', 'data': data_array}
+            {'units': 'data_units', 'data': empty}
             data_array should have the same shape as (c1, c2, c3, ..., cN)
             Note: The dataset must also depend upon ALL of the coordinate
                 arrays given.
-        start_idx: a list of indices indicating the position of the start times
-            for each data chunk in the time grid (coord_dict['time']['data']).
-            The length of start_idx should be one longer than the number of
-            chunks, with the last value equal to the length of the time grid.
-            Interpolation between time chunks is taken care of by appending
+        start_times: the start times of each file in the file_dir.
+            Interpolation between time chunks should be taken care of by appending
             the first time slice of the next time chunk to the end of the
             current time chunk (see func description).
         func: a function defining the logic to be executed on a given time
-            slice after converting to an array (e.g. transposing an array).
-            The logic in this routine separately converts each time chunk into
-            an array while preparing the data for interpolation between time
-            chunks. Default is to do nothing (e.g. func=None).
+            chunk, including retrieving the data from the file.
 
     Output: A time-chunked lazy interpolator.
     '''
@@ -334,46 +328,35 @@ def multitime_interp(coord_dict, data_dict, start_idx, func=None):
 
     # split the coord_dict into data and units, initialize variables/func
     coord_list = [value['data'] for key, value in coord_dict.items()]  # list of arrays
-    start_times = coord_list[0][start_idx[:-1]]
     idx_map, time_interps = [], []  # initialize variables
-    if func == None:  # define the default operation
-        def func(array_object):
-            return array_object
 
     # define method for how to add time chunks to memory
     def add_timeinterp(i):
         idx_map.append(i)
         # set up to interpolate between time chunks
         if i < len(start_times)-1:  # append 1st time slice from next chunk
-            data = append(array(data_dict['data'][i]),
-                         [array(data_dict['data'][i+1][0])], axis=0)
+            data, time = func([i, i+1])
         else:
-            data = array(data_dict['data'][i])  # at the end, so take as is
-        start_i, end_i = start_idx[i], start_idx[i+1]  # indices for time chunk
+            data, time = func([i])
         if len(coord_list) > 1:
-            coord_list_i = [coord_list[0][start_i:end_i]] + [*coord_list[1:]]
-
-            time_interps.append(rgiND(coord_list_i, func(data),
+            coord_list_i = [time] + coord_list
+            time_interps.append(rgiND(coord_list_i, data,
                                       bounds_error=False, fill_value=NaN))
         else:  # has to be different for time series data
-            time_interps.append(rgi1D(coord_list[0][start_i:end_i],
-                                      func(data_dict['data'][i]),
-                                      bounds_error=False, fill_value=NaN))
+            time_interps.append(rgi1D(time, data, bounds_error=False,
+                                      fill_value=NaN))
         return time_interps, idx_map
     
     @vectorize
-    def interp_i(*args, time_interps=time_interps,
-                 idx_map=idx_map):
+    def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
 
         position = [*args]  # time coordinate value must be first
         # get location of interpolator
         idx = sorted(append(start_times, position[0])).index(position[0])
-        if idx > 0 and idx < len(start_times)-1:  # middle somewhere
-            i = idx-1
-        elif idx == 0:  # beginning
-            i = 0
-        elif idx == len(start_times)-1:  # at end
-            i = len(start_times)-1
+        if idx == 0:
+            i = 0  # beg of first file
+        else:
+            i = idx - 1  # somewhere else
 
         # Interpolate values for chosen time chunk
         if i not in idx_map:
@@ -393,7 +376,10 @@ def multitime_interp(coord_dict, data_dict, start_idx, func=None):
                     del idx_map[-1], time_interps[-1]
                 time_interps, idx_map = add_timeinterp(i)             
         interp_location = idx_map.index(i)
-        return time_interps[interp_location](*position)  # single time chunk
+        #print(time_interps[interp_location])
+        #print(*position)
+        #print(time_interps[interp_location](position))
+        return time_interps[interp_location](position)  # single time chunk
 
     def interp(xvec):
         return interp_i(*array(xvec).T)

@@ -2,6 +2,7 @@
 Written by Rebecca Ringuette, 2021
 '''
 from datetime import datetime, timedelta, timezone
+from numpy import vectorize
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {'Ne': ['N_e', 'electron number density',
@@ -53,6 +54,23 @@ def ts_to_hrs(time_val, filedate):
             filedate).total_seconds()/3600.
 
 
+@vectorize
+def hrs_to_str(hrs, filedate):
+    '''Convert hrs since midnight of first day to a string for the file list
+    of format "Date: YYYY-MM-DD  Time: HH:MM:SS".'''
+    return datetime.strftime(filedate + timedelta(hours=hrs),
+                             '  Date: %Y-%m-%d  Time: %H:%M:%S')
+
+
+@vectorize
+def str_t_hrs(dt_str, filedate):
+    '''Convert datetime string of format "YYYY-MM-DD HH:MM:SS" to hrs since
+    midnight of filedate.'''
+    tmp = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S').replace(
+        tzinfo=timezone.utc)
+    return (tmp - filedate).total_seconds()/3600.
+
+
 # times from file converted to seconds since midnight of filedate
 # plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
 # filedate is self.filedate from iri object
@@ -61,23 +79,20 @@ def MODEL():
 
     from kamodo import Kamodo
     from netCDF4 import Dataset
-    from os.path import basename
-    from numpy import array, transpose, NaN, unique, append, zeros, abs, diff
-    from numpy import where
+    from glob import glob
+    from os.path import basename, isfile
+    from numpy import array, transpose, NaN, unique, diff
+    from numpy import where, append
     from time import perf_counter
-    import kamodo_ccmc.readers.reader_utilities as RU
+    from kamodo_ccmc.readers.reader_utilities import Functionalize_Dataset
 
     class MODEL(Kamodo):
         '''IRI model data reader.
 
         Inputs:
-            full_filename3d: a string representing the file pattern of the
+            file_dir: a string representing the file directory of the
                 model output data.
-                Note: This reader takes the full filename of the 3D output
-                file, typically of the naming convention
-                file_dir+'IRI.3D.YYYYDDD.nc',
-                where YYYY is the four digit year and DDD is the three digit
-                day of year (e.g. 2017148 for May 28, 2017).
+                Note: This reader 'walks' the entire dataset in the directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
@@ -118,48 +133,87 @@ def MODEL():
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
         '''
-        def __init__(self, full_filename3d, variables_requested=[],
+        def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
                      fulltime=True, verbose=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'IRI'
             t0 = perf_counter()
 
-            # collect filenames
-            filename = basename(full_filename3d)
-            file_dir = full_filename3d.split(filename)[0]
-            if '.2D.' in filename:  # require that input filename be 3D file
-                full_filename2d = full_filename3d
-                # can't replace in place
-                f = full_filename3d.replace('.2D.', '.3D.')
-                full_filename3d = f
-            else:
-                full_filename2d = full_filename3d.replace('.3D.', '.2D.')
-            self.filename = full_filename3d + ',' + full_filename2d
+            # first, check for file list, create if DNE
+            time_file = file_dir + 'IRI_list.txt'
+            self.start_times, self.pattern_files = {}, {}
+            if not isfile(time_file):
+                # collect filenames
+                files = sorted(glob(file_dir+'*.nc'))
+                patterns = unique([f[:-10] for f in files])  # ...2D, ...3D
+                self.filename = ''.join([f+',' for f in files])[:-1]
+                time = {}
+    
+                # establish time attributes, using 3D time as default
+                for p in patterns:
+                    # get list of files to loop through later
+                    pattern_files = sorted(glob(p+'*.nc'))
+                    good_pattern = basename(p)[:-1].replace('.', '_')
+                    self.pattern_files[good_pattern] = pattern_files
+                    start_idx, t = [0], []
+                    
+                    # loop through to get times
+                    for f in range(len(pattern_files)):
+                        cdf_data = Dataset(pattern_files[f])
+                        tmp = array(cdf_data.variables['time'])/60.+\
+                                 float(f)*24.  # hours since midnight first file
+                        start_idx.append(start_idx[-1]+len(tmp))  # for chunked int
+                        t.extend(tmp)
+                        cdf_data.close()
+                    setattr(time, '_time_'+good_pattern, array(t))
+                    setattr(time, '_start_idx_'+good_pattern, array(start_idx))
+    
+                # datetime object for midnight on date
+                self.filedate = datetime(int(files[0][-10:-6]), 1, 1, 0, 0, 0
+                                         ).replace(tzinfo=timezone.utc) + \
+                    timedelta(days=int(files[0][-6:-3]) - 1)
+    
+                # create time list file if DNE
+                file_out = open(time_file, 'w')
+                file_out.write('IRI file time list')
+                for p in self.pattern_files.keys():
+                    t = time['_time_'+p]
+                    start_idx = time['_start_idx_'+p]
+                    self.start_times[p] = t[start_idx[:-1]]
+                    time_strings = hrs_to_str(self.start_times[p],
+                                              self.filedate)
+                    files = self.pattern_files[p]
+                    for i in range(len(files)):
+                        file_out.write('\n'+files[i].replace('\\', '/')+
+                                       time_strings[i])
+                file_out.close()
 
-            # establish time attributes first
-            iri3D = Dataset(full_filename3d, 'r')
-            # convert to hours since midnight of file
-            time = array(iri3D.variables['time']) / 60.
-            # datetime object for midnight on date
-            self.filedate = datetime(int(filename[-10:-6]), 1, 1, 0, 0, 0
-                                     ).replace(tzinfo=timezone.utc) + \
-                timedelta(days=int(filename[-6:-3]) - 1)
-            # strings with timezone info chopped off (UTC anyway).
-            # Format: ‘YYYY-MM-DD HH:MM:SS’
-            self.datetimes = [
-                (self.filedate+timedelta(hours=time[0])).isoformat(
-                    sep=' ')[:19],
-                (self.filedate+timedelta(hours=time[-1])).isoformat(
-                    sep=' ')[:19]]
-            self.filetimes = [datetime.timestamp(datetime.strptime(
-                dt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)) for dt
-                in self.datetimes]   # utc timestamp
-            self.dt = diff(time).max()*3600.  # convert time resolution to sec
+            else:  # read in data from file list
+                files, date_times = [], []
+                file_object = open(time_file)
+                data = file_object.readlines()
+                for line in data[1:]:
+                    file, tmp, date, tmp, t_str = data[1].strip().split()
+                    files.append(file)
+                    date_times.append(date+' '+t_str)
+                file_object.close()
+                self.filedate = datetime.strptime(date_times[0][:10],
+                                                  '%Y-%m-%d').replace(
+                                                      tzinfo=timezone.utc)
+                patterns = unique([f[:-10] for f in files])  # ...2D, ...3D
+                for p in patterns:
+                    good_pattern = basename(p)[:-1].replace('.', '_')
+                    self.pattern_files[good_pattern] = [f for f in files if p
+                                                        in f]  # already sorted
+                    start_times = [t for f, t in zip(files, date_times) if p in
+                                   f]
+                    self.start_times[good_pattern] = str_t_hrs(start_times,
+                                                               self.filedate)
+                self.filename = ''.join([f+',' for f in files])[:-1]
 
-            if filetime and not fulltime:
-                iri3D.close()
-                return  # return times as is to prevent recursion
+            if filetime:
+                return  # return times only
 
             # if variables are given as integers, convert to standard names
             if len(variables_requested) > 0:
@@ -168,65 +222,6 @@ def MODEL():
                                model_varnames.items()
                                if value[2] in variables_requested]
                     variables_requested = tmp_var
-
-            if fulltime:  # add boundary time (default value)
-                # find other files with same pattern
-                from glob import glob
-
-                file_pattern = file_dir + 'IRI.3D.*.nc'  # returns a string
-                files = sorted(glob(file_pattern))  # method may change for AWS
-                filenames = unique([basename(f) for f in files])
-
-                # find closest file by utc timestamp
-                # iri has an open time at the end
-                # need a beginning time from the closest file
-                # files are automatically sorted by YYMMDD
-                # next file is next in the list
-                current_idx = where(filenames == filename)[0]
-                if current_idx+1 == len(files):
-                    if verbose:
-                        print('No later file available.')
-                    filecheck = False
-                    if filetime:
-                        iri3D.close()
-                        return
-                else:
-                    # +1 for adding an end time
-                    min_file = file_dir + filenames[current_idx+1][0]
-                    kamodo_test = MODEL(min_file, filetime=True,
-                                        fulltime=False)
-                    time_test = abs(kamodo_test.filetimes[0] -
-                                    self.filetimes[1])
-                    # if nearest file time at least within one timestep
-                    if time_test <= self.dt:
-                        filecheck = True
-                        self.datetimes[1] = kamodo_test.datetimes[0]
-                        self.filetimes[1] = kamodo_test.filetimes[0]
-
-                        # time only version if returning time for searching
-                        if filetime:
-                            iri3D.close()
-                            return  # return object with additional time
-
-                        # get kamodo object with same requested variables
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to find ' +
-                                  'closest file.')
-                        kamodo_neighbor = MODEL(
-                            min_file, variables_requested=variables_requested,
-                            fulltime=False)
-                        short_data = kamodo_neighbor.short_data
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to get ' +
-                                  'data from closest file.')
-                    else:
-                        if verbose:
-                            print('No later file found within ' +
-                                  f'{diff(time).max()*3600.:.1f}s.')
-                        filecheck = False
-                        if filetime:
-                            iri3D.close()
-                            return
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and fulltime and \
@@ -237,76 +232,76 @@ def MODEL():
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
 
-            # collect variable list
-            iri2D = Dataset(full_filename2d, 'r')
-            if len(variables_requested) > 0 and variables_requested != 'all':
-                gvar_list_2d = [key for key, value in model_varnames.items()
-                                if value[0] in variables_requested and
-                                key in iri2D.variables.keys()]
-                gvar_list_3d = [key for key, value in model_varnames.items()
-                                if value[0] in variables_requested and
-                                key in iri3D.variables.keys()]
+            # loop through file patterns for var mapping
+            self.gvarfiles, self.varfiles, self.err_list = {}, {}, []
+            for p in self.pattern_files.keys():
+                # check var_list for variables not possible in this file set
+                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                if len(variables_requested) > 0 and\
+                        variables_requested != 'all':
+                    gvar_list = [key for key in model_varnames.keys()
+                                 if key in cdf_data.variables.keys() and
+                                 model_varnames[key][0] in variables_requested]
+                    if len(gvar_list) != len(variables_requested):
+                        err_list = [value[0] for key, value in
+                                    model_varnames.items()
+                                    if key not in cdf_data.variables.keys() and
+                                    value[0] in variables_requested]
+                        self.err_list.extend(err_list)  # add to master list
+                else:
+                    gvar_list = [key for key in model_varnames.keys()
+                                 if key in cdf_data.variables.keys()]
+                cdf_data.close()
+                # store which file these variables came from
+                self.varfiles[p] = [model_varnames[key][0] for
+                                    key in gvar_list]
+                self.gvarfiles[p] = gvar_list
 
-                # check for variables requested but not available
-                if len(gvar_list_2d)+len(gvar_list_3d) != \
-                        len(variables_requested):
-                    err_list = [value[0] for key, value in
-                                model_varnames.items() if value[0] in
-                                variables_requested and key not in gvar_list_2d
-                                and key not in gvar_list_3d]
-                    if len(err_list) > 0:
-                        print('Some requested variables are not available:',
-                              err_list)
-            else:  # only input variables on the avoid_list if requested
-                gvar_list_2d = [key for key in iri2D.variables.keys()
-                                if key in model_varnames.keys()]
-                gvar_list_3d = [key for key in iri3D.variables.keys()
-                                if key in model_varnames.keys()]
-                # returns list of variables included in data files
-                if not fulltime and variables_requested == 'all':
-                    self.var_dict = {value[0]: value[1:] for key, value in
-                                     model_varnames.items() if key in
-                                     gvar_list_2d+gvar_list_3d}
-                    iri3D.close()
-                    iri2D.close()
-                    return
+            # clean up error list and then take action
+            var_list = []
+            for p in self.varfiles.keys():
+                var_list.extend(self.varfiles[p])
+            err_list = [var for var in self.err_list if var not in var_list]
+            if len(err_list) > 0:
+                print('Some requested variables are not available: ',
+                      err_list)
 
-            # store data for each variable desired
-            variables_2d = {model_varnames[var][0]: {
-                'units': model_varnames[var][-1],
-                'data': array(iri2D.variables[var])} for var in gvar_list_2d}
-            variables_3d = {model_varnames[var][0]: {
-                'units': model_varnames[var][-1],
-                'data': array(iri3D.variables[var])} for var in gvar_list_3d}
-            variables = variables_3d
-            for key in variables_2d:
-                variables[key] = variables_2d[key]
-
-            # prepare and return data
-            if not fulltime:
-                iri3D.close()
-                iri2D.close()
-                variables['time'] = self.filetimes[0]
-                self.short_data = variables
+            # collect all possible variables in set of files and return
+            if not fulltime and variables_requested == 'all':
+                self.var_dict = {value[0]: value[1:] for key, value in
+                                 model_varnames.items() if value[0] in
+                                 var_list}
                 return
 
-            # Store coordinate data as class attributes
-            if filecheck:
-                # new time in hours since midnight
-                new_time = ts_to_hrs(short_data['time'], self.filedate)
-                self._time = append(time, new_time)
-            else:
-                self._time = time
-
-            # collect data and make dimensional grid from 3D file
-            lon = array(iri3D.variables['lon'])  # 0 to 360
-            lon_le180 = where(lon <= 180)[0]
-            lon_ge180 = where(lon >= 180)[0]  # repeat 180 for -180 values
-            self._lon = lon - 180.
-            self._lat = array(iri3D.variables['lat'])
-            self._height = array(iri3D.variables['ht'])
-            iri3D.close()   # close netCDF4 files
-            iri2D.close()
+            # get coordinates and data from files
+            self.variables = {}
+            for p in self.pattern_files.keys():
+                # get coordinates from first file of each type
+                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                lon = array(cdf_data.variables['lon'])
+                lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
+                lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
+                tmp = lon - 180.  # now -180. to +180.
+                setattr(self, '_lon_'+p, tmp)
+                setattr(self, '_lon_idx_'+p, lon_ge180+lon_le180)
+                setattr(self, '_lat_'+p,
+                        array(cdf_data.variables['lat']))
+                if '3D' in p:
+                    setattr(self, '_height_'+p,
+                            array(cdf_data.variables['ht']))
+                cdf_data.close()
+                # initialize variable dictionaries
+                for var in self.gvarfiles[p]:
+                    self.variables[model_varnames[var][0]] = {
+                        'units': model_varnames[var][-1], 'data': p}
+                '''CAN'T DO THIS!!!
+                # retrieve and store the variable data
+                for f in self.pattern_files[p]:
+                    cdf_data = Dataset(f)
+                    for var in self.gvarfiles[p]:
+                        self.variables[model_varnames[var][0]]['data'].append(
+                            cdf_data.variables[var])
+                # do not close the files!'''
 
             # store a few items
             self.missing_value = NaN
@@ -319,37 +314,10 @@ def MODEL():
             # register interpolators for each requested variable
             t_reg = perf_counter()
             # store original list b/c gridded interpolators change key list
-            varname_list = [key for key in variables.keys()]
-            self.variables = {}
+            varname_list = list(self.variables.keys())
             for varname in varname_list:
-                if len(variables[varname]['data'].shape) == 3:
-                    if filecheck:  # if neighbor found
-                        # append data for last time stamp
-                        variables[varname]['data'] = append(
-                            variables[varname]['data'],
-                            short_data[varname]['data'][0, :, :], axis=0)
-
-                    # shift longitude
-                    tmp = variables[varname][:, :, lon_ge180+lon_le180]
-                    # (t, lat, lon) -> (t, lon, lat)
-                    variable = transpose(tmp, (0, 2, 1))
-                    self.variables[varname] = dict(
-                        units=variables[varname]['units'], data=variable)
-                    self.register_3D_variable(varname, gridded_int)
-                elif len(variables[varname]['data'].shape) == 4:
-                    if filecheck:
-                        # append data for last time stamp
-                        variables[varname]['data'] = append(
-                            variables[varname]['data'],
-                            short_data[varname]['data'][0, :, :], axis=0)
-
-                    # shift longitude
-                    tmp = variables[varname][:, :, :, lon_ge180+lon_le180]
-                    # (t, h, lat, lon) -> (t, lon, lat, h)
-                    variable = transpose(tmp, (0, 3, 2, 1))
-                    self.variables[varname] = dict(
-                        units=variables[varname]['units'], data=variable)
-                    self.register_4D_variable(varname, gridded_int)
+                # determine which time grid applies
+                self.register_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -358,33 +326,54 @@ def MODEL():
                       f' {len(varname_list)} variables.')
 
         # define and register a 3D variable
-        def register_3D_variable(self, varname, gridded_int):
-            """Registers a 3d interpolator with 3d signature"""
+        def register_variable(self, varname, gridded_int):
+            """Registers an interpolator with proper signature"""
 
             # define and register the interpolators
-            coord_dict = {'time': {'units': 'hr', 'data': self._time},
-                          'lon': {'units': 'deg', 'data': self._lon},
-                          'lat': {'units': 'deg', 'data': self._lat}}
+            key = self.variables[varname]['data']
+            coord_list = [value[5] for key, value in model_varnames.items()
+                          if value[0] == varname][0]
+            coord_dict = {} #'time': {'units': 'hr', 'data': getattr(self, '_time_'+key)}}
+            if 'lat' in coord_list:   # 3D variables come from neutral file
+                coord_dict['lon'] = {'units': 'deg', 'data':
+                                     getattr(self, '_lon_'+key)}
+                coord_dict['lat'] = {'units': 'deg', 'data':
+                                     getattr(self, '_lat_'+key)}
+            if 'height' in coord_list:
+                coord_dict['height'] = {'units': 'km', 'data':
+                                        getattr(self, '_height_'+key)}
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str)
-            return
+            lon_idx = getattr(self, '_lon_idx_'+key)
 
-        # define and register a 4D variable
-        def register_4D_variable(self, varname, gridded_int):
-            """Registers a 4d interpolator with 4d signature"""
+            # define operations for each variable when given the key
+            def func(start_idxs):  
+                '''key is the file pattern, start_idxs is a list of one or two
+                indices matching the file start times in self.start_times[key].
+                '''
+                files = self.pattern_files[key][start_idxs]
+                gvar = [key for key, value in model_varnames.items() if
+                        value[0] == varname][0]
+                data = array(Dataset(files[0]).variables[gvar])
+                time = array(Dataset(files[0]).variables['time'])
+                if len(start_idxs) == 2:  # interpolation between files
+                    data_slice = array(Dataset(files[1]).variables[gvar][0])
+                    t = array(Dataset(files[1]).variables['time'][0])
+                    data = append(data, [data_slice], axis=0)
+                    time = append(time, [t], axis=0)
+                # data wrangling
+                if len(data.shape) == 3:
+                    # time, lat, lon -> time, lon, lat
+                    variable = transpose(data, (0, 2, 1))
+                elif len(data.shape) == 4:
+                    # time, height, lat, lon -> time, lon, lat, height
+                    variable = transpose(data, (0, 3, 2, 1))
+                return variable[:, lon_idx], time
 
-            # define and register the fast interpolator
-            coord_dict = {'time': {'units': 'hr', 'data': self._time},
-                          'lon': {'units': 'deg', 'data': self._lon},
-                          'lat': {'units': 'deg', 'data': self._lat},
-                          'height': {'units': 'km', 'data': self._height}}
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str)
+            # functionalize the variable data (time chunked interpolation)
+            self = Functionalize_Dataset(
+                self, coord_dict, varname, self.variables[varname],
+                gridded_int, coord_str, interp_flag=2, func=func,
+                start_idx=start_idx)  # start_times=self.start_times[key]
             return
     return MODEL

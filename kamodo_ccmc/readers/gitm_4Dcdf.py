@@ -378,7 +378,6 @@ def MODEL():
             total_files = sorted(glob(file_dir+'*.nc'))
             self.patterns = sorted(unique([basename(f).split('_t')[0] for f in
                                     total_files]))
-            print(self.patterns)
             pattern_files = sorted(glob(file_dir+self.patterns[0]+'*.nc'))
 
             # establish date of first file
@@ -471,14 +470,20 @@ def MODEL():
                 self.gvarfiles[pattern] = gvar_list
                 cdf_data.close()
 
+            # clean up error list and then take action
+            var_list = []
+            for p in self.varfiles.keys():
+                var_list.extend(self.varfiles[p])
+            err_list = [var for var in self.err_list if var not in var_list]
+            if len(err_list) > 0:
+                print('Some requested variables are not available: ',
+                      err_list)
+
             # collect all possible variables in set of files and return
             if not fulltime and variables_requested == 'all':
-                self.var_dict, gvar_list = {}, []
-                # loop through gvar_list stored for files to make a master list
-                for i in range(len(self.patterns)):
-                    gvar_list += self.gvarfiles[self.patterns[i]]
                 self.var_dict = {value[0]: value[1:] for key, value in
-                                 model_varnames.items() if key in gvar_list}
+                                 model_varnames.items() if value[0] in
+                                 var_list}
                 return
 
             # loop through files to store variable data and units
