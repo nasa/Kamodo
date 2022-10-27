@@ -264,8 +264,6 @@ def time_interp(coord_dict, data_dict, func=None):
         for i in idx_list:
             if i not in idx_map:
                 len_map = len(idx_map)  # length before adding another
-                print(idx, idx_list, idx_map)
-                print('Adding idx ', i)
                 try:  # allow for memory errors
                     time_interps, idx_map = add_timeinterp(i)
                 except MemoryError:  # remove one time slice first
@@ -351,8 +349,6 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
 
         # Interpolate values for chosen time chunk
         if i not in idx_map:
-            print(idx, i, idx_map)
-            print('Adding idx ', i)
             len_map = len(idx_map)
             try:  # allow for memory errors
                 time_interps, idx_map = add_timeinterp(i)

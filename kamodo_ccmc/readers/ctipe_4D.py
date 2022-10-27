@@ -230,12 +230,29 @@ def ts_to_hrs(time_val, filedate):
             filedate).total_seconds()/3600.
 
 
+@vectorize
+def hrs_to_str(hrs, filedate):
+    '''Convert hrs since midnight of first day to a string for the file list
+    of format "Date: YYYY-MM-DD  Time: HH:MM:SS".'''
+    return datetime.strftime(filedate + timedelta(hours=hrs),
+                             '  Date: %Y-%m-%d  Time: %H:%M:%S')
+
+
+@vectorize
+def str_t_hrs(dt_str, filedate):
+    '''Convert datetime string of format "YYYY-MM-DD HH:MM:SS" to hrs since
+    midnight of filedate.'''
+    tmp = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S').replace(
+        tzinfo=timezone.utc)
+    return (tmp - filedate).total_seconds()/3600.
+
+
 def MODEL():
     from numpy import array, zeros, NaN, unique, diff, append, where
     from numpy import transpose, median
     from time import perf_counter
     from glob import glob
-    from os.path import basename
+    from os.path import basename, isfile
     from kamodo import Kamodo
     from netCDF4 import Dataset
     import kamodo_ccmc.readers.reader_utilities as RU
@@ -296,63 +313,111 @@ def MODEL():
             super(MODEL, self).__init__()
             self.modelname = 'CTIPe'
             t0 = perf_counter()
-            
-            # gather files from directory
-            all_files = sorted(glob(file_dir+'*-plot-*.nc'))
-            good_files = [f for f in all_files if 'plasma' not in f]
-            self.patterns = unique([basename(f)[16:-3] for f in good_files])
-            # e.g. 'density', 'neutral', 'height'
-            self.filename = ''.join([f+',' for f in good_files])[:-1]
-            self.pattern_files = {}
 
-            # set filedate using first file in list
-            date = basename(good_files[0])[:10]  # 'YYYY-MM-DD'
-            self.filedate = datetime.strptime(date+' 00:00:00',
-                                              '%Y-%m-%d %H:%M:%S').replace(
-                                                  tzinfo=timezone.utc)
-            filedate_ts = self.filedate.timestamp()  # utc timestamp for 12am
+            # first, check for file list, create if DNE
+            list_file = file_dir + 'CTIPe_list.txt'
+            time_file = file_dir + 'CTIPe_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if not isfile(list_file) or not isfile(time_file):
+                # collect filenames
+                all_files = sorted(glob(file_dir+'*-plot-*.nc'))
+                files = [f for f in all_files if 'plasma' not in f]
+                patterns = unique([basename(f)[16:-3] for f in files])
+                # e.g. 'density', 'neutral', 'height'
+                self.filename = ''.join([f+',' for f in files])[:-1]
+                # datetime object for midnight on date
+                date = basename(files[0])[:10]  # 'YYYY-MM-DD'
+                self.filedate = datetime.strptime(date+' 00:00:00',
+                                                  '%Y-%m-%d %H:%M:%S').replace(
+                                                      tzinfo=timezone.utc)
+                filedate_ts = self.filedate.timestamp()
+    
+                # establish time attributes, using 3D time as default
+                for p in patterns:
+                    # get list of files to loop through later
+                    pattern_files = sorted(glob(file_dir+'*'+p+'*.nc'))
+                    self.pattern_files[p] = pattern_files
+                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    
+                    # loop through to get times
+                    for f in range(len(pattern_files)):
+                        cdf_data = Dataset(pattern_files[f])
+                        tmp = array(cdf_data.variables['time'])  # utc tstamps
+                        self.times[p]['start'].append(tmp[0])
+                        self.times[p]['end'].append(tmp[-1])
+                        self.times[p]['all'].extend(tmp)
+                        cdf_data.close()
+                    # convert timestamps to be hrs since midnight of 1st file
+                    self.times[p]['start'] = (array(self.times[p]['start']) -
+                                              filedate_ts)/3600.
+                    self.times[p]['end'] = (array(self.times[p]['end']) -
+                                              filedate_ts)/3600.
+                    self.times[p]['all'] = (array(self.times[p]['all']) -
+                                              filedate_ts)/3600.
+                print(self.times)
+                # create time list file if DNE
+                list_out = open(list_file, 'w')
+                list_out.write('CTIPe file list start and end dates and times')
+                time_out = open(time_file, 'w')
+                time_out.write('CTIPe time grid per pattern')
+                for p in self.pattern_files.keys():
+                    # print out time grid to time file
+                    time_out.write('\nPattern: '+p)
+                    for t in self.times[p]['all']:
+                        time_out.write('\n'+str(t))
+                    # print start and end dates and times to list file
+                    start_time_str = hrs_to_str(self.times[p]['start'],
+                                                self.filedate)
+                    end_time_str = hrs_to_str(self.times[p]['end'],
+                                              self.filedate)
+                    files = self.pattern_files[p]
+                    for i in range(len(files)):
+                        list_out.write('\n'+files[i].replace('\\', '/')+
+                                       start_time_str[i]+'  '+end_time_str[i])
+                time_out.close()
+                list_out.close()
 
-            # establish time attributes, using density time as default
-            for p in self.patterns:
-                # get list of files to loop through later
-                pattern_files = sorted(glob(file_dir+'*'+p+'*.nc'))
-                self.pattern_files[p] = pattern_files
-                start_idx, t = [0], []
+            else:  # read in data and time grids from file list
+                # get time grids and initialize self.times structure
+                time_obj = open(time_file)
+                data = time_obj.readlines()
+                for line in data[1:]:
+                    if 'Pattern' in line:
+                        p = line.strip()[9:]
+                        self.times[p] = {'start': [], 'end': [], 'all': []}
+                    else:
+                        self.times[p]['all'].append(float(line.strip()))
+                time_obj.close()
+                for p in self.times.keys():
+                    self.times[p]['all'] = array(self.times[p]['all'])
                 
-                # loop through to get times
-                for f in range(len(pattern_files)):
-                    cdf_data = Dataset(pattern_files[f])
-                    tmp = array(cdf_data.variables['time'])  # utc timestamps
-                    start_idx.append(start_idx[-1]+len(tmp))  # for chunked int
-                    t.extend(tmp)
-                    cdf_data.close()
-                
-                # convert utc timestamps to hrs since midnight of first file
-                time = (array(t) - filedate_ts)/3600.
-                setattr(self, '_time_'+p, time)
-                setattr(self, '_start_idx_'+p, array(start_idx))
-                if 'neutral' in p:
-                    self._time = time  # set neutral time as default for later
-                elif 'neutral' not in self.patterns and 'density' in p:
-                    self._time = time  # neutral as second option
-                elif 'neutral' not in self.patterns and (
-                        'density' not in self.patterns):
-                    self._time = time  # height if all else fails
-
-            # establish time attributes using density time grid
-            # strings with timezone info chopped off (UTC anyway).
-            # Format: ‘YYYY-MM-DD HH:MM:SS’
-            self.datetimes = [
-                (self.filedate+timedelta(hours=self._time[0])).isoformat(
-                    sep=' ')[:19],
-                (self.filedate+timedelta(hours=self._time[-1])).isoformat(
-                    sep=' ')[:19]]
-            self.filetimes = [datetime.timestamp(datetime.strptime(
-                dt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)) for dt
-                in self.datetimes]   # utc timestamp
-            self.dt = diff(self._time).max()*3600.  # convert time resolution to sec
-
-            # return times as is to prevent infinite recursion
+                # get filenames, dates and times from list file
+                files, start_date_times, end_date_times = [], [], []
+                list_obj = open(list_file)
+                data = list_obj.readlines()
+                for line in data[1:]:
+                    file, tmp, date_start, tmp, start_time, tmp, date_end, \
+                        tmp, end_time = line.strip().split()
+                    files.append(file)
+                    start_date_times.append(date_start+' '+start_time)
+                    end_date_times.append(date_end+' '+end_time)
+                list_obj.close()
+                date = basename(files[0])[:10]  # 'YYYY-MM-DD'
+                self.filedate = datetime.strptime(date+' 00:00:00',
+                                                  '%Y-%m-%d %H:%M:%S').replace(
+                                                      tzinfo=timezone.utc)
+                for p in self.times.keys():
+                    self.pattern_files[p] = [f for f in files if
+                                             p.replace('_', '.') in f]
+                    start_times = [t for f, t in zip(files, start_date_times)
+                                   if p.replace('_', '.') in f]
+                    self.times[p]['start'] = str_t_hrs(start_times,
+                                                       self.filedate)
+                    end_times = [t for f, t in zip(files, end_date_times)
+                                 if p.replace('_', '.') in f]
+                    self.times[p]['end'] = str_t_hrs(end_times, self.filedate)
+                self.filename = ''.join([f+',' for f in files])[:-1]
+            # reeturn time info
             if filetime:
                 return
 
@@ -509,13 +574,13 @@ def MODEL():
                 setattr(self, '_lat_'+p,
                         array(cdf_data.variables['lat']))
                 if p == 'density':
-                    setattr(self, '_ilev1_'+p,
+                    setattr(self, '_ilev1',
                             array(cdf_data.variables['plev']))
                     tmp = array(cdf_data.variables['height'])  # t, plev, l, l
                     km = median(tmp, axis=[0, 2, 3])/1000.
                     setattr(self, '_km_ilev1', km)
                 elif p == 'neutral':
-                    setattr(self, '_ilev_'+p,
+                    setattr(self, '_ilev',
                             array(cdf_data.variables['plev']))
                     tmp = array(cdf_data.variables['height'])
                     km = median(tmp, axis=[0, 2, 3])/1000.  # t, plev, l, l
@@ -528,7 +593,7 @@ def MODEL():
                     setattr(self, '_Elat_'+p,
                             array(cdf_data.variables['elat']))
                 elif p == 'height':
-                    setattr(self, '_height_'+p,
+                    setattr(self, '_height',
                             array(cdf_data.variables['ht']))
                 cdf_data.close()
 
@@ -536,15 +601,16 @@ def MODEL():
                 for var in self.gvarfiles[p]:
                     if var != 'height':
                         self.variables[model_varnames[var][0]] = {
-                            'units': model_varnames[var][-1], 'data': []}
+                            'units': model_varnames[var][-1], 'data': p}
                     elif var == 'height' and p == 'density':
                         self.variables['H_ilev1'] = {
                             'units': model_varnames['height_d'][-1],
-                            'data': []}
+                            'data': p}
                     elif var == 'height' and p == 'neutral':
                         self.variables['H_ilev'] = {
                             'units': model_varnames['height_n'][-1],
-                            'data': []}
+                            'data': p}
+                '''CAN'T DO THIS!
                 # retrieve and store the variable data
                 for f in self.pattern_files[p]:
                     cdf_data = Dataset(f)
@@ -558,7 +624,7 @@ def MODEL():
                         elif var == 'height' and p == 'neutral':
                             self.variables['H_ilev']['data'].append(
                                 cdf_data.variables['height'])
-                # do not close the files!
+                # do not close the files!'''
 
             # print files to screen if option requested
             if printfiles:
@@ -589,10 +655,7 @@ def MODEL():
                 varname_list = ['H_ilev1'] + varname_list
             t_reg = perf_counter()
             for varname in varname_list:
-                # determine which time grid applies
-                key = [key for key, values in self.varfiles.items() if varname
-                      in values][0]
-                self.register_variable(varname, gridded_int, key)
+                self.register_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter() - t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -602,14 +665,15 @@ def MODEL():
             return
 
         # define and register a 3D variable
-        def register_variable(self, varname, gridded_int, key):
+        def register_variable(self, varname, gridded_int):
             """Registers an interpolator with proper signature"""
 
             # determine coordinate variables and xvec by coord list
+            key = self.variables[varname]['data']
             coord_list = [value[5] for key, value in model_varnames.items()
                           if value[0] == varname][0]
-            coord_dict = {'time': {'units': 'hr', 'data':
-                                   getattr(self, '_time_'+key)}}
+            coord_dict = {'time': {'units': 'hr',
+                                   'data': self.times[key]['all']}}
             # special cases b/c in more than one file
             if (varname == 'N_e' and key != 'height') or \
                     (varname == 'm_avgmol_ilev1' and key != 'density'):
@@ -630,29 +694,55 @@ def MODEL():
                 lon_idx = getattr(self, '_Elon_idx_'+key)
             if 'height' in coord_list:
                 coord_dict['height'] = {'units': 'km', 'data':
-                                        getattr(self, '_height_'+key)}
+                                        getattr(self, '_height')}
             if 'ilev' in coord_list:
                 coord_dict['ilev'] = {'units': 'm/m', 'data':
-                                        getattr(self, '_ilev_'+key)}
+                                        getattr(self, '_ilev')}
             if 'ilev1' in coord_list:
                 coord_dict['ilev1'] = {'units': 'm/m', 'data':
-                                        getattr(self, '_ilev1_'+key)}
-            start_idx = getattr(self, '_start_idx_'+key)
-
-            # define the operation to occur on each time chunk
-            def func(cdf_data_object):
-                tmp = array(cdf_data_object)
-                if len(tmp.shape) == 3 and 'Elon' not in coord_dict.keys():
-                    variable = transpose(tmp, (0, 2, 1))
-                elif 'Elon' in coord_dict.keys():
-                    variable = tmp  # already correct dimension order
-                elif len(tmp.shape) == 4:
-                    variable = transpose(tmp, (0, 3, 2, 1))
-                return variable[:, lon_idx]                    
-            
-            # define and register the interpolators, pull 3D data into arrays
+                                        getattr(self, '_ilev1')}
+            if varname not in ['H_ilev', 'H_ilev1']:
+                gvar = [key for key, value in model_varnames.items() if
+                    value[0] == varname][0]
+            else:
+                gvar = 'height'  # same in both files
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
+
+            # define operations for each variable when given the key
+            def func(i):  
+                '''key is the file pattern, start_idxs is a list of one or two
+                indices matching the file start times in self.start_times[key].
+                '''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = Dataset(file)
+                data = array(cdf_data.variables[gvar])
+                cdf_data.close()
+                # get indices for time grid
+                start = self.times[key]['start'][i]
+                end = self.times[key]['end'][i]
+                idx = list(where((coord_dict['time']['data'] >= start) &
+                                 (coord_dict['time']['data'] <= end))[0])
+                # if not the last file, tack on first time from next file
+                if file != self.pattern_files[key][-1]:  # interp btwn files
+                    next_file = self.pattern_files[key][i+1]
+                    cdf_data = Dataset(next_file)
+                    data_slice = array(cdf_data.variables[gvar][0])
+                    cdf_data.close()
+                    data = append(data, [data_slice], axis=0)
+                    idx.append(idx[-1]+1)
+                time = self.times[key]['all'][idx]  # file times not continuous
+                # data wrangling
+                if len(data.shape) == 3 and 'Elon' not in coord_dict.keys():
+                    variable = transpose(data, (0, 2, 1))
+                elif 'Elon' in coord_dict.keys():
+                    variable = data  # already correct dimension order
+                elif len(data.shape) == 4:
+                    variable = transpose(data, (0, 3, 2, 1))
+                return variable[:, lon_idx], time
+
+            # define and register the interpolators, pull 3D data into arrays
             # need H functions to be gridded regardless of gridded_int value
             if varname in ['H_ilev', 'H_ilev1']:
                 gridded_int = True
@@ -660,7 +750,7 @@ def MODEL():
                                             self.variables[varname],
                                             gridded_int, coord_str,
                                             interp_flag=2, func=func,
-                                            start_idx=start_idx)
+                                            start_times=self.times[key]['start'])
 
             # perform substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
