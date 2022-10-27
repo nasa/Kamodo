@@ -118,7 +118,7 @@ def create_funcsig(coord_data, coord_str):
 
 def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                           data_dict, gridded_int, coord_str, interp_flag=0,
-                          func=None, start_idx=None):
+                          func=None, start_times=None):
     '''Determine and call the correct functionalize routine.
     Inputs:
         kamodo_object: the previously created kamodo object.
@@ -164,11 +164,8 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
             - This option is useful when a dataset's shape order does not match
             the required order (e.g. t, lat, lon -> t, lon, lat) and allows
             such operations to be done on the fly.
-        start_idx: a list of indices indicating the position of the start times
-            for each data chunk in the time grid (coord_dict['time']['data']).
+        start_times: a list of the start times for each data chunk.
             *** Only needed for interpolation over time chunks. ***
-            The length should be one longer than the number of chunks, with the
-            last value equal to the length of the time grid.
 
     Output: A kamodo object with the functionalized dataset added.
     '''
@@ -184,7 +181,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     elif interp_flag == 1:
         interp = time_interp(coord_dict, data_dict, func)
     elif interp_flag == 2:
-        interp = multitime_interp(coord_dict, data_dict, start_idx, func)
+        interp = multitime_interp(coord_dict, data_dict, start_times, func)
     new_interp = forge.replace('xvec', param_xvec)(interp)
     interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
              arg_units=coord_units)(new_interp)
@@ -322,9 +319,7 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
     # create a list of interpolators per time chunk, not storing the data, and 
     # interpolate from there. such as done in superdarnea_interp.py
     # Assumes that time is the first dimension.
-    # Assumes that data_dict['data'][i] is a cdf_data.variable object with 
-    # multiple time slices.
-    # does this also work for h5 files???????????????????????????????????????????????????
+    # Assumes that data_dict['data'][i] is a string used to find the right file
 
     # split the coord_dict into data and units, initialize variables/func
     coord_list = [value['data'] for key, value in coord_dict.items()]  # list of arrays
@@ -333,13 +328,9 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
     # define method for how to add time chunks to memory
     def add_timeinterp(i):
         idx_map.append(i)
-        # set up to interpolate between time chunks
-        if i < len(start_times)-1:  # append 1st time slice from next chunk
-            data, time = func([i, i+1])
-        else:
-            data, time = func([i])
+        data, time = func(i)
         if len(coord_list) > 1:
-            coord_list_i = [time] + coord_list
+            coord_list_i = [time] + coord_list[1:]
             time_interps.append(rgiND(coord_list_i, data,
                                       bounds_error=False, fill_value=NaN))
         else:  # has to be different for time series data
