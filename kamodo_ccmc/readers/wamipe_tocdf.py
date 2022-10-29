@@ -3,39 +3,35 @@
 Created on Thu Oct  6 15:05:37 2022
 @author: rringuet
 Data is already in netCDF4, so just doing a few special things here.
-The pressure level variables will need to be inverted, so using Z3 to calculate
+The pressure level variables will need to be inverted, so using height to calc
     the median km value for each pressure level across the range of times,
-    latitudes and longitudes. Also interpolating RHO_CLUBB (the air density)
-    from the secondary pressure level grid to the primary one. 
-NOTE: This assumes that the Z3 and RHO_CLUBB variables are found in the same
-    file.
+    latitudes and longitudes.
 """
 from numpy import array, median, unique, transpose
 from glob import glob
+from os.path import isfile
 from time import perf_counter
 from netCDF4 import Dataset
 import kamodo_ccmc.readers.reader_utilities as RU
 from kamodo import Kamodo
 
-# variable names to keep
-var_list = ['Z3', 'RHO_CLUBB', 'datesec']
 
 def convert_all(file_dir):
-    '''Find files with RHO_CLUBB and Z3 and prepare h0 files per file.'''
+    '''Prepare gsm10H files per day.'''
 
     # find first file and associated files
-    print(f'Preparing h0 files for new files found in {file_dir}...', end="")
+    print(f'Preparing gsm10H files for new files found in {file_dir}...',
+          end="")
     t0 = perf_counter()
-    files = sorted(glob(file_dir+'*.h?.*.nc'))
-    patterns = unique([file[-19:-9] for file in files])  # date strings
+    files = sorted(glob(file_dir+'*.gsm10.*.nc'))
+    patterns = unique([file[-18:-10] for file in files])  # YYYYMMDD
     
     # prepare files
     H_key = False
-    for dstr in patterns:
-        files = sorted(glob(file_dir+'*'+dstr+'*.nc'))
-        h0_test = sum(['h0' in f for f in files])
-        if h0_test > 0:
-            continue  # skip date string pattern if h0 file already exists
+    for dstr in patterns:  # loop through days
+        if isfile(files[0][:-18].replace('.gsm10.', '.gsm10H.')+dstr+'.nc'):
+            continue
+        files = sorted(glob(file_dir+'*.gsm10.'+dstr+'*.nc'))  # files for day
         #try:
         prepare_h0file(files)  # prepare file
         H_key = True

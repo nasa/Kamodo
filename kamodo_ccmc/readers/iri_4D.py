@@ -1,8 +1,6 @@
 '''
 Written by Rebecca Ringuette, 2021
 '''
-from datetime import datetime, timedelta, timezone
-from numpy import vectorize
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {'Ne': ['N_e', 'electron number density',
@@ -48,29 +46,6 @@ model_varnames = {'Ne': ['N_e', 'electron number density',
                   }
 
 
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
-@vectorize
-def hrs_to_str(hrs, filedate):
-    '''Convert hrs since midnight of first day to a string for the file list
-    of format "Date: YYYY-MM-DD  Time: HH:MM:SS".'''
-    return datetime.strftime(filedate + timedelta(hours=hrs),
-                             '  Date: %Y-%m-%d  Time: %H:%M:%S')
-
-
-@vectorize
-def str_t_hrs(dt_str, filedate):
-    '''Convert datetime string of format "YYYY-MM-DD HH:MM:SS" to hrs since
-    midnight of filedate.'''
-    tmp = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S').replace(
-        tzinfo=timezone.utc)
-    return (tmp - filedate).total_seconds()/3600.
-
-
 # times from file converted to seconds since midnight of filedate
 # plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
 # filedate is self.filedate from iri object
@@ -84,7 +59,8 @@ def MODEL():
     from numpy import array, transpose, NaN, unique, diff
     from numpy import where, append
     from time import perf_counter
-    from kamodo_ccmc.readers.reader_utilities import Functionalize_Dataset
+    from datetime import datetime, timedelta, timezone
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
         '''IRI model data reader.
@@ -141,33 +117,34 @@ def MODEL():
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
-            list_file = file_dir + 'IRI_list.txt'
-            time_file = file_dir + 'IRI_times.txt'
+            list_file = file_dir + self.modelname +'_list.txt'
+            time_file = file_dir + self.modelname +'_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames
                 files = sorted(glob(file_dir+'*.nc'))
-                patterns = unique([f[:-10] for f in files])  # ...2D, ...3D
+                patterns = unique([basename(f)[:-10] for f in files])  # 2D, 3D
                 self.filename = ''.join([f+',' for f in files])[:-1]
     
-                # establish time attributes, using 3D time as default
+                # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(p+'*.nc'))
-                    good_pattern = basename(p)[:-1].replace('.', '_')
-                    self.pattern_files[good_pattern] = pattern_files
-                    self.times[good_pattern] = {'start': [], 'end': [],
-                                                'all': []}
+                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    self.pattern_files[p] = pattern_files
+                    self.times[p] = {'start': [], 'end': [], 'all': []}
                     
                     # loop through to get times
                     for f in range(len(pattern_files)):
                         cdf_data = Dataset(pattern_files[f])
                         tmp = array(cdf_data.variables['time'])/60.+\
                                  float(f)*24.  # hours since midnight first file
-                        self.times[good_pattern]['start'].append(tmp[0])
-                        self.times[good_pattern]['end'].append(tmp[-1])
-                        self.times[good_pattern]['all'].extend(tmp)
+                        self.times[p]['start'].append(tmp[0])
+                        self.times[p]['end'].append(tmp[-1])
+                        self.times[p]['all'].extend(tmp)
                         cdf_data.close()
+                    self.times[p]['start'] = array(self.times[p]['start'])
+                    self.times[p]['end'] = array(self.times[p]['end'])
+                    self.times[p]['all'] = array(self.times[p]['all'])
     
                 # datetime object for midnight on date
                 self.filedate = datetime(int(files[0][-10:-6]), 1, 1, 0, 0, 0
@@ -175,67 +152,12 @@ def MODEL():
                     timedelta(days=int(files[0][-6:-3]) - 1)
     
                 # create time list file if DNE
-                list_out = open(list_file, 'w')
-                list_out.write('IRI file list start and end dates and times')
-                time_out = open(time_file, 'w')
-                time_out.write('IRI time grid per pattern')
-                for p in self.pattern_files.keys():
-                    # print out time grid to time file
-                    time_out.write('\nPattern: '+p)
-                    for t in self.times[p]['all']:
-                        time_out.write('\n'+str(t))
-                    self.times[p]['all'] = array(self.times[p]['all'])
-                    # print out start and end dates and times to list file
-                    start_time_str = hrs_to_str(self.times[p]['start'],
-                                                self.filedate)
-                    end_time_str = hrs_to_str(self.times[p]['end'],
-                                              self.filedate)
-                    files = self.pattern_files[p]
-                    for i in range(len(files)):
-                        list_out.write('\n'+files[i].replace('\\', '/')+
-                                       start_time_str[i]+'  '+end_time_str[i])
-                time_out.close()
-                list_out.close()
-
+                RU.create_timelist(list_file, time_file, self.modelname,
+                                   self.times, self.pattern_files,
+                                   self.filedate)
             else:  # read in data and time grids from file list
-                # get time grids and initialize self.times structure
-                time_obj = open(time_file)
-                data = time_obj.readlines()
-                for line in data[1:]:
-                    if 'Pattern' in line:
-                        p = line.strip()[9:]
-                        self.times[p] = {'start': [], 'end': [], 'all': []}
-                    else:
-                        self.times[p]['all'].append(float(line.strip()))
-                time_obj.close()
-                for p in self.times.keys():
-                    self.times[p]['all'] = array(self.times[p]['all'])
-                
-                # get filenames, dates and times from list file
-                files, start_date_times, end_date_times = [], [], []
-                list_obj = open(list_file)
-                data = list_obj.readlines()
-                for line in data[1:]:
-                    file, tmp, date_start, tmp, start_time, tmp, date_end, \
-                        tmp, end_time = line.strip().split()
-                    files.append(file)
-                    start_date_times.append(date_start+' '+start_time)
-                    end_date_times.append(date_end+' '+end_time)
-                list_obj.close()
-                self.filedate = datetime.strptime(start_date_times[0][:10],
-                                                  '%Y-%m-%d').replace(
-                                                      tzinfo=timezone.utc)
-                for p in self.times.keys():
-                    self.pattern_files[p] = [f for f in files if
-                                             p.replace('_', '.') in f]
-                    start_times = [t for f, t in zip(files, start_date_times)
-                                   if p.replace('_', '.') in f]
-                    self.times[p]['start'] = str_t_hrs(start_times,
-                                                       self.filedate)
-                    end_times = [t for f, t in zip(files, end_date_times)
-                                 if p.replace('_', '.') in f]
-                    self.times[p]['end'] = str_t_hrs(end_times, self.filedate)
-                self.filename = ''.join([f+',' for f in files])[:-1]
+                self.times, self.pattern_files, self.filedate, self.filename =\
+                    RU.read_timelist(time_file, list_file)
             if filetime:
                 return  # return times only
 
@@ -318,14 +240,6 @@ def MODEL():
                 for var in self.gvarfiles[p]:
                     self.variables[model_varnames[var][0]] = {
                         'units': model_varnames[var][-1], 'data': p}
-                '''CAN'T DO THIS!!!
-                # retrieve and store the variable data
-                for f in self.pattern_files[p]:
-                    cdf_data = Dataset(f)
-                    for var in self.gvarfiles[p]:
-                        self.variables[model_varnames[var][0]]['data'].append(
-                            cdf_data.variables[var])
-                # do not close the files!'''
 
             # store a few items
             self.missing_value = NaN
@@ -349,7 +263,7 @@ def MODEL():
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
-        # define and register a 3D variable
+        # define and register a variable
         def register_variable(self, varname, gridded_int):
             """Registers an interpolator with proper signature"""
 
@@ -367,11 +281,11 @@ def MODEL():
             if 'height' in coord_list:
                 coord_dict['height'] = {'units': 'km', 'data':
                                         getattr(self, '_height_'+key)}
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
             lon_idx = getattr(self, '_lon_idx_'+key)
             gvar = [key for key, value in model_varnames.items() if
                     value[0] == varname][0]  # variable name in file
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]
 
             # define operations for each variable when given the key
             def func(i):  
@@ -383,11 +297,6 @@ def MODEL():
                 cdf_data = Dataset(file)
                 data = array(cdf_data.variables[gvar])
                 cdf_data.close()
-                # get indices for time grid
-                start =  self.times[key]['start'][i]
-                end = self.times[key]['end'][i]
-                idx = list(where((coord_dict['time']['data'] >= start) &
-                                 (coord_dict['time']['data'] <= end))[0])
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
                     next_file = self.pattern_files[key][i+1]
@@ -395,8 +304,6 @@ def MODEL():
                     data_slice = array(cdf_data.variables[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
-                    idx.append(idx[-1]+1)
-                time = self.times[key]['all'][idx]  # file times not continuous
                 # data wrangling
                 if len(data.shape) == 3:
                     # time, lat, lon -> time, lon, lat
@@ -404,10 +311,10 @@ def MODEL():
                 elif len(data.shape) == 4:
                     # time, height, lat, lon -> time, lon, lat, height
                     variable = transpose(data, (0, 3, 2, 1))
-                return variable[:, lon_idx], time
+                return variable[:, lon_idx]
 
             # functionalize the variable data (time chunked interpolation)
-            self = Functionalize_Dataset(
+            self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int, coord_str, interp_flag=2, func=func,
                 start_times=self.times[key]['start'])

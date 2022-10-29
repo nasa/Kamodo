@@ -37,8 +37,6 @@ unlimited dimensions: time
 current shape = (24, 97, 80)
 filling on, default _FillValue of 9.969209968386869e+36 used
 '''
-from datetime import datetime, timezone, timedelta
-from numpy import vectorize
 
 # constants and dictionaries
 model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ', 'sph',
@@ -222,37 +220,13 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ', 'sph'
                                     ['time', 'Elon', 'Elat'], 'V/m']}
 
 
-@vectorize
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
-@vectorize
-def hrs_to_str(hrs, filedate):
-    '''Convert hrs since midnight of first day to a string for the file list
-    of format "Date: YYYY-MM-DD  Time: HH:MM:SS".'''
-    return datetime.strftime(filedate + timedelta(hours=hrs),
-                             '  Date: %Y-%m-%d  Time: %H:%M:%S')
-
-
-@vectorize
-def str_t_hrs(dt_str, filedate):
-    '''Convert datetime string of format "YYYY-MM-DD HH:MM:SS" to hrs since
-    midnight of filedate.'''
-    tmp = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S').replace(
-        tzinfo=timezone.utc)
-    return (tmp - filedate).total_seconds()/3600.
-
-
 def MODEL():
     from numpy import array, zeros, NaN, unique, diff, append, where
     from numpy import transpose, median
     from time import perf_counter
     from glob import glob
     from os.path import basename, isfile
+    from datetime import datetime, timezone
     from kamodo import Kamodo
     from netCDF4 import Dataset
     import kamodo_ccmc.readers.reader_utilities as RU
@@ -315,8 +289,8 @@ def MODEL():
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
-            list_file = file_dir + 'CTIPe_list.txt'
-            time_file = file_dir + 'CTIPe_times.txt'
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames
@@ -354,70 +328,14 @@ def MODEL():
                                               filedate_ts)/3600.
                     self.times[p]['all'] = (array(self.times[p]['all']) -
                                               filedate_ts)/3600.
-                print(self.times)
                 # create time list file if DNE
-                list_out = open(list_file, 'w')
-                list_out.write('CTIPe file list start and end dates and times')
-                time_out = open(time_file, 'w')
-                time_out.write('CTIPe time grid per pattern')
-                for p in self.pattern_files.keys():
-                    # print out time grid to time file
-                    time_out.write('\nPattern: '+p)
-                    for t in self.times[p]['all']:
-                        time_out.write('\n'+str(t))
-                    # print start and end dates and times to list file
-                    start_time_str = hrs_to_str(self.times[p]['start'],
-                                                self.filedate)
-                    end_time_str = hrs_to_str(self.times[p]['end'],
-                                              self.filedate)
-                    files = self.pattern_files[p]
-                    for i in range(len(files)):
-                        list_out.write('\n'+files[i].replace('\\', '/')+
-                                       start_time_str[i]+'  '+end_time_str[i])
-                time_out.close()
-                list_out.close()
-
+                RU.create_timelist(list_file, time_file, self.modelname,
+                                   self.times, self.pattern_files,
+                                   self.filedate)
             else:  # read in data and time grids from file list
-                # get time grids and initialize self.times structure
-                time_obj = open(time_file)
-                data = time_obj.readlines()
-                for line in data[1:]:
-                    if 'Pattern' in line:
-                        p = line.strip()[9:]
-                        self.times[p] = {'start': [], 'end': [], 'all': []}
-                    else:
-                        self.times[p]['all'].append(float(line.strip()))
-                time_obj.close()
-                for p in self.times.keys():
-                    self.times[p]['all'] = array(self.times[p]['all'])
-                
-                # get filenames, dates and times from list file
-                files, start_date_times, end_date_times = [], [], []
-                list_obj = open(list_file)
-                data = list_obj.readlines()
-                for line in data[1:]:
-                    file, tmp, date_start, tmp, start_time, tmp, date_end, \
-                        tmp, end_time = line.strip().split()
-                    files.append(file)
-                    start_date_times.append(date_start+' '+start_time)
-                    end_date_times.append(date_end+' '+end_time)
-                list_obj.close()
-                date = basename(files[0])[:10]  # 'YYYY-MM-DD'
-                self.filedate = datetime.strptime(date+' 00:00:00',
-                                                  '%Y-%m-%d %H:%M:%S').replace(
-                                                      tzinfo=timezone.utc)
-                for p in self.times.keys():
-                    self.pattern_files[p] = [f for f in files if
-                                             p.replace('_', '.') in f]
-                    start_times = [t for f, t in zip(files, start_date_times)
-                                   if p.replace('_', '.') in f]
-                    self.times[p]['start'] = str_t_hrs(start_times,
-                                                       self.filedate)
-                    end_times = [t for f, t in zip(files, end_date_times)
-                                 if p.replace('_', '.') in f]
-                    self.times[p]['end'] = str_t_hrs(end_times, self.filedate)
-                self.filename = ''.join([f+',' for f in files])[:-1]
-            # reeturn time info
+                self.times, self.pattern_files, self.filedate, self.filename =\
+                    RU.read_timelist(time_file, list_file)
+            # return time info
             if filetime:
                 return
 
@@ -719,11 +637,6 @@ def MODEL():
                 cdf_data = Dataset(file)
                 data = array(cdf_data.variables[gvar])
                 cdf_data.close()
-                # get indices for time grid
-                start = self.times[key]['start'][i]
-                end = self.times[key]['end'][i]
-                idx = list(where((coord_dict['time']['data'] >= start) &
-                                 (coord_dict['time']['data'] <= end))[0])
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
                     next_file = self.pattern_files[key][i+1]
@@ -731,8 +644,6 @@ def MODEL():
                     data_slice = array(cdf_data.variables[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
-                    idx.append(idx[-1]+1)
-                time = self.times[key]['all'][idx]  # file times not continuous
                 # data wrangling
                 if len(data.shape) == 3 and 'Elon' not in coord_dict.keys():
                     variable = transpose(data, (0, 2, 1))
@@ -740,7 +651,7 @@ def MODEL():
                     variable = data  # already correct dimension order
                 elif len(data.shape) == 4:
                     variable = transpose(data, (0, 3, 2, 1))
-                return variable[:, lon_idx], time
+                return variable[:, lon_idx]
 
             # define and register the interpolators, pull 3D data into arrays
             # need H functions to be gridded regardless of gridded_int value

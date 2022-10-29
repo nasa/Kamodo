@@ -12,7 +12,6 @@ two pressure level variables:
     ilev.shape = 131 at interfaces (hPa)
 data structure order = (time, lev/ilev, lat/mlat, lon/mlon)
 """
-
 # starts with variables from the h1 files. No h2 files in this set
 model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                              'GDZ', 'sph', ['time'], ''],
@@ -119,9 +118,9 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                   'EDens_2': ['N_e', 'e Number Density (sum of O2+,NO+,N2+,O+)', 0, 'GDZ', 'sph', 
                             ['time', 'lon', 'lat', 'height'], 'cm**3'],
                   'HMF2': ['HmF2', 'Height of the F2 Layer', 0, 'GDZ', 'sph',
-                           ['time', 'lat', 'lon'] , 'km'],
+                           ['time', 'lon', 'lat'] , 'km'],
                   'NMF2': ['NmF2', 'Peak Density of the F2 Layer', 0, 'GDZ', 'sph',
-                           ['time', 'lat', 'lon'] , '1/cm**3'],
+                           ['time', 'lon', 'lat'] , '1/cm**3'],
                   'OPLUS': ['N_Oplus_ilev', 'O+ number density', 0, 'GDZ', 'sph',
                             ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
                   'OPLUS_2': ['N_Oplus', 'O+ number density', 0, 'GDZ', 'sph',
@@ -290,21 +289,22 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
 
 # lists of known variables per file type
 # assume h1 file is always present
-gvar_keys = {'h1v2': ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr',
+gvar_keys = {'h0': ['RHO_CLUBB_lev'],  # also containes km_ilev
+             'h1': ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr',
                       'sol_tsi', 'colat_crit1', 'colat_crit2', 'ED1', 'ED2',
                       'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ElecColDens', 'H',
                       'O', 'O2', 'OMEGA', 'PHIM2D', 'PS', 'T', 'TElec', 'TIon',
                       'U', 'UI', 'V', 'VI', 'WI', 'Z3', 'e', 'RHO_CLUBB',
-                      'RHO_CLUBB_lev', 'Z3GM'],
+                      'Z3GM'],
              # keys in h2 files that are not in the h1 files
-             'h2v2': ['ED1', 'ED2', 'EDens', 'ElecColDens', 'HMF2', 'NMF2',
+             'h2': ['ED1', 'ED2', 'EDens', 'ElecColDens', 'HMF2', 'NMF2',
                       'OPLUS', 'TElec', 'TIon', 'UI', 'VI', 'WI', 'Z3'],
              # keys in h3 files that are not in the h1 files
-             'h3v2': ['CO2', 'EDens', 'EKGW', 'N', 'NO', 'OpDens', 'QCO2',
+             'h3': ['CO2', 'EDens', 'EKGW', 'N', 'NO', 'OpDens', 'QCO2',
                       'QHC2S', 'QJOULE', 'QNO', 'QO3', 'QO3P', 'QRS_TOT',
                       'SolIonRate_Tot', 'TTGW', 'UTGW_TOTAL', 'Z3GM'],
              # keys in the h4 files that are not in the h1 or h3 files
-             'h4v2': ['OMEGA_08_COS', 'OMEGA_08_SIN', 'OMEGA_12_COS',
+             'h4': ['OMEGA_08_COS', 'OMEGA_08_SIN', 'OMEGA_12_COS',
                       'OMEGA_12_SIN', 'OMEGA_24_COS', 'OMEGA_24_SIN',
                       'T_08_COS', 'T_08_SIN', 'T_12_COS', 'T_12_SIN',
                       'T_24_COS', 'T_24_SIN', 'U_08_COS', 'U_08_SIN',
@@ -336,14 +336,6 @@ for key, value in cdf_data.variables.items():
         print(key, value.longname, list(value.dimensions)
 '''
 
-from datetime import datetime, timezone, timedelta
-
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
 # times from file converted to seconds since midnight of filedate
 # plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
 # filedate is self.filedate from iri object
@@ -352,9 +344,13 @@ def MODEL():
 
     from kamodo import Kamodo
     from glob import glob
+    from os.path import isfile, getsize
+    import psutil
     from netCDF4 import Dataset
-    from numpy import array, NaN, zeros, diff, median, squeeze
+    from numpy import array, NaN, zeros, where, unique, append, linspace
+    from numpy import transpose
     from time import perf_counter
+    from datetime import datetime, timezone
     import kamodo_ccmc.readers.reader_utilities as RU
     from waccmx_tocdf import convert_all
 
@@ -410,54 +406,63 @@ def MODEL():
                      printfiles=False, filetime=False, gridded_int=True,
                      fulltime=True, verbose=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
-            self.modelname = 'WACCM-X'
+            self.modelname = 'WACCMX'
             t0 = perf_counter()
 
-            # Check for converted files. If not present, convert all in dir
-            self.conversion_test, file_dict = convert_all(file_dir)
-            if not self.conversion_test:
-                return
-            file_list = []
-            for key, files in file_dict.items():
-                file_list.extend(files)
-            self.filename = ''.join([f+',' for f in file_list])[:-1]
+            # first, check for file list, create if DNE
+            list_file = file_dir + self.modelname +'_list.txt'
+            time_file = file_dir + self.modelname +'_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if not isfile(list_file) or not isfile(time_file):
+                # collect filenames
+                files = sorted(glob(file_dir+'*.h?.*.nc'))
+                patterns = unique([file[-22:-20] for file in files])
+                self.filename = ''.join([f+',' for f in files])[:-1]
+                self.filedate = datetime.strptime(
+                    files[0][-19:-9]+' 00:00:00', '%Y-%m-%d %H:%M:%S'
+                    ).replace(tzinfo=timezone.utc)
+                
+                # check for h0 files, contains RHO_CLUBB_lev and km_ilev
+                if 'h0' not in patterns:
+                    self.conversion_test = convert_all(file_dir)
+                    if not self.conversion_test:
+                        return
+                    patterns = append(patterns, 'h0')
 
-            # establish time attributes first, one value per file
-            # different time grids in diff file patterns
-            for key in file_dict.keys():
-                date, datesec, time = [], [], []
-                for file in file_dict[key]:
-                    cdf_data = Dataset(file)
-                    date.append(array(cdf_data.variables['time'])[0])
-                    datesec.append(array(cdf_data.variables['datesec'])[0])
-                    cdf_data.close()
-                date = array(date)  # date is in days since 1979-01-01 00:00:00
-                datesec = array(datesec)  # seconds since midnight on same day
-                date -= int(date.min())  # reset to be from beginning of run
-                for i in range(len(date)):
-                    time.append(int(date[i])*24. + datesec[i]/3600.)  # hrs
-                setattr(self, '_time_'+key, array(time))
-            self._time = self._time_h1v2  # set default as time from h1 files
-            # datetime object for midnight on date
-            self.filedate = datetime(1979, 1, 1, tzinfo=timezone.utc) +\
-                timedelta(days=int(date[0]))
-            # strings with timezone info chopped off (UTC anyway).
-            # Format: ‘YYYY-MM-DD HH:MM:SS’
-            self.datetimes = [
-                (self.filedate+timedelta(hours=time[0])).isoformat(
-                    sep=' ')[:19],
-                (self.filedate+timedelta(hours=time[-1])).isoformat(
-                    sep=' ')[:19]]
-            self.filetimes = [datetime.timestamp(datetime.strptime(
-                dt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)) for dt
-                in self.datetimes]   # utc timestamp
-            if len(time) > 1:
-                self.dt = diff(time).max()*3600.  # convert time res to sec
-            else:
-                self.dt = 3600.
+                # establish time attributes
+                for p in patterns:
+                    # get list of files to loop through later
+                    pattern_files = sorted(glob(file_dir+'*.'+p+'.*.nc'))
+                    self.pattern_files[p] = pattern_files
+                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    
+                    # loop through to get times
+                    for f in range(len(pattern_files)):
+                        cdf_data = Dataset(pattern_files[f])
+                        # hours since midnight first file
+                        tmp = array(cdf_data.variables['time'])
+                        pmt = array(cdf_data.variables['datesec'])
+                        if f == 0:
+                            int_time = int(tmp[0])  # date of first file
+                        net = (tmp-int_time).astype(int)*24. + pmt/3600.  # hrs
+                        self.times[p]['start'].append(net[0])
+                        self.times[p]['end'].append(net[-1])
+                        self.times[p]['all'].extend(net)
+                        cdf_data.close()
+                    # adjust all to be  arrays
+                    self.times[p]['start'] = array(self.times[p]['start'])
+                    self.times[p]['end'] = array(self.times[p]['end'])
+                    self.times[p]['all'] = array(self.times[p]['all'])
 
-            if filetime:  # boundary time added in file conversion process
-                return  # return times as is to prevent recursion
+                # create time list file if DNE
+                RU.create_timelist(list_file, time_file, self.modelname,
+                                   self.times, self.pattern_files,
+                                   self.filedate)
+            else:  # read in data and time grids from file list
+                self.times, self.pattern_files, self.filedate, self.filename =\
+                    RU.read_timelist(time_file, list_file)
+            if filetime:
+                return  # return times only
 
             # if variables are given as integers, convert to standard names
             if len(variables_requested) > 0:
@@ -491,7 +496,7 @@ def MODEL():
                 for key in gvar_keys.keys():
                     self.gvar_dict[key] = self.somefile_variables(
                         key, gvar_keys[key], variables_requested,
-                        file_dict)
+                        self.pattern_files)
                     gvar_list += self.gvar_dict[key][0]
                 net_err = [value[0] for key, value in model_varnames.items()
                            if key not in gvar_list and value[0] in
@@ -503,7 +508,7 @@ def MODEL():
                 # collect lists per file type
                 for key in gvar_keys.keys():
                     self.gvar_dict[key] = self.allfile_variables(
-                        key, gvar_keys[key], file_dict)
+                        key, gvar_keys[key], self.pattern_files)
                     gvar_list += self.gvar_dict[key][0]
 
                 # returns list of variables included in data files
@@ -530,55 +535,45 @@ def MODEL():
 
             # store data for each variable desired and all coordinate grids
             # need to leave files open for variable data
-            variables, km = {}, None
-            for key in file_dict.keys():
+            self.variables = {}
+            for key in self.pattern_files.keys():
                 # collect dimensions from first file
-                time = getattr(self, '_time_'+key)  # time already calculated
-                cdf_datah = Dataset(file_dict[key][0])
+                cdf_datah = Dataset(self.pattern_files[key][0])
                 for dim in cdf_datah.dimensions.keys():
+                    # deal with dim renaming and skipping
                     if dim == 'ilev':
                         name = 'ilev1'
                     elif dim == 'lev':
                         name = 'ilev'
-                    elif dim == 'time':
-                        continue  # time already calculated, don't overwrite
-                    else:
+                    elif dim in ['lon', 'lat', 'mlon', 'mlat', 'km_ilev']:
                         name = dim
-                    setattr(self, '_'+name+'_'+key,
-                            array(cdf_datah.variables[dim]))
+                    else:  # skip other extra string dimensions
+                        continue  # time already calculated, don't overwrite
+
+                    # prep for longitude wrapping
+                    tmp = array(cdf_datah.variables[dim])
+                    if (dim == 'lon'):
+                        lon_le180 = list(where(tmp <= 180)[0])
+                        lon_ge180 = list(where(tmp >= 180)[0])  # repeat 180 for -180 values
+                        lon_idx = lon_ge180+lon_le180
+                        setattr(self, '_lon_idx_'+key, lon_idx)
+                        out = append(tmp, 360.) - 180.
+                    elif dim == 'mlon':
+                        lon_idx = append(linspace(0, len(tmp)-1, len(tmp),
+                                                  dtype=int), 0)
+                        out = append(tmp, 180.)
+                        setattr(self, '_mlon_idx_'+key, lon_idx)
+                    else: # loop through other dimensions without changes
+                        out = tmp
+                    
+                    # store coordinate grids
+                    setattr(self, '_'+name+'_'+key, out)
                 cdf_datah.close()  # close for dimensions data since now arrays
                 
-                # collect data from all files
-                for t in range(len(time)):
-                    cdf_datah = Dataset(file_dict[key][t])  # single time step
-                    if 'Z3' in self.gvar_dict[key][0]:  # file variable names
-                        if t == 0:  # get km_ilev grid (diff for each time)
-                            km = [array(cdf_datah.variables['km_ilev'])]
-                        else:
-                            km.append(array(cdf_datah.variables['km_ilev']))
-                    for var in self.gvar_dict[key][0]:
-                        if t == 0:
-                            variables[model_varnames[var][0]] =  {
-                                'units': model_varnames[var][-1],
-                                'data': [cdf_datah.variables[var]]}
-                        else:
-                            if var == 'Z3':
-                                continue  # skip in favor of chunked version
-                            variables[model_varnames[var][0]]['data'].append(
-                                cdf_datah.variables[var])
-            self._km_ilev = median(array(km), axis=0)  # median of time axis
-
-            # collect chunked H_ilev function from h0v2 files
-            h0_files = sorted(glob(file_dir+'*.h0v2.*.nc'))
-            # does this stay open?
-            variables['H_geopot_ilev']['data'] = [Dataset(f).variables['Z3']
-                                                  for f in h0_files]
-            self.start_idx = [0]
-            for f in h0_files:  # determine starting indices of each time chunk
-                c = Dataset(f)
-                self.start_idx.append(self.start_idx[-1] +
-                                      len(c.variables['time'].shape[0]))
-                c.close()
+                # initialize variables dictionary
+                for var in self.gvar_dict[key][0]:
+                    self.variables[model_varnames[var][0]] =  {
+                        'units': model_varnames[var][-1], 'data': key}
 
             # store a few items
             self.missing_value = NaN
@@ -587,28 +582,17 @@ def MODEL():
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
             if printfiles:
                 print(self.filename)
-            print(f'Took {perf_counter()-t0:.6f}s to read in data')
 
             # register interpolators for each requested variable
             # rearrange to deal with H_ilev and H_ilev1 first if there
-            varname_list = [key for key in variables.keys()]
+            varname_list = [key for key in self.variables.keys()]
             if 'H_geopot_ilev' in varname_list:
                 varname_list.remove('H_geopot_ilev')
                 varname_list = ['H_geopot_ilev'] + varname_list
-            self.variables = {}
             t_reg = perf_counter()
             for varname in varname_list:
-                self.variables[varname] = dict(
-                    units=variables[varname]['units'],
-                    data=variables[varname]['data'])
-                # determine which time grid applies, preferring h1 files
-                for key in self.gvar_dict.keys():
-                    gvar = [key for key, value in model_varnames.items() if
-                            value[0] == varname][0]
-                    if gvar in self.gvar_dict[key][0]:
-                        break
                 # register the variables
-                self.register_variable(varname, gridded_int, key) 
+                self.register_variable(varname, gridded_int) 
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -690,22 +674,28 @@ def MODEL():
                 return [[], '']
 
         # dimension agnostic registration
-        def register_variable(self, varname, gridded_int, key):
+        def register_variable(self, varname, gridded_int):
             '''Registers and functionalizes the dataset. Converts to a 1D
             numpy array for time series data.'''
             
             # create the coordinate dictionary
+            key = self.variables[varname]['data']
+            gvar = [key for key, value in model_varnames.items() if
+                    value[0] == varname][0]  # variable name in file
             coord_list = [value[-2] for key, value in model_varnames.items()
                           if value[0] == varname][0]
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            coord_dict = {'time': {'units': 'hr', 'data':
-                                   getattr(self, '_time_'+key)}}
+            coord_dict = {'time': {'units': 'hr',
+                                   'data': self.times[key]['all']}}
             if len(coord_list) == 1:  # convert 1D to array and functionalize
-                tmp = []
-                for cdf in self.variables[varname]['data']:
-                    tmp.append(array(cdf)[0])  # single value per object
-                self.variables[varname]['data'] = array(tmp)
+                data = []
+                for f in self.pattern_files[key]:
+                    cdf_data = Dataset(f)
+                    tmp = array(cdf_data.variables[gvar])
+                    cdf_data.close()
+                    data.extend(tmp)
+                self.variables[varname]['data'] = array(data)
                 self = RU.Functionalize_Dataset(self, coord_dict, varname,
                                                 self.variables[varname],
                                                 gridded_int, coord_str,
@@ -718,35 +708,58 @@ def MODEL():
                     coord_dict[coord]['units'] = 'deg'
                 if coord in ['ilev', 'ilev1']:
                     coord_dict[coord]['units'] = 'hPa'
+            lon_idx = getattr(self, '_'+coord_list[1]+'_idx_'+key)
 
-            if varname != 'H_geopot_ilev':
+            # overshooting guess at memory needed to read in all data
+            # chunks/slices will be dropped if memory runs out later
+            memory_needed = getsize(self.pattern_files[key][0]) * \
+                len(self.pattern_files[key])
+            memory_test =  memory_needed < psutil.virtual_memory().available
+            if not memory_test:  # varname != 'H_geopot_ilev' and not
+                # save memory by only retrieving time slices from the files
                 # determine the operation to occur on each time slice
-                def func(cdf_data_object):
-                    tmp = array(cdf_data_object)
-                    return squeeze(tmp)
+                def func(i, fi):  # i = file#, fi = slice#
+                    cdf_data = Dataset(self.pattern_files[key][i])
+                    tmp = array(cdf_data.variables[gvar][fi]).T
+                    cdf_data.close()
+                    # perform data wrangling on time slice
+                    # (ilev,) lat/mlat, lon/mlon -> lon/mlon, lat/mlat, (ilev)
+                    data = tmp[lon_idx]
+                    return data
     
                 # functionalize the 3D or 4D dataset, series of time slices
-                self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                                self.variables[varname],
-                                                gridded_int, coord_str,
-                                                interp_flag=1, func=func)
-            else:
-                # function composition is too slow on top of a sliced interp
-                # using chunked H_geopot_ilev instead
-                self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                                self.variables[varname],
-                                                gridded_int, coord_str,
-                                                interp_flag=2,
-                                                start_idx=self.start_idx)
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=3, func=func,
+                    start_times=self.times[key]['start'])
+            else:  # only using this approach if there is enough memory
+                # also using for H_ilev to speed up function composition
+                # determine the operation to occur on each time chunk
+                #print(varname, ' Memory looks good.')
+                def func(f):  # file_idx
+                    # convert slice number s to index in file
+                    cdf_data = Dataset(self.pattern_files[key][f])
+                    tmp = array(cdf_data.variables[gvar])
+                    cdf_data.close()
+                    # perform data wrangling on time chunk
+                    # (ilev,) lat/mlat, lon/mlon -> lon/mlon, lat/mlat, (ilev)
+                    if len(tmp.shape) == 4:
+                        data = transpose(tmp, (0, 3, 2, 1))
+                    elif len(tmp.shape) == 3:
+                        data = transpose(tmp, (0, 2, 1))
+                    return data[:, lon_idx]
+                
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=2, func=func,
+                    start_times=self.times[key]['start'])
                 
             if len(coord_list) < 4:  # remaining logic is for 4D data.
                 return
 
             # create pressure level -> km function once per ilev type
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:
-                if varname == 'H_geopot_ilev' and hasattr(self, '_km_ilev'):
-                    t_invert = perf_counter()  # create custom interp
-                    print('Inverting H(ilev) function ...', end="")
+                if varname == 'H_geopot_ilev' and hasattr(self, '_km_ilev_h0'):
                     new_varname = 'Plev'  # only one possible
                     # Import and call custom interpolator
                     from waccmx_ilevinterp import PLevelInterp
@@ -755,7 +768,6 @@ def MODEL():
                         coord_dict['lon']['data'], coord_dict['lat']['data'],
                         coord_dict['ilev']['data'])
                     units = 'hPa'
-                    print(f'done in {perf_counter()-t_invert} s.')
                 elif varname != 'H_geopot_ilev':  # define by function composition
                     new_varname = varname.split('_ilev')[0]
                     interpolator = varname+'(Plev)'
@@ -772,12 +784,12 @@ def MODEL():
                     interp_ijk = self[new_varname]
 
                 # Create 'gridified' interpolators in the kamodo_object
-                if gridded_int and hasattr(self, '_km_ilev'):
+                if gridded_int and hasattr(self, '_km_ilev_h0'):
                     fake_data = zeros((2, 2, 2, 2))  # avoiding computation
                     coord_data = {key: value['data'] for key, value in
                                   coord_dict.items() if key in
                                   new_coord_units.keys()}  # exclude ilev
-                    coord_data['height'] = self._km_ilev
+                    coord_data['height'] = self._km_ilev_h0
                     self.variables[new_varname+'_ijk'] = {'data': fake_data,
                         'units': units}
                     gridded_interpolator = RU.define_griddedinterp(

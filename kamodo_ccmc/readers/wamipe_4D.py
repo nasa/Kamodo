@@ -121,11 +121,11 @@ def ts_to_hrs(time_val, filedate):
 def MODEL():
     from time import perf_counter
     from glob import glob
-    from os.path import basename
+    from os.path import basename, isfile
     from numpy import array, unique, NaN, diff, append, linspace, where
     from netCDF4 import Dataset
     from kamodo import Kamodo
-    from kamodo_ccmc.readers.reader_utilities import time_interp
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
         '''WAM-IPE model data reader.
@@ -187,42 +187,52 @@ def MODEL():
             self.modelname = 'WAM-IPE'
             t0 = perf_counter()
 
-            # determine of calc of 2D variables is necessary
-            total_files = sorted(glob(file_dir+'*.nc'))
-            if len(total_files) == 0:  # find tar files and untar them
-                print('Decompressing files...this may take a moment.')
-                import tarfile
-                tar_files = glob(file_dir+'*.tar')
-                for file in tar_files:
-                    tar = tarfile.open(file)
-                    tar.extractall(file_dir)
-                    tar.close()
-                total_files = sorted(glob(file_dir+'*.nc'))
+            # first, check for file list, create if DNE
+            list_file = file_dir + self.modelname +'_list.txt'
+            time_file = file_dir + self.modelname +'_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if not isfile(list_file) or not isfile(time_file):
+                # collect filenames
+                files = sorted(glob(file_dir+'*.nc'))
+                if len(files) == 0:  # find tar files and untar them
+                    print('Decompressing files...this may take a moment.')
+                    import tarfile
+                    tar_files = glob(file_dir+'*.tar')
+                    for file in tar_files:
+                        tar = tarfile.open(file)
+                        tar.extractall(file_dir)
+                        tar.close()
+                    files = sorted(glob(file_dir+'*.nc'))
+                patterns = unique([basename(f)[:-19] for f in files]) 
+                self.filename = ''.join([f+',' for f in files])[:-1]
+                datetime_str = filename_to_dts(basename(files[0])[-18:-3])
+                # strings in format = YYYY-MM-DD HH:MM:SS
+                self.filedate = datetime.strptime(
+                    datetime_str[:10]+' 00:00:00', '%Y-%m-%d %H:%M:%S'
+                    ).replace(tzinfo=timezone.utc)
 
-            # determine file patterns and best time grid
-            patterns = unique([basename(file)[:-19] for file in total_files])            
-            self.patterns = patterns
-            print(patterns)
-            time_str = unique([basename(file)[-18:-3] for file in total_files])
-            datetime_str = filename_to_dts(time_str[0])
-            self.filedate = datetime.strptime(datetime_str[:10]+' 00:00:00',
-                                              '%Y-%m-%d %H:%M:%S'
-                                              ).replace(tzinfo=timezone.utc)
-            # strings in format = YYYY-MM-DD HH:MM:SS
-            time = filename_to_hrs(time_str, self.filedate)  # hrs since 12am
-            self._time = time  # not used for data
-            self.datetimes = [filename_to_dts(ti) for ti in
-                              [time_str[0], time_str[-1]]]
-            # timestamps in UTC
-            self.filetimes = [dts_to_ts(file_dts) for file_dts in
-                              self.datetimes]
-            print(self.datetimes, self.filetimes)
-            if len(time) > 1:
-                self.dt = diff(time).max()*3600.  # t in hours since midnight
-            else:
-                self.dt = 0
+                # establish time attributes from filenames
+                for p in patterns:
+                    # get list of files to loop through later
+                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    self.pattern_files[p] = pattern_files
+                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    
+                    # loop through to get times, one file per time
+                    time_str = [basename(f)[-18:-3] for f in pattern_files]
+                    times = filename_to_hrs(time_str, self.filedate)
+                    self.times[p]['start'] = array(times)
+                    self.times[p]['end'] = array(times)
+                    self.times[p]['all'] = array(times)
 
-            if filetime and not fulltime:
+                # create time list file if DNE
+                RU.create_timelist(list_file, time_file, self.modelname,
+                                   self.times, self.pattern_files,
+                                   self.filedate)
+            else:  # read in data and time grids from file list
+                self.times, self.pattern_files, self.filedate, self.filename =\
+                    RU.read_timelist(time_file, list_file)
+            if filetime:
                 return  # return times as is to prevent infinite recursion
 
             # if variables are given as integers, convert to standard names
@@ -234,14 +244,17 @@ def MODEL():
                     variables_requested = tmp_var
 
             # store variables
-            self.filename = total_files
             self.missing_value = NaN
             self._registered = 0
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
             self.variables = {}
-            self.pattern_files = {}
+
+            if printfiles:
+                print(f'{len(self.filename)} Files:')
+                for file in self.filename:
+                    print(file)
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and fulltime and\
@@ -253,30 +266,10 @@ def MODEL():
                     print('Variable name(s) not recognized:', err_list)
 
             # loop through file patterns for coordinate grids + var mapping
-            for pattern in self.patterns:
-                # get list of files to loop through later
-                pattern_files = sorted(glob(file_dir+pattern+'*.nc'))
-                self.pattern_files[pattern] = pattern_files
-
-                # get coordinates from first file
-                cdf_data = Dataset(pattern_files[0], 'r')
-                print(pattern_files[0], cdf_data.variables.keys())
-                for key in cdf_data.variables.keys():
-                    print(key, cdf_data.variables[key].dimensions)
-                setattr(self, '_lat_'+pattern,
-                        array(cdf_data.variables['lat']))
-                setattr(self, '_lon_'+pattern,
-                        append(array(cdf_data.variables['lon']) - 180., 180.))  # CHECK THIS WITH PLOTS!!!!
-                if 'alt' in cdf_data.variables.keys():
-                    setattr(self, '_height_'+pattern,
-                            array(cdf_data.variables['alt']))  # km
-                    print(pattern, getattr(self, '_height_'+pattern).shape)
-
-                # get time grid from filenames (can be diff for each pattern)
-                time_str = unique([basename(file)[-18:-3] for file in
-                                   pattern_files])
-                t = filename_to_hrs(time_str, self.filedate)
-                setattr(self, '_time_'+pattern, t)
+            for p in self.pattern_files.keys():
+                # use first file for coordinates and variable mapping
+                file = self.pattern_files[p][0]
+                cdf_data = Dataset(file, 'r')
 
                 # check var_list for variables not possible in this file set
                 if len(variables_requested) > 0 and\
@@ -294,11 +287,34 @@ def MODEL():
                     gvar_list = [key for key in model_varnames.keys()
                                  if key in cdf_data.variables.keys()]
                 # store which file these variables came from
-                self.varfiles[pattern] = [model_varnames[key][0] for
+                self.varfiles[p] = [model_varnames[key][0] for
                                                    key in gvar_list]
-                self.gvarfiles[pattern] = gvar_list
+                self.gvarfiles[p] = gvar_list
+                
+                # retrieve coordinate grids, assuming constant in time
+                for key in cdf_data.variables.keys():
+                    print(key, cdf_data.variables[key].dimensions)
+                setattr(self, '_lat_'+p,
+                        array(cdf_data.variables['lat']))
+                setattr(self, '_lon_'+p,
+                        append(array(cdf_data.variables['lon']) - 180., 180.))  # CHECK THIS WITH PLOTS!!!!
+                if 'alt' in cdf_data.variables.keys():
+                    setattr(self, '_height_'+p,
+                            array(cdf_data.variables['alt']))  # km
+                    print(p, getattr(self, '_height_'+p).shape)
+                elif 'gsm10' in p:  # add missing pressure level for gsm10
+                    var_3D = [key for key, value in model_varnames.items()
+                              if key in gvar_list and len(value[-2])==4][0]
+                    ilev_name = cdf_data.variables[var_3D].dimensions[0]
+                    if ilev_name not in cdf_data.variables.keys():
+                        len_ilev = cdf_data.variables[var_3D].shape[0]
+                        setattr(self, '_ilev_'+p,
+                                linspace(0, len_ilev-1, len_ilev))
+                    else:
+                        setattr(self, '_ilev_'+p,
+                                array(cdf_data.variables[ilev_name]))
+                
                 cdf_data.close()
-            print('self.pattern_files', self.pattern_files)
             print('self.varfiles', self.varfiles)
             print('self.gvarfiles', self.gvarfiles)
 
@@ -312,23 +328,14 @@ def MODEL():
                                  model_varnames.items() if key in gvar_list}
                 return
 
-            # loop through files to store variable data and units
-            for pattern in self.patterns:
-                gvar_list = self.gvarfiles[pattern]
-                for j in range(len(self.pattern_files[pattern])):
-                    cdf_data = Dataset(self.pattern_files[pattern][j])
-                    if j == 0:  # initialize dict with first file data
-                        variables = {model_varnames[key][0]: {
-                            'units': model_varnames[key][-1],
-                            'data': [cdf_data.variables[key]]}
-                            for key in gvar_list}
-                    else:  # append cdf_data objects for each time step
-                        for key in gvar_list:
-                            variables[model_varnames[key][0]]['data'].append(
-                                cdf_data.variables[key])
+            # loop through patterns to initialize variables dictionary
+            for p in self.pattern_files.keys():
+                gvar_list = self.gvarfiles[p]
+                variables = {model_varnames[key][0]: {
+                    'units': model_varnames[key][-1], 'data': p}
+                    for key in gvar_list}
                 for key in variables.keys():
                     self.variables[key] = variables[key]
-                # leave cdf files open to allow lazy interpolation
 
             # remove successful variables from err_list
             self.err_list = list(unique(self.err_list))
@@ -338,16 +345,6 @@ def MODEL():
                 print('Some requested variables are not available in the ' +
                       'files found:\n',
                       self.patterns, self.err_list)
-
-            if printfiles:
-                print(f'{len(self.filename)} Files:')
-                for file in self.filename:
-                    print(file)
-
-            # return if only one file found - interpolator code will break
-            if len(self._time) < 2:
-                print('Not enough times found in given directory.')
-                return
 
             # register interpolators for each variable
             t_reg = perf_counter()
@@ -412,7 +409,7 @@ def MODEL():
                 # define and register the interpolators
                 coord_str = [value[3]+value[4] for key, value in
                              model_varnames.items() if value[0] == varname][0]
-                self = time_interp(self, coord_dict, varname,
+                self = RU.time_interp(self, coord_dict, varname,
                                       self.variables[varname], gridded_int,
                                       coord_str, func)
             if verbose:
