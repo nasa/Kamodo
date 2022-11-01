@@ -19,6 +19,30 @@ def toLog10(fig):
     return fig
 
 
+def toColor(fig,colorscale='Viridis'):
+    """
+    Quick function to take a 2D contour figure and change the colorscale with more contours.
+    Pass in a plotly figure and it will return an updated plotly figure.
+    """
+
+    # Set colorscale
+    if colorscale == "BlueRed":
+        fig.update_traces(colorscale="RdBu", reversescale=True)
+    elif colorscale == "Rainbow":
+        fig.update_traces(
+            colorscale=[[0.00, 'rgb(0,0,255)'],
+                        [0.25, 'rgb(0,255,255)'],
+                        [0.50, 'rgb(0,255,0)'],
+                        [0.75, 'rgb(255,255,0)'],
+                        [1.00, 'rgb(255,0,0)']]
+        )
+    else:
+        fig.update_traces(colorscale=colorscale)
+    fig.update_traces(ncontours=201, contours=dict(coloring="fill", showlines=False))
+    
+    return fig
+
+
 def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
         colorscale='Viridis', crange='',):
     """
