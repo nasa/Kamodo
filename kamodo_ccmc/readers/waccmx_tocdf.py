@@ -10,7 +10,7 @@ The pressure level variables will need to be inverted, so using Z3 to calculate
 NOTE: This assumes that the Z3 and RHO_CLUBB variables are found in the same
     file.
 """
-from numpy import array, median, unique, transpose
+from numpy import array, median, unique, transpose, float32
 from glob import glob
 from time import perf_counter
 from netCDF4 import Dataset
@@ -69,7 +69,8 @@ def prepare_h0file(dstr_files):
     # get coord_dict and file dimensions from RHO_CLUBB file
     for file in dstr_files:
         cdf_data = Dataset(file)
-        if 'RHO_CLUBB' not in cdf_data.variables.keys():
+        if not any([True for key in cdf_data.variables.keys() if key in
+                    ['Z3', 'RHO_CLUBB']]):  # assume datesec is in every file
             cdf_data.close()
             continue
         # loop through dimensions and save
@@ -77,7 +78,8 @@ def prepare_h0file(dstr_files):
         for dim in cdf_data.dimensions.keys():
             if dim in coord_dict.keys():
                 coord_dict[dim]['data'] = array(cdf_data.variables[dim])
-            if dim in ['time', 'lon', 'lat', 'lev']:
+            if dim in ['time', 'lon', 'lat', 'lev'] and (
+                    dim not in data_out.variables.keys()):
                 # save dimensions and values to file
                 tmp = array(cdf_data.variables[dim])
                 if dim == 'time':
@@ -90,14 +92,16 @@ def prepare_h0file(dstr_files):
                 new_var[:] = tmp
 
         # save datesec variable
-        if 'datesec' in cdf_data.variables.keys():  # copy datesec to file
+        if 'datesec' in cdf_data.variables.keys() and (
+                'datesec' not in data_out.variables.keys()):  # copy datesec
             tmp = cdf_data.variables['datesec']
             new_var = data_out.createVariable(
                 'datesec', tmp.datatype, tuple(tmp.dimensions))
             new_var[:] = array(tmp)
 
         # calculate km_ilev grid and store as km_ilev
-        if 'Z3' in cdf_data.variables.keys():  # (time,) ilev, lat, lon
+        if 'Z3' in cdf_data.variables.keys() and (
+                'km_ilev' not in data_out.variables.keys()):  # (time,) ilev, lat, lon
             # calculate the median height in km per ilev level
             print('Calculating km grid for pressure level inversion...',
                   end="")
@@ -110,7 +114,8 @@ def prepare_h0file(dstr_files):
             print('done.')
 
         # perform ilev -> lev interpolation for air density
-        if 'RHO_CLUBB' in cdf_data.variables.keys():  # (time,) ilev, lat, lon
+        if 'RHO_CLUBB' in cdf_data.variables.keys() and (
+                'RHO_CLUBB_lev' not in data_out.variables.keys()):  # (time,) ilev, lat, lon
             # initialize new variable in output file
             print('Interpolating density to primary pressure level grid...')
             tmp = cdf_data.variables['RHO_CLUBB']

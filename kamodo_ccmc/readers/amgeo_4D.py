@@ -71,33 +71,17 @@ def timestr_datetime(time_str):
     return datetime.strptime(time_str[:8],
                              '%Y%m%d').replace(tzinfo=timezone.utc)
 
-
-def timestr_utcts(time_str):
-    '''Converts time string into utc timestamp.'''
-    return datetime.strptime(time_str, '%Y%m%d_%H%M%S').replace(
-        tzinfo=timezone.utc).timestamp()
-
-
-def timestr_datetimestr(time_str):
-    '''Converts time string into standard format (‘YYYY-MM-DD HH:MM:SS’).'''
-    dt = datetime.strptime(time_str,
-                           '%Y%m%d_%H%M%S').replace(tzinfo=timezone.utc)
-    return dt.isoformat(sep=' ')[:19]
-
-
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
+# list of variables found in h5_data.attrs.keys() instead of h5_data.keys()
+attrs_var = ['imf_By', 'imf_Bz', 'solar_wind_speed']
 
 
 def MODEL():
     from kamodo import Kamodo
     from glob import glob
     import h5py
-    from os.path import basename
-    from numpy import array, NaN, unique, append, zeros, abs, diff, sin, cos
-    from numpy import where, flip, concatenate, insert, mean, broadcast_to
+    from os.path import isfile
+    from numpy import array, NaN, unique, append, zeros, diff, sin, cos, insert
+    from numpy import flip, concatenate, insert, mean, broadcast_to, ones, reshape
     from numpy import transpose
     from numpy import pi as nppi
     from numpy import sum as npsum
@@ -109,13 +93,9 @@ def MODEL():
         '''AmGEO model data reader.
 
         Inputs:
-            full_filenameN: a string representing the file pattern of the model
-                output data.
-                Note: This reader takes a file pattern of the format
-                file_dir+*YYYYMMDDN.h5, where file_dir is the complete file
-                path to the data files, and YYYYMMDD is the four digit year,
-                two digit month, and two digit day in the desired output file
-                names (e.g. *20150622N.h5).
+            file_dir: a string representing the file directory of the
+                model output data.
+                Note: This reader 'walks' the entire dataset in the directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
@@ -156,53 +136,56 @@ def MODEL():
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
         '''
-        def __init__(self, file_pattern, variables_requested=[],
+        def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
-                     fulltime=True, verbose=False, hemi='?', **kwargs):
+                     fulltime=True, verbose=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'AMGeO'
             t0 = perf_counter()
 
-            # collect filenames
-            files = sorted(glob(file_pattern+hemi+'.h5'))
-            if 'N.h5' in files[0]:
-                full_filenameN = files[0]
-                if len(files) == 2:  # S file should be next
-                    full_filenameS = files[1]
-                    hemi = '*'  # data for both hemispheres available
-                else:
-                    full_filenameS = ''  # file DNE
-                    hemi = 'N'  # only N hemisphere data found
-                filename = basename(full_filenameN)
-                file_dir = full_filenameN.split(filename)[0]
-            elif 'S.h5' in files[0]:
-                full_filenameS = files[0]
-                full_filenameN = ''  # file DNE, N file should have been first
-                hemi = 'S'  # only S hemisphere data found
-                filename = basename(full_filenameS)
-                file_dir = full_filenameS.split(filename)[0]
-            self.filename = full_filenameN+', '+full_filenameS
-
-            # establish time attributes first
-            if full_filenameN != '':
-                f_data1 = h5py.File(full_filenameN, 'r')
-            else:
-                f_data1 = h5py.File(full_filenameS, 'r')
-            # remove 'N' or 'S' at end of time
-            time_list = [key[:-1] for key in f_data1.keys() if key not in
-                         ['lats', 'lons']]
-            # datetime object for midnight on date
-            self.filedate = timestr_datetime(time_list[0])
-            # convert to hours since midnight of file
-            time = timestr_hrs(time_list, self.filedate)
-            self.datetimes = [timestr_datetimestr(time_list[0]),
-                              timestr_datetimestr(time_list[-1])]
-            self.filetimes = [timestr_utcts(time_list[0]),
-                              timestr_utcts(time_list[-1])]
-            self.dt = diff(time).max()*3600.  # convert time resolution to s
-
-            if filetime and not fulltime:
-                return  # return times as is to prevent recursion
+            # first, check for file list, create if DNE
+            list_file = file_dir + self.modelname +'_list.txt'
+            time_file = file_dir + self.modelname +'_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if not isfile(list_file) or not isfile(time_file):
+                # collect filenames
+                files = sorted(glob(file_dir+'*.h5'))
+                patterns = unique([f[-4] for f in files])  # N or S
+                self.filename = ''.join([f+',' for f in files])[:-1]
+                self.filedate = datetime.strptime(
+                    files[0][-12:-4], '%Y%m%d').replace(tzinfo=timezone.utc)
+    
+                # establish time attributes
+                for p in patterns:
+                    # get list of files to loop through later
+                    pattern_files = sorted(glob(file_dir+'*'+p+'.h5'))
+                    self.pattern_files[p] = pattern_files
+                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    
+                    # loop through to get times
+                    for f in range(len(pattern_files)):
+                        h5_data = h5py.File(pattern_files[f])
+                        tmp_var = [key[:-1] for key in h5_data.keys() if key
+                                   not in ['lats', 'lons']]
+                        h5_data.close()
+                        tmp = RU.str_to_hrs(tmp_var, self.filedate,
+                                            '%Y%m%d_%H%M%S')
+                        self.times[p]['start'].append(tmp[0])
+                        self.times[p]['end'].append(tmp[-1])
+                        self.times[p]['all'].extend(tmp)
+                    self.times[p]['start'] = array(self.times[p]['start'])
+                    self.times[p]['end'] = array(self.times[p]['end'])
+                    self.times[p]['all'] = array(self.times[p]['all'])
+    
+                # create time list file if DNE
+                RU.create_timelist(list_file, time_file, self.modelname,
+                                   self.times, self.pattern_files,
+                                   self.filedate)
+            else:  # read in data and time grids from file list
+                self.times, self.pattern_files, self.filedate, self.filename =\
+                    RU.read_timelist(time_file, list_file)
+            if filetime:
+                return  # return times only
 
             # if variables are given as integers, convert to standard names
             if len(variables_requested) > 0:
@@ -211,58 +194,6 @@ def MODEL():
                                model_varnames.items() if value[2] in
                                variables_requested]
                     variables_requested = tmp_var
-
-            if fulltime:  # add boundary time (default value)
-                # find other files with same pattern
-                if hemi != '*':
-                    file_pattern = file_dir+'*'+hemi+'.h5'  # returns a string
-                else:
-                    file_pattern = file_dir+'*.h5'
-                files = sorted(glob(file_pattern))  # method may change for AWS
-                filenames = unique([basename(f) for f in files])
-
-                # find closest file by utc timestamp
-                # files are sorted by YYMMDD, so next file is next in the list
-                current_idx = where(filenames == filename)[0]
-                if current_idx+1 == len(files):
-                    if verbose:
-                        print('No later file available.')
-                    filecheck = False
-                    if filetime:
-                        return
-                else:
-                    min_file = file_dir+'*'+filenames[current_idx+1][0][-12:-4]
-                    kamodo_test = MODEL(min_file, filetime=True,
-                                        fulltime=False, hemi=hemi)
-                    time_test = abs(kamodo_test.filetimes[0]-self.filetimes[1])
-                    # if nearest file time at least within one timestep (hrs)
-                    if time_test <= self.dt:
-                        filecheck = True
-                        self.datetimes[1] = kamodo_test.datetimes[0]
-                        self.filetimes[1] = kamodo_test.filetimes[0]
-
-                        # time only version if returning time for searching
-                        if filetime:
-                            return  # return object with additional time
-
-                        # get kamodo object with same requested variables
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to find ' +
-                                  'closest file.')
-                        kamodo_neighbor = MODEL(
-                            min_file, variables_requested=variables_requested,
-                            fulltime=False, hemi=hemi)
-                        short_data = kamodo_neighbor.short_data
-                        if verbose:
-                            print(f'Took {perf_counter()-t0:.3f}s to get ' +
-                                  'data from closest file.')
-                    else:
-                        if verbose:
-                            print('No later file found within ' +
-                                  f'{diff(time).max()*3600.:.1f}s.')
-                        filecheck = False
-                        if filetime:
-                            return
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and fulltime and \
@@ -273,18 +204,17 @@ def MODEL():
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
 
-            # collect variable list (both in attributes and in datasets)
-            if hemi in ['*', 'N']:
-                key_list = list(f_data1[time_list[0]+'N'].attrs.keys()) + \
-                    list(f_data1[time_list[0]+'N'].keys())
-            elif hemi == 'S':
-                key_list = list(f_data1[time_list[0]+'S'].attrs.keys()) + \
-                    list(f_data1[time_list[0]+'S'].keys())
+            # collect variable list (in attributes of datasets)
+            patterns = list(self.pattern_files.keys())
+            h5_data = h5py.File(self.pattern_files[patterns[0]][0])
+            key_list = list(h5_data[list(h5_data.keys())[0]].attrs.keys())
+            key_list.extend(list(h5_data[list(h5_data.keys())[0]].keys()))
+            h5_data.close()
             if 'int_joule_heat' in key_list:  # replace with separate names
                 key_list.remove('int_joule_heat')
-                if hemi in ['*', 'N']:
+                if 'N' in patterns:
                     key_list.append('int_joule_heat_n')
-                if hemi in ['*', 'S']:
+                if 'S' in patterns:
                     key_list.append('int_joule_heat_s')
             if len(variables_requested) > 0 and variables_requested != 'all':
                 gvar_list = [key for key, value in model_varnames.items()
@@ -309,108 +239,44 @@ def MODEL():
                                      if key in gvar_list}
                     return
 
-            # store data for each variable desired
-            if hemi == '*':
-                f_south = h5py.File(full_filenameS, 'r')
-                s = 'N'
-            else:
-                s = hemi
-            variables = {model_varnames[var][0]:
+            # initialize data mapping for each variable desired
+            self.variables = {model_varnames[var][0]:
                          {'units': model_varnames[var][-1],
-                          'data': 0.} for var in gvar_list}
-            # list of variables to be retrieved from attrs
-            attrs_var = ['imf_By', 'imf_Bz', 'solar_wind_speed']
-            for var in gvar_list:
-                if var in attrs_var:  # save time series data from attributes
-                    variables[model_varnames[var][0]]['data'] = \
-                        array([f_data1[time+s].attrs[var] for time in
-                               time_list], dtype=float)
-                elif var == 'int_joule_heat_n' and hemi in ['*', 'N']:
-                    # only time series variable in north dataset
-                    variables[model_varnames[var][0]]['data'] = \
-                        array([array(f_data1[time+'N']['int_joule_heat'])[0]
-                               for time in time_list], dtype=float)
-                elif var == 'int_joule_heat_s' and hemi in ['*', 'S']:
-                    # only time series variable in south dataset
-                    if hemi == '*':
-                        variables[model_varnames[var][0]]['data'] = \
-                            array([array(f_south[time+'S'][
-                                'int_joule_heat'])[0] for time in time_list],
-                                dtype=float)
-                    elif hemi == 'S':
-                        variables[model_varnames[var][0]]['data'] = \
-                            array([array(f_data1[time+'S'][
-                                'int_joule_heat'])[0] for time in time_list],
-                                dtype=float)
-                else:  # pull from datasets
-                    if hemi == '*':
-                        tmp = array([array(f_data1[time+'N'][var]) for
-                                     time in time_list], dtype=float,
-                                    order='F')
-                        tmp1 = transpose(tmp, (0, 2, 1))  # now t, lon, lat
-                        data1 = flip(tmp1, axis=2)
-                        tmp = array([flip(array(f_south[time+'S'][var]),
-                                          axis=0) for time in time_list],
-                                    dtype=float, order='F')
-                        tmp1 = transpose(tmp, (0, 2, 1))
-                        south_data = flip(tmp1, axis=2)
-                    elif hemi in ['N', 'S']:
-                        tmp = array([array(f_data1[time+hemi][var]) for
-                                     time in time_list], dtype=float,
-                                    order='F')
-                        tmp1 = transpose(tmp, (0, 2, 1))
-                        data1 = flip(tmp1, axis=2)
-
-                    # need to reverse order along lat axis for southern hemi
-                    if '_th' in var and hemi != 'S':
-                        # change from equatorward to northward in N hemi data
-                        data1 *= -1
-                    if hemi == '*':
-                        total_data = concatenate((south_data, data1), axis=2)
-                    else:
-                        total_data = data1
-                    variables[model_varnames[var][0]]['data'] = total_data
-
-            # prepare and return data
-            if not fulltime:
-                f_data1.close()
-                if hemi == '*':
-                    f_south.close()
-                variables['time'] = self.filetimes[0]
-                self.short_data = variables
-                return
-
-            # Store coordinate data as class attributes
-            if filecheck:  # add new time in hours since midnight
-                new_time = ts_to_hrs(short_data['time'], self.filedate)
-                self._time = append(time, new_time)
-            else:
-                self._time = time
+                          'data': var} for var in gvar_list}
 
             # collect and arrange lat grid to be increasing (from neg to pos)
-            if hemi in ['*', 'N']:
-                lat_N = unique(f_data1['lats'])  # 24 values
-                if hemi == '*':
+            # add buffer rows for NaN over equator region
+            if 'N' in patterns:
+                h5_data = h5py.File(self.pattern_files['N'][0])
+                lat_N = unique(h5_data['lats'])  # 24 values
+                ldiff = diff(lat_N).min()
+                lat_N = array([lat_N[0]-ldiff, lat_N[0]-ldiff/10.] + list(lat_N)
+                              + [90.])
+                if 'S' in patterns:
+                    h5_dataS = h5py.File(self.pattern_files['S'][0])
                     # reverse order and make negative
-                    lat_S = flip(unique(f_south['lats']))*(-1)
+                    lat_S = flip(unique(h5_dataS['lats']))*(-1)
+                    lat_S = array([-90.] + list(lat_S) + [lat_S[-1]+ldiff/10.,
+                                                          lat_S[-1]+ldiff])
+                    h5_dataS.close()
                     # -88.?? to +88.?? (south pole first, north pole last)
-                    lat = append(lat_S, lat_N)
-                    lat = insert(lat, 0, -90.)  # insert south pole value
-                    self._lat = append(lat, 90.)  # append north pole value
+                    self._lat = append(lat_S, lat_N)  # append north pole value
                 else:
-                    self._lat = append(lat_N, 90.)  # append north pole value
-            elif hemi == 'S':  # N hemisphere file DNE
+                    self._lat = lat_N  # append north pole value
+            elif 'S' in patterns:  # N hemisphere file DNE
+                h5_data = h5py.File(self.pattern_files['S'][0])
                 # reverse order and make negative
-                lat_S = flip(unique(f_data1['lats']))*(-1)
-                self._lat = insert(lat_S, 0, -90.)  # insert south pole value
-            self._lon = unique(f_data1['lons'])-180.  # shift noon to 0 deg lon
+                lat_S = flip(unique(h5_data['lats']))*(-1)
+                ldiff = diff(lat_N).min()
+                lat_S = array([-90.] + list(lat_S) + [lat_S[-1]+ldiff/10.,
+                                                      lat_S[-1]+ldiff])
+                self._lat = lat_S  # insert south pole value
+            self._lon = unique(h5_data['lons'])-180.  # shift noon to 0 deg lon
+            h5_data.close()
 
             # convert height in km to radius in R_E to conform to MAG coord sys
             # 110 km altitude
             self._radius = (110.+R_earth.value/1000.)/(R_earth.value/1000.)
-            f_data1.close()   # close files
-            if hemi == '*':
-                f_south.close()
 
             # store a few items in object
             self.missing_value = NaN
@@ -423,29 +289,9 @@ def MODEL():
             # need latitude wrapping (scalars and vectors), then
             #  register interpolators for each requested variable
             t_reg = perf_counter()
-            varname_list = [key for key in variables.keys()]
-            self.variables = {}
+            varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
-                if len(variables[varname]['data'].shape) == 1:
-                    if filecheck:  # if neighbor found
-                        # append data for last time stamp
-                        variables[varname]['data'] = append(
-                            variables[varname]['data'],
-                            short_data[varname]['data'][0])
-                    self.variables[varname] = dict(
-                        units=variables[varname]['units'],
-                        data=variables[varname]['data'])
-                    self.register_1D_variable(varname, gridded_int)
-                elif len(variables[varname]['data'].shape) == 3:
-                    if filecheck:
-                        # append data for last time stamp
-                        variables[varname]['data'] = append(
-                            variables[varname]['data'],
-                            short_data[varname]['data'][0, :, :], axis=0)
-                    self.variables[varname] = dict(
-                        units=variables[varname]['units'],
-                        data=variables[varname]['data'])
-                    self.register_3D_variable(varname, gridded_int, hemi)
+                self.register_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -453,30 +299,30 @@ def MODEL():
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
-        def wrap3Dlat(self, varname, variable, hemi):
+        def wrap3Dlat(self, varname, variable, ps):
             '''Wrap latitude values for scalars and vectors.'''
 
             shape_list = list(variable.shape)  # time, lon, lat
-            if hemi == '*':
+            if len(ps) == 2:
                 shape_list[2] += 2  # need two more places in latitude
             else:
-                shape_list[2] += 1
+                shape_list[2] += 1  # pole row
             tmp_arr = zeros(shape_list)  # array to set-up wrapped data in
-            if hemi == '*':
+            if len(ps) == 2:
                 tmp_arr[:, :, 1:-1] = variable  # copy data into grid
-            elif hemi == 'N':
+            elif ps[0] == 'N':
                 tmp_arr[:, :, :-1] = variable  # N hemi lat appended
-            elif hemi == 'S':
+            elif ps[0] == 'S':
                 tmp_arr[:, :, 1:] = variable  # S hemi lat inserted
 
             # wrapping in latitude for scalar variables
             if 'east' not in varname and 'north' not in varname:
-                if hemi in ['*', 'S']:
+                if 'S' in ps:
                     # put in top values
                     top = mean(tmp_arr[:, :-1, 1], axis=1)  # same shape as t
                     tmp_arr[:, :-1, 0] = broadcast_to(top, (shape_list[1]-1,
                                                             shape_list[0])).T
-                if hemi in ['*', 'N']:
+                if 'N' in ps:
                     # same for bottom, reusing variable names
                     top = mean(tmp_arr[:, :-1, -2], axis=1)  # same shape as t
                     tmp_arr[:, :-1, -1] = broadcast_to(top, (shape_list[1]-1,
@@ -484,17 +330,16 @@ def MODEL():
 
             # wrapping in latitude for relevant vector variables
             elif 'east' in varname or 'north' in varname:
-                if hemi in ['*', 'S']:
+                if 'S' in ps:
                     # calculate net vector magnitude for top
                     tmp_arr[:, :-1, 0] = self.vector_average3D(
                         tmp_arr[:, :-1, 1], shape_list, varname, self._lat[0])
-                if hemi in ['*', 'N']:
+                if 'N' in ps:
                     # repeat for bottom
                     tmp_arr[:, :-1, -1] = self.vector_average3D(
                         tmp_arr[:, :-1, -2], shape_list, varname,
                         self._lat[-1])
             tmp_arr[:, -1, :] = tmp_arr[:, 0, :]  # wrap value in lon after
-            self.variables[varname]['data'] = tmp_arr  # store result
             return tmp_arr
 
         def vector_average3D(self, top, shape_list, varname, latval):
@@ -528,33 +373,134 @@ def MODEL():
             return new_top
 
         # define and register a 1D variable
-        def register_1D_variable(self, varname, gridded_int):
-            """Registers a 1d interpolator with 1d signature"""
+        def register_variable(self, varname, gridded_int):
+            """Creates and registers the interpolator"""
 
-            # define and register the interpolators
-            coord_dict = {'time': {'units': 'hr', 'data': self._time}}
+            # determine coordinate variables and xvec by coord list
+            gvar = self.variables[varname]['data']
+            ps = list(self.pattern_files.keys())
+            coord_list = [value[5] for key, value in model_varnames.items()
+                          if value[0] == varname][0]
+            # time grids are the same in both hemispheres
+            coord_dict = {'time': {'units': 'hr',
+                                   'data': self.times[ps[0]]['all']}}
+            if 'lon' in coord_list:
+                coord_dict['lon'] = {'units': 'deg', 'data': self._lon}
+            if 'lat' in coord_list:
+                coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str)
-            return
+            
+            # functionalize time series data, converting to an array first
+            if len(coord_list) == 1:
+                if gvar in attrs_var:
+                    data = []
+                    for f in self.pattern_files[ps[0]]:  # N, or S if N DNE
+                        h5_data = h5py.File(f)
+                        data.extend([h5_data[tkey].attrs[gvar] for tkey in
+                                     h5_data.keys() if tkey not in
+                                     ['lats', 'lons']])  # one float per time
+                        h5_data.close()
+                elif gvar[:-2] == 'int_joule_heat' and gvar[-1].upper() in ps:
+                    data, p = [], gvar[-1].upper()
+                    for f in self.pattern_files[p]:  # N, or S if N DNE
+                        h5_data = h5py.File(f)
+                        data.extend([h5_data[tkey][gvar[:-2]][0] for tkey in
+                                     h5_data.keys() if tkey not in
+                                     ['lats', 'lons']])  # one float per time
+                        h5_data.close()
+                self.variables[varname]['data'] = array(data)
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str,
+                                                interp_flag=0)  # single array
+                return
 
-        # define and register a 3D variable
-        def register_3D_variable(self, units, variable, varname, gridded_int,
-                                 hemi):
-            """Registers a 3d interpolator with 3d signature"""
+            # remaining logic is for 3D data, define func
+            def func(i):  # i is the file number
+                # get first hemisphere data
+                if 'N' in ps:  # first one is N hemisphere
+                    h5_data = h5py.File(self.pattern_files['N'][i])
+                    tmp =  array([array(h5_data[tkey][gvar]) for tkey in
+                                  h5_data.keys() if tkey not in ['lats', 'lons']],
+                                 dtype=float, order='F')
+                    h5_data.close()
+                    data = flip(transpose(tmp, (0, 2, 1)), axis=2)
+                    NaN_row = ones(data[:, :, 0].shape) * NaN
+                    data = insert(data, 0, data[:, :, 0], axis=2)  # add buffer row
+                    data = insert(data, 0, NaN_row, axis=2)
+                    # change from equatorward to northward in N hemi data
+                    if '_th' in varname:
+                        data *= -1
+                    # add S hemisphere data
+                    if len(ps) == 2:
+                        h5_data = h5py.File(self.pattern_files['S'][i])
+                        tmp =  array([array(h5_data[tkey][gvar]) for tkey in
+                                      h5_data.keys() if tkey not in ['lats', 'lons']],
+                                     dtype=float, order='F')
+                        h5_data.close()
+                        south_data = transpose(tmp, (0, 2, 1))
+                        south_data = insert(south_data, south_data.shape[2],
+                                            south_data[:, :, -1], axis=2)  # add buffer row
+                        south_data = insert(south_data, south_data.shape[2],
+                                            NaN_row, axis=2)
+                        data = concatenate((south_data, data), axis=2)
+                elif 'S' in ps:  # only S hemisphere data
+                    h5_data = h5py.File(self.pattern_files['S'][i])
+                    tmp =  array([array(h5_data[tkey][gvar]) for tkey in
+                                  h5_data.keys() if tkey not in ['lats', 'lons']],
+                                 dtype=float, order='F')
+                    h5_data.close()
+                    data = transpose(tmp, (0, 2, 1))
+                    NaN_row = ones(data[:, :, 0].shape) * NaN
+                    data = insert(data, data.shape[2], data[:, :, -1], axis=2)  # add buffer row
+                    data = insert(data, data.shape[2], NaN_row, axis=2)
+                
+                # add one time step from the next file if not the last file
+                if i != len(self.pattern_files[ps[0]])-1:
+                    if 'N' in ps:  # N hemisphere data is first
+                        h5_data = h5py.File(self.pattern_files['N'][i+1])
+                        time_list = list(h5_data.keys())[:-2]
+                        tmp = array(h5_data[time_list[-1]][gvar], dtype=float,
+                                    order='F')
+                        h5_data.close()
+                        data1 = flip(tmp.T, axis=1)  # shape = (lon, lat)
+                        NaN_row1 = ones(data1[:, 0].shape) * NaN
+                        data1 = insert(data1, 0, data1[:, 0], axis=1)  # add buffer row
+                        data1 = insert(data1, 0, NaN_row1, axis=1)
+                        # change from equatorward to northward in N hemi data
+                        if '_th' in varname:
+                            data1 *= -1
+                        # add S hemisphere data
+                        if len(ps) == 2:
+                            h5_data = h5py.File(self.pattern_files[ps[1]][i+1])
+                            time_list = list(h5_data.keys())[:-2]
+                            tmp =  array(h5_data[time_list[-1]][gvar], dtype=float,
+                                        order='F')
+                            h5_data.close()
+                            south_data1 = tmp.T
+                            south_data1 = insert(south_data1, south_data1.shape[1],
+                                                 south_data1[:, 0], axis=1)  # add buffer row
+                            south_data1 = insert(south_data1, south_data1.shape[1],
+                                                 NaN_row1, axis=1)
+                            data1 = concatenate((south_data1, data1), axis=1)
+                    elif 'S' in ps:  # only S hemisphere data
+                        h5_data = h5py.File(self.pattern_files['S'][i])
+                        tmp =  array(h5_data[time_list[-1]][gvar], dtype=float,
+                                    order='F')
+                        h5_data.close()
+                        data1 = tmp.T
+                        NaN_row1 = ones(data1[:, 0].shape) * NaN
+                        data1 = insert(data1, data1.shape[1], data1[:, 0], axis=1)  # add buffer row
+                        data1 = insert(data1, data1.shape[1], NaN_row1, axis=1)
+                    data = append(data, [data1], axis=0)
+                final_data = self.wrap3Dlat(varname, data, ps)
+                return final_data
+                
+            self = RU.Functionalize_Dataset(
+                self, coord_dict, varname, self.variables[varname],
+                gridded_int, coord_str, interp_flag=2, func=func,
+                start_times=self.times[ps[0]]['start'])
 
-            # define and register the fast interpolator
-            coord_dict = {'time': {'units': 'hr', 'data': self._time},
-                          'lon': {'units': 'deg', 'data': self._lon},
-                          'lat': {'units': 'deg', 'data': self._lat}}
-            self.variable[varname]['data'] = \
-                self.wrap3Dlat(varname, self.variable[varname]['data'], hemi)
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str)
             return
     return MODEL

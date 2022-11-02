@@ -712,7 +712,7 @@ def MODEL():
 
             # overshooting guess at memory needed to read in all data
             # chunks/slices will be dropped if memory runs out later
-            memory_needed = getsize(self.pattern_files[key][0]) * \
+            memory_needed = getsize(self.pattern_files['h1'][0]) * \
                 len(self.pattern_files[key])
             memory_test =  memory_needed < psutil.virtual_memory().available
             if not memory_test:  # varname != 'H_geopot_ilev' and not
@@ -735,7 +735,6 @@ def MODEL():
             else:  # only using this approach if there is enough memory
                 # also using for H_ilev to speed up function composition
                 # determine the operation to occur on each time chunk
-                #print(varname, ' Memory looks good.')
                 def func(f):  # file_idx
                     # convert slice number s to index in file
                     cdf_data = Dataset(self.pattern_files[key][f])
@@ -761,14 +760,15 @@ def MODEL():
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:
                 if varname == 'H_geopot_ilev' and hasattr(self, '_km_ilev_h0'):
                     new_varname = 'Plev'  # only one possible
-                    # Import and call custom interpolator
-                    from waccmx_ilevinterp import PLevelInterp
-                    interpolator, interp_ijk = PLevelInterp(
-                        self['H_geopot_ilev_ijk'], coord_dict['time']['data'],
-                        coord_dict['lon']['data'], coord_dict['lat']['data'],
-                        coord_dict['ilev']['data'])
                     units = 'hPa'
-                elif varname != 'H_geopot_ilev':  # define by function composition
+                    # perform unit conversion to km with Kamodo
+                    self['H_ilev_ijk[km]'] = 'H_geopot_ilev_ijk'
+                    # Import and call custom interpolator
+                    interpolator, interp_ijk = RU.PLevelInterp(
+                        self['H_ilev_ijk'], coord_dict['time']['data'],
+                        coord_dict['lon']['data'], coord_dict['lat']['data'],
+                        coord_dict['ilev']['data'], units)
+                elif varname != 'H_geopot_ilev':  # define by function comp
                     new_varname = varname.split('_ilev')[0]
                     interpolator = varname+'(Plev)'
                     units = self.variables[varname]['units']

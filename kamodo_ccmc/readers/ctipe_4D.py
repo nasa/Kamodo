@@ -657,11 +657,10 @@ def MODEL():
             # need H functions to be gridded regardless of gridded_int value
             if varname in ['H_ilev', 'H_ilev1']:
                 gridded_int = True
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str,
-                                            interp_flag=2, func=func,
-                                            start_times=self.times[key]['start'])
+            self = RU.Functionalize_Dataset(
+                self, coord_dict, varname, self.variables[varname],
+                gridded_int, coord_str, interp_flag=2, func=func,
+                start_times=self.times[key]['start'])
 
             # perform substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
@@ -679,16 +678,21 @@ def MODEL():
 
             # create pressure level -> km function once per ilev type
             if varname in ['H_ilev', 'H_ilev1'] or varname in self.total_ilev:
-                coord_datalist = [value['data'] for key, value in
-                                  coord_dict.items()]
                 if varname in ['H_ilev', 'H_ilev1']:  # create custom interp
                     new_varname = 'P'+coord_list[-1][1:]
                     kms = getattr(self, '_km_'+coord_list[-1])
+                    # perform unit conversion if needed
+                    if self.variables[varname]['units'] != 'km':
+                        self[varname+'km_ijk[km]'] = varname + '_ijk'
+                        km_interp = self[varname+'km_ijk']
+                    else:
+                        km_interp = self[varname+'_ijk']
                     # Import and call custom interpolator
-                    from ctipe_ilevinterp import PLevelInterp
-                    interpolator, interp_ijk = PLevelInterp(
-                        self, *coord_datalist, 'H_'+coord_list[-1])
                     units = 'm/m'
+                    interpolator, interp_ijk = RU.PLevelInterp(
+                        km_interp, coord_dict['time']['data'],
+                        coord_dict['lon']['data'], coord_dict['lat']['data'],
+                        coord_dict[coord_list[-1]]['data'], units)
                     # kms is a 1D array of the median height values in km
                 else:  # define by function composition
                     new_varname = varname.split('_ilev')[0]

@@ -131,29 +131,38 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
         variable_name: a string giving the LaTeX representation of the variable
         data_dict: a dictionary containing the data information.
             {'units': 'data_units', 'data': data_array}
-            data_array should have the same shape as (c1, c2, c3, ..., cN)
-        Note: The dataset must also depend upon ALL of the coordinate arrays
-            given.
+            If interp_flag=0 is used, data_array should be a numpy array of
+            shape (c1, c2, c3, ..., cN). Otherwise, it could be a string or
+            other thing that feeds into the given func.
+        Note: The dataset must depend upon ALL of the coordinate arrays given.
         
         gridded_int: True to create a gridded interpolator (necessary for
-            plotting higher dimensions and slicing). False otherwise.
+            plotting and slicing). False otherwise (e.g. for the flythrough).
         coord_str: a string indicating the coordinate system of the data
             (e.g. "SMcar" or "GEOsph").
-        interp_flag: the method of interpolation required. 
+        interp_flag: the chosen method of interpolation. 
             Options: 
                 0: (default option) assumes the given data_dict['data'] is an
                     N-dimensional numpy array and creates a standard scipy
-                    interpolator to functionalize the data. 
+                    interpolator to functionalize the data. This option should
+                    be used when the entire dataset is contained in a single
+                    array AND can easily fit into memory (e.g. 1D time series)
                 1: Lazy interpolation is applied on top of the standard scipy
-                    interpolators (one per time slice).
+                    interpolators (one per time slice). This option is designed
+                    to be used when the data is stored in one time step per
+                    file and the time step can easily fit into memory.
                 2: Lazy chunked interpolation is applied on top of the
                     standard scipy interpolators (one per time chunk).
                     Interpolation between time chunks occurs in the given
-                    func.
-                3. Combination of 2 and 3, used when the time chunks are too
+                    func. This option is designed to be used when the data is
+                    stored with more than one time step per file AND the time
+                    chunks are small enough to easily fit into memory.
+                3. Combination of 1 and 2, used when the time chunks are too
                     large for the typical computer memory. Searches for the
                     correct time chunk, then the correct time slice in the
-                    time chunk.
+                    time chunk. This option is designed to be used when the
+                    files contain more than one time step and are too large to
+                    easily read into memory.
         func: a function defining the logic to be executed on a given time
             slice or chunk (e.g. converting to an array and then transposing
             it). 
@@ -162,14 +171,12 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                 the time slice. Required syntax is data = func(i), where i is
                 the index of the slice on the full time grid.
             - For interp_flag=2, the function should return the data for the
-                time chunk AND the time grid for that time chunk. Required
-                syntax is data, time = func(i), where i is the file number in
-                a list of files of the same naming pattern.
+                time chunk. Required syntax is data = func(i), where i is the
+                file number in a list of files of the same naming pattern.
             - For interp_flag=3, the function should return only the data for
-                the time slice. Required syntax is data = func(i), where i is
-                a string of the combined indices, such as '1_3' indicating
-                the second time chunk and the fourth time slice in that time
-                chunk (counting starts at 0 for both).
+                the time slice. Required syntax is data = func(i, fi), where i
+                is the file number in a list of files of the same naming
+                pattern, and fi is the index of the time slice in that file.
             - ALL functions must include the method to retrieve the data from
                 the file.
             - This option is useful when a dataset's shape order does not match
@@ -177,6 +184,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
             such operations to be done on the fly.
         start_times: a list of the start times for each data chunk.
             *** Only needed for interpolation over time chunks. ***
+            (interp_flag options 2 and 3)
 
     Output: A kamodo object with the functionalized dataset added.
     '''
@@ -314,11 +322,10 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
             current time chunk (see func description).
         func: a function defining the logic to be executed on a given time
             chunk, including retrieving the data from the file. The function
-            must return the data for the time chunk AND the time grid for
-            that time chunk. Interpolation between time chunks can be easily
-            achieved by appending a time slice from the next chunk to the
-            current one in the logic of the function. Required syntax is
-            data, time = func(i).
+            must return the data for the time chunk. Interpolation between time
+            chunks can be easily achieved by appending a time slice from the
+            next chunk to the current one in the logic of the function. The
+            required syntax is data = func(i), where i is the file number.
     Output: A time-chunked lazy interpolator.
     '''
     
@@ -332,14 +339,14 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
     idx_map, time_interps = [], []  # initialize variables
 
     # define method for how to add time chunks to memory
-    def add_timeinterp(i):  # i is the file number
+    def add_timeinterp(i, time_interps):  # i is the file number
         idx_map.append(i)
         # determine time grid for file
         start_idx = list(coord_list[0]).index(start_times[i])
         if i == len(start_times)-1:
             time = coord_list[0][start_idx:]
-        else:  # determine the first index of the next file
-            end_idx = list(coord_list[0]).index(start_times[i+1])
+        else:  # determine the first index of the next file +1 for added time
+            end_idx = list(coord_list[0]).index(start_times[i+1]) + 1
             time = coord_list[0][start_idx:end_idx]
         # get data for chunk
         data = func(i)
@@ -374,7 +381,7 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
                 else:
                     del idx_map[-1], time_interps[-1]
                 time_interps, idx_map = add_timeinterp(i, time_interps)
-        print(f'Time chunk index {i} added from file.')
+                print(f'Time chunk added from file {i+1}.')
         interp_location = idx_map.index(i)
         return time_interps[interp_location](position)  # single time chunk
 
@@ -436,7 +443,7 @@ def multitime_biginterp(coord_dict, data_dict, start_times, func):
     def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
 
         position = [*args]  # time coordinate value must be first
-        # Choose indices of time grid values surrounding or equal to time
+        # Choose indices of time grid values surrounding or equal to time value
         idx_list = get_slice_idx(position[0], coord_list[0])
 
         # add time slices as needed
@@ -471,13 +478,14 @@ def multitime_biginterp(coord_dict, data_dict, start_times, func):
                         del idx_map[-1], time_interps[-1]
                     time_interps = add_timeinterp(i, fi, time_interps)
                 idx_map.append(idx)
-                print(f'Time slice index {idx} added from file.')
+                print(f'Time slice index {idx} (file time {fi}) added from ' +
+                      f'file {i+1}.')
         if len(idx_list) > 1:
             interp_locations = [idx_map.index(val) for val in idx_list]
             interp_values = ravel(array([time_interps[i]([*position[1:]])
                                          for i in interp_locations]))
             time_interps = rgi1D(coord_list[0][idx_list], interp_values,
-                                bounds_error=False, fill_value=NaN)
+                                 bounds_error=False, fill_value=NaN)
             return time_interps(position[0])
         else: 
             interp_location = idx_map.index(idx_list[0])
@@ -533,8 +541,81 @@ def get_file_index(time_val, start_times):
     return i
 
 
-################# BEGIN NON-INTERPOLATOR FUNCTIONS #########################
+############## BEGIN PRESSURE LEVEL INVERSION ROUTINE #######################
+
+# -*- coding: utf-8 -*-
+# The pressure level inversion routine used by many ITM models
+from scipy.interpolate import interp1d
+from numpy import unique, zeros
+
+
+def PLevelInterp(h_func, time, longitude, latitude, ilev, units):
+    '''Custom interpolator functionto convert from altitude in km to pressure
+    level.
+    Parameters:
+        h_func - the H_ilev function/interpolator in km
+        time - a 1D array with the grid values for time
+        longitude - a 1D array with the grid values for longitude
+        latitude - a 1D array with the grid values for latitude
+        ilev - a 1D array with the grid values for pressure level
+        units - a string indicating the units of the pressure level grid
+
+    Output: Two interpolators. The first interpolator accepts time, lon, lat,
+        and pressure level and returns time, lon, lat, and height. The second
+        interpolator accepts the same arguments and returns only the height.
+        Both interpolators are 'kamodofied'.
+    '''
+
+    def km_to_ilev(t, lon, lat, km):
+        '''Inputs t, lon, lat, and km are arrays;
+        the interpolated pressure levels are returned.'''
+        # sort lats and lons per time value
+        input_arr = array([t, lon, lat]).T  # array of all positions given
+        pos_arr = unique(input_arr, axis=0)  # only create interp for unique
+        out_ilev = zeros(len(t))  # (t, lon, lat) positions to save time
+        for pos in pos_arr:
+            km_vals = h_func(**{'time': pos[0], 'lon': pos[1], 'lat': pos[2]})
+            km_interp = interp1d(km_vals, ilev, bounds_error=False,
+                                 fill_value=NaN)
+            pos_idx = [i for i, p in enumerate(input_arr) if all(p == pos)]
+            out_ilev[pos_idx] = km_interp(km[pos_idx])  # interp for all km
+        return out_ilev
+
+
+    # Convert f(ilev) to f(km)
+    @kamodofy(units=units)
+    def plevconvert(xvec_GDZsph4Dkm):
+        '''Interpolator to convert from height to pressure level.
+        Input xvec is a tuple or list of arrays/values.
+        Returns the 4D position as a tuple of four 1D arrarys to feed into
+        the original function.'''
+        print('Inverting the pressure level grid. Please wait...', end="")
+        t, lon, lat, km = array(xvec_GDZsph4Dkm).T
+        out_ilev = km_to_ilev(t, lon, lat, km)
+        data = array([t, lon, lat, out_ilev]).T
+        print('done.')
+        return data
+
+
+    @kamodofy(units=units)
+    def plevconvert_ijk(xvec_GDZsph4Dkm):
+        '''Interpolator to convert from height to pressure level.
+        Input xvec is a tuple or list of arrays/values.
+        Returns the 4D position as a tuple of four 1D arrarys to feed into
+        the original function.'''
+        print('Inverting the pressure level grid. Please wait...', end="")
+        t, lon, lat, km = array(xvec_GDZsph4Dkm).T
+        data = km_to_ilev(t, lon, lat, km)
+        print('done.')
+        return data
+
+    return plevconvert, plevconvert_ijk
+
+
+################# BEGIN TIME LIST FUNCTIONS #########################
+
 from datetime import datetime, timezone, timedelta
+from os.path import basename
 
 
 @vectorize
@@ -546,10 +627,10 @@ def hrs_to_str(hrs, filedate):
 
 
 @vectorize
-def str_to_hrs(dt_str, filedate):
+def str_to_hrs(dt_str, filedate, format_string='%Y-%m-%d %H:%M:%S'):
     '''Convert datetime string of format "YYYY-MM-DD HH:MM:SS" to hrs since
     midnight of filedate.'''
-    tmp = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S').replace(
+    tmp = datetime.strptime(dt_str, format_string).replace(
         tzinfo=timezone.utc)
     return (tmp - filedate).total_seconds()/3600.
 
@@ -653,7 +734,7 @@ def read_timelist(time_file, list_file):
                                       '%Y-%m-%d').replace(
                                           tzinfo=timezone.utc)
     for p in times.keys():
-        pattern_files[p] = [f for f in files if p in f]
+        pattern_files[p] = [f for f in files if p in basename(f)]
         start_times = [t for f, t in zip(files, start_date_times)
                        if p in f]
         times[p]['start'] = str_to_hrs(start_times, filedate)
