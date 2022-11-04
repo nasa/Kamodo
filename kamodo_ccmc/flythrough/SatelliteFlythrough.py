@@ -339,8 +339,8 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     ------------
     model: 'CTIPe','IRI', ...
     file_dir: complete path to where model data files are stored
-    variable_list: List of standardized variable names. Corresponding integers
-        are allowed. See model variable output for details.
+    variable_list: List of standardized variable names. See model variable
+        output for details.
     sat_time: a numpy array of the utc timestamps
     c1, c2, c3: numpy arrays of the positions correlating to the utc timestamps
         (c1, c2, c3) should be (x,y,z) in R_E for cartesian coordinates, and
@@ -397,32 +397,15 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
                              'Please either remove the file or change the ' +
                              'output_name and then rerun the command.')
 
-    # if model is given as an integer, then convert to a string
-    model = U.MW.convert_model_string(model)
-
-    # if variable_list is a list of integers,
-    # convert to standard names for given model
-    variable_list = U.MW.convert_variablenames(model, variable_list)
-
-    # convert integer coordinate names or grids to strings
-    coord_type, coord_grid = coord_sys.split('-')
-    coord_type, coord_grid = U.MW.convert_coordnames(coord_type, coord_grid)
-
-    # prepare files for run
-    U.Prepare_Files(model, file_dir)
-
-    # ignore variables with 'ilev' in the name
-    clean_var = [var for var in variable_list if 'ilev' not in var]
-    if len(variable_list) != len(clean_var):
-        print('Pressure dependent variables ignored. Please request the ' +
-              'height dependent versions instead.')
-        if len(clean_var) == 0:
-            return
+    # correct variables with 'ilev' in the name 
+    new_list = [''.join([i+'_' for i in var.split('_')[:-1]])[:-1]
+                if 'ilev' in var else var for var in variable_list]
+    coord_grid, coord_type = *coord_sys.split('-')
 
     # get interpolated results
     # coord_type should be one of SpacePy's or AstroPy's coordinates
     # coord_grid is either 'sph' or 'car'
-    results = U.Model_SatelliteFlythrough(model, file_dir, variable_list,
+    results = U.Model_SatelliteFlythrough(model, file_dir, new_list,
                                           sat_time, c1, c2, c3,
                                           coord_type, coord_grid,
                                           verbose=verbose)
@@ -430,6 +413,8 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     # remove requested variables not found in the data
     var_list = [key for key in results.keys() if key not in
                 ['utc_time', 'c1', 'c2', 'c3', 'net_idx']]
+    if len(var_list) == 0:
+        return results
 
     # retrieve coordinate and results units
     coord_units = U.MW.coord_units(coord_type, coord_grid)
@@ -498,7 +483,7 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list,
     Parameters:
         start_time: utc timestamp in seconds for start
         stop_time: utc timestamp in seconds for stop
-        model: CTIPe, IRI, .... (integers allowed)
+        model: CTIPe, IRI, ....
         file_dir: complete path to where model data is stored
         variable_list: list of standardized variable names desired.
             Integers allowed.
@@ -520,11 +505,11 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list,
             output_name - extension + variable names + plot type (1D or 3D).
             Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
             separated data, or 'txt' for tab separated data files.
-        plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
-            integers also allowed with 'GDZ'=0 and so on. Indicates the
-            coordinate system the plot will be generated in. Only plots in
-            cartesian coordinates systems are supported, so 'SPH' and 'RLL' are
-            not accepted. Default is 'GEO'. Astropy coordinates also allowed.
+        plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', etc.
+            Indicates the coordinate system the plot will be generated in.
+            Only plots in cartesian coordinates systems are supported, so 'SPH'
+            and 'RLL' are not accepted. Default is 'GEO'. Astropy coordinates
+            also allowed.
 
     Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
     - utc_time is an array in UTC seconds since 1970-01-01 of the generated
@@ -571,19 +556,19 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list,
     stop: utc timestamp for end of desired time interval
     model: 'CTIPe','IRI', ...
     file_dir: complete path to where model data files are stored
-    variable_list: List of standardized variable names. Corresponding integers
-        are allowed. See model variable output for details.
+    variable_list: List of standardized variable names. See model variable
+        output for details.
     coord_type: Pick from GEO, GSM, GSE, or SM for the satellite trajectory.
     output_name: complete path with filename (with the extension) for the file
         to write the results to. Plotting filenames are determined by
         output_name - extension + variable names + plot type (1D or 3D).
         Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
         separated data, or 'txt' for tab separated data files.
-    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
-        integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
-        system the plot will be generated in. Only plots in cartesian
-        coordinates systems are supported, so 'SPH' and 'RLL' are not accepted.
-        Default is 'GEO'. Astropy coordinates also supported.
+    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', etc.
+        Indicates the coordinate system the plot will be generated in.
+        Only plots in cartesian coordinates systems are supported, so 'SPH'
+        and 'RLL' are not accepted. Default is 'GEO'. Astropy coordinates
+        also allowed.
     verbose: Set to true to be overwhelmed with information.
 
     Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
@@ -636,8 +621,8 @@ def TLEFlight(tle_file, start, stop, time_cadence, model, file_dir,
             positions. Should be an integer.
         model: 'CTIPe','IRI', ...
         file_dir: complete path to where model data files are stored.
-        variable_list: List of standardized variable names. Corresponding
-            integers are allowed. See model variable output for details.
+        variable_list: List of standardized variable names. See model variable
+            output for details.
         coord_type: Pick from GEO, GSM, GSE, or SM for the satellite
             trajectory.
         output_name: complete path with filename (with the extension) for the
@@ -699,18 +684,18 @@ def MyFlight(traj_file, model, file_dir, variable_list, output_name='',
         Astropy coordinate systems also supported.
     model: 'CTIPe', 'IRI', ...
     file_dir: complete path to model data files
-    variable_list: List of standardized variable names. Corresponding integers
-        are allowed. See model variable output for details.
+    variable_list: List of standardized variable names. See model variable
+        output for details.
     output_name: complete path with filename (with the extension) for the file
         to write the results to. Plotting filenames are determined by
         output_name - extension + variable names + plot type (1D or 3D).
         Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
         separated data, or 'txt' for tab separated data files.
-    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
-        integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
-        system the plot will be generated in. Only plots in cartesian
-        coordinates systems are supported, so 'SPH' and 'RLL' are not accepted.
-        Default is 'GEO'.
+    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', etc.
+        Indicates the coordinate system the plot will be generated in.
+        Only plots in cartesian coordinates systems are supported, so 'SPH'
+        and 'RLL' are not accepted. Default is 'GEO'. Astropy coordinates
+        also allowed.
     verbose: Set to true to be overwhelmed with information.
 
     Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
