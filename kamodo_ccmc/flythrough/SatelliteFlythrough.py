@@ -400,7 +400,7 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     # correct variables with 'ilev' in the name 
     new_list = [''.join([i+'_' for i in var.split('_')[:-1]])[:-1]
                 if 'ilev' in var else var for var in variable_list]
-    coord_grid, coord_type = *coord_sys.split('-')
+    coord_type, coord_grid = *coord_sys.split('-')
 
     # get interpolated results
     # coord_type should be one of SpacePy's or AstroPy's coordinates
