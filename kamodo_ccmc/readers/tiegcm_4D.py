@@ -284,7 +284,7 @@ def MODEL():
     from os.path import basename, isfile
     from glob import glob
     from numpy import zeros, transpose, array, append, insert, where, unique, squeeze
-    from numpy import NaN, diff, abs, mean, broadcast_to, cos, sin, sum, median
+    from numpy import NaN, mean, broadcast_to, cos, sin, sum, median
     from numpy import pi as nppi
     from netCDF4 import Dataset
     from kamodo import Kamodo
@@ -301,17 +301,13 @@ def MODEL():
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
                 - If empty, the reader functionalizes all possible variables
-                (default)
+                    (default)
                 - If 'all', the reader returns the model_varnames dictionary
                     above for only the variables present in the given files.
-                    Note: the fulltime keyword must be False to acheive this
-                    behavior.
             filetime = boolean (default = False)
-                - if False, the script fully executes.
+                - If False, the script fully executes.
                 - If True, the script only executes far enough to determine the
                     time values associated with the chosen data.
-                Note: The behavior of the script is determined jointly by the
-                    filetime and fulltime keyword values.
             printfiles = boolean (default = False)
                 - If False, the filenames associated with the data retrieved
                     ARE NOT printed.
@@ -322,11 +318,6 @@ def MODEL():
                     standard method and a gridded method.
                 - If False, the variables chosen are functionalized in only the
                     standard method.
-            fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is
-                    included in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is
-                    included.
             verbose = boolean (False)
                 - If False, script execution and the underlying Kamodo
                     execution is quiet except for specified messages.
@@ -339,7 +330,7 @@ def MODEL():
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, fulltime=True, **kwargs):
+                     printfiles=False, **kwargs):
             super(MODEL, self).__init__()
             self.modelname = 'TIEGCM'
             t0 = perf_counter()
@@ -419,8 +410,7 @@ def MODEL():
                              zip(self.total_replace, self.total_ilev)}
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and fulltime and (
-                    variables_requested != 'all'):
+            if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in
                             test_list]
@@ -477,7 +467,7 @@ def MODEL():
                 gvar_list = [key for key in cdf_data.variables.keys()
                              if key in model_varnames.keys() and
                              key not in avoid_list]
-                if not fulltime and variables_requested == 'all':
+                if variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in
                                      gvar_list}

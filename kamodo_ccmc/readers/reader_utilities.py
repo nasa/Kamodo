@@ -622,7 +622,7 @@ from os.path import basename
 def hrs_to_str(hrs, filedate):
     '''Convert hrs since midnight of first day to a string for the file list
     of format "Date: YYYY-MM-DD  Time: HH:MM:SS".'''
-    return datetime.strftime(filedate + timedelta(hours=hrs),
+    return datetime.strftime(filedate + timedelta(hours=float(hrs)),
                              '  Date: %Y-%m-%d  Time: %H:%M:%S')
 
 
@@ -745,3 +745,20 @@ def read_timelist(time_file, list_file):
 
     return times, pattern_files, filedate, filename
 
+
+########## Logscale colorbar from Darren.
+
+def toLog10(fig):
+    """Quick function to take a 2D contour figure and make contour log10 scale"""
+    from numpy import log10
+    # grab values from old plot
+    val = fig.data[0]['z']
+    # set negative and zero values to NaN, compute log10 of values, NaN will stay NaN    
+    val[val <= 0.] = NaN
+    val = log10(val)
+    # assign back to plot object    
+    fig.data[0]['z'] = val
+    # add log10 to colorbar label
+    newlabel = 'log10<br>'+fig.data[0]['colorbar']['title']['text']
+    fig.data[0]['colorbar']['title']['text'] = newlabel
+    return fig

@@ -1,5 +1,4 @@
-from datetime import datetime, timezone, timedelta
-from numpy import vectorize
+from datetime import datetime, timezone
 
 
 # varnames in cdf files are standardized (value[0])
@@ -8,25 +7,49 @@ model_varnames = {'den400': ['rho_400km', 'Density at 400 km.',
                            'kg/m**3'],
                   'ON2': ['ON2', 'mmr or ratio?',
                           0, 'GDZ', 'sph', ['time', 'lon', 'lat'], 'm/m'],
-                  'temp_neutral': ['T_n', 'neutral temperature', 0, 'GDZ',
+                  'height': ['H_ilev', 'Height dependent upon pressure level',
+                             0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                             'm'],
+                  'temp_neutral': ['T_n_ilev', 'neutral temperature', 0, 'GDZ',
+                                   'sph', ['time', 'lon', 'lat', 'ilev'],
+                                   'K'],
+                  'temp_neutral_2': ['T_n', 'neutral temperature', 0, 'GDZ',
                                    'sph', ['time', 'lon', 'lat', 'height'],
                                    'K'],
-                  'O_Density': ['N_O', 'Oxygen number density', 0, 'GDZ',
+                  'O_Density': ['N_O_ilev', 'Oxygen number density', 0, 'GDZ',
+                                'sph', ['time', 'lon', 'lat', 'ilev'],
+                                '1/m**3'],
+                  'O_Density_2': ['N_O', 'Oxygen number density', 0, 'GDZ',
                                 'sph', ['time', 'lon', 'lat', 'height'],
                                 '1/m**3'],
-                  'O2_Density': ['N_O2', 'Molecular oxygen number density', 0,
+                  'O2_Density': ['N_O2_ilev', 'Molecular oxygen number density', 0,
+                                 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                                 '1/m**3'],
+                  'O2_Density_2': ['N_O2', 'Molecular oxygen number density', 0,
                                  'GDZ', 'sph', ['time', 'lon', 'lat',
                                                 'height'], '1/m**3'],
-                  'N2_Density': ['N_N2', 'Molecular nitrogen number density',
+                  'N2_Density': ['N_N2_ilev', 'Molecular nitrogen number density',
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'ilev'], '1/m**3'],
+                  'N2_Density_2': ['N_N2', 'Molecular nitrogen number density',
                                  0, 'GDZ', 'sph', ['time', 'lon', 'lat',
                                                    'height'], '1/m**3'],
-                  'u_neutral': ['v_neast', 'Eastward component of the ' +
+                  'u_neutral': ['v_neast_ilev', 'Eastward component of the ' +
+                                'neutral wind velocity', 0, 'GDZ', 'sph',
+                                ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'u_neutral_2': ['v_neast', 'Eastward component of the ' +
                                 'neutral wind velocity', 0, 'GDZ', 'sph',
                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'v_neutral': ['v_nnorth', 'Northward component of the ' +
+                  'v_neutral': ['v_nnorth_ilev', 'Northward component of the ' +
+                                'neutral wind velocity', 0, 'GDZ', 'sph',
+                                ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'v_neutral_2': ['v_nnorth', 'Northward component of the ' +
                                 'neutral wind velocity', 0, 'GDZ', 'sph',
                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'w_neutral': ['v_nup', 'Upwards component of the ' +
+                  'w_neutral': ['v_nup_ilev', 'Upwards component of the ' +
+                                'neutral wind velocity', 0, 'GDZ', 'sph',
+                                ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'w_neutral_2': ['v_nup', 'Upwards component of the ' +
                                 'neutral wind velocity', 0, 'GDZ', 'sph',
                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'tec': ['TEC', 'Total electron content', 0, 'GDZ', 'sph',
@@ -75,54 +98,16 @@ model_varnames = {'den400': ['rho_400km', 'Density at 400 km.',
                   'upward_exb_velocity': ['v_upExB', 'Upward component' +
                                           ' of the ExB velocity', 0, 'GDZ',
                                           'sph', ['time', 'lon', 'lat',
-                                                  'height'], 'm/s']}
-
-
-def dts_to_hrs(datetime_string, filedate):
-    '''Get hours since midnight from datetime string'''
-    return (datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S'
-                              ).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
-def filename_to_dts(file_dts):
-    '''Get datetime string in format "YYYY-MM-DD HH:mm:SS" from filename'''
-    str_date = file_dts[:4] + '-' + file_dts[4:6] + '-' + file_dts[6:8]
-    str_time = file_dts[9:11] + ':' + file_dts[11:13] + ':' + file_dts[13:]
-    return str_date + ' ' + str_time
-
-
-@vectorize
-def filename_to_hrs(file_dts, filedate):
-    '''Get hrs since midnight from filename.'''
-    dts = filename_to_dts(file_dts)  # datetime string
-    dt = datetime.strptime(dts, '%Y-%m-%d %H:%M:%S'
-                                                ).replace(tzinfo=timezone.utc)
-    return (dt-filedate).total_seconds()/3600.
-
-
-def dts_to_ts(file_dts):
-    '''Get datetime timestamp in UTC from datetime string'''
-    return datetime.timestamp(datetime.strptime(file_dts, '%Y-%m-%d %H:%M:%S'
-                                                ).replace(tzinfo=timezone.utc))
-
-
-def hrs_to_ts(hrs, filedate):
-    '''Add hours to filedate and return utc timestamp.'''
-    return datetime.timestamp(filedate+timedelta(hours=hrs))
-
-
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
+                                                  'height'], 'm/s']
+                  }
 
 
 def MODEL():
     from time import perf_counter
     from glob import glob
     from os.path import basename, isfile
-    from numpy import array, unique, NaN, diff, append, linspace, where
+    from numpy import array, unique, NaN, append, linspace, where, median
+    from numpy import zeros
     from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
@@ -131,15 +116,9 @@ def MODEL():
         '''WAM-IPE model data reader.
 
         Inputs:
-            file_dir: a string representing the file pattern of the************************
+            file_dir: a string representing the file directory of the
                 model output data.
-                Note: This reader takes a file pattern of the format
-                file_dir+*YYMMDD to load data for an entire day or *YYMMDD_HH
-                to load data for one hour, where file_dir is the complete file
-                path to the data files, and YYMMDD is the two digit year, two
-                digit month, and two digit day in the desired output file names
-                (e.g. 150317 for March 17 of 2015). For the hourly option, HH
-                is the two digit hour assuming a 24 hour convention.
+                Note: This reader 'walks' the entire dataset in the directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
@@ -147,14 +126,10 @@ def MODEL():
                     (default)
                 - If 'all', the reader returns the model_varnames dictionary
                     above for only the variables present in the given files.
-                    Note: the fulltime keyword must be False to acheive this
-                    behavior.
             filetime = boolean (default = False)
-                - if False, the script fully executes.
+                - If False, the script fully executes.
                 - If True, the script only executes far enough to determine the
                     time values associated with the chosen data.
-                Note: The behavior of the script is determined jointly by the
-                    filetime and fulltime keyword values.
             printfiles = boolean (default = False)
                 - If False, the filenames associated with the data retrieved
                     ARE NOT printed.
@@ -165,11 +140,6 @@ def MODEL():
                     standard method and a gridded method.
                 - If False, the variables chosen are functionalized in only the
                     standard method.
-            fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is
-                    included in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is
-                    included.
             verbose = boolean (False)
                 - If False, script execution and the underlying Kamodo
                     execution is quiet except for specified messages.
@@ -182,9 +152,9 @@ def MODEL():
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, fulltime=True, **kwargs):
+                     printfiles=False, **kwargs):
             super(MODEL, self).__init__()
-            self.modelname = 'WAM-IPE'
+            self.modelname = 'WAMIPE'
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
@@ -203,24 +173,35 @@ def MODEL():
                         tar.extractall(file_dir)
                         tar.close()
                     files = sorted(glob(file_dir+'*.nc'))
-                patterns = unique([basename(f)[:-19] for f in files]) 
+                
+                # create h0 file containing km_ilev
+                from kamodo_ccmc.readers.wamipe_tocdf import convert_all
+                tmp = convert_all(file_dir)
+                
+                # continue
+                files = sorted(glob(file_dir+'*.nc'))
+                h0_file = [f for f in files if 'h0' in f]
+                files.remove(h0_file[0])
+                patterns = unique([basename(f)[:-19] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
-                datetime_str = filename_to_dts(basename(files[0])[-18:-3])
-                # strings in format = YYYY-MM-DD HH:MM:SS
                 self.filedate = datetime.strptime(
-                    datetime_str[:10]+' 00:00:00', '%Y-%m-%d %H:%M:%S'
+                    basename(files[0])[-18:-10]+' 00:00:00', '%Y%m%d %H:%M:%S'
                     ).replace(tzinfo=timezone.utc)
 
                 # establish time attributes from filenames
                 for p in patterns:
                     # get list of files to loop through later
                     pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    h0_file = [f for f in pattern_files if 'h0' in f]
+                    if len(h0_file) > 0:
+                        pattern_files.remove(h0_file[0])  # should be only one
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
                     
                     # loop through to get times, one file per time
                     time_str = [basename(f)[-18:-3] for f in pattern_files]
-                    times = filename_to_hrs(time_str, self.filedate)
+                    times = RU.str_to_hrs(time_str, self.filedate,
+                                          format_string='%Y%m%d_%H%M%S')
                     self.times[p]['start'] = array(times)
                     self.times[p]['end'] = array(times)
                     self.times[p]['all'] = array(times)
@@ -234,14 +215,6 @@ def MODEL():
                     RU.read_timelist(time_file, list_file)
             if filetime:
                 return  # return times as is to prevent infinite recursion
-
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items() if value[2] in
-                               variables_requested]
-                    variables_requested = tmp_var
 
             # store variables
             self.missing_value = NaN
@@ -257,31 +230,51 @@ def MODEL():
                     print(file)
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and fulltime and\
-                    variables_requested != 'all':
+            if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
 
-            # loop through file patterns for coordinate grids + var mapping
+            # collect variable dependency lists
+            self.total_ilev = [value[0] for key, value in
+                               model_varnames.items() if value[-2][-1] ==
+                               'ilev' and value[0] != 'H_ilev']
+            self.total_replace = [item.split('_ilev')[0] for item in
+                                  self.total_ilev if item != 'H_ilev']
+            # dictionary mapping to navigate related variable names
+            self.ilev_map = {item1: item2 for item1, item2 in
+                             zip(self.total_replace, self.total_ilev)}
+            # determine variable mapping
+            # add ilev version of variables to the list, adding H_ilev
+            add_ilev = [var+'_ilev' for var in variables_requested if var
+                        in self.ilev_map.keys()]
+            if len(add_ilev) > 0:  # add to list
+                add_ilev += ['H_ilev']  # add for plev inversion
+            new_var = variables_requested + add_ilev
+            short_var = [item for item in new_var if item not
+                         in self.ilev_map.keys()]  # remove replaced items
+
+            # collect variable names and coordinate grids per pattern type
+            self.varfiles, self.gvarfiles = {}, {}
+            self.err_list, self.var_dict = [], {}
             for p in self.pattern_files.keys():
-                # use first file for coordinates and variable mapping
-                file = self.pattern_files[p][0]
-                cdf_data = Dataset(file, 'r')
-
                 # check var_list for variables not possible in this file set
-                if len(variables_requested) > 0 and\
+                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                if len(variables_requested) > 0 and \
                         variables_requested != 'all':
-                    gvar_list = [key for key in model_varnames.keys()
-                                 if key in cdf_data.variables.keys() and
-                                 model_varnames[key][0] in variables_requested]
-                    if len(gvar_list) != len(variables_requested):
+                    gvar_list = [key for key, value in model_varnames.items()
+                                 if value[0] in short_var and key in
+                                 cdf_data.variables.keys()]  # file variable names
+                    # check for variables requested but not available in p file
+                    if len(gvar_list) != len(short_var):
                         err_list = [value[0] for key, value in
-                                    model_varnames.items()
-                                    if key not in cdf_data.variables.keys() and
-                                    value[0] in variables_requested]
+                                    model_varnames.items() if value[0] in
+                                    short_var and key not in
+                                    cdf_data.variables.keys()]
                         self.err_list.extend(err_list)  # add to master list
                 else:
                     gvar_list = [key for key in model_varnames.keys()
@@ -292,41 +285,55 @@ def MODEL():
                 self.gvarfiles[p] = gvar_list
                 
                 # retrieve coordinate grids, assuming constant in time
-                for key in cdf_data.variables.keys():
-                    print(key, cdf_data.variables[key].dimensions)
+                lon = array(cdf_data.variables['lon'])
+                lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
+                lon_ge180 = list(where(lon >= 180)[0])
+                tmp = append(lon, 360.) - 180.  # now -180. to +180.
+                setattr(self, '_lon_'+p, tmp)
+                setattr(self, '_lon_idx_'+p, lon_ge180+lon_le180)
                 setattr(self, '_lat_'+p,
                         array(cdf_data.variables['lat']))
-                setattr(self, '_lon_'+p,
-                        append(array(cdf_data.variables['lon']) - 180., 180.))  # CHECK THIS WITH PLOTS!!!!
                 if 'alt' in cdf_data.variables.keys():
                     setattr(self, '_height_'+p,
                             array(cdf_data.variables['alt']))  # km
-                    print(p, getattr(self, '_height_'+p).shape)
-                elif 'gsm10' in p:  # add missing pressure level for gsm10
-                    var_3D = [key for key, value in model_varnames.items()
-                              if key in gvar_list and len(value[-2])==4][0]
-                    ilev_name = cdf_data.variables[var_3D].dimensions[0]
-                    if ilev_name not in cdf_data.variables.keys():
-                        len_ilev = cdf_data.variables[var_3D].shape[0]
+                    setattr(self, '_heightunits_'+p, 'km')
+                # determine if vertical component is missing
+                var_ND = [len(cdf_data.variables[key].dimensions) for key in
+                          cdf_data.variables.keys()]
+                if max(var_ND) == 3 and 'alt' not in cdf_data.variables.keys():
+                    # look for an alternate vertical coordinate grid
+                    # 'alt' is not in the pressure level data files, height is
+                    vert_coord = [var for i, var in
+                                  enumerate(cdf_data.variables.keys()) if
+                                  var_ND[i]==1 and var not in ['lon', 'lat']]
+                    if len(vert_coord) > 0:  # found one!
+                        if 'm' in cdf_data.variables[vert_coord[0]].units:
+                            # save as an altitude/height
+                            setattr(self, '_height_'+p,
+                                    array(cdf_data.variables[vert_coord[0]]))
+                            setattr(self, '_heightunits_'+p,
+                                    cdf_data.variables[vert_coord[0]].units)
+                        else:  # save as a pressure level
+                            setattr(self, '_ilev_'+p,
+                                    array(cdf_data.variables[vert_coord[0]]))
+                            setattr(self, '_ilevunits_'+p,
+                                    cdf_data.variables[vert_coord[0]].units)
+                    else:  # create a pressure level coordinate grid
+                        idx = var_ND.index(3)  # get first index of 3D variable
+                        varname = list(cdf_data.variables.keys())[idx]
+                        grid_length = cdf_data.variables[varname].shape[0]
                         setattr(self, '_ilev_'+p,
-                                linspace(0, len_ilev-1, len_ilev))
-                    else:
-                        setattr(self, '_ilev_'+p,
-                                array(cdf_data.variables[ilev_name]))
-                
-                cdf_data.close()
-            print('self.varfiles', self.varfiles)
-            print('self.gvarfiles', self.gvarfiles)
+                                linspace(1, grid_length, grid_length))
 
-            # collect all possible variables in set of files and return
-            if not fulltime and variables_requested == 'all':
-                self.var_dict, gvar_list = {}, []
-                # loop through gvar_list stored for files to make a master list
-                for i in range(len(self.patterns)):
-                    gvar_list += self.gvarfiles[self.patterns[i]]
-                self.var_dict = {value[0]: value[1:] for key, value in
-                                 model_varnames.items() if key in gvar_list}
-                return
+                    # get median km grid from h0 file
+                    if 'height' in cdf_data.variables.keys():
+                        h0_file = self.pattern_files[p][0][:-18] + 'h0.nc'
+                        if isfile(h0_file):
+                            cdf_h = Dataset(h0_file)
+                            setattr(self, '_km_ilev',
+                                    array(cdf_h.variables['km_ilev']))
+                            cdf_h.close()
+                cdf_data.close()
 
             # loop through patterns to initialize variables dictionary
             for p in self.pattern_files.keys():
@@ -343,79 +350,144 @@ def MODEL():
                              self.variables.keys()]
             if len(self.err_list) > 0:
                 print('Some requested variables are not available in the ' +
-                      'files found:\n',
-                      self.patterns, self.err_list)
+                      'files found:\n', self.err_list)
 
-            # register interpolators for each variable
+            # collect all possible variables in set of files and return
+            if variables_requested == 'all':
+                self.var_dict = {value[0]: value[1:] for key, value in
+                                 model_varnames.items() if value[0] in
+                                 self.variables.keys()}
+                return
+
+            # register interpolators for each requested variable
+            # rearrange to deal with H_ilev and H_ilev1 first if there
+            varname_list = list(self.variables.keys())
+            if 'H_ilev' in varname_list:
+                varname_list.remove('H_ilev')
+                varname_list = ['H_ilev'] + varname_list
             t_reg = perf_counter()
-            # store original list b/c gridded interpolators change keys list
-            varname_list = [key for key in self.variables.keys()]
-            print(varname_list)
             for varname in varname_list:
-                print(varname)
-                # determine which file the variable came from, retrieve the coords
-                coord_list = [value[-2] for key, value in
-                             model_varnames.items() if value[0] == varname][0]
-                coord_dict = {}
-                for i in range(len(self.patterns)):
-                    if varname in self.varfiles[self.patterns[i]]:
-                        # get the correct coordinates
-                        coord_dict['time'] = {
-                            'data': getattr(self, '_time_'+self.patterns[i]),
-                            'units': 'hr'}
-                        coord_dict['lon'] = {
-                            'data': getattr(self, '_lon_'+self.patterns[i]),
-                            'units': 'deg'}
-                        lon = coord_dict['lon']['data']
-                        # need to do fancy lon shift, ignoring appended value
-                        lon_le180 = list(where(lon <= 0)[0])  # after shift
-                        lon_ge180 = list(where((lon >= 0) & (lon < 180.))[0])
-                        coord_dict['lat'] = {
-                            'data': getattr(self, '_lat_'+self.patterns[i]),
-                            'units': 'deg'}
-                        if len(coord_list) == 4:
-                            coord_dict['height'] = {'units': 'km'}
-                            if hasattr(self, '_height_'+self.patterns[i]):
-                                coord_dict['height']['data'] = \
-                                    getattr(self, '_height_'+self.patterns[i])
-                            else:  # find a height grid of matching dimensions
-                                height_size = \
-                                    self.variables[varname]['data'][0].shape[0]
-                                print('Finding an alternative alt grid of ' +
-                                      f'size {height_size}...')
-                                for pattern in self.patterns:  # search for it
-                                    if hasattr(self, '_height_'+pattern):
-                                        h = getattr(self, '_height_'+pattern
-                                                    ).size
-                                        print(pattern, h)
-                                        if h == height_size:
-                                            coord_dict['height']['data'] = h
-                                if 'data' not in coord_dict['height'].keys():
-                                    print(f'Cannot functionalize {varname} ' +
-                                          'due to missing vertical coordinat' +
-                                          'e grid. Skipping.')
-                        break  # move on when coordinate grids are found
-
-                if 'height' in coord_dict.keys() and 'data' not in \
-                    coord_dict['height'].keys():
-                        continue  # skip variable
-
-                # define the operation to occur when the time slice is loaded
-                def func(cdf_data_object):
-                    '''define the logic to prepare the data per time slice.'''
-                    tmp = array(cdf_data_object).T  # transpose (2D and 3D)
-                    return tmp[lon_ge180 + lon_le180]
-
-                # define and register the interpolators
-                coord_str = [value[3]+value[4] for key, value in
-                             model_varnames.items() if value[0] == varname][0]
-                self = RU.time_interp(self, coord_dict, varname,
-                                      self.variables[varname], gridded_int,
-                                      coord_str, func)
+                self.register_variable(varname, gridded_int)
             if verbose:
-                print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
+                print(f'Took {perf_counter() - t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
             if verbose:
-                print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
-                      f' {len(varname_list)} variables.')
+                print(f'Took a total of {perf_counter() - t0:.5f}s to ' +
+                      f'kamodofy {len(varname_list)} variables.')
+            return
+
+        # define and register a 3D variable
+        def register_variable(self, varname, gridded_int):
+            """Registers an interpolator with proper signature"""
+        
+            # determine coordinate variables and xvec by coord list
+            key = self.variables[varname]['data']
+            coord_list = [value[5] for key, value in model_varnames.items()
+                          if value[0] == varname][0]
+            coord_dict = {'time': {'units': 'hr',
+                                   'data': self.times[key]['all']}}
+            gvar = [key for key, value in model_varnames.items() if
+                    value[0] == varname][0]
+            # retrieve coordinate grids
+            if 'lat' in coord_list:
+                coord_dict['lon'] = {'units': 'deg', 'data':
+                                     getattr(self, '_lon_'+key)}
+                coord_dict['lat'] = {'units': 'deg', 'data':
+                                     getattr(self, '_lat_'+key)}
+                lon_idx = getattr(self, '_lon_idx_'+key)
+            if 'ilev' in coord_list:
+                try:
+                    coord_dict['ilev'] = {'units': 'm/m', 'data':
+                                          getattr(self, '_ilev_'+key)}
+                    if hasattr(self, '_ilevunits_'+key):
+                        coord_dict['ilev']['units'] = \
+                            getattr(self, '_ilevunits_'+key)
+                except:
+                    coord_list.remove('ilev')
+                    coord_list.append('height')
+                    new_varname = varname.split('_ilev')[0]
+                    self.variables[new_varname] = self.variables[varname]
+                    varname = new_varname
+                    if gvar[-2:] == '_2':
+                        gvar = gvar[:-2]
+            if 'height' in coord_list:
+                coord_dict['height'] = {'units': 'km', 'data':
+                                        getattr(self, '_height_'+key)}
+                if hasattr(self, '_heightunits_'+key):
+                    coord_dict['height']['units'] = \
+                        getattr(self, '_heightunits_'+key)
+            
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]
+        
+            # define operations for each variable when given the key
+            def func(i):  
+                '''i is the time slice. WAM-IPE has one time slice per file.'''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = Dataset(file)
+                data = array(cdf_data.variables[gvar])
+                cdf_data.close()
+                # data wrangling
+                return data.T[lon_idx]
+        
+            # define and register the interpolators, pull 3D data into arrays
+            # need H functions to be gridded regardless of gridded_int value
+            if varname == 'H_ilev':
+                gridded_int = True
+            self = RU.Functionalize_Dataset(
+                self, coord_dict, varname, self.variables[varname],
+                gridded_int, coord_str, interp_flag=1, func=func)
+        
+            # create pressure level -> km function once per ilev type
+            if varname == 'H_ilev' or 'ilev' in coord_list:
+                if varname == 'H_ilev':  # create custom interp
+                    new_varname = 'Plev'
+                    kms = getattr(self, '_km_ilev')
+                    # perform unit conversion if needed
+                    if self.variables[varname]['units'] != 'km':
+                        self[varname+'km_ijk[km]'] = varname + '_ijk'
+                        km_interp = self[varname+'km_ijk']
+                    else:
+                        km_interp = self[varname+'_ijk']
+                    # Import and call custom interpolator
+                    units = coord_dict['ilev']['units']
+                    interpolator, interp_ijk = RU.PLevelInterp(
+                        km_interp, coord_dict['time']['data'],
+                        coord_dict['lon']['data'], coord_dict['lat']['data'],
+                        coord_dict['ilev']['data'], units)
+                    # kms is a 1D array of the median height values in km
+                else:  # define by function composition
+                    new_varname = varname.split('_ilev')[0]
+                    units = self.variables[varname]['units']
+                    kms = getattr(self, '_km_ilev')
+                    interpolator = varname+'(Plev)'
+        
+                # Register in kamodo object
+                new_coord_units = {'time': 'hr', 'lon': 'deg',
+                                   'lat': 'deg', 'height': 'km'}
+                self.variables[new_varname] = {'units': units}
+                self = RU.register_interpolator(self, new_varname,
+                                                interpolator,
+                                                new_coord_units)
+                if varname in self.total_ilev:  # different if H vs not
+                    interp_ijk = self[new_varname]
+        
+                # Create 'gridified' interpolators in the kamodo_object
+                if gridded_int:
+                    fake_data = zeros((2, 2, 2, 2))  # avoiding computation
+                    coord_data = {key: value['data'] for key, value in
+                                  coord_dict.items() if key in
+                                  new_coord_units.keys()}  # exclude ilev
+                    coord_data['height'] = kms
+                    self.variables[new_varname+'_ijk'] = {'data': fake_data,
+                        'units': units}
+                    gridded_interpolator = RU.define_griddedinterp(
+                        self.variables[new_varname+'_ijk'], new_coord_units,
+                        coord_data, interp_ijk)
+                    self = RU.register_interpolator(
+                        self, new_varname+'_ijk', gridded_interpolator,
+                        new_coord_units)
+            return
+
     return MODEL

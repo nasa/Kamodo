@@ -81,7 +81,7 @@ def MODEL():
     import h5py
     from os.path import isfile
     from numpy import array, NaN, unique, append, zeros, diff, sin, cos, insert
-    from numpy import flip, concatenate, insert, mean, broadcast_to, ones, reshape
+    from numpy import flip, concatenate, mean, broadcast_to, ones
     from numpy import transpose
     from numpy import pi as nppi
     from numpy import sum as npsum
@@ -103,14 +103,10 @@ def MODEL():
                     (default)
                 - If 'all', the reader returns the model_varnames dictionary
                     above for only the variables present in the given files.
-                    Note: the fulltime keyword must be False to acheive this
-                    behavior.
             filetime = boolean (default = False)
-                - if False, the script fully executes.
+                - If False, the script fully executes.
                 - If True, the script only executes far enough to determine the
                     time values associated with the chosen data.
-                Note: The behavior of the script is determined jointly by the
-                    filetime and fulltime keyword values.
             printfiles = boolean (default = False)
                 - If False, the filenames associated with the data retrieved
                     ARE NOT printed.
@@ -121,11 +117,6 @@ def MODEL():
                     standard method and a gridded method.
                 - If False, the variables chosen are functionalized in only the
                     standard method.
-            fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is
-                    included in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is
-                    included.
             verbose = boolean (False)
                 - If False, script execution and the underlying Kamodo
                     execution is quiet except for specified messages.
@@ -138,7 +129,7 @@ def MODEL():
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
-                     fulltime=True, verbose=False, **kwargs):
+                     verbose=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'AMGeO'
             t0 = perf_counter()
@@ -196,8 +187,7 @@ def MODEL():
                     variables_requested = tmp_var
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and fulltime and \
-                    variables_requested != 'all':
+            if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item
                             not in test_list]
@@ -233,7 +223,7 @@ def MODEL():
                 gvar_list = [key for key in key_list if key in
                              model_varnames.keys()]
                 # return list of variables included in data files
-                if not fulltime and variables_requested == 'all':
+                if variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items()
                                      if key in gvar_list}
@@ -250,8 +240,8 @@ def MODEL():
                 h5_data = h5py.File(self.pattern_files['N'][0])
                 lat_N = unique(h5_data['lats'])  # 24 values
                 ldiff = diff(lat_N).min()
-                lat_N = array([lat_N[0]-ldiff, lat_N[0]-ldiff/10.] + list(lat_N)
-                              + [90.])
+                lat_N = array([lat_N[0]-ldiff, lat_N[0]-ldiff/10.] +
+                              list(lat_N) + [90.])
                 if 'S' in patterns:
                     h5_dataS = h5py.File(self.pattern_files['S'][0])
                     # reverse order and make negative
@@ -422,12 +412,12 @@ def MODEL():
                 if 'N' in ps:  # first one is N hemisphere
                     h5_data = h5py.File(self.pattern_files['N'][i])
                     tmp =  array([array(h5_data[tkey][gvar]) for tkey in
-                                  h5_data.keys() if tkey not in ['lats', 'lons']],
-                                 dtype=float, order='F')
+                                  h5_data.keys() if tkey not in
+                                  ['lats', 'lons']], dtype=float, order='F')
                     h5_data.close()
                     data = flip(transpose(tmp, (0, 2, 1)), axis=2)
                     NaN_row = ones(data[:, :, 0].shape) * NaN
-                    data = insert(data, 0, data[:, :, 0], axis=2)  # add buffer row
+                    data = insert(data, 0, data[:, :, 0], axis=2)  # add buffer
                     data = insert(data, 0, NaN_row, axis=2)
                     # change from equatorward to northward in N hemi data
                     if '_th' in varname:
@@ -436,24 +426,27 @@ def MODEL():
                     if len(ps) == 2:
                         h5_data = h5py.File(self.pattern_files['S'][i])
                         tmp =  array([array(h5_data[tkey][gvar]) for tkey in
-                                      h5_data.keys() if tkey not in ['lats', 'lons']],
+                                      h5_data.keys() if tkey not in
+                                      ['lats', 'lons']],
                                      dtype=float, order='F')
                         h5_data.close()
                         south_data = transpose(tmp, (0, 2, 1))
+                        # add buffer row
                         south_data = insert(south_data, south_data.shape[2],
-                                            south_data[:, :, -1], axis=2)  # add buffer row
+                                            south_data[:, :, -1], axis=2)
                         south_data = insert(south_data, south_data.shape[2],
                                             NaN_row, axis=2)
                         data = concatenate((south_data, data), axis=2)
                 elif 'S' in ps:  # only S hemisphere data
                     h5_data = h5py.File(self.pattern_files['S'][i])
                     tmp =  array([array(h5_data[tkey][gvar]) for tkey in
-                                  h5_data.keys() if tkey not in ['lats', 'lons']],
-                                 dtype=float, order='F')
+                                  h5_data.keys() if tkey not in
+                                  ['lats', 'lons']], dtype=float, order='F')
                     h5_data.close()
                     data = transpose(tmp, (0, 2, 1))
                     NaN_row = ones(data[:, :, 0].shape) * NaN
-                    data = insert(data, data.shape[2], data[:, :, -1], axis=2)  # add buffer row
+                    # add buffer row
+                    data = insert(data, data.shape[2], data[:, :, -1], axis=2)
                     data = insert(data, data.shape[2], NaN_row, axis=2)
                 
                 # add one time step from the next file if not the last file
@@ -466,7 +459,8 @@ def MODEL():
                         h5_data.close()
                         data1 = flip(tmp.T, axis=1)  # shape = (lon, lat)
                         NaN_row1 = ones(data1[:, 0].shape) * NaN
-                        data1 = insert(data1, 0, data1[:, 0], axis=1)  # add buffer row
+                        # add buffer row
+                        data1 = insert(data1, 0, data1[:, 0], axis=1)
                         data1 = insert(data1, 0, NaN_row1, axis=1)
                         # change from equatorward to northward in N hemi data
                         if '_th' in varname:
@@ -475,23 +469,26 @@ def MODEL():
                         if len(ps) == 2:
                             h5_data = h5py.File(self.pattern_files[ps[1]][i+1])
                             time_list = list(h5_data.keys())[:-2]
-                            tmp =  array(h5_data[time_list[-1]][gvar], dtype=float,
-                                        order='F')
+                            tmp =  array(h5_data[time_list[-1]][gvar],
+                                         dtype=float, order='F')
                             h5_data.close()
                             south_data1 = tmp.T
-                            south_data1 = insert(south_data1, south_data1.shape[1],
-                                                 south_data1[:, 0], axis=1)  # add buffer row
-                            south_data1 = insert(south_data1, south_data1.shape[1],
-                                                 NaN_row1, axis=1)
+                            south_data1 = insert(
+                                south_data1, south_data1.shape[1],
+                                south_data1[:, 0], axis=1)  # add buffer row
+                            south_data1 = insert(
+                                south_data1, south_data1.shape[1], NaN_row1,
+                                axis=1)
                             data1 = concatenate((south_data1, data1), axis=1)
                     elif 'S' in ps:  # only S hemisphere data
                         h5_data = h5py.File(self.pattern_files['S'][i])
                         tmp =  array(h5_data[time_list[-1]][gvar], dtype=float,
-                                    order='F')
+                                     order='F')
                         h5_data.close()
                         data1 = tmp.T
                         NaN_row1 = ones(data1[:, 0].shape) * NaN
-                        data1 = insert(data1, data1.shape[1], data1[:, 0], axis=1)  # add buffer row
+                        data1 = insert(data1, data1.shape[1], data1[:, 0],
+                                       axis=1)  # add buffer row
                         data1 = insert(data1, data1.shape[1], NaN_row1, axis=1)
                     data = append(data, [data1], axis=0)
                 final_data = self.wrap3Dlat(varname, data, ps)
@@ -501,6 +498,5 @@ def MODEL():
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int, coord_str, interp_flag=2, func=func,
                 start_times=self.times[ps[0]]['start'])
-
             return
     return MODEL

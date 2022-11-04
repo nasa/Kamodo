@@ -221,7 +221,7 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ', 'sph'
 
 
 def MODEL():
-    from numpy import array, zeros, NaN, unique, diff, append, where
+    from numpy import array, zeros, NaN, unique, append, where
     from numpy import transpose, median
     from time import perf_counter
     from glob import glob
@@ -241,19 +241,15 @@ def MODEL():
                 Note: This reader 'walks' the entire dataset in the directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
-                firstcitem in the list associated with a given key.
+                first item in the list associated with a given key.
                 - If empty, the reader functionalizes all possible variables
                     (default)
                 - If 'all', the reader returns the model_varnames dictionary
                     above for only the variables present in the given files.
-                    Note: the fulltime keyword must be False to acheive this
-                    behavior.
             filetime = boolean (default = False)
-                - if False, the script fully executes.
+                - If False, the script fully executes.
                 - If True, the script only executes far enough to determine the
                     time values associated with the chosen data.
-                Note: The behavior of the script is determined jointly by the
-                    filetime and fulltime keyword values.
             printfiles = boolean (default = False)
                 - If False, the filenames associated with the data retrieved
                     ARE NOT printed.
@@ -264,11 +260,6 @@ def MODEL():
                     standard method and a gridded method.
                 - If False, the variables chosen are functionalized in only the
                     standard method.
-            fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is
-                    included in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is
-                    included.
             verbose = boolean (False)
                 - If False, script execution and the underlying Kamodo
                     execution is quiet except for specified messages.
@@ -281,7 +272,7 @@ def MODEL():
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, printfiles=False, gridded_int=True,
-                     fulltime=True, verbose=False, **kwargs):
+                     verbose=False, **kwargs):
 
             # only the density, height and neutral files are combined
             super(MODEL, self).__init__()
@@ -357,7 +348,7 @@ def MODEL():
 
             # perform initial check on variables_requested list
             if (len(variables_requested) > 0) and (variables_requested !=
-                                                   'all') and fulltime:
+                                                   'all'):
                 test_list = [value[0] for key, value in
                              model_varnames.items()]
                 err_list = [item for item in variables_requested if item
@@ -383,7 +374,8 @@ def MODEL():
             for p in self.pattern_files.keys():
                 # check var_list for variables not possible in this file set
                 cdf_data = Dataset(self.pattern_files[p][0], 'r')
-                if len(variables_requested) > 0 and variables_requested != 'all':
+                if len(variables_requested) > 0 and\
+                        variables_requested != 'all':
                     gvar_list = [key for key, value in model_varnames.items()
                                  if value[0] in short_var and key in
                                  cdf_data.variables.keys()]  # file variable names
@@ -423,7 +415,7 @@ def MODEL():
                     if p in ['density', 'neutral'] and (
                             'height' in cdf_data.variables.keys()):
                         gvar_list.append('height')
-                    if not fulltime and variables_requested == 'all':
+                    if variables_requested == 'all':
                         var_dict = {value[0]: value[1:] for key, value in
                                               model_varnames.items() if
                                               key in gvar_list}
@@ -461,7 +453,7 @@ def MODEL():
                 self.gvarfiles[p] = gvar_list
 
             # return var_dict (already created)
-            if not fulltime and variables_requested == 'all':
+            if variables_requested == 'all':
                 return
             # clean up error list and then take action
             var_list = []
@@ -528,21 +520,6 @@ def MODEL():
                         self.variables['H_ilev'] = {
                             'units': model_varnames['height_n'][-1],
                             'data': p}
-                '''CAN'T DO THIS!
-                # retrieve and store the variable data
-                for f in self.pattern_files[p]:
-                    cdf_data = Dataset(f)
-                    for var in self.gvarfiles[p]:
-                        if var != 'height':
-                            self.variables[model_varnames[var][0]]['data'].\
-                                append(cdf_data.variables[var])
-                        elif var == 'height' and p == 'density':
-                            self.variables['H_ilev1']['data'].append(
-                                cdf_data.variables['height'])
-                        elif var == 'height' and p == 'neutral':
-                            self.variables['H_ilev']['data'].append(
-                                cdf_data.variables['height'])
-                # do not close the files!'''
 
             # print files to screen if option requested
             if printfiles:
@@ -606,19 +583,19 @@ def MODEL():
                 lon_idx = getattr(self, '_lon_idx_'+key)
             if 'Elat' in coord_list:
                 coord_dict['Elon'] = {'units': 'deg', 'data':
-                                     getattr(self, '_Elon_'+key)}
+                                      getattr(self, '_Elon_'+key)}
                 coord_dict['Elat'] = {'units': 'deg', 'data':
-                                     getattr(self, '_Elat_'+key)}
+                                      getattr(self, '_Elat_'+key)}
                 lon_idx = getattr(self, '_Elon_idx_'+key)
             if 'height' in coord_list:
                 coord_dict['height'] = {'units': 'km', 'data':
                                         getattr(self, '_height')}
             if 'ilev' in coord_list:
                 coord_dict['ilev'] = {'units': 'm/m', 'data':
-                                        getattr(self, '_ilev')}
+                                      getattr(self, '_ilev')}
             if 'ilev1' in coord_list:
                 coord_dict['ilev1'] = {'units': 'm/m', 'data':
-                                        getattr(self, '_ilev1')}
+                                       getattr(self, '_ilev1')}
             if varname not in ['H_ilev', 'H_ilev1']:
                 gvar = [key for key, value in model_varnames.items() if
                     value[0] == varname][0]
