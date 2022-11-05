@@ -307,6 +307,6 @@ def MODEL():
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int, coord_str, interp_flag=2, func=func,
-                start_times=self.times[key]['start'])
+                times_dict=self.times[key])
             return
     return MODEL

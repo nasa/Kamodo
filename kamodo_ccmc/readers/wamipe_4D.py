@@ -427,8 +427,12 @@ def MODEL():
                 file = self.pattern_files[key][i]
                 cdf_data = Dataset(file)
                 data = array(cdf_data.variables[gvar])
-                cdf_data.close()
                 # data wrangling
+                if hasattr(cdf_data.variables[gvar], '_FillValue'):
+                    fill_value = cdf_data.variables[gvar]._FillValue
+                    if fill_value in data:
+                        data = where(data==fill_value, NaN, data)
+                cdf_data.close()
                 return data.T[lon_idx]
         
             # define and register the interpolators, pull 3D data into arrays

@@ -34,26 +34,20 @@ def MODEL():
 
     from kamodo import Kamodo
     from netCDF4 import Dataset
+    from glob import glob
     from os.path import basename, isfile
-    from numpy import array, where, NaN, unique, append, zeros, abs, diff
-    from numpy import linspace, ndarray
+    from numpy import array, NaN, unique, zeros
+    from numpy import linspace, ndarray, append
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 
     class MODEL(Kamodo):
-        '''SuperDARN model data reader for the default coordinate grid.
+        '''SuperDARN model data reader for the equal area coordinate grid.
 
         Inputs:
-            full_filenamedf: a string representing the file pattern of the
-                model output data for the default coordinate grid format.
-                Note: This reader takes the file prefix, typically of
-                the naming convention
-                file_dir+'modelYYYYMMDD',
-                where YYYY is the four digit year, MM is the two digit month,
-                and DD is the two digit day (e.g. 20200505 for May 5, 2020).
-                All files with the default grid should be in the chosen
-                directory, with all files from the equal-area grid
-                (if generated) in a separate directory.
+            file_dir: a string representing the file directory of the
+                model output data.
+                Note: This reader 'walks' the entire dataset in the directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
@@ -61,14 +55,10 @@ def MODEL():
                     (default)
                 - If 'all', the reader returns the model_varnames dictionary
                     above for only the variables present in the given files.
-                    Note: the fulltime keyword must be False to acheive this
-                    behavior.
             filetime = boolean (default = False)
-                - if False, the script fully executes.
+                - If False, the script fully executes.
                 - If True, the script only executes far enough to determine the
                     time values associated with the chosen data.
-                Note: The behavior of the script is determined jointly by the
-                    filetime and fulltime keyword values.
             printfiles = boolean (default = False)
                 - If False, the filenames associated with the data retrieved
                     ARE NOT printed.
@@ -79,11 +69,6 @@ def MODEL():
                     standard method and a gridded method.
                 - If False, the variables chosen are functionalized in only the
                     standard method.
-            fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is
-                    included in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is
-                    included.
             verbose = boolean (False)
                 - If False, script execution and the underlying Kamodo
                     execution is quiet except for specified messages.
@@ -94,51 +79,64 @@ def MODEL():
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
         '''
-        def __init__(self, file_prefixea, variables_requested=[],
-                     printfiles=False, filetime=False, gridded_int=True,
-                     fulltime=True, verbose=False, **kwargs):
+        def __init__(self, file_dir, variables_requested=[],
+                     filetime=False, verbose=False, gridded_int=True,
+                     printfiles=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
-            self.modelname = 'SuperDARN_ea'
+            self.modelname = 'SuperDARN_df'
             t0 = perf_counter()
 
-            # check for prepared file of given prefix
-            t0 = perf_counter()
-            if isfile(file_prefixea + '_ea.nc'):   # file already prepared!
-                cdf_file = file_prefixea + '_ea.nc'  # input file name
-                self.conversion_test = True
-            else:   # file not prepared,  prepare it
-                from kamodo_ccmc.readers.superdarn_tocdf import \
-                    convert_files
-                cdf_file = convert_files(file_prefixea)
-                self.conversion_test = True
-            filename = basename(cdf_file)
-            file_dir = cdf_file.split(filename)[0]
-            self.filename = cdf_file
+            # first, check for file list, create if DNE
+            list_file = file_dir + self.modelname +'_list.txt'
+            time_file = file_dir + self.modelname +'_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if not isfile(list_file) or not isfile(time_file):
+                # collect filenames
+                files = sorted(glob(file_dir+'*_ea.nc'))
+                if len(files) == 0:  # find tar files and untar them
+                    from kamodo_ccmc.readers.superdarn_tocdf import \
+                        convert_files
+                    tmp = convert_files(file_dir)
+                
+                # continue
+                files = sorted(glob(file_dir+'*_ea.nc'))
+                patterns = unique([basename(f)[:-14] for f in files])
+                self.filename = ''.join([f+',' for f in files])[:-1]
+                self.filedate = datetime.strptime(
+                    basename(files[0])[-14:-6], '%Y%m%d').replace(
+                        tzinfo=timezone.utc)
 
-            # establish time attributes first
-            cdf_data = Dataset(cdf_file, 'r')
-            # hours since midnight of file
-            time = array(cdf_data.variables['time'])
-            # datetime object for midnight on date
-            self.filedate = datetime(
-                int(file_prefixea[-8:-4]), int(file_prefixea[-4:-2]),
-                int(file_prefixea[-2:]), 0, 0, 0
-                ).replace(tzinfo=timezone.utc)
-            # strings with timezone info chopped off (UTC anyway).
-            # Format: ‘YYYY-MM-DD HH:MM:SS’
-            self.datetimes = [
-                (self.filedate + timedelta(seconds=int(time[0]*3600.))
-                 ).isoformat(sep=' ')[:19],
-                (self.filedate + timedelta(seconds=int(time[-1]*3600.))
-                 ).isoformat(sep=' ')[:19]]
-            self.filetimes = [datetime.timestamp(datetime.strptime(
-                dt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)) for dt
-                in self.datetimes]   # utc timestamp
-            self.dt = diff(time).max()*3600.  # convert time resolution to sec
+                # establish time attributes from filenames
+                for p in patterns:
+                    # get list of files to loop through later
+                    pattern_files = sorted(glob(file_dir+p+'*_ea.nc'))
+                    self.pattern_files[p] = pattern_files
+                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    
+                    # loop through to get times, one file per time chunk
+                    for i, f in enumerate(pattern_files):
+                        cdf_data = Dataset(f)
+                        time = array(cdf_data.variables['time']) + i*24.
+                        cdf_data.close()
+                        self.times[p]['start'].append(time[0])
+                        self.times[p]['end'].append(time[-1])
+                        self.times[p]['all'].extend(time)
+                    self.times[p]['start'] = array(self.times[p]['start'])
+                    self.times[p]['end'] = array(self.times[p]['end'])
+                    self.times[p]['all'] = array(self.times[p]['all'])
 
+                # create time list file if DNE
+                RU.create_timelist(list_file, time_file, self.modelname,
+                                   self.times, self.pattern_files,
+                                   self.filedate)
+            else:  # read in data and time grids from file list
+                self.times, self.pattern_files, self.filedate, self.filename =\
+                    RU.read_timelist(time_file, list_file)
             if filetime:
-                cdf_data.close()
-                return  # return times as is to prevent recursion
+                return  # return times as is to prevent infinite recursion
+            # only one pattern, so simplifying code
+            p = list(self.pattern_files.keys())[0]
+            cdf_data = Dataset(self.pattern_files[p][0])
 
             # if variables are given as integers, convert to standard names
             if len(variables_requested) > 0:
@@ -149,8 +147,7 @@ def MODEL():
                     variables_requested = tmp_var
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and fulltime and \
-                    variables_requested != 'all':
+            if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in
                             test_list]
@@ -178,7 +175,7 @@ def MODEL():
                 gvar_list = [key for key in file_variables
                              if key in model_varnames.keys()]
                 # returns list of variables included in data files
-                if not fulltime and variables_requested == 'all':
+                if variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in
                                      gvar_list}
@@ -188,31 +185,17 @@ def MODEL():
             # retrieve latitude grid
             self._lat = array(cdf_data.variables['lat'])
 
-            # store data for each 1D variable desired
-            variables = {model_varnames[var][0]: {
+            # store kay for each variable desired
+            self.variables = {model_varnames[var][0]: {
                 'units': model_varnames[var][-1],
-                'data': array(cdf_data.variables[var])} for var in gvar_list
-                if len(model_varnames[var][5]) == 1}
-            # gives an empty dictionary if no 1D variables are requested
-
-            # collect 3D data
-            var3D_list = [model_varnames[var][0] for var in gvar_list
-                          if len(model_varnames[var][5]) == 3]
-            lat_keys = [str(lat_val).replace('.', '_').replace('-', 'n')
-                        if lat_val < 0 else 'p'+str(lat_val).replace('.', '_')
-                        for lat_val in self._lat]  # e.g. 'n75_5' for -75.5
-            for var in var3D_list:
-                variables[var] = {'units': model_varnames[var][-1]}
-                variables[var]['data'] = {
-                    lat_val: array(cdf_data.groups[lat_key][var])
-                    for lat_key, lat_val in zip(lat_keys, self._lat)}
+                'data': p} for var in gvar_list}
 
             # retrieve dictionary of longitude grids. Keys are lat values.
-            self._lon = {lat_val: array(cdf_data.groups[lat_key]['lon']) for
-                         lat_key, lat_val in zip(lat_keys, self._lat)}
-
-            # Store coordinate data as class attributes
-            self._time = time
+            self.lat_keys = [str(lat_val).replace('.', '_').replace('-', 'n')
+                        if lat_val < 0 else 'p'+str(lat_val).replace('.', '_')
+                        for lat_val in self._lat]  # e.g. 'n75_5' for -75.5
+            self._lon_dict = {lat_val: array(cdf_data.groups[lat_key]['lon']) for
+                         lat_key, lat_val in zip(self.lat_keys, self._lat)}
             cdf_data.close()
 
             # store a few items
@@ -226,16 +209,9 @@ def MODEL():
             # register interpolators for each requested variable
             t_reg = perf_counter()
             # store original list b/c gridded interpolators change key list
-            varname_list = [key for key in variables.keys()]
-            self.variables = {}
+            varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
-                self.variables[varname] = dict(
-                    units=variables[varname]['units'],
-                    data=variables[varname]['data'])
-                if isinstance(variables[varname]['data'], dict):  # 3D var
-                    self.register_3D_variable(varname, gridded_int)
-                elif isinstance(variables[varname]['data'], ndarray):  # 1D var
-                    self.register_1D_variable(varname, gridded_int)
+                self.register_variables(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -243,54 +219,94 @@ def MODEL():
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
-        # define and register a 3D variable
-        def register_3D_variable(self, varname, gridded_int):
-            """Registers a 3d interpolator with 3d signature"""
-
-            # define the coordinate dictionary
-            coord_dict = {'time': {'units': 'hr', 'data': self._time},
-                          'lon': {'units': 'deg', 'data': self._lon},
-                          'lat': {'units': 'deg', 'data': self._lat}}
-            coord_data = [value['data'] for key, value in coord_dict.items()]
-            coord_units = {key: value['units'] for key, value in
-                           coord_dict.items()}
-
+        # define and register the variable
+        def register_variables(self, varname, gridded_int):
+            '''Functionalizes the indicated dataset.'''
+            
+            # determine coordinate variables and xvec by coord list
+            key = self.variables[varname]['data']
+            coord_list = [value[5] for key, value in model_varnames.items()
+                          if value[0] == varname][0]
+            coord_dict = {'time': {'units': 'hr',
+                                   'data': self.times[key]['all']}}
+            gvar = [key for key, value in model_varnames.items() if
+                    value[0] == varname][0]
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]
+            
+            # retrieve coordinate grids  
+            if len(coord_list) == 1:  # read in entire time series
+                data = []
+                for f in self.pattern_files[key]:
+                    cdf_data = Dataset(f)
+                    tmp = array(cdf_data.variables[gvar])
+                    cdf_data.close()
+                    data.extend(tmp)
+                self.variables[varname]['data'] = array(data)
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str,
+                                                interp_flag=0)  # single array
+                return
+                
+            # rest of data is time + 2D spatial
+            # sample lon grid, real lon grid is a dictionary
+            fake_lon = linspace(-180, 180, len(self._lon_dict.keys()))
+            coord_dict['lon'] = {'units': 'deg', 'data': fake_lon}
+            coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
+            
             # variable is a dictionary = {lat_val: array}
             # need an interpolator for each lat_val
             # then a 1D interpolator for the output values vs latitude
             from kamodo_ccmc.readers.superdarnea_interp import custom_interp
-            interp = custom_interp(*coord_dict,
-                                   self.variables[varname]['data'],
-                                   self.variables[varname]['units'])
 
-            # Register in kamodo object, with gridded version if desired
-            self = RU.register_interpolator(self, varname, interp,
-                                            coord_units)
+            def func(i):  # i is the file number
+                # get data from file(s)
+                cdf_data = Dataset(self.pattern_files[key][i])
+                data = {  # shape is (time, lon)
+                    lat_val: array(cdf_data.groups[lat_key][gvar])
+                    for lat_key, lat_val in zip(self.lat_keys, self._lat)}
+                cdf_data.close()
+                if i < len(self.pattern_files[key]) - 1:  # get another time 
+                    cdf_data = Dataset(self.pattern_files[key][i+1])
+                    data1 = {  # shape is (time, lon), get first time only
+                        lat_val: array(cdf_data.groups[lat_key][gvar][0])
+                        for lat_key, lat_val in zip(self.lat_keys, self._lat)}
+                    cdf_data.close()
+                    for lat_key in data.keys():
+                        data[lat_key] = append(data[lat_key],
+                                               [data1[lat_key]], axis=0)
+                
+                # assign custom interpolator
+                interp = custom_interp(coord_dict['time']['data'],
+                                       self._lon_dict, self._lat, data,
+                                       self.variables[varname]['units'])
+                return interp
+                
+            # functionalize the variable dataset, not allowing gridded creation
+            self = RU.Functionalize_Dataset(
+                self, coord_dict, varname, self.variables[varname],
+                False, coord_str, interp_flag=2, func=func,
+                times_dict=self.times[key], func_default='custom')
+
+            # handle gridded function creation in a custom method
             if gridded_int:
-                fake_lon = linspace(-180, 180, 20)  # sample lon grid
-                coord_data[-2] = fake_lon  # replace lon dict with sample grid
+                # define the coordinate dictionary and fake data
+                coord_data = {key: value['data'] for key, value in
+                              coord_dict.items()}
+                coord_units = {key: value['units'] for key, value in
+                               coord_dict.items()}
                 fake_data = zeros((2, 2, 2))  # saves execution time
                 self.variables[varname+'_ijk'] = {
                     'units': self.variables[varname]['units'],
                     'data': fake_data}
+                # make gridded interpolator
                 gridded_interpolator = RU.define_griddedinterp(
                     self.variables[varname+'_ijk'], coord_units,
-                    coord_data, interp)
+                    coord_data, self[varname])
                 self = RU.register_interpolator(
                     self, varname+'_ijk', gridded_interpolator,
                     coord_units)
             return
 
-        # define and register a 1D variable
-        def register_1D_variable(self, varname, gridded_int):
-            """Registers a 4d interpolator with 4d signature"""
-
-            # define and register the fast interpolator
-            coord_dict = {'time': {'units': 'hr', 'data': self._time}}
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                         self.variables[varname],
-                                         gridded_int, coord_str)
-            return
     return MODEL

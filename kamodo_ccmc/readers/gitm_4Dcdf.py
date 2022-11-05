@@ -403,14 +403,6 @@ def MODEL():
             if filetime:
                 return  # return times as is to prevent infinite recursion
 
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items() if value[2] in
-                               variables_requested]
-                    variables_requested = tmp_var
-
             # store variables
             self.missing_value = NaN
             self._registered = 0
@@ -471,6 +463,7 @@ def MODEL():
 
             # collect all possible variables in set of files and return
             if variables_requested == 'all':
+                print(var_list)
                 self.var_dict = {value[0]: value[1:] for key, value in
                                  model_varnames.items() if value[0] in
                                  var_list}

@@ -356,18 +356,19 @@ def MODEL():
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized: ', err_list)
 
-            # determine variable mapping
-            # add ilev version of variables to the list, adding H_ilev(1)
-            add_ilev = [var+'_ilev' for var in variables_requested if var
-                        in ilev_replace]
-            add_ilev1 = [var+'_ilev1' for var in variables_requested if var
-                         in ilev1_replace]
-            if len(add_ilev) > 0 or len(add_ilev1) > 0:  # add both
-                add_ilev += ['H_ilev']  # might need to replace one
-                add_ilev1 += ['H_ilev1']  # with the other
-            new_var = variables_requested + add_ilev + add_ilev1
-            short_var = [item for item in new_var if item not
-                         in self.ilev_map.keys()]  # remove replaced items
+                # determine variable mapping
+                # add ilev version of variables to the list, adding H_ilev(1)
+                add_ilev = [var+'_ilev' for var in variables_requested if var
+                            in ilev_replace]
+                add_ilev1 = [var+'_ilev1' for var in variables_requested if var
+                             in ilev1_replace]
+                if len(add_ilev) > 0 or len(add_ilev1) > 0:  # add both
+                    add_ilev += ['H_ilev']  # might need to replace one
+                    add_ilev1 += ['H_ilev1']  # with the other
+                new_var = variables_requested + add_ilev + add_ilev1
+                short_var = [item for item in new_var if item not
+                             in self.ilev_map.keys()]  # remove replaced items
+
             # collect variables per pattern type
             self.varfiles, self.gvarfiles = {}, {}
             self.err_list, self.var_dict = [], {}
@@ -637,7 +638,7 @@ def MODEL():
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int, coord_str, interp_flag=2, func=func,
-                start_times=self.times[key]['start'])
+                times_dict=self.times[key])
 
             # perform substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:

@@ -42,7 +42,7 @@ def convert_all(file_dir):
     
     for file_prefix in file_patterns:
         new_file, t0_dict = convert_files(file_prefix, t0_dict)
-    return True  # after testing, use a try/except to return false if something breaks
+    return True  # after testing, use a try/except to return false if it breaks
 
 
 def dts_to_hrs(datetime_string, filedate):

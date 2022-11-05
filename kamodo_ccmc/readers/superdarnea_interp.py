@@ -5,8 +5,9 @@
 # the outputs vs latitude.
 
 from scipy.interpolate import RegularGridInterpolator, interp1d
-from numpy import NaN, vectorize, array, append, ravel
+from numpy import NaN, vectorize, array, append, ravel, unique, zeros
 from kamodo import kamodofy
+from kamodo_ccmc.readers.reader_utilities import get_slice_idx
 
 
 def custom_interp(time_grid, lon_dict, lat_grid, data_dict, units):
@@ -22,30 +23,47 @@ def custom_interp(time_grid, lon_dict, lat_grid, data_dict, units):
         - An kamodofied interpolator for the given data that accepts
         xvec = [[t1, lon1, lat1], [t2, lon2, lat2], ...].'''
 
-    # Create 2D interpolators for each latitude grid value
-    lat_interps = [RegularGridInterpolator((time_grid, lon_dict[lat_val]),
-                                           data_dict[lat_val],
-                                           bounds_error=False, fill_value=NaN)
-                   for lat_val in lat_grid]
+    # initialize lists
+    lat_interps, latidx_map = [], []
 
-    @vectorize
     def interp_i(t, lon, lat):
         '''t, lon, and lat are floats.'''
 
-        # Choose indices of latitude grid values surrounding desired latitude
-        lat_idx = sorted(append(lat_grid, lat)).index(lat)  # get location
-        if lat_idx > 1 and lat_idx < len(lat_grid)-1:  # middle somewhere
-            lat_idxs = [lat_idx-2, lat_idx-1, lat_idx, lat_idx+1]
-        elif lat_idx <= 1:  # beginning
-            lat_idxs = [0, 1, 2, 3]
-        elif lat_idx > 1 and lat_idx >= len(lat_grid)-1:  # at end
-            lat_idxs = [lat_idx-2, lat_idx-1, lat_idx]
+        print(t.shape, lon.shape, lat.shape)
+        ulats = unique(lat)
+        out_vals = zeros(len(t))
+        for lat_val in ulats:
+            # retrieve all (t, lon) pairs for given lat_val
+            uidx = [i for i, l in enumerate(lat) if l == lat_val]
+            position = array([t[uidx], lon[uidx]]).T
+        
+            # add lat interpolators as needed per lat value
+            lat_idxs = get_slice_idx(lat_val, lat_grid)
+            for i in lat_idxs:
+                if i not in latidx_map:
+                    latidx_map.append(i)
+                    lat_int = RegularGridInterpolator(  # (t, lon) interpolator
+                        (time_grid, lon_dict[lat_grid[i]]),
+                        data_dict[lat_grid[i]],
+                        bounds_error=False, fill_value=NaN)  # returns data_val
+                    lat_interps.append(lat_int)
+        
+            if len(lat_idxs) > 1:
+                interp_locations = [latidx_map.index(val) for val in lat_idxs]
+                # get values for each latitude values in the index list
+                # once transposed, same shape as (len(uidx), len(lat_idx))
+                interp_values = array([lat_interps[i](position)
+                                       for i in interp_locations]).T
+                for j, vals in enumerate(interp_values):  # loop positions
+                    interp_lat = interp1d(lat_grid[lat_idxs], vals,
+                                          bounds_error=False, fill_value=NaN)
+                    out_vals[uidx[j]] = interp_lat(lat_val)
+            else: 
+                interp_location = latidx_map.index(lat_idxs[0])
+                out_vals[uidx] = lat_interps[interp_location](position)  # single lat_val
+        
+        return out_vals
 
-        # Interpolate values for chosen latitude grid values
-        interp_values = ravel([lat_interps[idx]([t, lon]) for idx in lat_idxs])
-        lat_interp = interp1d(lat_grid[lat_idxs], interp_values,
-                              bounds_error=False, fill_value=NaN)
-        return lat_interp(lat)
 
     @kamodofy(units=units)
     def total_interp(xvec_SMsph3D):

@@ -4,11 +4,10 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
-from numpy import NaN, vectorize, append, array, ravel
+from numpy import NaN, vectorize, append, array
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
-from time import perf_counter
 
 
 def register_interpolator(kamodo_object, varname, interpolator, coord_units):
@@ -119,7 +118,7 @@ def create_funcsig(coord_data, coord_str):
 
 def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                           data_dict, gridded_int, coord_str, interp_flag=0,
-                          func=None, start_times=None):
+                          func=None, times_dict=None, func_default='data'):
     '''Determine and call the correct functionalize routine.
     Inputs:
         kamodo_object: the previously created kamodo object.
@@ -184,7 +183,11 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
             such operations to be done on the fly.
         start_times: a list of the start times for each data chunk.
             *** Only needed for interpolation over time chunks. ***
-            (interp_flag options 2 and 3)
+            (interp_flag options 2 and 3).
+        func_default: a string indicating the type of object returned by func.
+            The default is 'data', indicating that the returned object is a
+            numpy array. Set this to 'custom' to indicate that func returns
+            a custom interpolator.
 
     Output: A kamodo object with the functionalized dataset added.
     '''
@@ -198,11 +201,13 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     if interp_flag == 0:  # standard logic
         interp = create_interp(coord_data, data_dict)
     elif interp_flag == 1:
-        interp = time_interp(coord_dict, data_dict, func)
+        interp = time_interp(coord_dict, data_dict, func, func_default=func_default)
     elif interp_flag == 2:
-        interp = multitime_interp(coord_dict, data_dict, start_times, func)
+        interp = multitime_interp(coord_dict, data_dict, times_dict, func,
+                                  func_default=func_default)
     elif interp_flag == 3:
-        interp = multitime_biginterp(coord_dict, data_dict, start_times, func)
+        interp = multitime_biginterp(coord_dict, data_dict, times_dict, func,
+                                     func_default=func_default)
     new_interp = forge.replace('xvec', param_xvec)(interp)
     interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
              arg_units=coord_units)(new_interp)
@@ -220,7 +225,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     return kamodo_object
 
 
-def time_interp(coord_dict, data_dict, func):
+def time_interp(coord_dict, data_dict, func, func_default='data'):
     '''Create a functionalized interpolator by splitting into timesteps.
     Inputs:
         coord_dict: a dictionary containing the coordinate information.
@@ -237,6 +242,10 @@ def time_interp(coord_dict, data_dict, func):
             slice i, which must include data retrieval from the file. The
             should return the data for the time slice. Required syntax is
             data = func(i).
+        func_default: a string indicating the type of object returned by func.
+            The default is 'data', indicating that the returned object is a
+            numpy array. Set this to 'custom' to indicate that func returns
+            a custom interpolator.
     Output: A lazy time interpolator. 
     '''
 
@@ -250,60 +259,97 @@ def time_interp(coord_dict, data_dict, func):
 
     # define method for how to add time slices to memory
     def add_timeinterp(i, time_interps):
-        if len(coord_list) > 1:
+        if len(coord_list) > 1 and func_default == 'data':
             time_interps.append(rgiND(coord_list[1:], func(i), 
                                       bounds_error=False, fill_value=NaN))
-        else:  # has to be different for time series data
+        elif len(coord_list) == 1:  # has to be different for time series data
             def dummy_1D(spatial_position):
                 return func(i)  # data only
             time_interps.append(dummy_1D[0])
+        elif func_default == 'custom':
+            time_interps.append(func(i))
         return time_interps
 
-    @vectorize
     def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
 
-        position = [*args]  # time coordinate value must be first
-        # Choose indices of time grid values surrounding desired time
-        idx_list = get_slice_idx(position[0], coord_list[0])
-
-        # Interpolate values for chosen time grid values
-        for i in idx_list:
-            if i not in idx_map:
-                len_map = len(idx_map)  # length before adding another
-                try:  # allow for memory errors
-                    time_interps = add_timeinterp(i, time_interps)
-                except MemoryError:  # remove one time slice first
-                    print('Avoiding memory error...')
-                    if len_map == 0:
-                        print('Not enough memory to load one time slice. ' +
-                              'Please close some applications.')
-                    elif len_map < 2:  # tried to add a second slice but failed
-                        print('Not enough memory to load two time slices. ' +
-                              'Please close some applications.')
-                    elif abs(i-idx_map[0]) > 2:
-                        del idx_map[0], time_interps[0]
-                    else:
-                        del idx_map[-1], time_interps[-1]
-                    time_interps = add_timeinterp(i, time_interps)
-                print(f'Time slice index {i} added from file.')
-                idx_map.append(i)
-        if len(idx_list) > 1:
-            interp_locations = [idx_map.index(val) for val in idx_list]
-            interp_values = ravel(array([time_interps[i]([*position[1:]])
-                                         for i in interp_locations]))
-            time_interps = rgi1D(coord_list[0][idx_list], interp_values,
-                                bounds_error=False, fill_value=NaN)
-            return time_interps(position[0])
-        else: 
-            interp_location = idx_map.index(idx_list[0])
-            return time_interps[interp_location](position[1:])  # single time
+        position = array([*args])  # time coordinate value must be first
+        times = position[0]
+        sposition = position[1:].T  # spatial coordinates (len(times), ncoords)
+        if len(position.shape) == 1:
+            out_vals = zeros(1)
+        else:
+            out_vals = zeros(times.shape[0])
+        # loop through time grid instead of input time array
+        for i in range(len(coord_list[0])):
+            # figure out what times given are in this file, if any
+            if i < len(coord_list[0]) - 1:
+                end_time, idx_list = coord_list[0][i+1], [i, i+1]
+            else:
+                end_time, idx_list = coord_list[0][i], [i]
+            if isinstance(times, ndarray):
+                st_idx = [j for j, time_val in enumerate(times) if
+                          time_val >= coord_list[0][i] and
+                          time_val <= end_time]
+            else:
+                if times[0] >= coord_list[0][i] and times[0] <= end_time:
+                    st_idx = [i]
+                else:
+                    continue
+            if len(st_idx) == 0:  # skip if none
+                continue
+            
+            # Interpolate values for chosen time grid values
+            for i in idx_list:
+                if i not in idx_map:
+                    len_map = len(idx_map)  # length before adding another
+                    try:  # allow for memory errors
+                        time_interps = add_timeinterp(i, time_interps)
+                    except MemoryError:  # remove one time slice first
+                        print('Avoiding memory error...')
+                        if len_map == 0:
+                            print('Not enough memory to load one time slice. ' +
+                                  'Please close some applications.')
+                        elif len_map < 2:  # tried to add a second slice but failed
+                            print('Not enough memory to load two time slices. ' +
+                                  'Please close some applications.')
+                        elif abs(i-idx_map[0]) > 2:
+                            del idx_map[0], time_interps[0]
+                        else:
+                            del idx_map[-1], time_interps[-1]
+                        time_interps = add_timeinterp(i, time_interps)
+                    print(f'Time slice index {i} added from file.')
+                    idx_map.append(i)
+            if len(idx_list) > 1:
+                interp_locations = [idx_map.index(val) for val in idx_list]
+                if isinstance(times, ndarray):
+                    interp_values = array([time_interps[i](sposition[st_idx])
+                                           for i in interp_locations]).T
+                    for j, vals in enumerate(interp_values):  # loop positions
+                        time_int = rgi1D(coord_list[0][idx_list], vals,
+                                         bounds_error=False, fill_value=NaN)
+                        out_vals[st_idx[j]] = time_int(times[st_idx[j]])
+                else:
+                    interp_values = array([time_interps[i](sposition)
+                                           for i in interp_locations]).T
+                    time_int = rgi1D(coord_list[0][idx_list], interp_values,
+                                     bounds_error=False, fill_value=NaN)
+                    out_vals = time_int(times)
+            else: 
+                interp_location = idx_map.index(idx_list[0])
+                if isinstance(times, ndarray):
+                    out_vals[st_idx] = time_interps[interp_location](
+                        sposition[st_idx])
+                else:
+                    out_vals = time_interps[interp_location](sposition)
+        return out_vals
 
     def interp(xvec):
         return interp_i(*array(xvec).T)
     return interp
 
 
-def multitime_interp(coord_dict, data_dict, start_times, func):
+def multitime_interp(coord_dict, data_dict, times_dict, func,
+                     func_default='data'):
     '''Create a functionalized interpolator by splitting into time chunks.
     Inputs:
         coord_dict: a dictionary containing the coordinate information.
@@ -326,6 +372,10 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
             chunks can be easily achieved by appending a time slice from the
             next chunk to the current one in the logic of the function. The
             required syntax is data = func(i), where i is the file number.
+        func_default: a string indicating the type of object returned by func.
+            The default is 'data', indicating that the returned object is a
+            numpy array. Set this to 'custom' to indicate that func returns
+            a custom interpolator.
     Output: A time-chunked lazy interpolator.
     '''
     
@@ -342,48 +392,75 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
     def add_timeinterp(i, time_interps):  # i is the file number
         idx_map.append(i)
         # determine time grid for file
-        start_idx = list(coord_list[0]).index(start_times[i])
-        if i == len(start_times)-1:
-            time = coord_list[0][start_idx:]
-        else:  # determine the first index of the next file +1 for added time
-            end_idx = list(coord_list[0]).index(start_times[i+1]) + 1
-            time = coord_list[0][start_idx:end_idx]
+        start_idx = list(coord_list[0]).index(times_dict['start'][i])
+        end_idx = list(coord_list[0]).index(times_dict['end'][i]) + 1
+        if i < len(times_dict['end'])-1:  # interpolating btwn files
+            end_idx += 1
+        time = coord_list[0][start_idx:end_idx]
         # get data for chunk
         data = func(i)
-        if len(coord_list) > 1:
+        if len(coord_list) > 1 and func_default == 'data':
             coord_list_i = [time] + coord_list[1:]
             time_interps.append(rgiND(coord_list_i, data,
                                       bounds_error=False, fill_value=NaN))
-        else:  # has to be different for time series data
+        elif len(coord_list) == 1:  # has to be different for time series data
             time_interps.append(rgi1D(time, data, bounds_error=False,
                                       fill_value=NaN))
+        elif func_default == 'custom':  # when func returns an interpolator
+            time_interps.append(func(i))
         return time_interps, idx_map
     
-    @vectorize
+
     def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
 
-        position = [*args]  # time coordinate value must be first
-        # get location of file
-        i = get_file_index(position[0], start_times)
-
-        # Interpolate values for chosen time chunk
-        if i not in idx_map:
-            len_map = len(idx_map)
-            try:  # allow for memory errors
-                time_interps, idx_map = add_timeinterp(i, time_interps)
-            except MemoryError:  # remove two(?) items first
-                print('Avoiding memory error...')
-                if len_map == 0:  # tried but failed
-                    print('Not enough memory to load a time chunk. ' +
-                          'Please close some applications.')
-                elif i != idx_map[0]:
-                    del idx_map[0], time_interps[0]
+        position = array([*args])  # time coordinate value must be first
+        if len(position.shape) == 1:
+            out_vals = zeros(1)
+        else:
+            out_vals = zeros(position.shape[1])  # (num_coordgrids, num_pos)
+        # loop through start times instead
+        for i in range(len(times_dict['start'])):
+            # figure out what times given are in this file, if any
+            if i < len(times_dict['start']) - 1:
+                end_time = times_dict['start'][i+1]
+            else:
+                end_time = times_dict['end'][i]
+            if isinstance(position[0], ndarray):
+                st_idx = [j for j, time_val in enumerate(position[0]) if
+                          time_val >= times_dict['start'][i] and
+                          time_val <= end_time]
+            else:
+                if position[0] >= times_dict['start'][i] and \
+                    position[0] <= end_time:
+                        st_idx = [i]
                 else:
-                    del idx_map[-1], time_interps[-1]
-                time_interps, idx_map = add_timeinterp(i, time_interps)
-                print(f'Time chunk added from file {i+1}.')
-        interp_location = idx_map.index(i)
-        return time_interps[interp_location](position)  # single time chunk
+                    continue
+            if len(st_idx) == 0:  # skip if none
+                continue
+
+            # Interpolate values for chosen time chunk
+            if i not in idx_map:
+                len_map = len(idx_map)
+                try:  # allow for memory errors
+                    time_interps, idx_map = add_timeinterp(i, time_interps)
+                except MemoryError:  # remove two(?) items first
+                    print('Avoiding memory error...')
+                    if len_map == 0:  # tried but failed
+                        print('Not enough memory to load a time chunk. ' +
+                              'Please close some applications.')
+                    elif i != idx_map[0]:
+                        del idx_map[0], time_interps[0]
+                    else:
+                        del idx_map[-1], time_interps[-1]
+                    time_interps, idx_map = add_timeinterp(i, time_interps)
+                    print(f'Time chunk added from file {i+1}.')
+            # interpolate all the positions with times in this time chunk
+            if isinstance(position[0], ndarray):
+                out_vals[st_idx] = time_interps[idx_map.index(i)](
+                    position[:, st_idx].T)
+            else:
+                out_vals = time_interps[idx_map.index(i)](position)
+        return out_vals
 
     def interp(xvec):
         return interp_i(*array(xvec).T)
@@ -391,7 +468,8 @@ def multitime_interp(coord_dict, data_dict, start_times, func):
     return interp
 
 
-def multitime_biginterp(coord_dict, data_dict, start_times, func):
+def multitime_biginterp(coord_dict, data_dict, times_dict, func,
+                        func_default='data'):
     '''Create a functionalized interpolator by splitting into time chunks as
     stored in the files and then into time steps. Use this option (3) when the
     time chunks are large compared to the typically available computer memory.
@@ -416,6 +494,10 @@ def multitime_biginterp(coord_dict, data_dict, start_times, func):
             Required syntax is data = func(f, i), where f is the file number
             of the time chunk and i is the time slice number in that file.
             Counting starts at zero.
+        func_default: a string indicating the type of object returned by func.
+            The default is 'data', indicating that the returned object is a
+            numpy array. Set this to 'custom' to indicate that func returns
+            a custom interpolator.
     Output: A time-chunked lazy interpolator that loads two slices each time.
     '''
     
@@ -433,67 +515,102 @@ def multitime_biginterp(coord_dict, data_dict, start_times, func):
         if len(coord_list) > 1:
             time_interps.append(rgiND(coord_list[1:], func(i, fi), 
                                       bounds_error=False, fill_value=NaN))
-        else:  # has to be different for time series data
+        elif len(coord_list) == 1:  # has to be different for time series data
             def dummy_1D(spatial_position):
                 return func(i, fi)  # data only
             time_interps.append(dummy_1D[0])
+        elif func_default == 'custom':
+            time_interps.append(func(i, fi))
         return time_interps
 
-    @vectorize
     def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
 
-        position = [*args]  # time coordinate value must be first
-        # Choose indices of time grid values surrounding or equal to time value
-        idx_list = get_slice_idx(position[0], coord_list[0])
-
-        # add time slices as needed
-        for idx in idx_list:
-            if idx not in idx_map:
-                # Get index of file containing the desired time
-                i = get_file_index(coord_list[0][idx], start_times)
-    
-                # determine which slice in the file corresponds to the time val
-                # aka time position relative to beginning of file
-                start_idx = list(coord_list[0]).index(start_times[i])
-                fi = list(coord_list[0][start_idx:]
-                                ).index(coord_list[0][idx])
-
-                # add index
-                len_map = len(idx_map)  # length before adding another
-                try:  # allow for memory errors
-                    time_interps = add_timeinterp(i, fi, time_interps)
-                except MemoryError:  # remove one time slice first
-                    print('Avoiding memory error...')
-                    if len_map == 0:
-                        print('Not enough memory to load one time slice. ' +
-                              'Please close some applications.')
-                    elif len_map < 2:  # tried to add a second slice but failed
-                        print('Not enough memory to load two time slices. ' +
-                              'Please close some applications.')
-                    elif abs(idx-idx_map[0]) > 2:
-                        del idx_map[0], time_interps[0]
-                        del idx_map[0], time_interps[0]
-                    else:
-                        del idx_map[-1], time_interps[-1]
-                        del idx_map[-1], time_interps[-1]
-                    time_interps = add_timeinterp(i, fi, time_interps)
-                idx_map.append(idx)
-                print(f'Time slice index {idx} (file time {fi}) added from ' +
-                      f'file {i+1}.')
-        if len(idx_list) > 1:
-            interp_locations = [idx_map.index(val) for val in idx_list]
-            interp_values = ravel(array([time_interps[i]([*position[1:]])
-                                         for i in interp_locations]))
-            time_interps = rgi1D(coord_list[0][idx_list], interp_values,
-                                 bounds_error=False, fill_value=NaN)
-            return time_interps(position[0])
-        else: 
-            interp_location = idx_map.index(idx_list[0])
-            return time_interps[interp_location](position[1:])  # single time
+        position = array([*args])  # time coordinate value must be first
+        times = position[0]
+        sposition = position[1:].T  # spatial coordinates (len(times), ncoords)
+        if len(position.shape) == 1:
+            out_vals = zeros(1)
+        else:
+            out_vals = zeros(times.shape[0])
+        # loop through time grid instead of input time array
+        for ti in range(len(coord_list[0])):
+            # figure out what times given are in this slice, if any
+            if ti < len(coord_list[0]) - 1:
+                end_time, idx_list = coord_list[0][ti+1], [ti, ti+1]
+            else:
+                end_time, idx_list = coord_list[0][ti], [ti]
+            if isinstance(times, ndarray):
+                st_idx = [j for j, time_val in enumerate(times) if
+                          time_val >= coord_list[0][ti] and
+                          time_val <= end_time]
+            else:
+                if times[0] >= coord_list[0][ti] and times[0] <= end_time:
+                    st_idx = [ti]
+                else:
+                    continue
+            if len(st_idx) == 0:  # skip if none
+                continue
+            
+            # Interpolate values for chosen time grid values
+            for idx in idx_list:
+                if idx not in idx_map:
+                    # Get index of file containing the desired time
+                    i = get_file_index(coord_list[0][idx], times_dict['start'])
+                    # determine which slice in the file corresponds to time val
+                    # aka time position relative to beginning of file
+                    start_idx = list(coord_list[0]).index(
+                        times_dict['start'][i])
+                    fi = list(coord_list[0][start_idx:]).index(
+                        coord_list[0][idx])
+                    
+                    # add time slice
+                    len_map = len(idx_map)  # length before adding another
+                    try:  # allow for memory errors
+                        time_interps = add_timeinterp(i, fi, time_interps)
+                    except MemoryError:  # remove one time slice first
+                        print('Avoiding memory error...')
+                        if len_map == 0:
+                            print('Not enough memory to load one time slice. ' +
+                                  'Please close some applications.')
+                        elif len_map < 2:  # tried to add a second slice but failed
+                            print('Not enough memory to load two time slices. ' +
+                                  'Please close some applications.')
+                        elif abs(idx-idx_map[0]) > 2:
+                            del idx_map[0], time_interps[0]
+                            del idx_map[0], time_interps[0]
+                        else:
+                            del idx_map[-1], time_interps[-1]
+                            del idx_map[-1], time_interps[-1]
+                        time_interps = add_timeinterp(i, fi, time_interps)
+                    idx_map.append(idx)
+                    print(f'Time slice index {idx} (file time {fi}) added from ' +
+                          f'file {i+1}.')
+            if len(idx_list) > 1:
+                interp_locations = [idx_map.index(val) for val in idx_list]
+                if isinstance(times, ndarray):
+                    interp_values = array([time_interps[ii](sposition[st_idx])
+                                           for ii in interp_locations]).T
+                    for j, vals in enumerate(interp_values):  # loop positions
+                        time_int = rgi1D(coord_list[0][idx_list], vals,
+                                         bounds_error=False, fill_value=NaN)
+                        out_vals[st_idx[j]] = time_int(times[st_idx[j]])
+                else:  # one position
+                    interp_values = array([time_interps[ii](sposition)
+                                           for ii in interp_locations]).T
+                    time_int = rgi1D(coord_list[0][idx_list], interp_values,
+                                     bounds_error=False, fill_value=NaN)
+                    out_vals = time_int(times)
+            else: 
+                interp_location = idx_map.index(idx_list[0])
+                if isinstance(times, ndarray):
+                    out_vals[st_idx] = time_interps[interp_location](
+                        sposition[st_idx])
+                else:
+                    out_vals = time_interps[interp_location](sposition)
+        return out_vals        
 
     def interp(xvec):
         return interp_i(*array(xvec).T)
-
     return interp
 
 
@@ -520,24 +637,24 @@ def get_slice_idx(time_val, time_array):
     return idx_list
 
 
-def get_file_index(time_val, start_times):
+def get_file_index(time_val, time_grid):
     '''Figures out which file start time is directly before the given time
     value.
     Inputs:
-        time_val: float value of time
-        start_times: an array of time values of the start of each chunk/file
+        time_val: float value of desired coordinate
+        time_grid: an array of coordinate grid values of the same coordinate
     Returns: index of the start time directly preceding the given time value.
     '''
     
-    if time_val not in start_times:
-        idx = sorted(append(start_times, time_val)
+    if time_val not in time_grid:
+        idx = sorted(append(time_grid, time_val)
                      ).index(time_val)  # get file #
         if idx == 0:
             i = 0  # beg of first file
         else:
             i = idx - 1  # somewhere else
     else:
-        i = list(start_times).index(time_val)
+        i = list(time_grid).index(time_val)
     return i
 
 
@@ -546,7 +663,7 @@ def get_file_index(time_val, start_times):
 # -*- coding: utf-8 -*-
 # The pressure level inversion routine used by many ITM models
 from scipy.interpolate import interp1d
-from numpy import unique, zeros
+from numpy import unique, zeros, ndarray
 
 
 def PLevelInterp(h_func, time, longitude, latitude, ilev, units):
@@ -571,6 +688,14 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units):
         the interpolated pressure levels are returned.'''
         # sort lats and lons per time value
         input_arr = array([t, lon, lat]).T  # array of all positions given
+        if not isinstance(t, ndarray):  # only one time/position
+            km_vals = h_func(**{'time': input_arr[0], 'lon': input_arr[1],
+                                'lat': input_arr[2]})
+            km_interp = interp1d(km_vals, ilev, bounds_error=False,
+                                 fill_value=NaN)
+            return km_interp(km)
+        
+        # remaining logic is for if there is more than one position given
         pos_arr = unique(input_arr, axis=0)  # only create interp for unique
         out_ilev = zeros(len(t))  # (t, lon, lat) positions to save time
         for pos in pos_arr:
@@ -616,6 +741,7 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units):
 
 from datetime import datetime, timezone, timedelta
 from os.path import basename
+from numpy import float32
 
 
 @vectorize
@@ -632,7 +758,7 @@ def str_to_hrs(dt_str, filedate, format_string='%Y-%m-%d %H:%M:%S'):
     midnight of filedate.'''
     tmp = datetime.strptime(dt_str, format_string).replace(
         tzinfo=timezone.utc)
-    return (tmp - filedate).total_seconds()/3600.
+    return float32((tmp - filedate).total_seconds()/3600.)
 
 
 def create_timelist(list_file, time_file, modelname, times, pattern_files,
@@ -714,7 +840,7 @@ def read_timelist(time_file, list_file):
             p = line.strip()[9:]
             times[p] = {'start': [], 'end': [], 'all': []}
         else:
-            times[p]['all'].append(float(line.strip()))
+            times[p]['all'].append(float32(line.strip()))
     time_obj.close()
     for p in times.keys():
         times[p]['all'] = array(times[p]['all'])

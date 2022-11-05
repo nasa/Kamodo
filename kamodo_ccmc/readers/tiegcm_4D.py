@@ -751,7 +751,7 @@ def MODEL():
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
                 h_grid, coord_str, interp_flag=interp_flag, func=func,
-                start_times=self.times[p]['start'])
+                times_dict=self.times[p])
 
             # perform H_ilev/H_ilev1 substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
