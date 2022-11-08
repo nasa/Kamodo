@@ -114,7 +114,7 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
                  opacity=0.70,axis=True,debug=0):
     """
     Takes a gridified 2D lon/lat figure and creates new plots
-    in 3D various coordinate systems.
+    in 3D and for chosen coordinate systems.
     """
 
     import numpy as np
@@ -165,9 +165,7 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
     if co == 'GDZ':
         # GDZ does not convert into other coordinates well, first go to GEO-car
         xx,yy,zz,units = ConvertCoord(full_t,full_x,full_y,full_z,co,cot,'GEO','car')
-        full_x = xx
-        full_y = yy
-        full_z = zz
+        full_x, full_y, full_z = xx,yy,zz
     if plotCoord != 'GEO':
         xx,yy,zz,units = ConvertCoord(full_t,full_x,full_y,full_z,'GEO','car',plotCoord,'car')
     x = np.reshape(xx,(len(lat),len(lon)))
@@ -189,8 +187,7 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
                         [0.25, 'rgb(0,255,255)'],
                         [0.50, 'rgb(0,255,0)'],
                         [0.75, 'rgb(255,255,0)'],
-                        [1.00, 'rgb(255,0,0)']]
-        )
+                        [1.00, 'rgb(255,0,0)']])
     else:
         fig.update_traces(colorscale=colorscale)
 
@@ -292,19 +289,58 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
     return fig
 
 
-def TransformedLL(interp,varname,model,plotTime,fhrs,altkm,
-                  plotCoord='GEO',title='Plot Title',shoreline=False,
-                  colorscale='Viridis',crange='',
-                  debug=0):
-    """Assumes spherical coords"""
+def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
+               fixed_time='',fixed_lon='',fixed_lat='',fixed_alt='', 
+               title='Plot Title',shoreline=False,colorscale='Viridis',
+               crange=''):
+    """
+    Function takes 4D (Time/Lon/Lat/Alt) Kamodo interpolator in GDZ coordinates
+    and creates a 2D plot by fixing two dimensions to create a slice in the 
+    other two dimensions. This can be displayed in any supported coordinate system.
+    
+    Arguments:
+      interp      Kamodo interpolator for variable to plot
+      varname     String name of variable to plot
+      model       String name of model
+      date        Datetime object for date of plot
+      plotType    String with two variables to plot, ie. 'Lon-Lat'
+                    choose from Time, Lon, Lat, Alt
+    
+    Optional Arguments:
+      plotCoord   Coordinate system to display the plot in
+      fixed_time  Fixed time value if not a plot axis [hours]
+      fixed_lon   Fixed longitude value if not a plot axis [degrees]
+      fixed_lat   Fixed latgitude value if not a plot axis [degrees]
+      fixed_alt   Fixed altitude value if not a plot axis [km]
+      title       String used for plot title
+      shoreline   Logical to show shoreline on map if Lon-Lat plot
+      colorscale  String name of colorscale to use
+      crange      Contour range to override min,max, ie. [999,2001]
+    """
 
     import numpy as np
     import pytz
+    import time
     import datetime as dt
     from kamodo import Kamodo
     import kamodo_ccmc.flythrough.model_wrapper as MW
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     from kamodo_ccmc.tools.shoreline import shoreline
+
+    tic = time.perf_counter()
+
+    # Check passed in plotType and parse for use later
+    Types = ['Lon', 'Lat', 'Alt', 'Time']
+    axis = plotType.split('-')
+    if len(axis) != 2:
+        print("ERROR, invalid plotType passed."); return
+    if axis[0] not in Types or axis[1] not in Types:
+        print("ERROR, plotType elements invalid."); return
+
+    # Set base timestamp to start of day passed in.
+    basets = date.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    if 'Time' not in axis:
+        slicets = basets + fixed_time*3600.
 
     # Get current coordinate system and type from model. Create string for labels
     tmp = list(MW.Model_Variables(model,return_dict=True).values())[0][2:4]
@@ -314,49 +350,136 @@ def TransformedLL(interp,varname,model,plotTime,fhrs,altkm,
     if co != 'GDZ' or cot != 'sph':
         print('Expecting coordinates to be GDZ(sph) but got ',costr)
 
+    # Set itim array 
+    if 'Time' in axis:
+        itim = np.linspace(0, 24, 97)
+        if axis[0] == 'Time': i1 = itim
+        if axis[1] == 'Time': i2 = itim
+        fixed_time = ''
+    else:
+        if fixed_time == '':  print("ERROR, fixed_time not passed."); return
+        itim = np.array([fixed_time])
+
+    # Set ilon array 
+    if 'Lon' in axis:
+        ilon = np.linspace(-180, 180, 91)
+        if axis[0] == 'Lon': i1 = ilon
+        if axis[1] == 'Lon': i2 = ilon
+        fixed_lon = ''
+    else:
+        if fixed_lon == '':  print("ERROR, fixed_lon not passed."); return
+        ilon = np.array([fixed_lon])
+
+    # Set ilat array 
+    if 'Lat' in axis:
+        ilat = np.linspace(-90, 90, 73)
+        if axis[0] == 'Lat': i1 = ilat
+        if axis[1] == 'Lat': i2 = ilat
+        fixed_lat = ''
+    else:
+        if fixed_lat == '':  print("ERROR, fixed_lat not passed."); return
+        ilat = np.array([fixed_lat])
+
+    # Set ialt array 
+    if 'Alt' in axis:
+        # Using quick bisection solve to find alt range.
+        dh, h = 50., 50.
+        v = interp([12, 0, 0, h])
+        for _ in range(100):
+            if np.isnan(v):
+                if dh < 0.: dh = -.5 * dh
+            else:
+                if abs(dh) < 1e-6: break
+                if dh > 0.: dh = -.5 * dh
+            h += dh
+            v = interp([12, 0, 0, h])
+        h1 = h
+        dh = 200.
+        for _ in range(100):
+            if np.isnan(v):
+                if dh > 0.: dh = -.5 * dh
+            else:
+                if abs(dh) < 1e-6: break
+                if dh < 0.: dh = -.5 * dh
+            h += dh
+            v = interp([12, 0, 0, h])
+        ialt = np.linspace(h1, h, 101)
+        if axis[0] == 'Alt': i1 = ialt
+        if axis[1] == 'Alt': i2 = ialt
+        fixed_alt = ''
+    else:
+        if fixed_alt == '':  print("ERROR, fixed_alt not passed."); return
+        ialt = np.array([fixed_alt])
+
     # Set grid to interpolate to
-    ilon = np.linspace(-180, 180, 91)
-    ilat = np.linspace(-90, 90, 73)
-    ilon_mg, ilat_mg = np.meshgrid(np.array(ilon), np.array(ilat))
-    x = np.reshape(ilon_mg,-1)
-    y = np.reshape(ilat_mg,-1)
-    # The z value 1 [Re] so that we can compute km altitude shift (GDZ uses 0)
-    if plotCoord == 'GDZ':
-        z = np.zeros(x.shape)
+    i1mg, i2mg = np.meshgrid(np.array(i1), np.array(i2))
+    w = np.reshape(i1mg,-1)  # Dummy to store shape for next steps
+
+    if axis[0] == 'Lon':
+        x = np.reshape(i1mg,-1)
+    elif axis[1] == 'Lon':
+        x = np.reshape(i2mg,-1)
     else:
-        z = np.ones(x.shape)
-    t = np.full(x.shape, plotTime)
- 
+        x = np.full(w.shape, fixed_lon)
+
+    if axis[0] == 'Lat':
+        y = np.reshape(i1mg,-1)
+    elif axis[1] == 'Lat':
+        y = np.reshape(i2mg,-1)
+    else:
+        y = np.full(w.shape, fixed_lat)
+    
+    z = np.ones(w.shape)  # Either 1km or 1Re are fine for coordinate transform
+
+    # The t array needs to be timestamps
+    if axis[0] == 'Time':
+        t = np.reshape(i1mg,-1)
+        t = basets + t*3600.
+    elif axis[1] == 'Time':
+        t = np.reshape(i2mg,-1)
+        t = basets + t*3600.
+    else:
+        t = np.full(w.shape, slicets)
+
     # Convert from plotCoord coordinates into model coordinates to interpolate
-    if co == 'GDZ':
-        if plotCoord == 'GDZ':
-            # No change to coordinates, so don't transform
-            xx = x; yy = y; zz = z
-        else:
-            # GDZ only converts to/from GEO, so have to convert twice
-            xx,yy,zz,units = ConvertCoord(t,x,y,z,plotCoord,'sph','GEO','sph')
-            x = xx; y = yy; z = zz
-            xx,yy,zz,units = ConvertCoord(t,x,y,z,'GEO','sph',co,cot)
+    if plotCoord == 'GDZ':
+        # No change to coordinates, so don't transform
+        xx, yy, zz = x, y, z
+    elif plotCoord == 'GEO':
+        # Only altitude changes, and that is reset later
+        xx, yy, zz = x, y, z
     else:
-        xx,yy,zz,units = ConvertCoord(t,x,y,z,plotCoord,'sph',co,cot)
-    if debug > 0:
-        # Plot altitude variable
-        print('DEBUG:',debug)
-        val = zz
-        varname = 'Altitude[km]'
+        # GDZ only converts to/from GEO, so  have to convert twice
+        xx,yy,zz,units = ConvertCoord(t,x,y,z,plotCoord,'sph','GEO','sph')
+        x, y, z = xx, yy, zz
+        xx,yy,zz,units = ConvertCoord(t,x,y,z,'GEO','sph','GDZ','sph')
+
+    # Don't use transformed zz (alt), reset to desired altitude (km) to interpolate
+    if axis[0] == 'Alt':
+        zz = np.reshape(i1mg,-1)
+    elif axis[1] == 'Alt':
+        zz = np.reshape(i2mg,-1)
     else:
-        zz = np.full(xx.shape, altkm)
-        val = np.ndarray(shape=(len(xx)), dtype=np.float32)
-        for i in range(len(xx)):
-            val[i] = interp([fhrs, xx[i], yy[i], zz[i]])  # time, lon, lat, height
-    val2 = np.reshape(val,(len(ilat),len(ilon)))
+        zz = np.full(w.shape, fixed_alt)
+
+    # The tt array needs to be in hours
+    if axis[0] == 'Time':
+        tt = np.reshape(i1mg,-1)
+    elif axis[1] == 'Time':
+        tt = np.reshape(i2mg,-1)
+    else:
+        tt = np.full(w.shape, fixed_time)
+
+    positions = np.transpose([tt,xx,yy,zz])
+    val = interp(positions)
+    val2 = np.reshape(val,i1mg.shape)
     cmin = np.min(val)
     cmax = np.max(val)
     if crange != '':
         cmin = float(crange[0])
         cmax = float(crange[1])
 
-    def plot_2D(Lon = ilon, Lat = ilat):
+    def plot_2D(v1 = i1, v2 = i2):
         return val2
     plot1 = Kamodo(plot_2D = plot_2D)
     fig = plot1.plot(plot_2D = dict())
@@ -369,8 +492,7 @@ def TransformedLL(interp,varname,model,plotTime,fhrs,altkm,
                                       [0.25, 'rgb(0,255,255)'],
                                       [0.50, 'rgb(0,255,0)'],
                                       [0.75, 'rgb(255,255,0)'],
-                                      [1.00, 'rgb(255,0,0)']]
-        )
+                                      [1.00, 'rgb(255,0,0)']])
     else:
         fig.update_traces(colorscale=colorscale)
 
@@ -378,33 +500,43 @@ def TransformedLL(interp,varname,model,plotTime,fhrs,altkm,
     fig.update_traces(
         zmin=cmin, zmax=cmax, colorbar=dict(title=varname, tickformat=".3g"),
         ncontours=201, contours=dict(coloring="fill",showlines=False),
-        hovertemplate="Lon: %{x:.2f}<br>"+"Lat: %{y:.2f}<br>"+
+        hovertemplate=str(axis[0])+": %{x:.2f}<br>"+str(axis[1])+": %{y:.2f}<br>"+
             varname+": %{z:.6g}<br>"+"<extra></extra>"
     )
-    fig.update_yaxes(scaleanchor = "x", scaleratio = 1)
-    fig.update_xaxes(tick0=0.,dtick=45.)
-    fig.update_yaxes(tick0=0.,dtick=45.)
-    timestr = dt.datetime.fromtimestamp(plotTime, tz = pytz.utc).strftime("%Y/%m/%d %H:%M:%S")
-    lltxt = model+',  '+plotCoord+' Coordinates,  '+str(altkm)+' km Altitude,  '+timestr
+    fig.update_xaxes(title=axis[0])
+    fig.update_yaxes(title=axis[1])
+    if axis[0] == 'Lon' or axis[0] == 'Lat':
+        fig.update_xaxes(tick0=0.,dtick=45.)
+    if axis[0] == 'Time':
+        fig.update_xaxes(tick0=0.,dtick=3.)
+    if axis[1] == 'Lon' or axis[1] == 'Lat':
+        fig.update_yaxes(tick0=0.,dtick=45.)
+    if axis[1] == 'Time':
+        fig.update_yaxes(tick0=0.,dtick=3.)
+    timestr = date.strftime("%Y/%m/%d")
+    subt = model+',  '+plotCoord+' Coordinates,  '+timestr+',  Slice at:'
+    if fixed_time != "": subt = subt+'  '+str(fixed_time)+' hrs'
+    if fixed_alt != "":  subt = subt+'  '+str(fixed_alt) +' km Altitude'
+    if fixed_lon != "":  subt = subt+'  '+str(fixed_lon) +' deg Longitude'
+    if fixed_lat != "":  subt = subt+'  '+str(fixed_lat) +' deg Latitude'
     fig.update_layout(
-        plot_bgcolor="white",
-        scene_aspectmode='data',
-        title=dict(text=title+'<br>'+lltxt, 
+        plot_bgcolor="white",scene_aspectmode='data',
+        title=dict(text=title+'<br>'+subt, 
                    yref="container", yanchor="top", x=0.01, y=0.97,
                    font=dict(size=16, family="sans serif", color="#000000")),
-        margin=dict(l=0),
-        width=750,
-        height=375,
-    )
+        margin=dict(l=0),width=750,height=375)
 
-    # Shoreline (land/water boundaries)
-    if plotCoord == 'GDZ':
-        # Can't convert into GDZ, but will convert to GEO as we only use lon/lat
-        pos = shoreline(coord='GEO',coordT='sph',utcts=plotTime)
-    else:
-        pos = shoreline(coord=plotCoord,coordT='sph',utcts=plotTime)
-    fig.add_scattergl(mode='lines', x=pos[:,0], y=pos[:,1], hoverinfo='skip', 
-                      line=dict(width=1,color='white'), showlegend=False)
+    if plotType == 'Lon-Lat':
+        # Shoreline (land/water boundaries)
+        if plotCoord == 'GDZ':
+            # Can't convert into GDZ, but will convert to GEO as we only use lon/lat
+            pos = shoreline(coord='GEO',coordT='sph',utcts=slicets)
+        else:
+            pos = shoreline(coord=plotCoord,coordT='sph',utcts=slicets)
+        fig.add_scattergl(mode='lines', x=pos[:,0], y=pos[:,1], hoverinfo='skip', 
+                          line=dict(width=1,color='white'), showlegend=False)
 
+    toc = time.perf_counter()
+    print(f"Time: {toc - tic:0.4f} seconds")
     return fig
 
