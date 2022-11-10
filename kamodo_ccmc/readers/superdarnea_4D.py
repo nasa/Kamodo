@@ -138,14 +138,6 @@ def MODEL():
             p = list(self.pattern_files.keys())[0]
             cdf_data = Dataset(self.pattern_files[p][0])
 
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items()
-                               if value[2] in variables_requested]
-                    variables_requested = tmp_var
-
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]

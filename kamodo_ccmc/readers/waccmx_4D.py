@@ -710,11 +710,11 @@ def MODEL():
                 # determine the operation to occur on each time slice
                 def func(i, fi):  # i = file#, fi = slice#
                     cdf_data = Dataset(self.pattern_files[key][i])
-                    tmp = array(cdf_data.variables[gvar][fi]).T
+                    tmp = array(cdf_data.variables[gvar][fi])
                     cdf_data.close()
                     # perform data wrangling on time slice
                     # (ilev,) lat/mlat, lon/mlon -> lon/mlon, lat/mlat, (ilev)
-                    data = tmp[lon_idx]
+                    data = tmp.T[lon_idx]
                     return data
     
                 # functionalize the 3D or 4D dataset, series of time slices
@@ -749,11 +749,9 @@ def MODEL():
             # create pressure level -> km function once per ilev type
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:
                 if varname == 'H_geopot_ilev' and hasattr(self, '_km_ilev_h0'):
-                    new_varname = 'Plev'  # only one possible
-                    units = 'hPa'
-                    # perform unit conversion to km with Kamodo
+                    new_varname, units = 'Plev', 'hPa'
+                    # perform unit conversion to km with Kamodo and invert
                     self['H_ilev_ijk[km]'] = 'H_geopot_ilev_ijk'
-                    # Import and call custom interpolator
                     interpolator, interp_ijk = RU.PLevelInterp(
                         self['H_ilev_ijk'], coord_dict['time']['data'],
                         coord_dict['lon']['data'], coord_dict['lat']['data'],
@@ -767,9 +765,8 @@ def MODEL():
                 new_coord_units = {'time': 'hr', 'lon': 'deg',
                                    'lat': 'deg', 'height': 'km'}
                 self.variables[new_varname] = {'units': units}
-                self = RU.register_interpolator(self, new_varname,
-                                                interpolator,
-                                                new_coord_units)
+                self = RU.register_interpolator(
+                    self, new_varname, interpolator, new_coord_units)
                 if varname in self.total_ilev:  # different if H vs not
                     interp_ijk = self[new_varname]
 
@@ -779,7 +776,7 @@ def MODEL():
                     coord_data = {key: value['data'] for key, value in
                                   coord_dict.items() if key in
                                   new_coord_units.keys()}  # exclude ilev
-                    coord_data['height'] = self._km_ilev_h0
+                    coord_data['height'] = self._km_ilev_h0  # median alt grid
                     self.variables[new_varname+'_ijk'] = {'data': fake_data,
                         'units': units}
                     gridded_interpolator = RU.define_griddedinterp(

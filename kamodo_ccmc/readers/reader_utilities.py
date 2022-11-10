@@ -4,7 +4,7 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
-from numpy import NaN, vectorize, append, array
+from numpy import NaN, vectorize, append, array, meshgrid, ravel
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -83,7 +83,7 @@ def create_interp(coord_data, data_dict):
     return interp
 
 
-def create_funcsig(coord_data, coord_str):
+def create_funcsig(coord_data, coord_str, bounds):
     '''Create a custom function signature based on the dimensions and the
     coordinate string given (e.g. "SMcar").
     Inputs:
@@ -92,6 +92,12 @@ def create_funcsig(coord_data, coord_str):
              etc...}. All arrays should be 1D arrays.
         coord_str: a string indicating the coordinate system of the data
             (e.g. "SMcar" or "GEOsph").
+        bounds: an array of positions for the max and min values of each
+            coordinate grid transposed.
+            aa, bb, cc, dd = np.meshgrid(trange, lon_range, lat_range, h_range)
+            a, b, c, d = np.ravel(aa), np.ravel(bb), np.ravel(cc), np.ravel(dd)
+            bounds = array([a, b, c, d]).T
+            where trange, lon_range, ... = [t_min, t_max], [lon_min, lon_max]
     Outputs: A forge parameter object.
     '''
     
@@ -112,7 +118,8 @@ def create_funcsig(coord_data, coord_str):
     # e.g. 'xvec_SMcar4D' or 'rvecGEOsph3D'
     param_xvec = forge.FParameter(
         name=coord_name, interface_name='xvec',
-        kind=forge.FParameter.POSITIONAL_OR_KEYWORD)
+        kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
+        default=bounds)
     return param_xvec
 
 
@@ -195,13 +202,21 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     # split the coord_dict into data and units
     coord_data = {key: value['data'] for key, value in coord_dict.items()}
     coord_units = {key: value['units'] for key, value in coord_dict.items()}
+    
+    # create the bounds array (see docstring of create_funcsig)
+    # positions of corners of coordinate box
+    data_list = [array([value['data'].min(), value['data'].max()]) for
+                 key, value in coord_dict.items()]
+    mesh_list = meshgrid(*data_list)
+    bounds = array([ravel(item) for item in mesh_list], dtype=float).T
 
     # create a functionalized interpolator and modified function signature
-    param_xvec = create_funcsig(coord_data, coord_str)
+    param_xvec = create_funcsig(coord_data, coord_str, bounds)
     if interp_flag == 0:  # standard logic
         interp = create_interp(coord_data, data_dict)
     elif interp_flag == 1:
-        interp = time_interp(coord_dict, data_dict, func, func_default=func_default)
+        interp = time_interp(coord_dict, data_dict, func,
+                             func_default=func_default)
     elif interp_flag == 2:
         interp = multitime_interp(coord_dict, data_dict, times_dict, func,
                                   func_default=func_default)
@@ -210,7 +225,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                                      func_default=func_default)
     new_interp = forge.replace('xvec', param_xvec)(interp)
     interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
-             arg_units=coord_units)(new_interp)
+                      arg_units=coord_units)(new_interp)
 
     # Register and add gridded version if requested, even for 1D functions
     kamodo_object = register_interpolator(kamodo_object, variable_name, interp,
@@ -865,7 +880,7 @@ def read_timelist(time_file, list_file):
                        if p in f]
         times[p]['start'] = str_to_hrs(start_times, filedate)
         end_times = [t for f, t in zip(files, end_date_times)
-                     if p.replace('_', '.') in f]
+                     if p in f]
         times[p]['end'] = str_to_hrs(end_times, filedate)
     filename = ''.join([f+',' for f in files])[:-1]
 

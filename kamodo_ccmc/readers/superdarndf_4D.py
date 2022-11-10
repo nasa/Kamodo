@@ -36,7 +36,7 @@ def MODEL():
     from netCDF4 import Dataset
     from glob import glob
     from os.path import basename, isfile
-    from numpy import array, NaN, unique
+    from numpy import array, NaN, unique, append
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -92,15 +92,15 @@ def MODEL():
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames
                 files = sorted(glob(file_dir+'*_df.nc'))
-                if len(files) == 0:  # find tar files and untar them
+                if len(files) == 0:  # find original files and convert them
                     from kamodo_ccmc.readers.superdarn_tocdf import \
                         convert_files
                     tmp = convert_files(file_dir)
                 
                 # continue
                 files = sorted(glob(file_dir+'*_df.nc'))
-                patterns = unique([basename(f)[:-14] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
+                patterns = unique([basename(f)[:-14] for f in files])
                 self.filedate = datetime.strptime(
                     basename(files[0])[-14:-6], '%Y%m%d').replace(
                         tzinfo=timezone.utc)
@@ -132,7 +132,7 @@ def MODEL():
                 self.times, self.pattern_files, self.filedate, self.filename =\
                     RU.read_timelist(time_file, list_file)
             if filetime:
-                return  # return times as is to prevent infinite recursion
+                return  # return times
             # only one pattern, so simplifying code
             p = list(self.pattern_files.keys())[0]
             cdf_data = Dataset(self.pattern_files[p][0])
@@ -170,7 +170,7 @@ def MODEL():
                     cdf_data.close()
                     return
 
-            # store data for each variable desired
+            # store mapping for each variable desired
             self.variables = {model_varnames[var][0]: {
                 'units': model_varnames[var][-1], 'data': p} for var in
                 gvar_list}
@@ -203,7 +203,7 @@ def MODEL():
                       f' {len(varname_list)} variables.')
             return
         
-        # define and register a 3D variable
+        # define and register a variable
         def register_variable(self, varname, gridded_int):
             """Registers an interpolator with proper signature"""
         
@@ -227,10 +227,9 @@ def MODEL():
                     cdf_data.close()
                     data.extend(tmp)
                 self.variables[varname]['data'] = array(data)
-                self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                                self.variables[varname],
-                                                gridded_int, coord_str,
-                                                interp_flag=0)  # single array
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=0)  # single array
                 return
                 
             if len(coord_list) == 3:
@@ -238,13 +237,18 @@ def MODEL():
                 coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
             
                 # define operations for each variable when given the key
-                def func(i):  
+                def func(i):
                     '''i is the file number.'''
                     # get data from file
                     file = self.pattern_files[key][i]
                     cdf_data = Dataset(file)
                     data = array(cdf_data.variables[gvar])
                     cdf_data.close()
+                    if i < len(self.pattern_files[key]) - 1:  # get another t
+                        cdf_data = Dataset(self.pattern_files[key][i+1])
+                        data_slice = array(cdf_data.variables[gvar][0])
+                        cdf_data.close()
+                        data = append(data, [data_slice], axis=0)
                     # data wrangling all done in the file conversion step
                     return data
                 
@@ -255,3 +259,8 @@ def MODEL():
                     times_dict=self.times[key])
                 return
     return MODEL
+
+
+def coupling():
+    '''Write output to go into the SuperDARN model.'''
+    return

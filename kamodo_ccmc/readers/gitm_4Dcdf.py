@@ -463,7 +463,6 @@ def MODEL():
 
             # collect all possible variables in set of files and return
             if variables_requested == 'all':
-                print(var_list)
                 self.var_dict = {value[0]: value[1:] for key, value in
                                  model_varnames.items() if value[0] in
                                  var_list}
@@ -534,10 +533,7 @@ def MODEL():
                          model_varnames.items() if value[0] == varname][0]
 
             def func(i):  
-                '''key is the file pattern, start_idxs is a list of one or
-                two indices matching the file start times in
-                self.start_times[key].
-                '''
+                '''i is the file number.'''
                 # get data from file
                 file = self.pattern_files[key][i]
                 cdf_data = Dataset(file)
@@ -552,3 +548,4 @@ def MODEL():
                                          interp_flag=1, func=func)
 
     return MODEL
+

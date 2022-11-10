@@ -67,38 +67,12 @@ Documentation variables:
 "X":['x', 'km'], "Y":['y', 'km'], "Z":['z', 'km'],
 "Theta":['theta',"deg"],"Psi":['psi',"deg"],     (used as coordinates)
 "Btilt_theta":['theta_Btilt',"deg"], "Btilt_psi":['psi_Btilt',"deg"]
-(added directly to object for documentation purposes)
+left in files, not in kamodo object
 '''
 
-
-@vectorize
-def dts_to_hrs(datetime_string, filedate):
-    '''Get hours since midnight from datetime string'''
-    return (datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S').replace(
-        tzinfo=timezone.utc)-filedate).total_seconds()/3600.
-
-
-@vectorize
-def filename_to_dts(filename, string_date):
-    '''Get datetime string in format "YYYY-MM-SS HH:mm:SS" from filename'''
-    mmhhss = basename(filename)[12:18]
-    return string_date+' '+mmhhss[:2]+':'+mmhhss[2:4]+':'+mmhhss[4:]
-
-
-def dts_to_ts(file_dts):
-    '''Get datetime timestamp in UTC from datetime string'''
-    return datetime.timestamp(datetime.strptime(file_dts, '%Y-%m-%d %H:%M:%S'
-                                                ).replace(tzinfo=timezone.utc))
-
-
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
 def MODEL():
-    from numpy import array, NaN, diff
+    from numpy import array, unique
+    from glob import glob
     from time import perf_counter
     from netCDF4 import Dataset
     from kamodo import Kamodo
@@ -108,12 +82,9 @@ def MODEL():
         '''SWMF_IE model data reader.
 
         Inputs:
-            full_file_prefix: a string representing the file pattern of the
+            file_dir: a string representing the file directory of the
                 model output data.
-                Note: This reader takes a file pattern of the format
-                file_dir+'i_eYYYYMMDD', where YYYY is the four digit year,
-                MM is the two digit month, and DD is the two digit day
-                (e.g. 20080502 for May 2, 2008).
+                Note: This reader 'walks' the entire dataset in the directory.
             variables_requested = a list of variable name strings chosen from
                 the model_varnames dictionary in this script, specifically the
                 first item in the list associated with a given key.
@@ -121,14 +92,10 @@ def MODEL():
                     (default)
                 - If 'all', the reader returns the model_varnames dictionary
                     above for only the variables present in the given files.
-                    Note: the fulltime keyword must be False to acheive this
-                    behavior.
             filetime = boolean (default = False)
-                - if False, the script fully executes.
+                - If False, the script fully executes.
                 - If True, the script only executes far enough to determine the
                     time values associated with the chosen data.
-                Note: The behavior of the script is determined jointly by the
-                    filetime and fulltime keyword values.
             printfiles = boolean (default = False)
                 - If False, the filenames associated with the data retrieved
                     ARE NOT printed.
@@ -139,11 +106,6 @@ def MODEL():
                     standard method and a gridded method.
                 - If False, the variables chosen are functionalized in only the
                     standard method.
-            fulltime = boolean (default = True)
-                - If True, linear interpolation in time between files is
-                    included in the returned interpolator functions.
-                - If False, no linear interpolation in time between files is
-                    included.
             verbose = boolean (False)
                 - If False, script execution and the underlying Kamodo
                     execution is quiet except for specified messages.
@@ -153,67 +115,70 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
-            '''
-        def __init__(self, full_file_prefix, variables_requested=[],
+        '''
+        def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, fulltime=True, **kwargs):
-            super(MODEL, self).__init__()
+                     printfiles=False, **kwargs):
+            super(MODEL, self).__init__(**kwargs)
             self.modelname = 'SWMF_IE'
-
-            # check if given .nc file exists. If not, convert files to netCDF
-            file_prefix = basename(full_file_prefix)
-            file_dir = full_file_prefix.split(file_prefix)[0]
-            if not isfile(full_file_prefix+'.nc'):
-                from kamodo_ccmc.readers.swmfie_tocdf import \
-                    convert_all
-                test = convert_all(file_dir)
-                if not test:
-                    self.conversion_test = test
-                    return    # if file conversion fails, return
-                else:
-                    self.conversion_test = True
-            else:
-                self.conversion_test = True
             t0 = perf_counter()
 
-            # establish time attributes first for file searching
-            file_datestr = file_prefix[3:11]
-            # string_date = 'YYYY-MM-DD'
-            string_date = file_datestr[:4] + '-' + file_datestr[4:6] + '-' +\
-                file_datestr[6:8]
-            self.filedate = datetime.strptime(string_date+' 00:00:00',
-                                              '%Y-%m-%d %H:%M:%S'
-                                              ).replace(tzinfo=timezone.utc)
+            # first, check for file list, create if DNE
+            list_file = file_dir + self.modelname +'_list.txt'
+            time_file = file_dir + self.modelname +'_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if not isfile(list_file) or not isfile(time_file):
+                # find unconverted files and convert them
+                nc_files = sorted(glob(file_dir+'*.nc'))
+                tec_files = sorted(glob(file_dir+'*.tec'))
+                if len(nc_files) != len(tec_files):
+                    from kamodo_ccmc.readers.swmfie_tocdf import \
+                        convert_all
+                    convert_all(file_dir)
+                else:
+                    print('All files already converted.')
+                
+                # continue
+                files = sorted(glob(file_dir+'*.nc'))
+                patterns = unique([basename(f)[:-22] for f in files])
+                self.filename = ''.join([f+',' for f in files])[:-1]
+                self.filedate = datetime.strptime(
+                    basename(files[0])[-22:-7], '%Y%m%d-%H%M%S').replace(
+                        tzinfo=timezone.utc)
 
-            # establish beginning and end time of file list
-            cdf_data = Dataset(full_file_prefix+'.nc', 'r')
-            files = cdf_data.file.split(',')
-            # strings in format = YYYY-MM-DD HH:MM:SS
-            self.datetimes = list(filename_to_dts([files[0], files[-1]],
-                                                  string_date))
-            # timestamps in UTC
-            self.filetimes = [dts_to_ts(file_dts) for file_dts in
-                              self.datetimes]
-            t = array(cdf_data.variables['time'])  # hours since midnight
-            if len(t) > 1:
-                self.dt = diff(t).max()*3600.
-            else:
-                self.dt = 0
+                # establish time attributes from filenames
+                for p in patterns:
+                    # get list of files to loop through later
+                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    self.pattern_files[p] = pattern_files
+                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    
+                    # loop through to get times, one time per file
+                    for f in pattern_files:
+                        time = RU.str_to_hrs(f[-22:-7], self.filedate,
+                                       format_string='%Y%m%d-%H%M%S')
+                        self.times[p]['start'].append(time)
+                        self.times[p]['end'].append(time)
+                        self.times[p]['all'].append(time)  # one time per file
+                    self.times[p]['start'] = array(self.times[p]['start'])
+                    self.times[p]['end'] = array(self.times[p]['end'])
+                    self.times[p]['all'] = array(self.times[p]['all'])
 
+                # create time list file if DNE
+                RU.create_timelist(list_file, time_file, self.modelname,
+                                   self.times, self.pattern_files,
+                                   self.filedate)
+            else:  # read in data and time grids from file list
+                self.times, self.pattern_files, self.filedate, self.filename =\
+                    RU.read_timelist(time_file, list_file)
             if filetime:
-                return  # return times as is to prevent recursion
-
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items()
-                               if value[2] in variables_requested]
-                    variables_requested = tmp_var
+                return  # return times as is to prevent infinite recursion
+            # only one pattern, so simplifying code
+            p = list(self.pattern_files.keys())[0]
+            cdf_data = Dataset(self.pattern_files[p][0])
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and fulltime and\
-                    variables_requested != 'all':
+            if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
                 err_list = [item for item in variables_requested if item not in
                             test_list]
@@ -236,33 +201,22 @@ def MODEL():
                         print('Some requested variables are not available:',
                               err_list)
             else:
-                avoid_list = ['theta_Btilt', 'psi_Btilt']
                 gvar_list = [key for key in cdf_data.variables.keys()
-                             if key in model_varnames.keys() and
-                             key not in avoid_list]
-                if not fulltime and variables_requested == 'all':
+                             if key in model_varnames.keys()]
+                if variables_requested == 'all':
                     self.var_dict = {value[0]: value[1:] for key, value in
                                      model_varnames.items() if key in
                                      gvar_list}
                     return
 
             # Store variable's data and units, transposing the 2D+time array.
-            variables = {model_varnames[key][0]: {
-                'units': model_varnames[key][-1],
-                'data': array(cdf_data.variables[key])}
-                for key in gvar_list}
-            self.theta_Btilt = array(cdf_data.variables['theta_Btilt'])
-            self.psi_Btilt = array(cdf_data.variables['psi_Btilt'])
+            self.variables = {model_varnames[key][0]: {
+                'units': model_varnames[key][-1], 'data': p} for key in
+                gvar_list}
+            # self.theta_Btilt = cdf_data.theta_Btilt   # leaving out
+            # self.psi_Btilt = cdf_data.psi_Btilt
 
-            # return if only one file found - interpolator code will break
-            if len(files) < 2:
-                print('Not enough files found with given file prefix.')
-                return
-
-            # store variables
-            self.filename = files
-            self.missing_value = NaN
-            self.modelname = 'SWMF_IE'
+            # initialize
             self._registered = 0
             if printfiles:
                 print('Files:')
@@ -270,7 +224,6 @@ def MODEL():
                     print(file)
 
             # Store coordinate data as class attributes
-            self._time = t
             self._lat = array(cdf_data.variables['lat'])
             self._lon = array(cdf_data.variables['lon'])
             cdf_data.close()
@@ -279,14 +232,10 @@ def MODEL():
 
             # register interpolators for each variable
             # store original list b/c gridded interpolators
-            varname_list = [key for key in variables.keys()]
-            self.variables = {}
+            varname_list = [key for key in self.variables.keys()]
             t_reg = perf_counter()
             for varname in varname_list:  # all are 3D variables
-                self.variables[varname] = dict(
-                    units=variables[varname]['units'],
-                    data=variables[varname]['data'])
-                self.register_3D_variable(varname, gridded_int)
+                self.register_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -295,17 +244,35 @@ def MODEL():
                       f' {len(gvar_list)} variables.')
 
         # define and register a 3D variable------------------------------------
-        def register_3D_variable(self, varname, gridded_int):
-            """Registers a 3d interpolator with 3d signature"""
+        def register_variable(self, varname, gridded_int):
+            """Registers an interpolator. SWMF_IE only has 3D data."""
 
-            # define and register the interpolators
-            coord_dict = {'time': {'units': 'hr', 'data': self._time},
-                          'lon': {'units': 'deg', 'data': self._lon},
-                          'lat': {'units': 'deg', 'data': self._lat}}
+            # determine coordinate variables and xvec by coord list
+            key = self.variables[varname]['data']
+            coord_dict = {'time': {'units': 'hr',
+                                   'data': self.times[key]['all']}}
+            gvar = [key for key, value in model_varnames.items() if
+                    value[0] == varname][0]
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str)
-            return
+            coord_dict['lon'] = {'units': 'deg', 'data': self._lon}
+            coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
+        
+            # define operations for each variable when given the key
+            def func(i):
+                '''i is the file number.'''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = Dataset(file)
+                data = array(cdf_data.variables[gvar])
+                cdf_data.close()
+                # data wrangling all done in the file conversion step
+                return data
+            
+            # functionalize the variable dataset
+            self = RU.Functionalize_Dataset(
+                self, coord_dict, varname, self.variables[varname],
+                gridded_int, coord_str, interp_flag=1, func=func,
+                times_dict=self.times[key])
+            return            
     return MODEL
