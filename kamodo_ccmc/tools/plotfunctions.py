@@ -1,14 +1,20 @@
 def toLog10(fig):
     """
-    Quick function to take a 2D contour figure and make the contour log10 scale.
+    Function to take a 2D contour figure and make the contour log10 scale.
     Pass in a plotly figure and it will return an updated plotly figure.
+    
+    Arguments:
+        fig   A plotly figure object
+    
+    Returns a plotly figure object.
     """
     
     import numpy as np
     
     # grab values from old plot
     val = fig.data[0]['z']
-    # set negative and zero values to NaN, compute log10 of values, NaN will stay NaN
+    # set negative and zero values to NaN
+    # compute log10 of values, NaN will stay NaN
     val[val <= 0.] = np.nan
     val = np.log10(val)
     # assign back to plot object
@@ -21,8 +27,15 @@ def toLog10(fig):
 
 def toColor(fig,colorscale='Viridis'):
     """
-    Quick function to take a 2D contour figure and change the colorscale with more contours.
-    Pass in a plotly figure and it will return an updated plotly figure.
+    Function to take a 2D contour figure from Kamodo and change the colorscale
+    and set the number of contours to a larger number.
+    
+    Arguments:
+        fig   A plotly figure object
+        colorscale  Optional string name of colorscale. Takes custom 
+                    colorscales RdBu, Rainbow, or standard python values
+    
+    Returns a plotly figure object.
     """
 
     # Set colorscale
@@ -34,11 +47,11 @@ def toColor(fig,colorscale='Viridis'):
                         [0.25, 'rgb(0,255,255)'],
                         [0.50, 'rgb(0,255,0)'],
                         [0.75, 'rgb(255,255,0)'],
-                        [1.00, 'rgb(255,0,0)']]
-        )
+                        [1.00, 'rgb(255,0,0)']])
     else:
         fig.update_traces(colorscale=colorscale)
-    fig.update_traces(ncontours=201, contours=dict(coloring="fill", showlines=False))
+    fig.update_traces(ncontours=201, 
+                      contours=dict(coloring="fill", showlines=False))
     
     return fig
 
@@ -59,6 +72,8 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
       title       Optional plot title
       colorscale  Text string of colorscale to use for contours
       crange      Two position array with min/max contour values, [cmin,cmax]
+    
+    Returns a plotly figure object.
     """
 
     import numpy as np
@@ -78,23 +93,11 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
     fig = plot1.plot(plot_2D = dict())
 
     # Set colorscale
-    if colorscale == "BlueRed":
-        fig.update_traces(colorscale="RdBu", reversescale=True)
-    elif colorscale == "Rainbow":
-        fig.update_traces(
-            colorscale=[[0.00, 'rgb(0,0,255)'],
-                        [0.25, 'rgb(0,255,255)'],
-                        [0.50, 'rgb(0,255,0)'],
-                        [0.75, 'rgb(255,255,0)'],
-                        [1.00, 'rgb(255,0,0)']]
-        )
-    else:
-        fig.update_traces(colorscale=colorscale)
+    fig = toColor(fig,colorscale=colorscale)
 
     # Set plot options
     fig.update_traces(
         zmin=cmin, zmax=cmax, colorbar=dict(title=Clabel, tickformat=".3g"),
-        ncontours=201, contours=dict(coloring="fill",showlines=False),
         hovertemplate=Xlabel+": %{x:.4g}<br>"+Ylabel+": %{y:.4g}<br>"+
             Clabel+": %{z:.6g}<br>"+"<extra></extra>"
     )
@@ -109,7 +112,7 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
     return fig
 
 
-def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
+def ReplotLL3D(figIn,model,altkm,plotts,plotCoord='GEO',
                  title='Plot Title',colorscale='Viridis',crange='',
                  opacity=0.70,axis=True,debug=0):
     """
@@ -118,7 +121,6 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
     """
 
     import numpy as np
-    import pandas as pd
     import datetime as dt
     import pytz
     from kamodo import Kamodo
@@ -130,7 +132,6 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
     tmp = list(MW.Model_Variables(model,return_dict=True).values())[0][2:4]
     co = tmp[0]
     cot = tmp[1]
-    costr = co+'('+cot+')'
 
     # Pull out lon, lat, values and min/max from passed in figure
     lon = figIn.data[0]['x']
@@ -145,29 +146,28 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
         cmax = float(crange[1])
 
     # Prepare variables for use later
-    nlon = len(lon)
-    nlat = len(lat)
-    npts = (nlon*nlat)
     lon_mg, lat_mg = np.meshgrid(np.array(lon), np.array(lat))
     x = lon_mg
     y = lat_mg
     z = np.full(x.shape, altkm)
-    t = np.full(x.shape, plotTime)
+    t = np.full(x.shape, plotts)
     full_x = np.reshape(x,-1)
     full_y = np.reshape(y,-1)
     full_z = np.reshape(z,-1)
     full_t = np.reshape(t,-1)
     rscale = (altkm + 6.3781E3)/6.3781E3
     ilon = np.linspace(-180, 180, 181)
-    ilat = np.linspace(-90, 90, 91)
+    #ilat = np.linspace(-90, 90, 91)
 
     #Convert incoming coordinates into plot coordinages (cartesian)
     if co == 'GDZ':
         # GDZ does not convert into other coordinates well, first go to GEO-car
-        xx,yy,zz,units = ConvertCoord(full_t,full_x,full_y,full_z,co,cot,'GEO','car')
+        xx,yy,zz,units = ConvertCoord(full_t,full_x,full_y,full_z,
+                                      co,cot,'GEO','car')
         full_x, full_y, full_z = xx,yy,zz
     if plotCoord != 'GEO':
-        xx,yy,zz,units = ConvertCoord(full_t,full_x,full_y,full_z,'GEO','car',plotCoord,'car')
+        xx,yy,zz,units = ConvertCoord(full_t,full_x,full_y,full_z,
+                                      'GEO','car',plotCoord,'car')
     x = np.reshape(xx,(len(lat),len(lon)))
     y = np.reshape(yy,(len(lat),len(lon)))
     z = np.reshape(zz,(len(lat),len(lon)))
@@ -213,10 +213,10 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
         fig.update_scenes(xaxis=dict(visible=False),
                           yaxis=dict(visible=False),
                           zaxis=dict(visible=False))
-    timestr = dt.datetime.fromtimestamp(plotTime, tz = pytz.utc).strftime("%Y/%m/%d %H:%M:%S")
-    lltxt = model+',  '+plotCoord+' Coordinates,  '+str(altkm)+' km Altitude,  '+timestr
-    camera = dict(up=dict(x=-1, y=0, z=0.),
-                  eye=dict(x=0., y=0., z=1.25))
+    plotdt = dt.datetime.fromtimestamp(plotts, tz = pytz.utc)
+    timestr = plotdt.strftime("%Y/%m/%d %H:%M:%S")
+    lltxt = model+',  '+plotCoord+' Coordinates,  '
+    lltxt = lltxt+str(altkm)+' km Altitude,  '+timestr
     fig.update_layout(
         scene_aspectmode='data',
         title=dict(text=title, 
@@ -228,7 +228,6 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
                  font=dict(size=16, family="sans serif", color="#000000"))
         ],
         margin=dict(l=0),
-        #scene_camera=camera,
         width=750,
         height=450,
     )
@@ -237,34 +236,33 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
     xt = [0., 0.]
     yt = [0., 0.]
     zt = [-1.2, 1.2]
-    fig.add_scatter3d(mode='lines',x=xt,y=yt,z=zt,line=dict(width=4,color='black'),
-                      showlegend=False,hovertemplate=plotCoord+' Pole<extra></extra>')
+    fig.add_scatter3d(mode='lines',x=xt,y=yt,z=zt,
+                      line=dict(width=4,color='black'),
+                      showlegend=False,
+                      hovertemplate=plotCoord+' Pole<extra></extra>')
     if plotCoord != 'GEO':
         # Add pole for GEO as well
         xt = np.array([ 0., 0.])
         yt = np.array([ 0., 0.])
         zt = np.array([-1., 1.])
-        tt = plotTime + 0.*xt
+        tt = np.full(xt.shape, plotts)
         xt,yt,zt,un = ConvertCoord(tt,xt,yt,zt,'GEO','car',plotCoord,'car')
         xt = 1.2*xt
         yt = 1.2*yt
         zt = 1.2*zt
-        fig.add_scatter3d(mode='lines',x=xt,y=yt,z=zt,line=dict(width=4,color='rgb(79,79,79)'),
-                          showlegend=False,hovertemplate='GEO Pole<extra></extra>')
-
-    # Zero longitude
-    #xt = rscale*(np.cos(ilat*np.pi/180.))
-    #yt = 0.*ilat
-    #zt = rscale*(np.sin(ilat*np.pi/180.))
-    #fig.add_scatter3d(mode='lines',x=xt,y=yt,z=zt,line=dict(width=2,color='black'),
-    #                  showlegend=False,hovertemplate=plotCoord+' Longitude=0<extra></extra>')
+        fig.add_scatter3d(mode='lines',x=xt,y=yt,z=zt,
+                          line=dict(width=4,color='rgb(79,79,79)'),
+                          showlegend=False,
+                          hovertemplate='GEO Pole<extra></extra>')
 
     # Zero latitude
     xt = rscale*(np.cos(ilon*np.pi/180.))
     yt = rscale*(np.sin(ilon*np.pi/180.))
-    zt = 0.*ilon
-    fig.add_scatter3d(mode='lines',x=xt,y=yt,z=zt,line=dict(width=2,color='black'),
-                      showlegend=False,hovertemplate=plotCoord+' Latitude=0<extra></extra>')
+    zt = np.zeros(xt.shape)
+    fig.add_scatter3d(mode='lines',x=xt,y=yt,z=zt,
+                      line=dict(width=2,color='black'),
+                      showlegend=False,
+                      hovertemplate=plotCoord+' Latitude=0<extra></extra>')
 
     # Create blank earth surface
     elon = np.linspace(-180, 180, 181)
@@ -281,7 +279,7 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
                     showlegend=False, showscale=False, hoverinfo='skip')
 
     # Shoreline (land/water boundaries)
-    pos = shoreline(rscale=1.001,coord=plotCoord,utcts=plotTime)
+    pos = shoreline(rscale=1.001,coord=plotCoord,utcts=plotts)
     fig.add_scatter3d(mode='lines', x=pos[:,0], y=pos[:,1], z=pos[:,2], 
                       line=dict(width=2,color='white'),
                       showlegend=False,hoverinfo='skip')
@@ -292,11 +290,12 @@ def ReplotLL3D(figIn,model,altkm,plotTime,plotCoord='GEO',
 def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
                fixed_time='',fixed_lon='',fixed_lat='',fixed_alt='', 
                title='Plot Title',shoreline=False,colorscale='Viridis',
-               crange=''):
+               crange='',logscale=False):
     """
     Function takes 4D (Time/Lon/Lat/Alt) Kamodo interpolator in GDZ coordinates
     and creates a 2D plot by fixing two dimensions to create a slice in the 
-    other two dimensions. This can be displayed in any supported coordinate system.
+    other two dimensions. 
+    This can be displayed in any supported coordinate system.
     
     Arguments:
       interp      Kamodo interpolator for variable to plot
@@ -316,12 +315,13 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
       shoreline   Logical to show shoreline on map if Lon-Lat plot
       colorscale  String name of colorscale to use
       crange      Contour range to override min,max, ie. [999,2001]
+      logscale    Logical to set the colorscale range to log scale
+
+    Returs a plotly figure object.
     """
 
     import numpy as np
-    import pytz
     import time
-    import datetime as dt
     from kamodo import Kamodo
     import kamodo_ccmc.flythrough.model_wrapper as MW
     from kamodo_ccmc.flythrough.utils import ConvertCoord
@@ -338,11 +338,11 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
         print("ERROR, plotType elements invalid."); return
 
     # Set base timestamp to start of day passed in.
-    basets = date.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    basets = date.replace(hour=0,minute=0,second=0,microsecond=0).timestamp()
     if 'Time' not in axis:
         slicets = basets + fixed_time*3600.
 
-    # Get current coordinate system and type from model. Create string for labels
+    # Get current coordinate system and type from model. Create label strings
     tmp = list(MW.Model_Variables(model,return_dict=True).values())[0][2:4]
     co = tmp[0]
     cot = tmp[1]
@@ -454,7 +454,7 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
         x, y, z = xx, yy, zz
         xx,yy,zz,units = ConvertCoord(t,x,y,z,'GEO','sph','GDZ','sph')
 
-    # Don't use transformed zz (alt), reset to desired altitude (km) to interpolate
+    # Don't use transformed zz, reset to desired altitude (km) to interpolate
     if axis[0] == 'Alt':
         zz = np.reshape(i1mg,-1)
     elif axis[1] == 'Alt':
@@ -472,7 +472,14 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
 
     positions = np.transpose([tt,xx,yy,zz])
     val = interp(positions)
+
+    if logscale:
+        val[val <= 0.] = np.nan
+        val = np.log10(val)        
+        varname = 'log10<br>'+varname
+
     val2 = np.reshape(val,i1mg.shape)
+
     cmin = np.min(val)
     cmax = np.max(val)
     if crange != '':
@@ -485,22 +492,13 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
     fig = plot1.plot(plot_2D = dict())
 
     # Set colorscale
-    if colorscale == "BlueRed":
-        fig.update_traces(colorscale="RdBu", reversescale=True)
-    elif colorscale == "Rainbow":
-        fig.update_traces(colorscale=[[0.00, 'rgb(0,0,255)'],
-                                      [0.25, 'rgb(0,255,255)'],
-                                      [0.50, 'rgb(0,255,0)'],
-                                      [0.75, 'rgb(255,255,0)'],
-                                      [1.00, 'rgb(255,0,0)']])
-    else:
-        fig.update_traces(colorscale=colorscale)
+    fig = toColor(fig,colorscale=colorscale)
 
     # Set plot options
     fig.update_traces(
         zmin=cmin, zmax=cmax, colorbar=dict(title=varname, tickformat=".3g"),
-        ncontours=201, contours=dict(coloring="fill",showlines=False),
-        hovertemplate=str(axis[0])+": %{x:.2f}<br>"+str(axis[1])+": %{y:.2f}<br>"+
+        hovertemplate=str(axis[0])+": %{x:.2f}<br>"+
+            str(axis[1])+": %{y:.2f}<br>"+
             varname+": %{z:.6g}<br>"+"<extra></extra>"
     )
     fig.update_xaxes(title=axis[0])
@@ -529,12 +527,13 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
     if plotType == 'Lon-Lat':
         # Shoreline (land/water boundaries)
         if plotCoord == 'GDZ':
-            # Can't convert into GDZ, but will convert to GEO as we only use lon/lat
+            # Convert into GEO as we only use lon/lat
             pos = shoreline(coord='GEO',coordT='sph',utcts=slicets)
         else:
             pos = shoreline(coord=plotCoord,coordT='sph',utcts=slicets)
-        fig.add_scattergl(mode='lines', x=pos[:,0], y=pos[:,1], hoverinfo='skip', 
-                          line=dict(width=1,color='white'), showlegend=False)
+        fig.add_scattergl(mode='lines', x=pos[:,0], y=pos[:,1], 
+                          hoverinfo='skip', showlegend=False,
+                          line=dict(width=1,color='#EEEEEE'))
 
     toc = time.perf_counter()
     print(f"Time: {toc - tic:0.4f} seconds")
