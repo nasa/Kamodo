@@ -5,52 +5,12 @@ Created on Thu May 13 18:28:18 2021
 """
 from kamodo import kamodofy, gridify
 from numpy import NaN, vectorize, append, array, meshgrid, ravel
+from numpy import unique, zeros, ndarray, floor, float32
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
-
-
-def register_interpolator(kamodo_object, varname, interpolator, coord_units):
-    '''Register interpolators for each variable.
-
-    Inputs:
-        - kamodo_object: A kamodo object produced by the Kamodo core package.
-        - varname: A string indicating the standardized variable name
-            associated with the given interpolator.
-        - interpolator: A kamodofied function produced by one of the functions
-            above (gridded or non-gridded).
-        - coord_units: A dictionary of key, value pairs indicating the
-            argument units. In this case, coord_units =
-            {'time':'hr','lon':'deg',...} or similar.
-    Output: The same kamodo object given, except with the new function
-        included.
-    '''
-
-    kamodo_object[varname] = interpolator
-    kamodo_object.variables[varname]['xvec'] = coord_units
-    kamodo_object._registered += 1
-    return kamodo_object
-
-
-def define_griddedinterp(data_dict, coord_units, coord_data, interp):
-    '''Define a gridded interpolator.
-    Inputs:
-        data_dict: a dictionary containing the data information.
-            {'units': 'data_units', 'data': data_array}
-            data_array should have the same shape as (c1, c2, c3, ..., cN) 
-        coord_units: a dictionary containing the coordinate information.
-            {'name_of_coord1': coord1_units', 'name_of_coord2': 'coord2_units',
-             etc...}. All units should be strings.
-        coord_data: a dictionary containing the coordinate data.
-            {'name_of_coord1': coord1_data', 'name_of_coord2': 'coord2_data',
-             etc...}. All arrays should be 1D arrays.
-        rgi: an interpolator
-    Returns: a gridded kamodo interpolator
-    '''
-    interpolator_grid = kamodofy(gridify(interp, **coord_data),
-                                 units=data_dict['units'],
-                                 data=data_dict['data'], arg_units=coord_units)
-    return interpolator_grid
+from datetime import datetime, timezone, timedelta
+from os.path import basename
 
 
 def create_interp(coord_data, data_dict):
@@ -66,16 +26,16 @@ def create_interp(coord_data, data_dict):
             given.
     Output: an interpolator created with the given dataset and coordinates.
     '''
-    
+
     # determine the number of coordinates, create the interpolator
     coord_list = [value for key, value in coord_data.items()]  # list of arrays
     n_coords = len(coord_data.keys())
     if n_coords == 1:
-        rgi = rgi1D(*coord_list, data_dict['data'],
-                          bounds_error=False, fill_value=NaN)
+        rgi = rgi1D(*coord_list, data_dict['data'], bounds_error=False,
+                    fill_value=NaN)
     else:
-        rgi = rgiND(coord_list, data_dict['data'],
-                                      bounds_error=False, fill_value=NaN)
+        rgi = rgiND(coord_list, data_dict['data'], bounds_error=False,
+                    fill_value=NaN)
 
     # wrap in a function and return the function
     def interp(xvec):
@@ -100,7 +60,7 @@ def create_funcsig(coord_data, coord_str, bounds):
             where trange, lon_range, ... = [t_min, t_max], [lon_min, lon_max]
     Outputs: A forge parameter object.
     '''
-    
+
     # determine the number of coordinates
     n_coords = len(coord_data.keys())
     if n_coords == 1:
@@ -141,13 +101,13 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
             shape (c1, c2, c3, ..., cN). Otherwise, it could be a string or
             other thing that feeds into the given func.
         Note: The dataset must depend upon ALL of the coordinate arrays given.
-        
+
         gridded_int: True to create a gridded interpolator (necessary for
             plotting and slicing). False otherwise (e.g. for the flythrough).
         coord_str: a string indicating the coordinate system of the data
             (e.g. "SMcar" or "GEOsph").
-        interp_flag: the chosen method of interpolation. 
-            Options: 
+        interp_flag: the chosen method of interpolation.
+            Options:
                 0: (default option) assumes the given data_dict['data'] is an
                     N-dimensional numpy array and creates a standard scipy
                     interpolator to functionalize the data. This option should
@@ -171,7 +131,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                     easily read into memory.
         func: a function defining the logic to be executed on a given time
             slice or chunk (e.g. converting to an array and then transposing
-            it). 
+            it).
             *** Only needed for interp_flag greater than zero. ***
             - For interp_flag=1, the function should return only the data for
                 the time slice. Required syntax is data = func(i), where i is
@@ -202,7 +162,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     # split the coord_dict into data and units
     coord_data = {key: value['data'] for key, value in coord_dict.items()}
     coord_units = {key: value['units'] for key, value in coord_dict.items()}
-    
+
     # create the bounds array (see docstring of create_funcsig)
     # positions of corners of coordinate box
     data_list = [array([value['data'].min(), value['data'].max()]) for
@@ -227,16 +187,13 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     interp = kamodofy(units=data_dict['units'], data=data_dict['data'],
                       arg_units=coord_units)(new_interp)
 
-    # Register and add gridded version if requested, even for 1D functions
-    kamodo_object = register_interpolator(kamodo_object, variable_name, interp,
-                                          coord_units)
+    # add gridded version if requested, even for 1D functions
+    kamodo_object[variable_name] = interp
     if gridded_int:
-        interp_grid = define_griddedinterp(data_dict, coord_units, coord_data,
-                                           interp)
-        kamodo_object.variables[variable_name+'_ijk'] = data_dict
-        kamodo_object = register_interpolator(kamodo_object,
-                                              variable_name+'_ijk',
-                                              interp_grid, coord_units)
+        interp_grid = kamodofy(gridify(interp, **coord_data),
+                               units=data_dict['units'],
+                               data=data_dict['data'], arg_units=coord_units)
+        kamodo_object[variable_name+'_ijk'] = interp_grid
     return kamodo_object
 
 
@@ -261,21 +218,21 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
             The default is 'data', indicating that the returned object is a
             numpy array. Set this to 'custom' to indicate that func returns
             a custom interpolator.
-    Output: A lazy time interpolator. 
+    Output: A lazy time interpolator.
     '''
 
-    # create a list of interpolators per timestep, not storing the data, and 
+    # create a list of interpolators per timestep, not storing the data, and
     # interpolate from there. such as done in superdarnea_interp.py
     # Assumes that time is the first dimension
 
     # split the coord_dict into data and units
-    coord_list = [value['data'] for key, value in coord_dict.items()]  # list of arrays
+    coord_list = [value['data'] for key, value in coord_dict.items()]  # arrays
     idx_map, time_interps = [], []  # initialize variables
 
     # define method for how to add time slices to memory
     def add_timeinterp(i, time_interps):
         if len(coord_list) > 1 and func_default == 'data':
-            time_interps.append(rgiND(coord_list[1:], func(i), 
+            time_interps.append(rgiND(coord_list[1:], func(i),
                                       bounds_error=False, fill_value=NaN))
         elif len(coord_list) == 1:  # has to be different for time series data
             def dummy_1D(spatial_position):
@@ -312,7 +269,7 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
                     continue
             if len(st_idx) == 0:  # skip if none
                 continue
-            
+
             # Interpolate values for chosen time grid values
             for i in idx_list:
                 if i not in idx_map:
@@ -322,11 +279,11 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
                     except MemoryError:  # remove one time slice first
                         print('Avoiding memory error...')
                         if len_map == 0:
-                            print('Not enough memory to load one time slice. ' +
-                                  'Please close some applications.')
-                        elif len_map < 2:  # tried to add a second slice but failed
-                            print('Not enough memory to load two time slices. ' +
-                                  'Please close some applications.')
+                            print('Not enough memory to load one time slice.' +
+                                  ' Please close some applications.')
+                        elif len_map < 2:  # failed to add a second slice
+                            print('Not enough memory to load two time slices' +
+                                  '. Please close some applications.')
                         elif abs(i-idx_map[0]) > 2:
                             del idx_map[0], time_interps[0]
                         else:
@@ -349,7 +306,7 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
                     time_int = rgi1D(coord_list[0][idx_list], interp_values,
                                      bounds_error=False, fill_value=NaN)
                     out_vals = time_int(times)
-            else: 
+            else:
                 interp_location = idx_map.index(idx_list[0])
                 if isinstance(times, ndarray):
                     out_vals[st_idx] = time_interps[interp_location](
@@ -378,9 +335,9 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
             Note: The dataset must also depend upon ALL of the coordinate
                 arrays given.
         start_times: the start times of each file in the file_dir.
-            Interpolation between time chunks should be taken care of by appending
-            the first time slice of the next time chunk to the end of the
-            current time chunk (see func description).
+            Interpolation between time chunks should be taken care of by
+            appending the first time slice of the next time chunk to the end of
+            the current time chunk (see func description).
         func: a function defining the logic to be executed on a given time
             chunk, including retrieving the data from the file. The function
             must return the data for the time chunk. Interpolation between time
@@ -393,14 +350,14 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
             a custom interpolator.
     Output: A time-chunked lazy interpolator.
     '''
-    
-    # create a list of interpolators per time chunk, not storing the data, and 
+
+    # create a list of interpolators per time chunk, not storing the data, and
     # interpolate from there. such as done in superdarnea_interp.py
     # Assumes that time is the first dimension.
     # Assumes that data_dict['data'][i] is a string used to find the right file
 
     # split the coord_dict into data and units, initialize variables/func
-    coord_list = [value['data'] for key, value in coord_dict.items()]  # list of arrays
+    coord_list = [value['data'] for key, value in coord_dict.items()]  # arrays
     idx_map, time_interps = [], []  # initialize variables
 
     # define method for how to add time chunks to memory
@@ -424,10 +381,8 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
         elif func_default == 'custom':  # when func returns an interpolator
             time_interps.append(func(i))
         return time_interps, idx_map
-    
 
     def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
-
         position = array([*args])  # time coordinate value must be first
         if len(position.shape) == 1:
             out_vals = zeros(1)
@@ -446,8 +401,8 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
                           time_val <= end_time]
             else:
                 if position[0] >= times_dict['start'][i] and \
-                    position[0] <= end_time:
-                        st_idx = [i]
+                        position[0] <= end_time:
+                    st_idx = [i]
                 else:
                     continue
             if len(st_idx) == 0:  # skip if none
@@ -500,9 +455,9 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
             Note: The dataset must also depend upon ALL of the coordinate
                 arrays given.
         start_times: the start times of each file in the file_dir.
-            Interpolation between time chunks should be taken care of by appending
-            the first time slice of the next time chunk to the end of the
-            current time chunk (see func description).
+            Interpolation between time chunks should be taken care of by
+            appending the first time slice of the next time chunk to the end of
+            the current time chunk (see func description).
         func: a function defining the logic to be executed on a given time
             chunk, including retrieving the correct time slice of data from the
             file. The function must return the data for the time SLICE.
@@ -515,20 +470,21 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
             a custom interpolator.
     Output: A time-chunked lazy interpolator that loads two slices each time.
     '''
-    
-    # create a list of interpolators per time chunk, not storing the data, and 
+
+    # create a list of interpolators per time chunk, not storing the data, and
     # interpolate from there. such as done in superdarnea_interp.py
     # Assumes that time is the first dimension.
     # Assumes that data_dict['data'][i] is a string used to find the right file
 
     # split the coord_dict into data and units
-    coord_list = [value['data'] for key, value in coord_dict.items()]  # list of arrays
+    coord_list = [value['data'] for key, value in coord_dict.items()]  # arrays
     idx_map, time_interps = [], []  # initialize variables
 
     # define method for how to add time slices to memory
-    def add_timeinterp(i, fi, time_interps):  # i is the file#, fi is the time slice # in file
+    # i is the file#, fi is the time slice # in file
+    def add_timeinterp(i, fi, time_interps):
         if len(coord_list) > 1:
-            time_interps.append(rgiND(coord_list[1:], func(i, fi), 
+            time_interps.append(rgiND(coord_list[1:], func(i, fi),
                                       bounds_error=False, fill_value=NaN))
         elif len(coord_list) == 1:  # has to be different for time series data
             def dummy_1D(spatial_position):
@@ -565,7 +521,7 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                     continue
             if len(st_idx) == 0:  # skip if none
                 continue
-            
+
             # Interpolate values for chosen time grid values
             for idx in idx_list:
                 if idx not in idx_map:
@@ -577,7 +533,7 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                         times_dict['start'][i])
                     fi = list(coord_list[0][start_idx:]).index(
                         coord_list[0][idx])
-                    
+
                     # add time slice
                     len_map = len(idx_map)  # length before adding another
                     try:  # allow for memory errors
@@ -585,11 +541,11 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                     except MemoryError:  # remove one time slice first
                         print('Avoiding memory error...')
                         if len_map == 0:
-                            print('Not enough memory to load one time slice. ' +
-                                  'Please close some applications.')
-                        elif len_map < 2:  # tried to add a second slice but failed
-                            print('Not enough memory to load two time slices. ' +
-                                  'Please close some applications.')
+                            print('Not enough memory to load one time slice.' +
+                                  ' Please close some applications.')
+                        elif len_map < 2:  # failed to add a second slice
+                            print('Not enough memory to load two time slices' +
+                                  '. Please close some applications.')
                         elif abs(idx-idx_map[0]) > 2:
                             del idx_map[0], time_interps[0]
                             del idx_map[0], time_interps[0]
@@ -598,8 +554,8 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                             del idx_map[-1], time_interps[-1]
                         time_interps = add_timeinterp(i, fi, time_interps)
                     idx_map.append(idx)
-                    print(f'Time slice index {idx} (file time {fi}) added from ' +
-                          f'file {i+1}.')
+                    print(f'Time slice index {idx} (file time {fi}) added ' +
+                          f'from file {i+1}.')
             if len(idx_list) > 1:
                 interp_locations = [idx_map.index(val) for val in idx_list]
                 if isinstance(times, ndarray):
@@ -615,14 +571,14 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                     time_int = rgi1D(coord_list[0][idx_list], interp_values,
                                      bounds_error=False, fill_value=NaN)
                     out_vals = time_int(times)
-            else: 
+            else:
                 interp_location = idx_map.index(idx_list[0])
                 if isinstance(times, ndarray):
                     out_vals[st_idx] = time_interps[interp_location](
                         sposition[st_idx])
                 else:
                     out_vals = time_interps[interp_location](sposition)
-        return out_vals        
+        return out_vals
 
     def interp(xvec):
         return interp_i(*array(xvec).T)
@@ -660,7 +616,7 @@ def get_file_index(time_val, time_grid):
         time_grid: an array of coordinate grid values of the same coordinate
     Returns: index of the start time directly preceding the given time value.
     '''
-    
+
     if time_val not in time_grid:
         idx = sorted(append(time_grid, time_val)
                      ).index(time_val)  # get file #
@@ -673,15 +629,14 @@ def get_file_index(time_val, time_grid):
     return i
 
 
-############## BEGIN PRESSURE LEVEL INVERSION ROUTINE #######################
+# ############# BEGIN PRESSURE LEVEL INVERSION ROUTINE #######################
 
 # -*- coding: utf-8 -*-
 # The pressure level inversion routine used by many ITM models
-from scipy.interpolate import interp1d
-from numpy import unique, zeros, ndarray
 
 
-def PLevelInterp(h_func, time, longitude, latitude, ilev, units):
+def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
+                 km_min_max):
     '''Custom interpolator functionto convert from altitude in km to pressure
     level.
     Parameters:
@@ -691,6 +646,10 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units):
         latitude - a 1D array with the grid values for latitude
         ilev - a 1D array with the grid values for pressure level
         units - a string indicating the units of the pressure level grid
+        km_grid - a 1D array of the median altitude values for each pressure
+            level
+        km_min_max - a 2-element list of the absolute min and max of the
+            altitude in km
 
     Output: Two interpolators. The first interpolator accepts time, lon, lat,
         and pressure level and returns time, lon, lat, and height. The second
@@ -706,57 +665,92 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units):
         if not isinstance(t, ndarray):  # only one time/position
             km_vals = h_func(**{'time': input_arr[0], 'lon': input_arr[1],
                                 'lat': input_arr[2]})
-            km_interp = interp1d(km_vals, ilev, bounds_error=False,
-                                 fill_value=NaN)
+            km_interp = rgi1D(km_vals, ilev, bounds_error=False,
+                              fill_value=NaN)
             return km_interp(km)
-        
+
         # remaining logic is for if there is more than one position given
         pos_arr = unique(input_arr, axis=0)  # only create interp for unique
         out_ilev = zeros(len(t))  # (t, lon, lat) positions to save time
         for pos in pos_arr:
             km_vals = h_func(**{'time': pos[0], 'lon': pos[1], 'lat': pos[2]})
-            km_interp = interp1d(km_vals, ilev, bounds_error=False,
-                                 fill_value=NaN)
+            km_interp = rgi1D(km_vals, ilev, bounds_error=False,
+                              fill_value=NaN)
             pos_idx = [i for i, p in enumerate(input_arr) if all(p == pos)]
             out_ilev[pos_idx] = km_interp(km[pos_idx])  # interp for all km
         return out_ilev
 
-
     # Convert f(ilev) to f(km)
-    @kamodofy(units=units)
-    def plevconvert(xvec_GDZsph4Dkm):
+    def plevconvert(xvec):
         '''Interpolator to convert from height to pressure level.
         Input xvec is a tuple or list of arrays/values.
         Returns the 4D position as a tuple of four 1D arrarys to feed into
         the original function.'''
         print('Inverting the pressure level grid. Please wait...', end="")
-        t, lon, lat, km = array(xvec_GDZsph4Dkm).T
+        t, lon, lat, km = array(xvec).T
         out_ilev = km_to_ilev(t, lon, lat, km)
         data = array([t, lon, lat, out_ilev]).T
         print('done.')
         return data
 
-
-    @kamodofy(units=units)
-    def plevconvert_ijk(xvec_GDZsph4Dkm):
+    def plevconvert_ijk(xvec):
         '''Interpolator to convert from height to pressure level.
         Input xvec is a tuple or list of arrays/values.
         Returns the 4D position as a tuple of four 1D arrarys to feed into
         the original function.'''
         print('Inverting the pressure level grid. Please wait...', end="")
-        t, lon, lat, km = array(xvec_GDZsph4Dkm).T
+        t, lon, lat, km = array(xvec).T
         data = km_to_ilev(t, lon, lat, km)
         print('done.')
         return data
 
-    return plevconvert, plevconvert_ijk
+    # split the coord_dict into data and units
+    km_grid_altered = km_grid.copy()
+    km_grid_altered[0], km_grid_altered[-1] = km_min_max
+    coord_data = {'time': time, 'lon': longitude, 'lat': latitude,
+                  'height': km_grid_altered}
+    coord_units = {'time': 'hr', 'lon': 'deg', 'lat': 'deg', 'height': 'km'}
+
+    # create the bounds array (see docstring of create_funcsig)
+    # positions of corners of coordinate box
+    data_list = [array([value.min(), value.max()]) for key, value in
+                 coord_data.items()]
+    mesh_list = meshgrid(*data_list)
+    bounds = array([ravel(item) for item in mesh_list], dtype=float).T
+
+    # create the functionalized interpolators and modified function signatures
+    param_xvec = create_funcsig(coord_data, 'GDZsphkm', bounds)
+    new_interp = forge.replace('xvec', param_xvec)(plevconvert)
+    interp = kamodofy(units=units, arg_units=coord_units)(new_interp)
+    new_interp = forge.replace('xvec', param_xvec)(plevconvert_ijk)
+    interp_ijk = kamodofy(units=units, arg_units=coord_units)(new_interp)
+
+    return interp, interp_ijk
 
 
-################# BEGIN TIME LIST FUNCTIONS #########################
+def register_griddedPlev(kamodo_object, new_varname, units, interp_ijk,
+                         coord_dict, kms):
+    '''Properly register the gridded interpolators defined either
+    from the pressure level inversion or by function composition.'''
 
-from datetime import datetime, timezone, timedelta
-from os.path import basename
-from numpy import float32
+    new_coord_units = {'time': 'hr', 'lon': 'deg',
+                       'lat': 'deg', 'height': 'km'}
+    fake_data = zeros((2, 2, 2, 2))  # avoiding computation
+    coord_data = {key: value['data'] for key, value in
+                  coord_dict.items() if key in
+                  new_coord_units.keys()}  # exclude ilev
+    coord_data['height'] = kms
+    kamodo_object.variables[new_varname+'_ijk'] = {'data': fake_data,
+                                                   'units': units}
+    kamodo_object[new_varname+'_ijk'] = kamodofy(
+        gridify(interp_ijk, **coord_data),
+        units=kamodo_object.variables[new_varname+'_ijk']['units'],
+        data=kamodo_object.variables[new_varname+'_ijk']['data'],
+        arg_units=new_coord_units)
+    return kamodo_object
+
+
+# ################ BEGIN TIME LIST FUNCTIONS #########################
 
 
 @vectorize
@@ -776,6 +770,22 @@ def str_to_hrs(dt_str, filedate, format_string='%Y-%m-%d %H:%M:%S'):
     return float32((tmp - filedate).total_seconds()/3600.)
 
 
+@vectorize
+def hrs_to_tstr(hrs):
+    '''Convert number of hours into HH:MM:SS format.'''
+    h, m = floor(hrs), floor(hrs % 1 * 60.)
+    sec = floor(((hrs - h) * 60. - m) * 60.)
+    return str(f'\n{int(h):02d}:{int(m):02d}:{int(sec):02d}')
+
+
+@vectorize
+def tstr_to_hrs(time_str):
+    '''Convert str from HH:MM:SS format to float 32.'''
+    hh, mm, ss = time_str.split(':')
+    t = float32(hh) + float32(mm)/60. + float32(ss)/3600.
+    return float32(t)
+
+
 def create_timelist(list_file, time_file, modelname, times, pattern_files,
                     filedate):
     '''Used by all the readers to create the time_file and list_file files.
@@ -787,7 +797,7 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
             write the time grid for each file pattern.
         modelname - a string with the name of the model
         times - a dictionary with keys indicating the file patterns.
-            ['all'] - the complete time grid across the entire file_dir for 
+            ['all'] - the complete time grid across the entire file_dir for
                 the indicated file pattern.
             ['start'] - the starting time for each of the files of the given
                 file pattern.
@@ -812,25 +822,26 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
     for p in pattern_files.keys():
         # print out time grid to time file
         time_out.write('\nPattern: '+p)
-        for t in times[p]['all']:
-            time_out.write('\n'+str(t))
+        str_out = hrs_to_tstr(times[p]['all'])
+        time_out.write(''.join(str_out))
         # print start and end dates and times to list file
         start_time_str = hrs_to_str(times[p]['start'], filedate)
         end_time_str = hrs_to_str(times[p]['end'], filedate)
         files = pattern_files[p]
         for i in range(len(files)):
-            list_out.write('\n'+files[i].replace('\\', '/')+
-                           start_time_str[i]+'  '+end_time_str[i])
+            list_out.write('\n' + files[i].replace('\\', '/') +
+                           start_time_str[i] + '  ' + end_time_str[i])
     time_out.close()
     list_out.close()
     return
+
 
 def read_timelist(time_file, list_file):
     '''Used by all readers to read in the time grid from the time_file and
     the list of files with start and end times from the list_file.
     Returns:
         times - a dictionary with keys indicating the file patterns.
-            ['all'] - the complete time grid across the entire file_dir for 
+            ['all'] - the complete time grid across the entire file_dir for
                 the indicated file pattern.
             ['start'] - the starting time for each of the files of the given
                 file pattern.
@@ -845,7 +856,7 @@ def read_timelist(time_file, list_file):
             all the files in the file_dir.
         filename - a string containing the names of all the files in the file
             directory, separated by commas.'''
-    
+
     # get time grids and initialize self.times structure
     times, pattern_files = {}, {}
     time_obj = open(time_file)
@@ -855,11 +866,11 @@ def read_timelist(time_file, list_file):
             p = line.strip()[9:]
             times[p] = {'start': [], 'end': [], 'all': []}
         else:
-            times[p]['all'].append(float32(line.strip()))
+            times[p]['all'].append(line.strip())
     time_obj.close()
     for p in times.keys():
-        times[p]['all'] = array(times[p]['all'])
-    
+        times[p]['all'] = tstr_to_hrs(times[p]['all'])
+
     # get filenames, dates and times from list file
     files, start_date_times, end_date_times = [], [], []
     list_obj = open(list_file)
@@ -871,9 +882,8 @@ def read_timelist(time_file, list_file):
         start_date_times.append(date_start+' '+start_time)
         end_date_times.append(date_end+' '+end_time)
     list_obj.close()
-    filedate = datetime.strptime(start_date_times[0][:10],
-                                      '%Y-%m-%d').replace(
-                                          tzinfo=timezone.utc)
+    filedate = datetime.strptime(start_date_times[0][:10], '%Y-%m-%d').replace(
+        tzinfo=timezone.utc)
     for p in times.keys():
         pattern_files[p] = [f for f in files if p in basename(f)]
         start_times = [t for f, t in zip(files, start_date_times)
@@ -887,14 +897,16 @@ def read_timelist(time_file, list_file):
     return times, pattern_files, filedate, filename
 
 
-########## Logscale colorbar from Darren.
+# ######### Logscale colorbar from Darren.
 
 def toLog10(fig):
-    """Quick function to take a 2D contour figure and make contour log10 scale"""
+    """Quick function to take a 2D contour figure and make contour log10 scale.
+    """
     from numpy import log10
     # grab values from old plot
     val = fig.data[0]['z']
-    # set negative and zero values to NaN, compute log10 of values, NaN will stay NaN    
+    # set negative and zero values to NaN, compute log10 of values,
+    # NaN will stay NaN
     val[val <= 0.] = NaN
     val = log10(val)
     # assign back to plot object    
