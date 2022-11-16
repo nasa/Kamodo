@@ -4,12 +4,14 @@ Created on Thu Sep 29 11:51:15 2022
 
 @author: rringuet
 """
-from numpy import NaN
+import kamodo_ccmc.readers.reader_utilities as RU
 from kamodo import Kamodo, kamodofy, gridify
-from scipy.interpolate import RegularGridInterpolator, interp1d
+import forge
+from numpy import array, meshgrid, ravel
 
 
-def Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None):
+def Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None,
+                          coord_str=''):
     '''Determine and call the correct functionalize routine.
     Inputs:
         coord_dict: a dictionary containing the coordinate information.
@@ -28,36 +30,46 @@ def Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None):
             functionalized by simply calling the function again with the other
             dataset and the associated coordinate arrays. The datasets must
             also EACH depend upon ALL of the coordinate arrays given.
+        coord_str: a string indicating the coordinate system of the data
+            (e.g. "SMcar" or "GEOsph").
         kamodo_object: the previously created kamodo object. If one is not
             given, then one will be created.
 
     Output: A kamodo object with the functionalized dataset.
+
+    This is similar to RU.Functionalize_Dataset, except only the gridded
+        interpolator is registered.
     '''
+    # initialize kamodo object if None
+    if kamodo_object is None:
+        kamodo_object = Kamodo()
 
     # split the coord_dict into data and units
-    coord_list = [value['data'] for key, value in coord_dict.items()]
     coord_data = {key: value['data'] for key, value in coord_dict.items()}
     coord_units = {key: value['units'] for key, value in coord_dict.items()}
 
-    # determine the number of coordinates
-    n_coords = len(coord_dict.keys())
-    for key in data_dict.keys():  # repeat for each dataset
-        if n_coords == 1:
-            rgi = interp1d(coord_list[0], data_dict[key]['data'],
-                              bounds_error=False, fill_value=NaN)
-        else:
-            rgi = RegularGridInterpolator(tuple(coord_list),
-                                          data_dict[key]['data'],
-                                          bounds_error=False, fill_value=NaN)
-        # Functionalize the dataset
-        @kamodofy(units=data_dict[key]['units'], data=data_dict[key]['data'],
-                  arg_units=coord_units)
-        @gridify(**coord_data)
-        def interp(xvec):
-            return rgi(xvec)     # return the scipy interpolator
+    # create the bounds array (see docstring of create_funcsig)
+    # positions of corners of coordinate box
+    data_list = [array([value['data'].min(), value['data'].max()]) for
+                 key, value in coord_dict.items()]
+    mesh_list = meshgrid(*data_list)
+    bounds = array([ravel(item) for item in mesh_list], dtype=float).T
 
-        # add to a kamodo object and continue
-        if kamodo_object is None:
-            kamodo_object = Kamodo()
-        kamodo_object[key] = interp
+    for key in data_dict.keys():
+        # create interpolator function and function signature
+        interp = RU.create_interp(coord_data, data_dict[key])
+        param_xvec = RU.create_funcsig(coord_data, coord_str, bounds)
+
+        # Functionalize the dataset
+        new_interp = forge.replace('xvec', param_xvec)(interp)
+        interp = kamodofy(units=data_dict[key]['units'],
+                          data=data_dict[key]['data'],
+                          arg_units=coord_units)(new_interp)
+
+        # Convert to gridded version (even for 1D functions) and register
+        interp_grid = kamodofy(gridify(interp, **coord_data),
+                               units=data_dict[key]['units'],
+                               data=data_dict[key]['data'], arg_units=coord_units)
+        kamodo_object[key] = interp_grid
+        
     return kamodo_object
