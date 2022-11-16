@@ -1,14 +1,14 @@
 '''
 Written by Rebecca Ringuette, 2021
 '''
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
                         ['time', 'lon', 'lat'], 'kV'],
                   "theta_v": ['theta_v', 'Azimuthal angle of convection ' +
                               'velocity', 1, 'SM', 'sph', ['time', 'lon',
-                                                            'lat'], 'deg'],
+                                                           'lat'], 'deg'],
                   "v": ['v', 'SMnetiude of convection velocity', 2, 'SM',
                         'sph', ['time', 'lon', 'lat'], 'm/s'],
                   # remaining variables are time series
@@ -83,27 +83,25 @@ def MODEL():
                      filetime=False, verbose=False, gridded_int=True,
                      printfiles=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
-            self.modelname = 'SuperDARN_df'
+            self.modelname = 'SuperDARN_ea'
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
-            list_file = file_dir + self.modelname +'_list.txt'
-            time_file = file_dir + self.modelname +'_times.txt'
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
-                # collect filenames
+                # make sure all files are converted
+                from kamodo_ccmc.readers.superdarn_tocdf import \
+                    convert_all
+                tmp = convert_all(file_dir)
+
+                # continue with converted files
                 files = sorted(glob(file_dir+'*_ea.nc'))
-                if len(files) == 0:  # find tar files and untar them
-                    from kamodo_ccmc.readers.superdarn_tocdf import \
-                        convert_files
-                    tmp = convert_files(file_dir)
-                
-                # continue
-                files = sorted(glob(file_dir+'*_ea.nc'))
-                patterns = unique([basename(f)[:-14] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
+                patterns = unique([basename(f)[:-19] for f in files])
                 self.filedate = datetime.strptime(
-                    basename(files[0])[-14:-6], '%Y%m%d').replace(
+                    basename(files[0])[-19:-11], '%Y%m%d').replace(
                         tzinfo=timezone.utc)
 
                 # establish time attributes from filenames
@@ -112,18 +110,14 @@ def MODEL():
                     pattern_files = sorted(glob(file_dir+p+'*_ea.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
-                    # loop through to get times, one file per time chunk
-                    for i, f in enumerate(pattern_files):
-                        cdf_data = Dataset(f)
-                        time = array(cdf_data.variables['time']) + i*24.
-                        cdf_data.close()
-                        self.times[p]['start'].append(time[0])
-                        self.times[p]['end'].append(time[-1])
-                        self.times[p]['all'].extend(time)
-                    self.times[p]['start'] = array(self.times[p]['start'])
-                    self.times[p]['end'] = array(self.times[p]['end'])
-                    self.times[p]['all'] = array(self.times[p]['all'])
+
+                    # loop through to get times, one file per time step
+                    self.times[p]['start'] = array([
+                        RU.str_to_hrs(f[-19:-6], self.filedate,
+                                      format_string='%Y%m%d-%H%M') for f in
+                        pattern_files])
+                    self.times[p]['end'] = self.times[p]['start'].copy()
+                    self.times[p]['all'] = self.times[p]['start'].copy()
 
                 # create time list file if DNE
                 RU.create_timelist(list_file, time_file, self.modelname,
@@ -183,11 +177,13 @@ def MODEL():
                 'data': p} for var in gvar_list}
 
             # retrieve dictionary of longitude grids. Keys are lat values.
+            # e.g. 'n75_5' for -75.5
             self.lat_keys = [str(lat_val).replace('.', '_').replace('-', 'n')
-                        if lat_val < 0 else 'p'+str(lat_val).replace('.', '_')
-                        for lat_val in self._lat]  # e.g. 'n75_5' for -75.5
-            self._lon_dict = {lat_val: array(cdf_data.groups[lat_key]['lon']) for
-                         lat_key, lat_val in zip(self.lat_keys, self._lat)}
+                             if lat_val < 0 else 'p'+str(lat_val).replace(
+                                     '.', '_') for lat_val in self._lat]
+            self._lon_dict = {lat_val: array(cdf_data.groups[lat_key]['lon'])
+                              for lat_key, lat_val in zip(self.lat_keys,
+                                                          self._lat)}
             cdf_data.close()
 
             # store a few items
@@ -214,7 +210,7 @@ def MODEL():
         # define and register the variable
         def register_variables(self, varname, gridded_int):
             '''Functionalizes the indicated dataset.'''
-            
+
             # determine coordinate variables and xvec by coord list
             key = self.variables[varname]['data']
             coord_list = [value[5] for key, value in model_varnames.items()
@@ -225,8 +221,8 @@ def MODEL():
                     value[0] == varname][0]
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
-            
-            # retrieve coordinate grids  
+
+            # retrieve coordinate grids
             if len(coord_list) == 1:  # read in entire time series
                 data = []
                 for f in self.pattern_files[key]:
@@ -240,65 +236,35 @@ def MODEL():
                                                 gridded_int, coord_str,
                                                 interp_flag=0)  # single array
                 return
-                
+
             # rest of data is time + 2D spatial
             # sample lon grid, real lon grid is a dictionary
             fake_lon = linspace(-180, 180, len(self._lon_dict.keys()))
             coord_dict['lon'] = {'units': 'deg', 'data': fake_lon}
             coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
-            
+
             # variable is a dictionary = {lat_val: array}
             # need an interpolator for each lat_val
             # then a 1D interpolator for the output values vs latitude
             from kamodo_ccmc.readers.superdarnea_interp import custom_interp
 
-            def func(i):  # i is the file number
+            def func(i):  # i is the file/time number
                 # get data from file(s)
                 cdf_data = Dataset(self.pattern_files[key][i])
-                data = {  # shape is (time, lon)
+                data = {  # shape is (lon)
                     lat_val: array(cdf_data.groups[lat_key][gvar])
                     for lat_key, lat_val in zip(self.lat_keys, self._lat)}
                 cdf_data.close()
-                if i < len(self.pattern_files[key]) - 1:  # get another time 
-                    cdf_data = Dataset(self.pattern_files[key][i+1])
-                    data1 = {  # shape is (time, lon), get first time only
-                        lat_val: array(cdf_data.groups[lat_key][gvar][0])
-                        for lat_key, lat_val in zip(self.lat_keys, self._lat)}
-                    cdf_data.close()
-                    for lat_key in data.keys():
-                        data[lat_key] = append(data[lat_key],
-                                               [data1[lat_key]], axis=0)
-                
+
                 # assign custom interpolator
-                interp = custom_interp(coord_dict['time']['data'],
-                                       self._lon_dict, self._lat, data,
-                                       self.variables[varname]['units'])
+                interp = custom_interp(self._lon_dict, self._lat, data)
                 return interp
-                
-            # functionalize the variable dataset, not allowing gridded creation
+
+            # functionalize the variable dataset
+            tmp = self.variables[varname]
+            tmp['data'] = zeros((2, 2, 2))  # saves execution time
             self = RU.Functionalize_Dataset(
-                self, coord_dict, varname, self.variables[varname],
-                False, coord_str, interp_flag=2, func=func,
-                times_dict=self.times[key], func_default='custom')
-
-            # handle gridded function creation in a custom method
-            if gridded_int:
-                # define the coordinate dictionary and fake data
-                coord_data = {key: value['data'] for key, value in
-                              coord_dict.items()}
-                coord_units = {key: value['units'] for key, value in
-                               coord_dict.items()}
-                fake_data = zeros((2, 2, 2))  # saves execution time
-                self.variables[varname+'_ijk'] = {
-                    'units': self.variables[varname]['units'],
-                    'data': fake_data}
-                # make gridded interpolator
-                gridded_interpolator = RU.define_griddedinterp(
-                    self.variables[varname+'_ijk'], coord_units,
-                    coord_data, self[varname])
-                self = RU.register_interpolator(
-                    self, varname+'_ijk', gridded_interpolator,
-                    coord_units)
+                self, coord_dict, varname, tmp, gridded_int, coord_str,
+                interp_flag=1, func=func, func_default='custom')
             return
-
     return MODEL

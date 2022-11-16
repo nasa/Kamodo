@@ -805,13 +805,13 @@ def gitm_toCDF(bin_file, coords, variables, var_dict, attrs):
         ko = Functionalize_Dataset(ko, coord_dict, 'TMP',
                                    {'data': new_data, 'units': ''}, True,
                                    'GDZsph')
-        new_data[0] = ko['TMP_ijk'](lon = -180.)
+        new_data[0] = ko['TMP_ijk'](lon=-180.)
         new_data[-1] = new_data[0]  # wrap in longitude with new values
 
         # check for and perform latitude interpolation
         if lat_check:
-            new_data[:, 0] = ko['TMP_ijk'](lat = -90.)
-            new_data[:, -1] = ko['TMP_ijk'](lat = 90.)
+            new_data[:, 0] = ko['TMP_ijk'](lat=-90.)
+            new_data[:, -1] = ko['TMP_ijk'](lat=90.)
         del ko['TMP_ijk'], ko['TMP']
 
         # store new variable data in file
@@ -867,11 +867,11 @@ def GITMbin_toCDF(file_dir, flag_2D=False):
         cdf_file = file.replace('.bin', '.nc')
         if isfile(cdf_file):
             continue  # do not convert if conversion already completed
-        
+
         # read data and attributes from binary file
         file_count += 1
         filename, coords, variables, var_dict, attrs = GitmBin(file, flag_2D)
-        time = np.array([attrs['time'][:19]])  # accurate to the sec (?!?!)*********************
+        time = np.array([attrs['time'][:19]])  # accurate to the sec
         coords['time'] = dts_to_hrs(time, filedate)
         attrs['filedate'] = filedate.strftime('%Y-%m-%d')  # store in attrs
 

@@ -677,7 +677,7 @@ def MODEL():
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
-                if fill_value is not None:  # if defined, replave with NaN
+                if fill_value is not None:  # if defined, replace with NaN
                     data = where(data != fill_value, data, NaN)
                 if len(data.shape) == 3 and 'Elon' not in coord_dict.keys():
                     variable = transpose(data, (0, 2, 1))

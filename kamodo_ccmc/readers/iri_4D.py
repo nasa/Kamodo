@@ -108,27 +108,27 @@ def MODEL():
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
-            list_file = file_dir + self.modelname +'_list.txt'
-            time_file = file_dir + self.modelname +'_times.txt'
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames
                 files = sorted(glob(file_dir+'*.nc'))
                 patterns = unique([basename(f)[:-10] for f in files])  # 2D, 3D
                 self.filename = ''.join([f+',' for f in files])[:-1]
-    
+
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
                     pattern_files = sorted(glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
+
                     # loop through to get times
                     for f in range(len(pattern_files)):
                         cdf_data = Dataset(pattern_files[f])
-                        tmp = array(cdf_data.variables['time'])/60.+\
-                                 float(f)*24.  # hours since midnight first file
+                        tmp = array(cdf_data.variables['time'])/60. + \
+                            float(f)*24.  # hrs since midnite 1st file
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
@@ -136,12 +136,12 @@ def MODEL():
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
-    
+
                 # datetime object for midnight on date
                 self.filedate = datetime(int(files[0][-10:-6]), 1, 1, 0, 0, 0
                                          ).replace(tzinfo=timezone.utc) + \
                     timedelta(days=int(files[0][-6:-3]) - 1)
-    
+
                 # create time list file if DNE
                 RU.create_timelist(list_file, time_file, self.modelname,
                                    self.times, self.pattern_files,
@@ -278,7 +278,7 @@ def MODEL():
                          model_varnames.items() if value[0] == varname][0]
 
             # define operations for each variable when given the key
-            def func(i):  
+            def func(i):
                 '''key is the file pattern, start_idxs is a list of one or two
                 indices matching the file start times in self.start_times[key].
                 '''
@@ -286,6 +286,10 @@ def MODEL():
                 file = self.pattern_files[key][i]
                 cdf_data = Dataset(file)
                 data = array(cdf_data.variables[gvar])
+                if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
+                    fill_value = cdf_data.variables[gvar][0].fill_value
+                else:
+                    fill_value = None
                 cdf_data.close()
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
@@ -295,6 +299,8 @@ def MODEL():
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
+                if fill_value is not None:  # if defined, replace with NaN
+                    data = where(data != fill_value, data, NaN)
                 if len(data.shape) == 3:
                     # time, lat, lon -> time, lon, lat
                     variable = transpose(data, (0, 2, 1))

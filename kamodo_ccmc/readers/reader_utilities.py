@@ -199,6 +199,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
 
 def time_interp(coord_dict, data_dict, func, func_default='data'):
     '''Create a functionalized interpolator by splitting into timesteps.
+    interp_flag=1 uses this function.
     Inputs:
         coord_dict: a dictionary containing the coordinate information.
             {'name_of_coord1': {'units': 'coord1_units', 'data': coord1_data},
@@ -263,7 +264,7 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
                           time_val >= coord_list[0][i] and
                           time_val <= end_time]
             else:
-                if times[0] >= coord_list[0][i] and times[0] <= end_time:
+                if times >= coord_list[0][i] and times <= end_time:
                     st_idx = [i]
                 else:
                     continue
@@ -730,8 +731,10 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
 
 def register_griddedPlev(kamodo_object, new_varname, units, interp_ijk,
                          coord_dict, kms):
-    '''Properly register the gridded interpolators defined either
-    from the pressure level inversion or by function composition.'''
+    '''Properly register the gridded interpolators defined either from the
+    pressure level inversion or by function composition. Need height coord
+    grid to be median values in gridded creation but have absolute max/min in
+    non-gridded creation.'''
 
     new_coord_units = {'time': 'hr', 'lon': 'deg',
                        'lat': 'deg', 'height': 'km'}

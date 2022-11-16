@@ -8,7 +8,7 @@ model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
                         ['time', 'lon', 'lat'], 'kV'],
                   "theta_v": ['theta_v', 'Azimuthal angle of convection ' +
                               'velocity', 1, 'SM', 'sph', ['time', 'lon',
-                                                            'lat'], 'deg'],
+                                                           'lat'], 'deg'],
                   "v": ['v', 'magnitude of convection velocity', 2, 'SM',
                         'sph', ['time', 'lon', 'lat'], 'm/s'],
                   # remaining variables are time series
@@ -18,12 +18,6 @@ model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
                            'SM', 'sph', ['time'], 'mV/m'],
                   'theta_B': ['theta_B', 'IMF clock angle', 5, 'SM', 'sph',
                               ['time'], 'deg']}
-
-
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
 
 
 # times from file converted to seconds since midnight of filedate
@@ -86,23 +80,21 @@ def MODEL():
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
-            list_file = file_dir + self.modelname +'_list.txt'
-            time_file = file_dir + self.modelname +'_times.txt'
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
-                # collect filenames
-                files = sorted(glob(file_dir+'*_df.nc'))
-                if len(files) == 0:  # find original files and convert them
-                    from kamodo_ccmc.readers.superdarn_tocdf import \
-                        convert_files
-                    tmp = convert_files(file_dir)
-                
-                # continue
+                # make sure all files are converted
+                from kamodo_ccmc.readers.superdarn_tocdf import \
+                    convert_all
+                tmp = convert_all(file_dir)
+
+                # continue with converted files
                 files = sorted(glob(file_dir+'*_df.nc'))
                 self.filename = ''.join([f+',' for f in files])[:-1]
-                patterns = unique([basename(f)[:-14] for f in files])
+                patterns = unique([basename(f)[:-19] for f in files])
                 self.filedate = datetime.strptime(
-                    basename(files[0])[-14:-6], '%Y%m%d').replace(
+                    basename(files[0])[-19:-11], '%Y%m%d').replace(
                         tzinfo=timezone.utc)
 
                 # establish time attributes from filenames
@@ -111,18 +103,14 @@ def MODEL():
                     pattern_files = sorted(glob(file_dir+p+'*_df.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
-                    # loop through to get times, one file per time chunk
-                    for i, f in enumerate(pattern_files):
-                        cdf_data = Dataset(f)
-                        time = array(cdf_data.variables['time']) + i*24.
-                        cdf_data.close()
-                        self.times[p]['start'].append(time[0])
-                        self.times[p]['end'].append(time[-1])
-                        self.times[p]['all'].extend(time)
-                    self.times[p]['start'] = array(self.times[p]['start'])
-                    self.times[p]['end'] = array(self.times[p]['end'])
-                    self.times[p]['all'] = array(self.times[p]['all'])
+
+                    # loop through to get times, one file per time step
+                    self.times[p]['start'] = array([
+                        RU.str_to_hrs(f[-19:-6], self.filedate,
+                                      format_string='%Y%m%d-%H%M') for f in
+                        pattern_files])
+                    self.times[p]['end'] = self.times[p]['start'].copy()
+                    self.times[p]['all'] = self.times[p]['start'].copy()
 
                 # create time list file if DNE
                 RU.create_timelist(list_file, time_file, self.modelname,
@@ -194,7 +182,7 @@ def MODEL():
             varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
                 self.register_variable(varname, gridded_int)
-                
+
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -202,11 +190,11 @@ def MODEL():
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
             return
-        
+
         # define and register a variable
         def register_variable(self, varname, gridded_int):
             """Registers an interpolator with proper signature"""
-        
+
             # determine coordinate variables and xvec by coord list
             key = self.variables[varname]['data']
             coord_list = [value[5] for key, value in model_varnames.items()
@@ -218,45 +206,39 @@ def MODEL():
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
 
-            # retrieve coordinate grids  
+            # retrieve coordinate grids
             if len(coord_list) == 1:  # read in entire time series
                 data = []
                 for f in self.pattern_files[key]:
                     cdf_data = Dataset(f)
-                    tmp = array(cdf_data.variables[gvar])
+                    tmp = array(cdf_data.variables[gvar])[0]
                     cdf_data.close()
-                    data.extend(tmp)
+                    data.append(tmp)  # one value per file
                 self.variables[varname]['data'] = array(data)
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],
                     gridded_int, coord_str, interp_flag=0)  # single array
                 return
-                
+
             if len(coord_list) == 3:
                 coord_dict['lon'] = {'units': 'deg', 'data': self._lon}
                 coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
-            
+
                 # define operations for each variable when given the key
                 def func(i):
-                    '''i is the file number.'''
+                    '''i is the file/time number.'''
                     # get data from file
                     file = self.pattern_files[key][i]
                     cdf_data = Dataset(file)
                     data = array(cdf_data.variables[gvar])
                     cdf_data.close()
-                    if i < len(self.pattern_files[key]) - 1:  # get another t
-                        cdf_data = Dataset(self.pattern_files[key][i+1])
-                        data_slice = array(cdf_data.variables[gvar][0])
-                        cdf_data.close()
-                        data = append(data, [data_slice], axis=0)
                     # data wrangling all done in the file conversion step
                     return data
-                
+
                 # functionalize the variable dataset
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],
-                    gridded_int, coord_str, interp_flag=2, func=func,
-                    times_dict=self.times[key])
+                    gridded_int, coord_str, interp_flag=1, func=func)
                 return
     return MODEL
 

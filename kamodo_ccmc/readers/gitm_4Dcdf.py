@@ -350,28 +350,28 @@ def MODEL():
                         flag_2D = True
                     else:
                         flag_2D = False  # calc will occur
-    
+
                 # check for and convert any files not converted yet
                 from kamodo_ccmc.readers.gitm_tocdf import GITMbin_toCDF as\
                     toCDF
                 self.conversion_test = toCDF(file_dir, flag_2D)
                 if not self.conversion_test:
                     return
-    
+
                 t0 = perf_counter()  # begin timer
                 # figure out types of files present (2DTEC, 3DALL, 3DLST, etc)
                 total_files = sorted(glob(file_dir+'*.nc'))
                 patterns = sorted(unique([basename(f).split('_t')[0] for f in
-                                        total_files]))
+                                          total_files]))
                 self.filename = ''.join([f+',' for f in total_files])[:-1]
-    
+
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
                     pattern_files = sorted(glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
+
                     # loop through to get times
                     for f in range(len(pattern_files)):
                         cdf_data = Dataset(pattern_files[f])
@@ -448,7 +448,7 @@ def MODEL():
                                  if key in cdf_data.variables.keys()]
                 # store which file these variables came from
                 self.varfiles[p] = [model_varnames[key][0] for
-                                                   key in gvar_list]
+                                    key in gvar_list]
                 self.gvarfiles[p] = gvar_list
                 cdf_data.close()
 
@@ -517,7 +517,7 @@ def MODEL():
             gvar = [key for key, value in model_varnames.items() if
                     value[0] == varname][0]  # variable name in file
             coord_list = [value[-2] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
+                          model_varnames.items() if value[0] == varname][0]
             coord_dict = {'time': {'units': 'hr',
                                    'data': self.times[key]['all']}}
             # get the correct coordinates
@@ -532,7 +532,7 @@ def MODEL():
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
 
-            def func(i):  
+            def func(i):
                 '''i is the file number.'''
                 # get data from file
                 file = self.pattern_files[key][i]
@@ -543,9 +543,7 @@ def MODEL():
 
             # define and register the interpolators
             self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                         self.variables[varname],
-                                         gridded_int, coord_str,
-                                         interp_flag=1, func=func)
-
+                                            self.variables[varname],
+                                            gridded_int, coord_str,
+                                            interp_flag=1, func=func)
     return MODEL
-

@@ -14,16 +14,17 @@ model_varnames = {'Temp_exo': ['T_exo', 'Exospheric temperature', 0, 'GDZ',
                           ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
                   'MU': ['m_avgmol', 'Mean molecular mass', 0, 'GDZ', 'sph',
                          ['time', 'lon', 'lat', 'height'], 'g'],
-                  'H': ['N_H', 'Atomic hydrogen partial density', 0, 'GDZ', 'sph',
-                         ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
-                  'He': ['N_He', 'Atomic helium partial density', 0, 'GDZ', 'sph',
-                         ['time', 'lon', 'lat', 'height'], 'g/cm**3'],         
-                  'O': ['N_O', 'Atomic oxygen partial density', 0, 'GDZ', 'sph',
-                         ['time', 'lon', 'lat', 'height'], 'g/cm**3'],         
-                  'N2': ['N_N2', 'Molecular nitrogen partial density', 0, 'GDZ', 'sph',
-                         ['time', 'lon', 'lat', 'height'], 'g/cm**3'],         
-                  'O2': ['N_O2', 'Molecular oxygen partial density', 0, 'GDZ', 'sph',
-                         ['time', 'lon', 'lat', 'height'], 'g/cm**3']
+                  'H': ['N_H', 'Atomic hydrogen partial density', 0, 'GDZ',
+                        'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
+                  'He': ['N_He', 'Atomic helium partial density', 0, 'GDZ',
+                         'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
+                  'O': ['N_O', 'Atomic oxygen partial density', 0, 'GDZ',
+                        'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
+                  'N2': ['N_N2', 'Molecular nitrogen partial density', 0,
+                         'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                         'g/cm**3'],
+                  'O2': ['N_O2', 'Molecular oxygen partial density', 0, 'GDZ',
+                         'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3']
                   }
 
 
@@ -75,7 +76,7 @@ def MODEL():
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
         '''
-        
+
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
                      printfiles=False, **kwargs):
@@ -92,19 +93,19 @@ def MODEL():
                 # figure out types of files present (2DTEC, 3DALL, 3DLST, etc)
                 files = sorted(glob(file_dir+'*.nc'))
                 patterns = sorted(unique([basename(f)[:-11] for f in
-                                        files]))  # cut off date
+                                          files]))  # cut off date
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(
                     basename(files[0])[-10:-3]+' 00:00:00', '%Y%j %H:%M:%S'
                     ).replace(tzinfo=timezone.utc)
-    
+
                 # establish time attributes
                 for p in patterns:  # only one pattern
                     # get list of files to loop through later
                     pattern_files = sorted(glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
+
                     # loop through to get times, one day per file
                     for f in range(len(pattern_files)):
                         cdf_data = Dataset(pattern_files[f])
@@ -128,7 +129,7 @@ def MODEL():
                     RU.read_timelist(time_file, list_file)
             if filetime:
                 return  # return times as is to prevent infinite recursion
-            
+
             # if variables are given as integers, convert to standard names
             if len(variables_requested) > 0:
                 if isinstance(variables_requested[0], int):
@@ -185,7 +186,7 @@ def MODEL():
 
             # store which file these variables came from
             self.varfiles[p] = [model_varnames[key][0] for
-                                               key in gvar_list]
+                                key in gvar_list]
             self.gvarfiles[p] = gvar_list
             cdf_data.close()
 
@@ -220,7 +221,7 @@ def MODEL():
             varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
                 self.register_variable(varname, gridded_int)
-            
+
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -236,7 +237,7 @@ def MODEL():
             gvar = [key for key, value in model_varnames.items() if
                     value[0] == varname][0]  # variable name in file
             coord_list = [value[-2] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
+                          model_varnames.items() if value[0] == varname][0]
             coord_dict = {'time': {'units': 'hr',
                                    'data': self.times[key]['all']}}
             # get the correct coordinates
@@ -248,7 +249,7 @@ def MODEL():
                          model_varnames.items() if value[0] == varname][0]
 
             # define operations for each variable when given the key
-            def func(i):  
+            def func(i):
                 '''key is the file pattern, start_idxs is a list of one or two
                 indices matching the file start times in self.start_times[key].
                 '''
@@ -256,6 +257,10 @@ def MODEL():
                 file = self.pattern_files[key][i]
                 cdf_data = Dataset(file)
                 data = array(cdf_data.variables[gvar])
+                if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
+                    fill_value = cdf_data.variables[gvar][0].fill_value
+                else:
+                    fill_value = None
                 cdf_data.close()
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
@@ -265,15 +270,17 @@ def MODEL():
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
+                if fill_value is not None:  # if defined, replace with NaN
+                    data = where(data != fill_value, data, NaN)
                 if len(data.shape) == 3:
                     variable = transpose(data, (0, 2, 1))
                 elif len(data.shape) == 4:
                     variable = transpose(data, (0, 3, 2, 1))
                 return variable[:, self._lon_idx]
-            
+
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int, coord_str, interp_flag=2, func=func,
                 times_dict=self.times[key])
-            
+
     return MODEL
