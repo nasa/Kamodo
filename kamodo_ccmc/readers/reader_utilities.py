@@ -4,7 +4,7 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
-from numpy import NaN, vectorize, append, array, meshgrid, ravel
+from numpy import NaN, vectorize, append, array, meshgrid, ravel, diff
 from numpy import unique, zeros, ndarray, floor, float32, all
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
@@ -711,7 +711,10 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
 
     # split the coord_dict into data and units
     km_grid_altered = km_grid.copy()
-    km_grid_altered[0], km_grid_altered[-1] = km_min_max
+    if diff(km_grid_altered).min() < 1:  # pressure grid inverted
+        km_grid_altered[-1], km_grid_altered[0] = km_min_max
+    else:
+        km_grid_altered[0], km_grid_altered[-1] = km_min_max
     coord_data = {'time': time, 'lon': longitude, 'lat': latitude,
                   'height': km_grid_altered}
     coord_units = {'time': 'hr', 'lon': 'deg', 'lat': 'deg', 'height': 'km'}

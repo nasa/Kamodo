@@ -625,7 +625,7 @@ def MODEL():
                     km_max, km_min, km = [], [], []
                     for f in self.pattern_files[key]:
                         cdf_datah0 = Dataset(f)
-                        km.append([array(cdf_datah0.variables['km_ilev'])])
+                        km.append(array(cdf_datah0.variables['km_ilev']))
                         km_max.append(cdf_datah0.km_ilev_max)
                         km_min.append(cdf_datah0.km_ilev_min)
                         cdf_datah0.close()
@@ -775,6 +775,8 @@ def MODEL():
             memory_needed = getsize(self.pattern_files['h1'][0]) * \
                 len(self.pattern_files[key])
             memory_test = memory_needed < psutil.virtual_memory().available
+            if varname == 'H_geopot_ilev':
+                gridded_int = True
             if not memory_test:  # varname != 'H_geopot_ilev' and not
                 # save memory by only retrieving time slices from the files
                 # determine the operation to occur on each time slice

@@ -15,7 +15,7 @@ from netCDF4 import Dataset
 
 
 def convert_all(file_dir):
-    '''Prepare gsm10H files per day.'''
+    '''Prepare one gsm10H file per run.'''
 
     # find first file and associated files
     t0 = perf_counter()
