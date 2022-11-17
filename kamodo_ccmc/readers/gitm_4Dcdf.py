@@ -354,9 +354,7 @@ def MODEL():
                 # check for and convert any files not converted yet
                 from kamodo_ccmc.readers.gitm_tocdf import GITMbin_toCDF as\
                     toCDF
-                self.conversion_test = toCDF(file_dir, flag_2D)
-                if not self.conversion_test:
-                    return
+                toCDF(file_dir, flag_2D)
 
                 t0 = perf_counter()  # begin timer
                 # figure out types of files present (2DTEC, 3DALL, 3DLST, etc)
@@ -405,7 +403,6 @@ def MODEL():
 
             # store variables
             self.missing_value = NaN
-            self._registered = 0
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
@@ -418,6 +415,10 @@ def MODEL():
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # loop through file patterns for coordinate grids + var mapping
             for p in self.pattern_files.keys():

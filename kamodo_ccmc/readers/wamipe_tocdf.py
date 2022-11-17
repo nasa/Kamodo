@@ -33,7 +33,7 @@ def convert_all(file_dir):
     if height_pattern == '':
         print('No files found with a height(ilev) to invert.')
         return None
-    
+
     # prepare files
     files = sorted(glob(file_dir+height_pattern+'*.nc'))
     if isfile(files[0][:-18] + 'h0.nc'):
@@ -51,7 +51,7 @@ def prepare_h0file(dstr_files):
     h0_file = dstr_files[0][:-18] + 'h0.nc'
     print('\nPreparing', h0_file)
     t_file = perf_counter()
-    
+
     # make output file
     data_out = Dataset(h0_file, 'w', format='NETCDF3_64BIT_OFFSET')
     for i, file in enumerate(dstr_files):
@@ -59,12 +59,19 @@ def prepare_h0file(dstr_files):
         # no time grid in files, and assume no pressure level
         # figure out length of vertical grid
         tmp = cdf_data.variables['height']
-        if i == 0:  # initialize output dimensions and variable
+        if i == 0:  # initialize output dimensions and variables
             new_dim = data_out.createDimension('time', None)  # unlimited
             new_dim = data_out.createDimension('ilev', tmp.shape[0])
-            new_var = data_out.createVariable(
+            new_var_t = data_out.createVariable(
                 'km_ilev_t', tmp.datatype, tuple(['time', 'ilev']))
-        new_var[i] = median(array(tmp), axis=[1, 2])/1000.
+            new_var_max = data_out.createVariable(
+                'km_ilev_max', tmp.datatype, tuple(['time', 'ilev']))
+            new_var_min = data_out.createVariable(
+                'km_ilev_min', tmp.datatype, tuple(['time', 'ilev']))
+        data = array(tmp)
+        new_var_t[i] = median(data, axis=[1, 2])/1000.
+        new_var_max[i] = data.max()/1000.
+        new_var_min[i] = data.min()/1000.
         cdf_data.close()  # close per time step
     # calculate median over time and save to file
     km_arr = array(data_out.variables['km_ilev_t'])
@@ -72,9 +79,11 @@ def prepare_h0file(dstr_files):
         'km_ilev', data_out.variables['km_ilev_t'].datatype,
         tuple(['ilev']))
     new_var[:] = median(km_arr, axis=[0])  # median over time
+    data_out.km_max = array(data_out.variables['km_ilev_max']).max()
+    data_out.km_min = array(data_out.variables['km_ilev_min']).min()
     # close and return
     data_out.close()
     print(f'{h0_file} created in {perf_counter()-t_file}s.')
-    
+
     # all done. return.
     return None

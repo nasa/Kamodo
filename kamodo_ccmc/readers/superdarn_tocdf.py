@@ -35,8 +35,11 @@ def convert_all(file_dir):
 
     # detect grid type of output in file_dir
     ftic = perf_counter()
-    test_file = sorted(glob(file_dir + '*.txt'))[0]
-    gtype = grid_type(test_file)
+    test_files = sorted(glob(file_dir + '*.txt'))
+    if len(test_files) == 0:
+        print('No original files found.')
+        return
+    gtype = grid_type(test_files[0])
     if gtype:  # 'Uniform' in line
         print('Uniform grid detected. ', end="")
         ftype = 'df'

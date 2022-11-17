@@ -41,23 +41,25 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                   'EDYN_ZIGM2_HAL': ['Sigma_H', 'Hall Conductance', 0, 'MAG',
                                      'sph', ['time', 'mlon', 'mlat'], 'S'],
                   'ElecColDens': ['TEC', 'Electron Column Density', 0, 'GDZ',
-                                  'sph', ['time', 'lon', 'lat'], '10**16/m**2'],
+                                  'sph', ['time', 'lon', 'lat'],
+                                  '10**16/m**2'],
                   'H': ['Hyd_ilev', 'H concentration', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'H_2': ['Hyd', 'H concentration', 0, 'GDZ', 'sph',
-                        ['time', 'lon', 'lat', 'height'], 'mol/mol'],
+                          ['time', 'lon', 'lat', 'height'], 'mol/mol'],
                   'O': ['Oxy_ilev', 'O concentration', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'O_2': ['Oxy', 'O concentration', 0, 'GDZ', 'sph',
-                        ['time', 'lon', 'lat', 'height'], 'mol/mol'],
+                          ['time', 'lon', 'lat', 'height'], 'mol/mol'],
                   'O2': ['O2_ilev', 'O2 concentration', 0, 'GDZ', 'sph',
                          ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'O2_2': ['O2', 'O2 concentration', 0, 'GDZ', 'sph',
-                         ['time', 'lon', 'lat', 'height'], 'mol/mol'],
-                  'OMEGA': ['v_up_ilev', 'Vertical velocity (pressure)', 0, 'GDZ',
-                            'sph', ['time', 'lon', 'lat', 'ilev'], 'Pa/s'],
+                           ['time', 'lon', 'lat', 'height'], 'mol/mol'],
+                  'OMEGA': ['v_up_ilev', 'Vertical velocity (pressure)', 0,
+                            'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                            'Pa/s'],
                   'OMEGA_2': ['v_up', 'Vertical velocity (pressure)', 0, 'GDZ',
-                            'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
+                              'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
                   'PHIM2D': ['phi', 'PHIM2D: Electric Potential', 0, 'MAG',
                              'sph', ['time', 'mlon', 'mlat'], 'V'],
                   'PS': ['P_surface', 'Surface pressure', 0, 'GDZ', 'sph',
@@ -65,252 +67,333 @@ model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                   'T': ['T_ilev', 'Temperature', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'ilev'], 'K'],
                   'T_2': ['T', 'Temperature', 0, 'GDZ', 'sph',
-                        ['time', 'lon', 'lat', 'height'], 'K'],
-                  'TElec': ['T_e_ilev', 'Electron Temperature', 0, 'GDZ', 'sph',
-                            ['time', 'lon', 'lat', 'ilev'], 'K'],
+                          ['time', 'lon', 'lat', 'height'], 'K'],
+                  'TElec': ['T_e_ilev', 'Electron Temperature', 0, 'GDZ',
+                            'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
                   'TElec_2': ['T_e', 'Electron Temperature', 0, 'GDZ', 'sph',
-                            ['time', 'lon', 'lat', 'height'], 'K'],
+                              ['time', 'lon', 'lat', 'height'], 'K'],
                   'TIon': ['T_i_ilev', 'Ion Temperature', 0, 'GDZ', 'sph',
                            ['time', 'lon', 'lat', 'ilev'], 'K'],
                   'TIon_2': ['T_i', 'Ion Temperature', 0, 'GDZ', 'sph',
-                           ['time', 'lon', 'lat', 'height'], 'K'],
+                             ['time', 'lon', 'lat', 'height'], 'K'],
                   'U': ['v_east_ilev', 'Zonal wind', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'U_2': ['v_east', 'Zonal wind', 0, 'GDZ', 'sph',
-                        ['time', 'lon', 'lat', 'height'], 'm/s'],
+                          ['time', 'lon', 'lat', 'height'], 'm/s'],
                   'UI': ['vi_east_ilev', 'UI Zonal ion drift from edynamo', 0,
                          'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'UI_2': ['vi_east', 'UI Zonal ion drift from edynamo', 0,
-                         'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
+                           'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                           'm/s'],
                   'V': ['v_north_ilev', 'Meridional wind', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'V_2': ['v_north', 'Meridional wind', 0, 'GDZ', 'sph',
-                        ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'VI': ['vi_north_ilev', 'VI Meridional ion drift from edynamo',
-                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                          ['time', 'lon', 'lat', 'height'], 'm/s'],
+                  'VI': ['vi_north_ilev', 'VI Meridional ion drift from ' +
+                         'edynamo', 0, 'GDZ', 'sph',
+                         ['time', 'lon', 'lat', 'ilev'], 'm/s'],
                   'VI_2': ['vi_north', 'VI Meridional ion drift from edynamo',
-                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
+                           0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                           'm/s'],
                   'WI': ['vi_up_ilev', 'WI Vertical ion drift from edynamo',
-                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                         'm/s'],
                   'WI_2': ['vi_up', 'WI Vertical ion drift from edynamo',
-                         0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'Z3': ['H_geopot_ilev', 'Geopotential Height (above sea level)',
-                         0, '', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm'],
+                           0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                           'm/s'],
+                  'Z3': ['H_geopot_ilev', 'Geopotential Height (above sea ' +
+                         'level)', 0, 'GDZ', 'sph',
+                         ['time', 'lon', 'lat', 'ilev'], 'm'],
                   'e': ['e_ilev', 'e concentration', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'e_2': ['e', 'e concentration', 0, 'GDZ', 'sph',
-                        ['time', 'lon', 'lat', 'height'], 'mol/mol'],
+                          ['time', 'lon', 'lat', 'height'], 'mol/mol'],
                   'RHO_CLUBB': ['rho_ilev1', 'Air density', 0, 'GDZ', 'sph',
                                 ['time', 'lon', 'lat', 'ilev1'], 'kg/m**3'],
                   'RHO_CLUBB_lev': ['rho_ilev', 'Air density', 0, 'GDZ', 'sph',
                                     ['time', 'lon', 'lat', 'ilev'], 'kg/m**3'],
                   'RHO_CLUBB_lev_2': ['rho', 'Air density', 0, 'GDZ', 'sph',
                                       ['time', 'lon', 'lat', 'height'],
-                                       'kg/m**3'],
+                                      'kg/m**3'],
 
                   # variables in h1 files also in h3 files
-                  'Z3GM': ['H_geomet_ilev', 'Geometric height', 0, 'GDZ', 'sph',
-                           ['time', 'lon', 'lat', 'ilev'], 'm'],
+                  'Z3GM': ['H_geomet_ilev', 'Geometric height', 0, 'GDZ',
+                           'sph', ['time', 'lon', 'lat', 'ilev'], 'm'],
 
                   # variables from the h2 files (also in h3 files!)
-                  'EDens': ['N_e_ilev', 'e Number Density (sum of O2+,NO+,N2+,O+)', 0, 'GDZ', 'sph', 
+                  'EDens': ['N_e_ilev', 'e Number Density (sum of O2+,NO+' +
+                            ',N2+,O+)', 0, 'GDZ', 'sph',
                             ['time', 'lon', 'lat', 'ilev'], 'cm**3'],
-                  'EDens_2': ['N_e', 'e Number Density (sum of O2+,NO+,N2+,O+)', 0, 'GDZ', 'sph', 
-                            ['time', 'lon', 'lat', 'height'], 'cm**3'],
+                  'EDens_2': ['N_e', 'e Number Density (sum of O2+,NO+,N2+' +
+                              ',O+)', 0, 'GDZ', 'sph',
+                              ['time', 'lon', 'lat', 'height'], 'cm**3'],
                   'HMF2': ['HmF2', 'Height of the F2 Layer', 0, 'GDZ', 'sph',
-                           ['time', 'lon', 'lat'] , 'km'],
-                  'NMF2': ['NmF2', 'Peak Density of the F2 Layer', 0, 'GDZ', 'sph',
-                           ['time', 'lon', 'lat'] , '1/cm**3'],
-                  'OPLUS': ['N_Oplus_ilev', 'O+ number density', 0, 'GDZ', 'sph',
-                            ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
+                           ['time', 'lon', 'lat'], 'km'],
+                  'NMF2': ['NmF2', 'Peak Density of the F2 Layer', 0, 'GDZ',
+                           'sph', ['time', 'lon', 'lat'], '1/cm**3'],
+                  'OPLUS': ['N_Oplus_ilev', 'O+ number density', 0, 'GDZ',
+                            'sph', ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
                   'OPLUS_2': ['N_Oplus', 'O+ number density', 0, 'GDZ', 'sph',
-                            ['time', 'lon', 'lat', 'height'], '1/cm**3'],
+                              ['time', 'lon', 'lat', 'height'], '1/cm**3'],
 
                   # variables from the h3 files
                   'CO2': ['CO2_ilev', 'CO2 concentration', 0, 'GDZ', 'sph',
                           ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'CO2_2': ['CO2', 'CO2 concentration', 0, 'GDZ', 'sph',
-                          ['time', 'lon', 'lat', 'height'], 'mol/mol'],
-                  # 'EKGW': ['EKGW_ilev1', 'Effective Kzz due to diffusion by gravity waves', 0, 'GDZ', 'sph', 
+                            ['time', 'lon', 'lat', 'height'], 'mol/mol'],
+                  # 'EKGW': ['EKGW_ilev1', 'Effective Kzz due to diffusion by '
+                  # gravity waves', 0, 'GDZ', 'sph',
                   #           ['time', 'lon', 'lat', 'ilev1'], 'm**2/s'],
-                  #'EKGW_2': ['EKGW', 'Effective Kzz due to diffusion by gravity waves', 0, 'GDZ', 'sph', 
+                  # 'EKGW_2': ['EKGW', 'Effective Kzz due to diffusion by grav'
+                  # ity waves', 0, 'GDZ', 'sph',
                   #          ['time', 'lon', 'lat', 'height'], 'm**2/s'],
                   'N': ['Nit_ilev', 'N concentration', 0, 'GDZ', 'sph',
                         ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'N_2': ['Nit', 'N concentration', 0, 'GDZ', 'sph',
-                        ['time', 'lon', 'lat', 'height'], 'mol/mol'],
+                          ['time', 'lon', 'lat', 'height'], 'mol/mol'],
                   'NO': ['NO_ilev', 'NO concentration', 0, 'GDZ', 'sph',
                          ['time', 'lon', 'lat', 'ilev'], 'mol/mol'],
                   'NO_2': ['NO', 'NO concentration', 0, 'GDZ', 'sph',
-                         ['time', 'lon', 'lat', 'height'], 'mol/mol'],
-                  'OpDens': ['N_Oplus_ilev', 'O+ Number Density', 0, 'GDZ', 'sph',
-                             ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
+                           ['time', 'lon', 'lat', 'height'], 'mol/mol'],
+                  'OpDens': ['N_Oplus_ilev', 'O+ Number Density', 0, 'GDZ',
+                             'sph', ['time', 'lon', 'lat', 'ilev'], '1/cm**3'],
                   'OpDens_2': ['N_Oplus', 'O+ Number Density', 0, 'GDZ', 'sph',
-                             ['time', 'lon', 'lat', 'height'], '1/cm**3'],
+                               ['time', 'lon', 'lat', 'height'], '1/cm**3'],
                   'QCO2': ['Q_CO2_ilev', 'CO2 cooling', 0, 'GDZ', 'sph',
                            ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'QCO2_2': ['Q_CO2', 'CO2 cooling', 0, 'GDZ', 'sph',
-                           ['time', 'lon', 'lat', 'height'], 'K/s'],
+                             ['time', 'lon', 'lat', 'height'], 'K/s'],
                   'QHC2S': ['Q_HC2S_ilev', 'Cooling to Space', 0, 'GDZ', 'sph',
                             ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'QHC2S_2': ['Q_HC2S', 'Cooling to Space', 0, 'GDZ', 'sph',
-                            ['time', 'lon', 'lat', 'height'], 'K/s'],
+                              ['time', 'lon', 'lat', 'height'], 'K/s'],
                   'QJOULE': ['Q_Joule_ilev', 'Joule Heat', 0, 'GDZ', 'sph',
                              ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'QJOULE_2': ['Q_Joule', 'Joule Heat', 0, 'GDZ', 'sph',
-                             ['time', 'lon', 'lat', 'height'], 'K/s'],
+                               ['time', 'lon', 'lat', 'height'], 'K/s'],
                   'QNO': ['Q_NO_ilev', 'NO cooling', 0, 'GDZ', 'sph',
                           ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'QNO_2': ['Q_NO', 'NO cooling', 0, 'GDZ', 'sph',
-                          ['time', 'lon', 'lat', 'height'], 'K/s'],
+                            ['time', 'lon', 'lat', 'height'], 'K/s'],
                   'QO3': ['Q_O3_ilev', 'O3 cooling', 0, 'GDZ', 'sph',
                           ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'QO3_2': ['Q_O3', 'O3 cooling', 0, 'GDZ', 'sph',
-                          ['time', 'lon', 'lat', 'height'], 'K/s'],
+                            ['time', 'lon', 'lat', 'height'], 'K/s'],
                   'QO3P': ['Q_O3P_ilev', 'O3P cooling', 0, 'GDZ', 'sph',
                            ['time', 'lon', 'lat', 'ilev'], 'K/s'],
                   'QO3P_2': ['Q_O3P', 'O3P cooling', 0, 'GDZ', 'sph',
-                           ['time', 'lon', 'lat', 'height'], 'K/s'],
-                  'QRS_TOT': ['Q_Total_ilev', 'Merged SW heating: QRS+QCP+QRS_EUV+QRS_CO2NIR+QRS_AUR+QTHERMAL',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K/s'],
-                  'QRS_TOT_2': ['Q_Total', 'Merged SW heating: QRS+QCP+QRS_EUV+QRS_CO2NIR+QRS_AUR+QTHERMAL',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K/s'],
-                  'SolIonRate_Tot': ['SolIonRate_Tot_ilev', 'reaction rate group', 0, 'GDZ', 'sph', 
-                                      ['time', 'lon', 'lat', 'ilev'], '1/cm**3/s'],  # molecules/cm**3/s
-                  'SolIonRate_Tot_2': ['SolIonRate_Tot', 'reaction rate group', 0, 'GDZ', 'sph', 
-                                      ['time', 'lon', 'lat', 'height'], '1/cm**3/s'],  # molecules/cm**3/s
-                  'TTGW': ['TTGW_ilev', 'T tendency - gravity wave drag', 0, 'GDZ', 'sph', 
-                            ['time', 'lon', 'lat', 'ilev'], 'K/s'],
-                  'TTGW_2': ['TTGW', 'T tendency - gravity wave drag', 0, 'GDZ', 'sph', 
-                            ['time', 'lon', 'lat', 'height'], 'K/s'],
-                  'UTGW_TOTAL': ['UTGW_TOTAL_ilev', 'Total U tendency due to gravity wave drag',
-                                  0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s**2'],
-                  'UTGW_TOTAL_2': ['UTGW_TOTAL', 'Total U tendency due to gravity wave drag',
-                                  0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s**2'],
+                             ['time', 'lon', 'lat', 'height'], 'K/s'],
+                  'QRS_TOT': ['Q_Total_ilev', 'Merged SW heating: QRS+QCP+' +
+                              'QRS_EUV+QRS_CO2NIR+QRS_AUR+QTHERMAL', 0, 'GDZ',
+                              'sph', ['time', 'lon', 'lat', 'ilev'], 'K/s'],
+                  'QRS_TOT_2': ['Q_Total', 'Merged SW heating: QRS+QCP+' +
+                                'QRS_EUV+QRS_CO2NIR+QRS_AUR+QTHERMAL', 0,
+                                'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                                'K/s'],
+                  'SolIonRate_Tot': ['SolIonRate_Tot_ilev', 'reaction rate ' +
+                                     'group', 0, 'GDZ', 'sph',
+                                     ['time', 'lon', 'lat', 'ilev'],
+                                     '1/cm**3/s'],  # molecules/cm**3/s
+                  'SolIonRate_Tot_2': ['SolIonRate_Tot', 'reaction rate group',
+                                       0, 'GDZ', 'sph',
+                                       ['time', 'lon', 'lat', 'height'],
+                                       '1/cm**3/s'],  # molecules/cm**3/s
+                  'TTGW': ['TTGW_ilev', 'T tendency - gravity wave drag', 0,
+                           'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                           'K/s'],
+                  'TTGW_2': ['TTGW', 'T tendency - gravity wave drag', 0,
+                             'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
+                             'K/s'],
+                  'UTGW_TOTAL': ['UTGW_TOTAL_ilev', 'Total U tendency due to' +
+                                 ' gravity wave drag', 0, 'GDZ', 'sph',
+                                 ['time', 'lon', 'lat', 'ilev'], 'm/s**2'],
+                  'UTGW_TOTAL_2': ['UTGW_TOTAL', 'Total U tendency due to ' +
+                                   'gravity wave drag', 0, 'GDZ', 'sph',
+                                   ['time', 'lon', 'lat', 'height'], 'm/s**2'],
 
                   # variables from the h4 files
-                  'OMEGA_08_COS': ['OMEGA_08_COS_ilev', 'vertical pressure velocity  8hr. cos coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'Pa/s'],
-                  'OMEGA_08_COS_2': ['OMEGA_08_COS', 'vertical pressure velocity  8hr. cos coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
-                  'OMEGA_08_SIN': ['OMEGA_08_SIN_ilev', 'vertical pressure velocity  8hr. sin coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'Pa/s'],
-                  'OMEGA_08_SIN_2': ['OMEGA_08_SIN', 'vertical pressure velocity  8hr. sin coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
-                  'OMEGA_12_COS': ['OMEGA_12_COS_ilev', 'vertical pressure velocity 12hr. cos coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'Pa/s'],
-                  'OMEGA_12_COS_2': ['OMEGA_12_COS', 'vertical pressure velocity 12hr. cos coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
-                  'OMEGA_12_SIN': ['OMEGA_12_SIN_ilev', 'vertical pressure velocity 12hr. sin coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'Pa/s'],
-                  'OMEGA_12_SIN_2': ['OMEGA_12_SIN', 'vertical pressure velocity 12hr. sin coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
-                  'OMEGA_24_COS': ['OMEGA_24_COS_ilev', 'vertical pressure velocity 24hr. cos coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'Pa/s'],
-                  'OMEGA_24_COS_2': ['OMEGA_24_COS', 'vertical pressure velocity 24hr. cos coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
-                  'OMEGA_24_SIN': ['OMEGA_24_SIN_ilev', 'vertical pressure velocity 24hr. sin coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'Pa/s'],
-                  'OMEGA_24_SIN_2': ['OMEGA_24_SIN', 'vertical pressure velocity 24hr. sin coeff.',
-                                   0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'Pa/s'],
+                  'OMEGA_08_COS': ['OMEGA_08_COS_ilev', 'vertical pressure ' +
+                                   'velocity  8hr. cos coeff.', 0, 'GDZ',
+                                   'sph', ['time', 'lon', 'lat', 'ilev'],
+                                   'Pa/s'],
+                  'OMEGA_08_COS_2': ['OMEGA_08_COS', 'vertical pressure ' +
+                                     'velocity  8hr. cos coeff.', 0, 'GDZ',
+                                     'sph', ['time', 'lon', 'lat', 'height'],
+                                     'Pa/s'],
+                  'OMEGA_08_SIN': ['OMEGA_08_SIN_ilev', 'vertical pressure ' +
+                                   'velocity  8hr. sin coeff.', 0, 'GDZ',
+                                   'sph', ['time', 'lon', 'lat', 'ilev'],
+                                   'Pa/s'],
+                  'OMEGA_08_SIN_2': ['OMEGA_08_SIN', 'vertical pressure ' +
+                                     'velocity  8hr. sin coeff.', 0, 'GDZ',
+                                     'sph', ['time', 'lon', 'lat', 'height'],
+                                     'Pa/s'],
+                  'OMEGA_12_COS': ['OMEGA_12_COS_ilev', 'vertical pressure ' +
+                                   'velocity 12hr. cos coeff.', 0, 'GDZ',
+                                   'sph', ['time', 'lon', 'lat', 'ilev'],
+                                   'Pa/s'],
+                  'OMEGA_12_COS_2': ['OMEGA_12_COS', 'vertical pressure ' +
+                                     'velocity 12hr. cos coeff.', 0, 'GDZ',
+                                     'sph', ['time', 'lon', 'lat', 'height'],
+                                     'Pa/s'],
+                  'OMEGA_12_SIN': ['OMEGA_12_SIN_ilev', 'vertical pressure ' +
+                                   'velocity 12hr. sin coeff.', 0, 'GDZ',
+                                   'sph', ['time', 'lon', 'lat', 'ilev'],
+                                   'Pa/s'],
+                  'OMEGA_12_SIN_2': ['OMEGA_12_SIN', 'vertical pressure ' +
+                                     'velocity 12hr. sin coeff.', 0, 'GDZ',
+                                     'sph', ['time', 'lon', 'lat', 'height'],
+                                     'Pa/s'],
+                  'OMEGA_24_COS': ['OMEGA_24_COS_ilev', 'vertical pressure ' +
+                                   'velocity 24hr. cos coeff.', 0, 'GDZ',
+                                   'sph', ['time', 'lon', 'lat', 'ilev'],
+                                   'Pa/s'],
+                  'OMEGA_24_COS_2': ['OMEGA_24_COS', 'vertical pressure ' +
+                                     'velocity 24hr. cos coeff.', 0, 'GDZ',
+                                     'sph', ['time', 'lon', 'lat', 'height'],
+                                     'Pa/s'],
+                  'OMEGA_24_SIN': ['OMEGA_24_SIN_ilev', 'vertical pressure ' +
+                                   'velocity 24hr. sin coeff.', 0, 'GDZ',
+                                   'sph', ['time', 'lon', 'lat', 'ilev'],
+                                   'Pa/s'],
+                  'OMEGA_24_SIN_2': ['OMEGA_24_SIN', 'vertical pressure ' +
+                                     'velocity 24hr. sin coeff.', 0, 'GDZ',
+                                     'sph', ['time', 'lon', 'lat', 'height'],
+                                     'Pa/s'],
                   'T_08_COS': ['T_08_COS_ilev', 'Temperature  8hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
-                  'T_08_COS_2': ['T_08_COS', 'Temperature  8hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'K'],
+                  'T_08_COS_2': ['T_08_COS', 'Temperature  8hr. cos coeff.', 0,
+                                 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                'height'], 'K'],
                   'T_08_SIN': ['T_08_SIN_ilev', 'Temperature  8hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'K'],
                   'T_08_SIN_2': ['T_08_SIN', 'Temperature  8hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'K'],
                   'T_12_COS': ['T_12_COS_ilev', 'Temperature 12hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'K'],
                   'T_12_COS_2': ['T_12_COS', 'Temperature 12hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'K'],
                   'T_12_SIN': ['T_12_SIN_ilev', 'Temperature 12hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'K'],
                   'T_12_SIN_2': ['T_12_SIN', 'Temperature 12hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'K'],
                   'T_24_COS': ['T_24_COS_ilev', 'Temperature 24hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'K'],
                   'T_24_COS_2': ['T_24_COS', 'Temperature 24hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'K'],
                   'T_24_SIN': ['T_24_SIN_ilev', 'Temperature 24hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'K'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'K'],
                   'T_24_SIN_2': ['T_24_SIN', 'Temperature 24hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'K'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'K'],
                   'U_08_COS': ['U_08_COS_ilev', 'Zonal wind  8hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'm/s'],
                   'U_08_COS_2': ['U_08_COS', 'Zonal wind  8hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'm/s'],
                   'U_08_SIN': ['U_08_SIN_ilev', 'Zonal wind  8hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'm/s'],
                   'U_08_SIN_2': ['U_08_SIN', 'Zonal wind  8hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'm/s'],
                   'U_12_COS': ['U_12_COS_ilev', 'Zonal wind 12hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'm/s'],
                   'U_12_COS_2': ['U_12_COS', 'Zonal wind 12hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'm/s'],
                   'U_12_SIN': ['U_12_SIN_ilev', 'Zonal wind 12hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'm/s'],
                   'U_12_SIN_2': ['U_12_SIN', 'Zonal wind 12hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'm/s'],
                   'U_24_COS': ['U_24_COS_ilev', 'Zonal wind 24hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'm/s'],
                   'U_24_COS_2': ['U_24_COS', 'Zonal wind 24hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'm/s'],
                   'U_24_SIN': ['U_24_SIN_ilev', 'Zonal wind 24hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'],
+                               'm/s'],
                   'U_24_SIN_2': ['U_24_SIN', 'Zonal wind 24hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'V_08_COS': ['V_08_COS_ilev', 'Meridional wind  8hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
-                  'V_08_COS_2': ['V_08_COS', 'Meridional wind  8hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'V_08_SIN': ['V_08_SIN_ilev', 'Meridional wind  8hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
-                  'V_08_SIN_2': ['V_08_SIN', 'Meridional wind  8hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'V_12_COS': ['V_12_COS_ilev', 'Meridional wind 12hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
-                  'V_12_COS_2': ['V_12_COS', 'Meridional wind 12hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'V_12_SIN': ['V_12_SIN_ilev', 'Meridional wind 12hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
-                  'V_12_SIN_2': ['V_12_SIN', 'Meridional wind 12hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'V_24_COS': ['V_24_COS_ilev', 'Meridional wind 24hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
-                  'V_24_COS_2': ['V_24_COS', 'Meridional wind 24hr. cos coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s'],
-                  'V_24_SIN': ['V_24_SIN_ilev', 'Meridional wind 24hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'ilev'], 'm/s'],
-                  'V_24_SIN_2': ['V_24_SIN', 'Meridional wind 24hr. sin coeff.',
-                               0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], 'm/s']
+                                 0, 'GDZ', 'sph', ['time', 'lon', 'lat',
+                                                   'height'], 'm/s'],
+                  'V_08_COS': ['V_08_COS_ilev', 'Meridional wind  8hr. cos ' +
+                               'coeff.', 0, 'GDZ', 'sph',
+                               ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'V_08_COS_2': ['V_08_COS', 'Meridional wind  8hr. cos ' +
+                                 'coeff.', 0, 'GDZ', 'sph',
+                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
+                  'V_08_SIN': ['V_08_SIN_ilev', 'Meridional wind  8hr. sin ' +
+                               'coeff.', 0, 'GDZ', 'sph',
+                               ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'V_08_SIN_2': ['V_08_SIN', 'Meridional wind  8hr. sin ' +
+                                 'coeff.', 0, 'GDZ', 'sph',
+                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
+                  'V_12_COS': ['V_12_COS_ilev', 'Meridional wind 12hr. cos ' +
+                               'coeff.', 0, 'GDZ', 'sph',
+                               ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'V_12_COS_2': ['V_12_COS', 'Meridional wind 12hr. cos ' +
+                                 'coeff.', 0, 'GDZ', 'sph',
+                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
+                  'V_12_SIN': ['V_12_SIN_ilev', 'Meridional wind 12hr. sin ' +
+                               'coeff.', 0, 'GDZ', 'sph',
+                               ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'V_12_SIN_2': ['V_12_SIN', 'Meridional wind 12hr. sin ' +
+                                 'coeff.', 0, 'GDZ', 'sph',
+                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
+                  'V_24_COS': ['V_24_COS_ilev', 'Meridional wind 24hr. cos ' +
+                               'coeff.', 0, 'GDZ', 'sph',
+                               ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'V_24_COS_2': ['V_24_COS', 'Meridional wind 24hr. cos ' +
+                                 'coeff.', 0, 'GDZ', 'sph',
+                                 ['time', 'lon', 'lat', 'height'], 'm/s'],
+                  'V_24_SIN': ['V_24_SIN_ilev', 'Meridional wind 24hr. sin ' +
+                               'coeff.', 0, 'GDZ', 'sph',
+                               ['time', 'lon', 'lat', 'ilev'], 'm/s'],
+                  'V_24_SIN_2': ['V_24_SIN', 'Meridional wind 24hr. sin ' +
+                                 'coeff.', 0, 'GDZ', 'sph',
+                                 ['time', 'lon', 'lat', 'height'], 'm/s']
                   }
 
 # lists of known variables per file type
 # assume h1 file is always present
 gvar_keys = {'h0': ['RHO_CLUBB_lev'],  # also containes km_ilev
              'h1': ['co2vmr', 'ch4vmr', 'n2ovmr', 'f11vmr', 'f12vmr',
-                      'sol_tsi', 'colat_crit1', 'colat_crit2', 'ED1', 'ED2',
-                      'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ElecColDens', 'H',
-                      'O', 'O2', 'OMEGA', 'PHIM2D', 'PS', 'T', 'TElec', 'TIon',
-                      'U', 'UI', 'V', 'VI', 'WI', 'Z3', 'e', 'RHO_CLUBB',
-                      'Z3GM'],
+                    'sol_tsi', 'colat_crit1', 'colat_crit2', 'ED1', 'ED2',
+                    'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ElecColDens', 'H',
+                    'O', 'O2', 'OMEGA', 'PHIM2D', 'PS', 'T', 'TElec', 'TIon',
+                    'U', 'UI', 'V', 'VI', 'WI', 'Z3', 'e', 'RHO_CLUBB',
+                    'Z3GM'],
              # keys in h2 files that are not in the h1 files
              'h2': ['ED1', 'ED2', 'EDens', 'ElecColDens', 'HMF2', 'NMF2',
-                      'OPLUS', 'TElec', 'TIon', 'UI', 'VI', 'WI', 'Z3'],
+                    'OPLUS', 'TElec', 'TIon', 'UI', 'VI', 'WI', 'Z3'],
              # keys in h3 files that are not in the h1 files
              'h3': ['CO2', 'EDens', 'EKGW', 'N', 'NO', 'OpDens', 'QCO2',
-                      'QHC2S', 'QJOULE', 'QNO', 'QO3', 'QO3P', 'QRS_TOT',
-                      'SolIonRate_Tot', 'TTGW', 'UTGW_TOTAL', 'Z3GM'],
+                    'QHC2S', 'QJOULE', 'QNO', 'QO3', 'QO3P', 'QRS_TOT',
+                    'SolIonRate_Tot', 'TTGW', 'UTGW_TOTAL', 'Z3GM'],
              # keys in the h4 files that are not in the h1 or h3 files
              'h4': ['OMEGA_08_COS', 'OMEGA_08_SIN', 'OMEGA_12_COS',
-                      'OMEGA_12_SIN', 'OMEGA_24_COS', 'OMEGA_24_SIN',
-                      'T_08_COS', 'T_08_SIN', 'T_12_COS', 'T_12_SIN',
-                      'T_24_COS', 'T_24_SIN', 'U_08_COS', 'U_08_SIN',
-                      'U_12_COS', 'U_12_SIN', 'U_24_COS', 'U_24_SIN',
-                      'V_08_COS', 'V_08_SIN', 'V_12_COS', 'V_12_SIN',
-                      'V_24_COS', 'V_24_SIN']}
+                    'OMEGA_12_SIN', 'OMEGA_24_COS', 'OMEGA_24_SIN',
+                    'T_08_COS', 'T_08_SIN', 'T_12_COS', 'T_12_SIN',
+                    'T_24_COS', 'T_24_SIN', 'U_08_COS', 'U_08_SIN',
+                    'U_12_COS', 'U_12_SIN', 'U_24_COS', 'U_24_SIN',
+                    'V_08_COS', 'V_08_SIN', 'V_12_COS', 'V_12_SIN',
+                    'V_24_COS', 'V_24_SIN']}
 # set up pressure level and height dependent equivalent variables
 ilev_list = [value[0] for key, value in model_varnames.items()
              if value[5][-1] == 'ilev' if value not in
@@ -318,23 +401,6 @@ ilev_list = [value[0] for key, value in model_varnames.items()
 ilev_replace = [item.split('_ilev')[0] for item in ilev_list if
                 item not in ['H_geopot_ilev', 'H_geomet_ilev']]
 
-'''
-from glob import glob
-
-file_dir = 'C:/Users/rringuet/Kamodo_Data/WACCMX/ftest.FXHIST.f19_f19_mg16.001/'
-file_dir = 'D:/WACCMX/Jack_Wang_081222_IT_2/'
-files = glob(file_dir+'*.nc')
-dim_keys = ['mlat', 'mlon', 'lat', 'lon', 'time', 'ilev', 'ilev1']  # 'lev', 'ilev'
-test = {key: [key, value.long_name, list(value.dimensions), value.units] for
-        key,value in cdf_data.variables.items() if key not in dim_keys}
-for key, value in cdf_data.variables.items():
-    if key in dim_keys:
-        continue
-    if hasattr(cdf_data.variables[key], 'units'):
-        print(key, value.longname, list(value.dimensions), value.units)
-    else:
-        print(key, value.longname, list(value.dimensions)
-'''
 
 # times from file converted to seconds since midnight of filedate
 # plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
@@ -348,12 +414,11 @@ def MODEL():
     import psutil
     from netCDF4 import Dataset
     from numpy import array, NaN, zeros, where, unique, append, linspace
-    from numpy import transpose
+    from numpy import transpose, median
     from time import perf_counter
     from datetime import datetime, timezone
     import kamodo_ccmc.readers.reader_utilities as RU
     from waccmx_tocdf import convert_all
-
 
     class MODEL(Kamodo):
         '''WACCM-X model data reader.
@@ -401,8 +466,8 @@ def MODEL():
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
-            list_file = file_dir + self.modelname +'_list.txt'
-            time_file = file_dir + self.modelname +'_times.txt'
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames
@@ -412,7 +477,7 @@ def MODEL():
                 self.filedate = datetime.strptime(
                     files[0][-19:-9]+' 00:00:00', '%Y-%m-%d %H:%M:%S'
                     ).replace(tzinfo=timezone.utc)
-                
+
                 # check for h0 files, contains RHO_CLUBB_lev and km_ilev
                 if 'h0' not in patterns:
                     self.conversion_test = convert_all(file_dir)
@@ -426,7 +491,7 @@ def MODEL():
                     pattern_files = sorted(glob(file_dir+'*.'+p+'.*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
+
                     # loop through to get times
                     for f in range(len(pattern_files)):
                         cdf_data = Dataset(pattern_files[f])
@@ -440,7 +505,7 @@ def MODEL():
                         self.times[p]['end'].append(net[-1])
                         self.times[p]['all'].extend(net)
                         cdf_data.close()
-                    # adjust all to be  arrays
+                    # adjust all to be arrays
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
@@ -455,14 +520,6 @@ def MODEL():
             if filetime:
                 return  # return times only
 
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items()
-                               if value[2] in variables_requested]
-                    variables_requested = tmp_var
-
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
@@ -470,6 +527,10 @@ def MODEL():
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # collect variable list per file
             self.gvar_dict, gvar_list, self.err_list = {}, [], []
@@ -535,7 +596,7 @@ def MODEL():
                         name = 'ilev1'
                     elif dim == 'lev':
                         name = 'ilev'
-                    elif dim in ['lon', 'lat', 'mlon', 'mlat', 'km_ilev']:
+                    elif dim in ['lon', 'lat', 'mlon', 'mlat']:
                         name = dim
                     else:  # skip other extra string dimensions
                         continue  # time already calculated, don't overwrite
@@ -544,7 +605,7 @@ def MODEL():
                     tmp = array(cdf_datah.variables[dim])
                     if (dim == 'lon'):
                         lon_le180 = list(where(tmp <= 180)[0])
-                        lon_ge180 = list(where(tmp >= 180)[0])  # repeat 180 for -180 values
+                        lon_ge180 = list(where(tmp >= 180)[0])  # repeat 180
                         lon_idx = lon_ge180+lon_le180
                         setattr(self, '_lon_idx_'+key, lon_idx)
                         out = append(tmp, 360.) - 180.
@@ -553,21 +614,32 @@ def MODEL():
                                                   dtype=int), 0)
                         out = append(tmp, 180.)
                         setattr(self, '_mlon_idx_'+key, lon_idx)
-                    else: # loop through other dimensions without changes
+                    else:  # loop through other dimensions without changes
                         out = tmp
-                    
                     # store coordinate grids
                     setattr(self, '_'+name+'_'+key, out)
                 cdf_datah.close()  # close for dimensions data since now arrays
-                
+
+                # loop through h0 files to calculate median km_ilev grid
+                if 'h0' in key:
+                    km_max, km_min, km = [], [], []
+                    for f in self.pattern_files[key]:
+                        cdf_datah0 = Dataset(f)
+                        km.append([array(cdf_datah0.variables['km_ilev'])])
+                        km_max.append(cdf_datah0.km_ilev_max)
+                        km_min.append(cdf_datah0.km_ilev_min)
+                        cdf_datah0.close()
+                    self._km_ilev = median(array(km), axis=0)
+                    self._km_ilev_max = array(km_max).max()
+                    self._km_ilev_min = array(km_min).min()
+
                 # initialize variables dictionary
                 for var in self.gvar_dict[key][0]:
-                    self.variables[model_varnames[var][0]] =  {
+                    self.variables[model_varnames[var][0]] = {
                         'units': model_varnames[var][-1], 'data': key}
 
             # store a few items
             self.missing_value = NaN
-            self._registered = 0
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
             if printfiles:
@@ -582,7 +654,7 @@ def MODEL():
             t_reg = perf_counter()
             for varname in varname_list:
                 # register the variables
-                self.register_variable(varname, gridded_int) 
+                self.register_variable(varname, gridded_int)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -659,15 +731,13 @@ def MODEL():
                 cdf_datah.close()
                 return [gvar_listh, file_dict[h_type]]
             else:
-                #print(h_type + ' file missing. The following variables ' +
-                #      f'cannot be accessed: {g_varkeys_h}')
                 return [[], '']
 
         # dimension agnostic registration
         def register_variable(self, varname, gridded_int):
             '''Registers and functionalizes the dataset. Converts to a 1D
             numpy array for time series data.'''
-            
+
             # create the coordinate dictionary
             key = self.variables[varname]['data']
             gvar = [key for key, value in model_varnames.items() if
@@ -704,7 +774,7 @@ def MODEL():
             # chunks/slices will be dropped if memory runs out later
             memory_needed = getsize(self.pattern_files['h1'][0]) * \
                 len(self.pattern_files[key])
-            memory_test =  memory_needed < psutil.virtual_memory().available
+            memory_test = memory_needed < psutil.virtual_memory().available
             if not memory_test:  # varname != 'H_geopot_ilev' and not
                 # save memory by only retrieving time slices from the files
                 # determine the operation to occur on each time slice
@@ -716,7 +786,7 @@ def MODEL():
                     # (ilev,) lat/mlat, lon/mlon -> lon/mlon, lat/mlat, (ilev)
                     data = tmp.T[lon_idx]
                     return data
-    
+
                 # functionalize the 3D or 4D dataset, series of time slices
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],
@@ -737,53 +807,37 @@ def MODEL():
                     elif len(tmp.shape) == 3:
                         data = transpose(tmp, (0, 2, 1))
                     return data[:, lon_idx]
-                
+
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],
                     gridded_int, coord_str, interp_flag=2, func=func,
                     times_dict=self.times)
-                
+
             if len(coord_list) < 4:  # remaining logic is for 4D data.
                 return
 
             # create pressure level -> km function once per ilev type
             if varname == 'H_geopot_ilev' or varname in self.total_ilev:
-                if varname == 'H_geopot_ilev' and hasattr(self, '_km_ilev_h0'):
+                if varname == 'H_geopot_ilev':
                     new_varname, units = 'Plev', 'hPa'
                     # perform unit conversion to km with Kamodo and invert
                     self['H_ilev_ijk[km]'] = 'H_geopot_ilev_ijk'
-                    interpolator, interp_ijk = RU.PLevelInterp(
+                    self[new_varname], interp_ijk = RU.PLevelInterp(
                         self['H_ilev_ijk'], coord_dict['time']['data'],
                         coord_dict['lon']['data'], coord_dict['lat']['data'],
-                        coord_dict['ilev']['data'], units)
+                        coord_dict['ilev']['data'], units, self._km_ilev,
+                        [self._km_ilev_min, self._km_ilev_max])
                 elif varname != 'H_geopot_ilev':  # define by function comp
                     new_varname = varname.split('_ilev')[0]
-                    interpolator = varname+'(Plev)'
+                    self[new_varname] = varname+'(Plev)'
                     units = self.variables[varname]['units']
-
-                # Register in kamodo object
-                new_coord_units = {'time': 'hr', 'lon': 'deg',
-                                   'lat': 'deg', 'height': 'km'}
-                self.variables[new_varname] = {'units': units}
-                self = RU.register_interpolator(
-                    self, new_varname, interpolator, new_coord_units)
-                if varname in self.total_ilev:  # different if H vs not
                     interp_ijk = self[new_varname]
+                self.variables[new_varname] = {'units': units, 'data': key}
 
-                # Create 'gridified' interpolators in the kamodo_object
-                if gridded_int and hasattr(self, '_km_ilev_h0'):
-                    fake_data = zeros((2, 2, 2, 2))  # avoiding computation
-                    coord_data = {key: value['data'] for key, value in
-                                  coord_dict.items() if key in
-                                  new_coord_units.keys()}  # exclude ilev
-                    coord_data['height'] = self._km_ilev_h0  # median alt grid
-                    self.variables[new_varname+'_ijk'] = {'data': fake_data,
-                        'units': units}
-                    gridded_interpolator = RU.define_griddedinterp(
-                        self.variables[new_varname+'_ijk'], new_coord_units,
-                        coord_data, interp_ijk)
-                    self = RU.register_interpolator(
-                        self, new_varname+'_ijk', gridded_interpolator,
-                        new_coord_units)
+                # create gridded interpolator if requested
+                if gridded_int:
+                    self = RU.register_griddedPlev(self, new_varname, units,
+                                                   interp_ijk, coord_dict,
+                                                   self._km_ilev)
             return
     return MODEL

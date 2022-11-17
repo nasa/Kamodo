@@ -402,6 +402,10 @@ def MODEL():
                             not in test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized: ', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
                 # determine variable mapping
                 # add ilev version of variables to the list, adding H_ilev(1)
@@ -727,7 +731,6 @@ def MODEL():
                         coord_dict['lon']['data'], coord_dict['lat']['data'],
                         coord_dict[coord_list[-1]]['data'], units, kms,
                         [kms_min, kms_max])
-                    self.variables[new_varname] = {'units': units}
                     # kms is a 1D array of the median height values in km
                 else:  # define by function composition
                     new_varname = varname.split('_ilev')[0]
@@ -742,7 +745,7 @@ def MODEL():
                         kms = getattr(self, '_km_'+coord_list[-1])
                         self[new_varname] = varname+'(P'+coord_list[-1][1:]+')'
                     interp_ijk = self[new_varname]
-                    self.variables[new_varname] = {'units': units}
+                self.variables[new_varname] = {'units': units, 'data': key}
 
                 # Register in kamodo object with a dedicated logic
                 if gridded_int:

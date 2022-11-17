@@ -20,12 +20,6 @@ model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
                               ['time'], 'deg']}
 
 
-def ts_to_hrs(time_val, filedate):
-    '''Convert utc timestamp to hours since midnight on filedate.'''
-    return (datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc) -
-            filedate).total_seconds()/3600.
-
-
 # times from file converted to seconds since midnight of filedate
 # plotting input times will be datetime strings of format 'YYYY-MM-DD HH:mm:ss'
 # filedate is self.filedate from superdarn object
@@ -36,8 +30,7 @@ def MODEL():
     from netCDF4 import Dataset
     from glob import glob
     from os.path import basename, isfile
-    from numpy import array, NaN, unique, zeros
-    from numpy import linspace, ndarray, append
+    from numpy import array, NaN, unique, zeros, linspace
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -139,6 +132,10 @@ def MODEL():
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # collect variable list
             sample_groupname = list(cdf_data.groups.keys())[0]

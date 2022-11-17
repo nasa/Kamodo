@@ -82,7 +82,7 @@ def MODEL():
     import h5py
     from os.path import isfile
     from numpy import array, NaN, unique, append, zeros, diff, sin, cos, insert
-    from numpy import flip, concatenate, mean, broadcast_to, ones, where
+    from numpy import flip, concatenate, mean, broadcast_to, ones
     from numpy import transpose
     from numpy import pi as nppi
     from numpy import sum as npsum
@@ -179,14 +179,6 @@ def MODEL():
             if filetime:
                 return  # return times only
 
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items() if value[2] in
-                               variables_requested]
-                    variables_requested = tmp_var
-
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and variables_requested != 'all':
                 test_list = [value[0] for key, value in model_varnames.items()]
@@ -194,6 +186,10 @@ def MODEL():
                             not in test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # collect variable list (in attributes of datasets)
             patterns = list(self.pattern_files.keys())

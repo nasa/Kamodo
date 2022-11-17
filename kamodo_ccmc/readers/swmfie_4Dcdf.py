@@ -5,7 +5,6 @@ Created on Mon May 17 18:53:35 2021
 @author: rringuet
 """
 from datetime import datetime, timezone
-from numpy import vectorize
 from os.path import isfile, basename
 
 model_varnames = {"Sigma_H": ['Sigma_H', '3D Hall conductivity',
@@ -70,6 +69,7 @@ Documentation variables:
 left in files, not in kamodo object
 '''
 
+
 def MODEL():
     from numpy import array, unique
     from glob import glob
@@ -124,8 +124,8 @@ def MODEL():
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
-            list_file = file_dir + self.modelname +'_list.txt'
-            time_file = file_dir + self.modelname +'_times.txt'
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # find unconverted files and convert them
@@ -137,7 +137,7 @@ def MODEL():
                     convert_all(file_dir)
                 else:
                     print('All files already converted.')
-                
+
                 # continue
                 files = sorted(glob(file_dir+'*.nc'))
                 patterns = unique([basename(f)[:-22] for f in files])
@@ -152,11 +152,11 @@ def MODEL():
                     pattern_files = sorted(glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
+
                     # loop through to get times, one time per file
                     for f in pattern_files:
                         time = RU.str_to_hrs(f[-22:-7], self.filedate,
-                                       format_string='%Y%m%d-%H%M%S')
+                                             format_string='%Y%m%d-%H%M%S')
                         self.times[p]['start'].append(time)
                         self.times[p]['end'].append(time)
                         self.times[p]['all'].append(time)  # one time per file
@@ -184,6 +184,10 @@ def MODEL():
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # get list of variables possible in these files using first file
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -257,7 +261,7 @@ def MODEL():
                          model_varnames.items() if value[0] == varname][0]
             coord_dict['lon'] = {'units': 'deg', 'data': self._lon}
             coord_dict['lat'] = {'units': 'deg', 'data': self._lat}
-        
+
             # define operations for each variable when given the key
             def func(i):
                 '''i is the file number.'''
@@ -268,11 +272,11 @@ def MODEL():
                 cdf_data.close()
                 # data wrangling all done in the file conversion step
                 return data
-            
+
             # functionalize the variable dataset
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int, coord_str, interp_flag=1, func=func,
                 times_dict=self.times[key])
-            return            
+            return
     return MODEL

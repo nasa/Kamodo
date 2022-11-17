@@ -283,8 +283,8 @@ def MODEL():
     from time import perf_counter
     from os.path import basename, isfile
     from glob import glob
-    from numpy import zeros, transpose, array, append, insert, where, unique, squeeze
-    from numpy import NaN, mean, broadcast_to, cos, sin, sum, median
+    from numpy import zeros, transpose, array, append, insert, where, unique
+    from numpy import NaN, mean, broadcast_to, cos, sin, sum, median, squeeze
     from numpy import pi as nppi
     from netCDF4 import Dataset
     from kamodo import Kamodo
@@ -334,24 +334,24 @@ def MODEL():
             super(MODEL, self).__init__()
             self.modelname = 'TIEGCM'
             t0 = perf_counter()
-            
+
             # first, check for file list, create if DNE
-            list_file = file_dir + self.modelname +'_list.txt'
-            time_file = file_dir + self.modelname +'_times.txt'
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames, all one pattern, so doesn't matter
                 files = sorted(glob(file_dir+'*.nc'))
-                patterns = unique([basename(f)[0] for f in files])  # all one pattern
+                patterns = unique([basename(f)[0] for f in files])  # one patte
                 self.filename = ''.join([f+',' for f in files])[:-1]
-    
+
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
                     pattern_files = sorted(glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
-                    
+
                     # loop through to get times
                     for f in range(len(pattern_files)):
                         cdf_data = Dataset(pattern_files[f])
@@ -370,7 +370,7 @@ def MODEL():
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
-    
+
                 # create time list file if DNE
                 RU.create_timelist(list_file, time_file, self.modelname,
                                    self.times, self.pattern_files,
@@ -378,17 +378,8 @@ def MODEL():
             else:  # read in data and time grids from file list
                 self.times, self.pattern_files, self.filedate, self.filename =\
                     RU.read_timelist(time_file, list_file)
-            
             if filetime:
                 return  # return times as is to prevent recursion
-
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items() if value[2] in
-                               variables_requested]
-                    variables_requested = tmp_var
 
             # These lists are the standardized variable name.
             # The only milev variable is H_milev.
@@ -416,6 +407,10 @@ def MODEL():
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # translate from standardized variables to names in file
             # remove variables requested that are not in the file
@@ -538,6 +533,8 @@ def MODEL():
                        if values[0] == 'H_ilev'][0]
                 h = array(cdf_data.variables[tmp])
                 self._km_ilev = median(h, axis=[0, 2, 3])/100000.  # ilev [1]
+                self._km_ilev_max = h.max()/100000.
+                self._km_ilev_min = h.min()/100000.
                 del h
             if 'H_ilev1' in varname_list:  # height in cm
                 varname_list.remove('H_ilev1')
@@ -546,6 +543,8 @@ def MODEL():
                        if values[0] == 'H_ilev1'][0]
                 h = array(cdf_data.variables[tmp])
                 self._km_ilev1 = median(h, axis=[0, 2, 3])/100000.  # ilev [1]
+                self._km_ilev1_max = h.max()/100000.
+                self._km_ilev1_min = h.min()/100000.
                 del h
             cdf_data.close()
             t_reg = perf_counter()
@@ -661,7 +660,7 @@ def MODEL():
         def register_variable(self, varname, gridded_int, verbose=False):
             '''register the variable data with the chunked interpolation method
             since the data files are small and chunked.'''
-            
+
             # determine coordinate variables and xvec by coord list
             gvar = self.variables[varname]['data']
             p = list(self.pattern_files.keys())[0]
@@ -700,7 +699,7 @@ def MODEL():
                     data_slice = array(cdf_data.variables[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
-                
+
                 # wrangle the data
                 if len(data.shape) == 3:
                     # (t,lat,lon) -> (t,lon,lat)
@@ -775,9 +774,9 @@ def MODEL():
             if varname in ['H_ilev', 'H_ilev1'] or varname in self.total_ilev:
                 if varname in ['H_ilev', 'H_ilev1']:  # create custom interp
                     new_varname = 'P'+coord_list[-1][1:]
-                    coord_data = [value['data'] for key, value in
-                                  coord_dict.items()]
                     kms = getattr(self, '_km_'+coord_list[-1])
+                    kms_max = getattr(self, '_km_'+coord_list[-1]+'_max')
+                    kms_min = getattr(self, '_km_'+coord_list[-1]+'_min')
                     # perform unit conversion if needed
                     if self.variables[varname]['units'] != 'km':
                         self[varname+'km_ijk[km]'] = varname + '_ijk'
@@ -786,51 +785,30 @@ def MODEL():
                         km_interp = self[varname+'_ijk']
                     # Import and call custom interpolator
                     units = 'm/m'
-                    interpolator, interp_ijk = RU.PLevelInterp(
+                    self[new_varname], interp_ijk = RU.PLevelInterp(
                         km_interp, coord_dict['time']['data'],
                         coord_dict['lon']['data'], coord_dict['lat']['data'],
-                        coord_dict[coord_list[-1]]['data'], units)
-                    
+                        coord_dict[coord_list[-1]]['data'], units, kms,
+                        [kms_min, kms_max])
                     # kms is a 1D array of the median height values in km
                 else:  # define by function composition
                     new_varname = varname.split('_ilev')[0]
-                    interpolator = varname+'(P'+coord_list[-1][1:]+')'
                     units = self.variables[varname]['units']
                     # substitute kms array if height was also substituted
                     if isinstance(self.ilev_sub, str):
                         other_name = ['ilev', 'ilev1']
                         other_name.remove(self.ilev_sub[2:])
                         kms = getattr(self, '_km_'+other_name[0])
-                        interpolator = varname+'(P'+other_name[0][1:]+')'
+                        self[new_varname] = varname+'(P'+other_name[0][1:]+')'
                     else:
                         kms = getattr(self, '_km_'+coord_list[-1])
-                        interpolator = varname+'(P'+coord_list[-1][1:]+')'
-
-                # Register in kamodo object
-                new_coord_units = {'time': 'hr', 'lon': 'deg',
-                                   'lat': 'deg', 'height': 'km'}
-                self.variables[new_varname] = dict(units=units)
-                self = RU.register_interpolator(self, new_varname,
-                                                interpolator,
-                                                new_coord_units)
-                if varname in self.total_ilev:  # different if H vs not
+                        self[new_varname] = varname+'(P'+coord_list[-1][1:]+')'
                     interp_ijk = self[new_varname]
+                self.variables[new_varname] = {'units': units}
 
-                # Create 'gridified' interpolators in the kamodo_object
-                if gridded_int:
-                    fake_data = zeros((2, 2, 2, 2))  # avoiding computation
-                    coord_data = {key: value['data'] for key, value in
-                                  coord_dict.items() if key in
-                                  new_coord_units.keys()}  # exclude ilev
-                    coord_data['height'] = kms
-                    self.variables[new_varname+'_ijk'] = {'data': fake_data,
-                        'units': units}
-                    gridded_interpolator = RU.define_griddedinterp(
-                        self.variables[new_varname+'_ijk'], new_coord_units,
-                        coord_data, interp_ijk)
-                    self = RU.register_interpolator(
-                        self, new_varname+'_ijk', gridded_interpolator,
-                        new_coord_units)
+                # create gridded interpolator if requested
+                if h_grid:
+                    self = RU.register_griddedPlev(self, new_varname, units,
+                                                   interp_ijk, coord_dict, kms)
             return
-
     return MODEL

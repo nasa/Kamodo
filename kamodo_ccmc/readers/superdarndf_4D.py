@@ -30,7 +30,7 @@ def MODEL():
     from netCDF4 import Dataset
     from glob import glob
     from os.path import basename, isfile
-    from numpy import array, NaN, unique, append
+    from numpy import array, NaN, unique
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -132,6 +132,10 @@ def MODEL():
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # collect variable list
             if len(variables_requested) > 0 and variables_requested != 'all':

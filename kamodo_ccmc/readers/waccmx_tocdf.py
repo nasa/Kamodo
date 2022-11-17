@@ -6,11 +6,11 @@ Data is already in netCDF4, so just doing a few special things here.
 The pressure level variables will need to be inverted, so using Z3 to calculate
     the median km value for each pressure level across the range of times,
     latitudes and longitudes. Also interpolating RHO_CLUBB (the air density)
-    from the secondary pressure level grid to the primary one. 
+    from the secondary pressure level grid to the primary one.
 NOTE: This assumes that the Z3 and RHO_CLUBB variables are found in the same
     file.
 """
-from numpy import array, median, unique, transpose, float32
+from numpy import array, median, unique, transpose
 from glob import glob
 from time import perf_counter
 from netCDF4 import Dataset
@@ -20,6 +20,7 @@ from kamodo import Kamodo
 # variable names to keep
 var_list = ['Z3', 'RHO_CLUBB', 'datesec']
 
+
 def convert_all(file_dir):
     '''Find files with RHO_CLUBB and Z3 and prepare h0 files per file.'''
 
@@ -28,7 +29,7 @@ def convert_all(file_dir):
     t0 = perf_counter()
     files = sorted(glob(file_dir+'*.h?.*.nc'))
     patterns = unique([file[-19:-9] for file in files])  # date strings
-    
+
     # prepare files
     H_key = False
     for dstr in patterns:
@@ -36,12 +37,8 @@ def convert_all(file_dir):
         h0_test = sum(['h0' in f for f in files])
         if h0_test > 0:
             continue  # skip date string pattern if h0 file already exists
-        #try:
         prepare_h0file(files)  # prepare file
         H_key = True
-        #except:
-        #    print('h0 file preparation failed for', files)
-        #    return False
     if not H_key:
         print('none found.')
     else:
@@ -58,7 +55,7 @@ def prepare_h0file(dstr_files):
     h0_file = dstr_files[0].replace(h_type, '.h0.')
     print('\nPreparing', h0_file)
     t_file = perf_counter()
-    
+
     # set up output file
     data_out = Dataset(h0_file, 'w', format='NETCDF3_64BIT_OFFSET')
     # save coords for ilev interpolation later
@@ -100,22 +97,25 @@ def prepare_h0file(dstr_files):
             new_var[:] = array(tmp)
 
         # calculate km_ilev grid and store as km_ilev
-        if 'Z3' in cdf_data.variables.keys() and (
-                'km_ilev' not in data_out.variables.keys()):  # (time,) ilev, lat, lon
+        if 'Z3' in cdf_data.variables.keys() and (  # (time,) ilev, lat, lon
+                'km_ilev' not in data_out.variables.keys()):
             # calculate the median height in km per ilev level
             print('Calculating km grid for pressure level inversion...',
                   end="")
             tmp = cdf_data.variables['Z3']
-            km = median(array(tmp), axis=[0, 2, 3])/1000.
+            data = array(tmp)
+            km = median(data, axis=[0, 2, 3])/1000.
             new_dim = data_out.createDimension('km_ilev', len(km))
             new_var = data_out.createVariable('km_ilev', tmp.datatype,
                                               tuple(['km_ilev']))
             new_var[:] = km
+            data_out.km_ilev_max = data.max()/1000.
+            data_out.km_ilev_min = data.min()/1000.
             print('done.')
 
         # perform ilev -> lev interpolation for air density
-        if 'RHO_CLUBB' in cdf_data.variables.keys() and (
-                'RHO_CLUBB_lev' not in data_out.variables.keys()):  # (time,) ilev, lat, lon
+        if 'RHO_CLUBB' in cdf_data.variables.keys() and (  # (t,) ilev,lat,lon
+                'RHO_CLUBB_lev' not in data_out.variables.keys()):
             # initialize new variable in output file
             print('Interpolating density to primary pressure level grid...')
             tmp = cdf_data.variables['RHO_CLUBB']
@@ -140,6 +140,6 @@ def prepare_h0file(dstr_files):
         cdf_data.close()  # close per time step
     data_out.close()
     print(f'{h0_file} created in {perf_counter()-t_file}s.')
-    
+
     # all done. return.
     return None

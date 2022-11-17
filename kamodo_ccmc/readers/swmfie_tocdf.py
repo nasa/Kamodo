@@ -40,6 +40,7 @@ Documentation variables:
 (added directly to object for documentation purposes)
 '''
 
+
 def convert_all(file_dir):
     '''Convert all files independent of the others.'''
 
@@ -47,14 +48,17 @@ def convert_all(file_dir):
           f'{file_dir} to netCDF.')
     ftic, nfiles = perf_counter(), 0
     files = sorted(glob(file_dir + '*.tec'))  # want YYYYMMDD
+    if len(files) == 0:
+        print('No original files found.')
+        return
 
-    # convert and return    
+    # convert and return
     for file in files:
         if not isfile(file.replace('.tec', '.nc')):
             coords, variables, var_units, theta_Btilt, psi_Btilt = \
                 _read_SWMFIE(file, verbose=True)
-            cdf_filename = _toCDF(file, coords, variables, var_units, theta_Btilt,
-                                  psi_Btilt)
+            cdf_filename = _toCDF(file, coords, variables, var_units,
+                                  theta_Btilt, psi_Btilt)
             nfiles += 1
             print(cdf_filename, ' converted.')
     print(f'{nfiles} files in {file_dir} now converted into ' +

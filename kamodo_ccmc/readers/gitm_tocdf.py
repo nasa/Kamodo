@@ -845,7 +845,8 @@ def GITMbin_toCDF(file_dir, flag_2D=False):
     ftic = perf_counter()
     files = sorted(glob(file_dir+'*.bin'))  # collect files
     if len(files) == 0:
-        return False
+        print('No unconverted files found.')
+        return
     print('Checking for files that need converting...', end="")
 
     # initialize date values from first file

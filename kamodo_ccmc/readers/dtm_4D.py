@@ -130,17 +130,8 @@ def MODEL():
             if filetime:
                 return  # return times as is to prevent infinite recursion
 
-            # if variables are given as integers, convert to standard names
-            if len(variables_requested) > 0:
-                if isinstance(variables_requested[0], int):
-                    tmp_var = [value[0] for key, value in
-                               model_varnames.items() if value[2] in
-                               variables_requested]
-                    variables_requested = tmp_var
-
             # store variables
             self.missing_value = NaN
-            self._registered = 0
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
@@ -153,6 +144,10 @@ def MODEL():
                             test_list]
                 if len(err_list) > 0:
                     print('Variable name(s) not recognized:', err_list)
+                for item in err_list:
+                    variables_requested.remove(item)
+                if len(variables_requested) == 0:
+                    return
 
             # there is only one pattern for DTM, so just save the one grid
             p = list(self.pattern_files.keys())[0]

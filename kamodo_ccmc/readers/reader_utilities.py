@@ -5,7 +5,7 @@ Created on Thu May 13 18:28:18 2021
 """
 from kamodo import kamodofy, gridify
 from numpy import NaN, vectorize, append, array, meshgrid, ravel
-from numpy import unique, zeros, ndarray, floor, float32
+from numpy import unique, zeros, ndarray, floor, float32, all
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -249,9 +249,9 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
         times = position[0]
         sposition = position[1:].T  # spatial coordinates (len(times), ncoords)
         if len(position.shape) == 1:
-            out_vals = zeros(1)
+            out_vals = zeros(1) * NaN
         else:
-            out_vals = zeros(times.shape[0])
+            out_vals = zeros(times.shape[0]) * NaN
         # loop through time grid instead of input time array
         for i in range(len(coord_list[0])):
             # figure out what times given are in this file, if any
@@ -299,12 +299,14 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
                                            for i in interp_locations]).T
                     for j, vals in enumerate(interp_values):  # loop positions
                         time_int = rgi1D(coord_list[0][idx_list], vals,
-                                         bounds_error=False, fill_value=NaN)
+                                         bounds_error=False,
+                                         fill_value=NaN)
                         out_vals[st_idx[j]] = time_int(times[st_idx[j]])
                 else:
                     interp_values = array([time_interps[i](sposition)
                                            for i in interp_locations]).T
-                    time_int = rgi1D(coord_list[0][idx_list], interp_values,
+                    time_int = rgi1D(coord_list[0][idx_list],
+                                     interp_values,
                                      bounds_error=False, fill_value=NaN)
                     out_vals = time_int(times)
             else:
@@ -386,9 +388,9 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
     def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
         position = array([*args])  # time coordinate value must be first
         if len(position.shape) == 1:
-            out_vals = zeros(1)
+            out_vals = zeros(1) * NaN
         else:
-            out_vals = zeros(position.shape[1])  # (num_coordgrids, num_pos)
+            out_vals = zeros(position.shape[1]) * NaN  # (num_cgrids, num_pos)
         # loop through start times instead
         for i in range(len(times_dict['start'])):
             # figure out what times given are in this file, if any
@@ -501,9 +503,9 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
         times = position[0]
         sposition = position[1:].T  # spatial coordinates (len(times), ncoords)
         if len(position.shape) == 1:
-            out_vals = zeros(1)
+            out_vals = zeros(1) * NaN
         else:
-            out_vals = zeros(times.shape[0])
+            out_vals = zeros(times.shape[0]) * NaN
         # loop through time grid instead of input time array
         for ti in range(len(coord_list[0])):
             # figure out what times given are in this slice, if any
@@ -516,7 +518,7 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                           time_val >= coord_list[0][ti] and
                           time_val <= end_time]
             else:
-                if times[0] >= coord_list[0][ti] and times[0] <= end_time:
+                if times >= coord_list[0][ti] and times <= end_time:
                     st_idx = [ti]
                 else:
                     continue
@@ -564,13 +566,15 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                                            for ii in interp_locations]).T
                     for j, vals in enumerate(interp_values):  # loop positions
                         time_int = rgi1D(coord_list[0][idx_list], vals,
-                                         bounds_error=False, fill_value=NaN)
+                                         bounds_error=False,
+                                         fill_value=NaN)
                         out_vals[st_idx[j]] = time_int(times[st_idx[j]])
                 else:  # one position
                     interp_values = array([time_interps[ii](sposition)
                                            for ii in interp_locations]).T
-                    time_int = rgi1D(coord_list[0][idx_list], interp_values,
-                                     bounds_error=False, fill_value=NaN)
+                    time_int = rgi1D(coord_list[0][idx_list],
+                                     interp_values, bounds_error=False,
+                                     fill_value=NaN)
                     out_vals = time_int(times)
             else:
                 interp_location = idx_map.index(idx_list[0])
@@ -672,12 +676,12 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
 
         # remaining logic is for if there is more than one position given
         pos_arr = unique(input_arr, axis=0)  # only create interp for unique
-        out_ilev = zeros(len(t))  # (t, lon, lat) positions to save time
+        out_ilev = zeros(len(t)) * NaN  # (t, lon, lat) positions to save time
         for pos in pos_arr:
+            pos_idx = [i for i, p in enumerate(input_arr) if all(p == pos)]
             km_vals = h_func(**{'time': pos[0], 'lon': pos[1], 'lat': pos[2]})
             km_interp = rgi1D(km_vals, ilev, bounds_error=False,
                               fill_value=NaN)
-            pos_idx = [i for i, p in enumerate(input_arr) if all(p == pos)]
             out_ilev[pos_idx] = km_interp(km[pos_idx])  # interp for all km
         return out_ilev
 
@@ -720,11 +724,14 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
     bounds = array([ravel(item) for item in mesh_list], dtype=float).T
 
     # create the functionalized interpolators and modified function signatures
+    fake_data = zeros((2, 2, 2, 2)) * NaN  # avoiding computation
     param_xvec = create_funcsig(coord_data, 'GDZsphkm', bounds)
     new_interp = forge.replace('xvec', param_xvec)(plevconvert)
-    interp = kamodofy(units=units, arg_units=coord_units)(new_interp)
+    interp = kamodofy(units=units, data=fake_data, arg_units=coord_units
+                      )(new_interp)
     new_interp = forge.replace('xvec', param_xvec)(plevconvert_ijk)
-    interp_ijk = kamodofy(units=units, arg_units=coord_units)(new_interp)
+    interp_ijk = kamodofy(units=units, data=fake_data, arg_units=coord_units
+                          )(new_interp)
 
     return interp, interp_ijk
 
@@ -738,7 +745,7 @@ def register_griddedPlev(kamodo_object, new_varname, units, interp_ijk,
 
     new_coord_units = {'time': 'hr', 'lon': 'deg',
                        'lat': 'deg', 'height': 'km'}
-    fake_data = zeros((2, 2, 2, 2))  # avoiding computation
+    fake_data = zeros((2, 2, 2, 2)) * NaN  # avoiding computation
     coord_data = {key: value['data'] for key, value in
                   coord_dict.items() if key in
                   new_coord_units.keys()}  # exclude ilev
@@ -760,7 +767,10 @@ def register_griddedPlev(kamodo_object, new_varname, units, interp_ijk,
 def hrs_to_str(hrs, filedate):
     '''Convert hrs since midnight of first day to a string for the file list
     of format "Date: YYYY-MM-DD  Time: HH:MM:SS".'''
-    return datetime.strftime(filedate + timedelta(hours=float(hrs)),
+    h, m = floor(hrs), round(hrs % 1 * 60., 4)
+    sec = round(((hrs - h) * 60. - m) * 60.)
+    return datetime.strftime(filedate + timedelta(hours=int(h), minutes=int(m),
+                                                  seconds=int(sec)),
                              '  Date: %Y-%m-%d  Time: %H:%M:%S')
 
 
@@ -776,8 +786,8 @@ def str_to_hrs(dt_str, filedate, format_string='%Y-%m-%d %H:%M:%S'):
 @vectorize
 def hrs_to_tstr(hrs):
     '''Convert number of hours into HH:MM:SS format.'''
-    h, m = floor(hrs), floor(hrs % 1 * 60.)
-    sec = floor(((hrs - h) * 60. - m) * 60.)
+    h, m = floor(hrs), round(hrs % 1 * 60., 4)
+    sec = round(((hrs - h) * 60. - m) * 60.)
     return str(f'\n{int(h):02d}:{int(m):02d}:{int(sec):02d}')
 
 
