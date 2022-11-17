@@ -87,7 +87,7 @@ def MODEL():
                 # make sure all files are converted
                 from kamodo_ccmc.readers.superdarn_tocdf import \
                     convert_all
-                tmp = convert_all(file_dir)
+                tmp = convert_all(file_dir, '*ea.txt')
 
                 # continue with converted files
                 files = sorted(glob(file_dir+'*_ea.nc'))
@@ -103,11 +103,15 @@ def MODEL():
                     pattern_files = sorted(glob(file_dir+p+'*_ea.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
+                    if pattern_files[0][-11] == '-':
+                        format_string = '%Y%m%d-%H%M'
+                    else:
+                        format_string = '%Y%m%d_%H%M'
 
                     # loop through to get times, one file per time step
                     self.times[p]['start'] = array([
                         RU.str_to_hrs(f[-19:-6], self.filedate,
-                                      format_string='%Y%m%d-%H%M') for f in
+                                      format_string=format_string) for f in
                         pattern_files])
                     self.times[p]['end'] = self.times[p]['start'].copy()
                     self.times[p]['all'] = self.times[p]['start'].copy()
@@ -248,13 +252,18 @@ def MODEL():
             def func(i):  # i is the file/time number
                 # get data from file(s)
                 cdf_data = Dataset(self.pattern_files[key][i])
-                data = {  # shape is (lon)
-                    lat_val: array(cdf_data.groups[lat_key][gvar])
-                    for lat_key, lat_val in zip(self.lat_keys, self._lat)}
+                lat = array(cdf_data.variables['lat'])
+                lat_keys = [str(lat_val).replace('.', '_').replace('-', 'n')
+                            if lat_val < 0 else 'p'+str(lat_val).replace(
+                                    '.', '_') for lat_val in lat]
+                lon_dict = {lat_val: array(cdf_data.groups[lat_key]['lon'])
+                            for lat_key, lat_val in zip(lat_keys, lat)}
+                data = {lat_val: array(cdf_data.groups[lat_key][gvar])
+                        for lat_key, lat_val in zip(lat_keys, lat)}
                 cdf_data.close()
 
                 # assign custom interpolator
-                interp = custom_interp(self._lon_dict, self._lat, data)
+                interp = custom_interp(lon_dict, lat, data)
                 return interp
 
             # functionalize the variable dataset

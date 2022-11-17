@@ -181,7 +181,8 @@ def MODEL():
                 # continue
                 files = sorted(glob(file_dir+'*.nc'))
                 h0_file = [f for f in files if 'h0' in f]
-                files.remove(h0_file[0])
+                if len(h0_file) > 0:
+                    files.remove(h0_file[0])
                 patterns = unique([basename(f)[:-19] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(
@@ -290,13 +291,6 @@ def MODEL():
                 if variables_requested == 'all':
                     var_dict = {value[0]: value[1:] for key, value in
                                 model_varnames.items() if key in gvar_list}
-                    # deal with height again
-                    if p == 'density' and 'height' in gvar_list:
-                        var_dict['H_ilev1'] = \
-                            model_varnames['height_d'][1:]
-                    if p == 'neutral' and 'height' in gvar_list:
-                        var_dict['H_ilev'] = \
-                            model_varnames['height_n'][1:]
                     # add non-ilev versions of the variables in the files
                     key_list = list(var_dict.keys())
                     for var_key in key_list:
@@ -327,33 +321,16 @@ def MODEL():
                     setattr(self, '_height_'+p,
                             array(cdf_data.variables['alt']))  # km
                     setattr(self, '_heightunits_'+p, 'km')
-                # determine if vertical component is missing
-                var_ND = [len(cdf_data.variables[key].dimensions) for key in
-                          cdf_data.variables.keys()]
-                if max(var_ND) == 3 and 'alt' not in cdf_data.variables.keys():
-                    # look for an alternate vertical coordinate grid
-                    # 'alt' is not in the pressure level data files, height is
-                    vert_coord = [var for i, var in
-                                  enumerate(cdf_data.variables.keys()) if
-                                  var_ND[i] == 1 and var not in ['lon', 'lat']]
-                    if len(vert_coord) > 0:  # found one!
-                        if 'm' in cdf_data.variables[vert_coord[0]].units:
-                            # save as an altitude/height
-                            setattr(self, '_height_'+p,
-                                    array(cdf_data.variables[vert_coord[0]]))
-                            setattr(self, '_heightunits_'+p,
-                                    cdf_data.variables[vert_coord[0]].units)
-                        else:  # save as a pressure level
-                            setattr(self, '_ilev_'+p,
-                                    array(cdf_data.variables[vert_coord[0]]))
-                            setattr(self, '_ilevunits_'+p,
-                                    cdf_data.variables[vert_coord[0]].units)
-                    else:  # create a pressure level coordinate grid
-                        idx = var_ND.index(3)  # get first index of 3D variable
-                        varname = list(cdf_data.variables.keys())[idx]
-                        grid_length = cdf_data.variables[varname].shape[0]
-                        setattr(self, '_ilev_'+p,
-                                linspace(1, grid_length, grid_length))
+                # determine if pressure leve is needed (not included)
+                ilev_check = [True if 'ilev' in var else False for var in
+                              self.varfiles[p]]
+                if sum(ilev_check) > 0:
+                    # create a pressure level coordinate grid
+                    idx = ilev_check.index(True)  # get first index of 3D var
+                    varname = self.gvarfiles[p][idx]
+                    grid_length = cdf_data.variables[varname].shape[0]
+                    setattr(self, '_ilev_'+p,
+                            linspace(1, grid_length, grid_length))
 
                     # get median km grid from h0 file
                     if 'height' in cdf_data.variables.keys():
@@ -470,7 +447,8 @@ def MODEL():
                 gridded_int, coord_str, interp_flag=1, func=func)
 
             # create pressure level -> km function once per ilev type
-            if varname == 'H_ilev' or 'ilev' in coord_list:
+            if (varname == 'H_ilev' or 'ilev' in coord_list) and (
+                    hasattr(self, '_km_ilev')):  # only if inversion is possibl
                 if varname == 'H_ilev':  # create custom interp
                     new_varname = 'Plev'
                     # perform unit conversion if needed

@@ -88,7 +88,6 @@ def MODEL():
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
-                print('Preparing time and list files...')
                 t0 = perf_counter()  # begin timer
                 # figure out types of files present (2DTEC, 3DALL, 3DLST, etc)
                 files = sorted(glob(file_dir+'*.nc'))

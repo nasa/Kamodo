@@ -29,13 +29,13 @@ model_varnames = {"Pot": ['V', 'kV'], "Vazm": ['theta_v', 'deg'],
                   'MLAT': ['MLAT', 'deg'], 'MLT': ['MLT', 'hr']}
 
 
-def convert_all(file_dir):
+def convert_all(file_dir, pattern):
     '''Convert all files per timestep, combining data from both hemispheres if
     available.'''
 
     # detect grid type of output in file_dir
     ftic = perf_counter()
-    test_files = sorted(glob(file_dir + '*.txt'))
+    test_files = sorted(glob(file_dir + pattern))
     if len(test_files) == 0:
         print('No original files found.')
         return
@@ -140,6 +140,7 @@ def ascii_reader(filename):
     # add metadata
     variables['metadata'] = {'grid': grid_string[0][5:].strip(),
                              'model': model_string[0][6:].strip()}
+    print(filename, variables['MLAT']['data'].shape)
     return variables
 
 

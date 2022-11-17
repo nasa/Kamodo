@@ -339,7 +339,6 @@ def MODEL():
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
-                print('preparing time and list files...')
                 # determine if calc of 2D variables is necessary
                 total_files = sorted(glob(file_dir+'*.nc'))
                 if sum(['2D' in file for file in total_files]) > 0:

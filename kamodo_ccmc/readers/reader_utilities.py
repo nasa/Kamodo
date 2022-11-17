@@ -830,6 +830,7 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
     '''
 
     # create time list file if DNE
+    print('Creating the time files...', end="")
     list_out = open(list_file, 'w')
     list_out.write(f'{modelname} file list start and end ' +
                    'dates and times')
@@ -849,6 +850,7 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
                            start_time_str[i] + '  ' + end_time_str[i])
     time_out.close()
     list_out.close()
+    print('done.')
     return
 
 
