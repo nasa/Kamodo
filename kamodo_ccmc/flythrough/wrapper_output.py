@@ -275,8 +275,8 @@ def SF_read(filename):
     return traj_data
 
 
-def SF_write(filename, model_filename, model_name, results_dict, results_units,
-             coord_sys):
+def SF_write(filename, results_dict, model_filename=None, model_name=None,
+             results_units=None, coord_sys=None):
     '''Collect output function calls into one function.
 
     Inputs:
@@ -294,7 +294,27 @@ def SF_write(filename, model_filename, model_name, results_dict, results_units,
             'SPH', or 'RLL' combined with '-sph' or '-car'. E.g. 'SM-car' or
             'GDZ-sph'. Astropy coordinate systems supported. See ConvertCoord
             for details.
+        If the model_filename, model_name, results_units, and coord_sys
+            variables are not given, it is assumed that the results_dict
+            variable was created by using the SF_read funtion.
     '''
+    # initialize variables if results_dict came from the SF_read function
+    if model_filename is None:
+        model_filename = results_dict['metadata']['model_files']
+    if model_name is None:
+        model_name = results_dict['metadata']['model_used']
+    if results_units is None:
+        results_units = {key: results_dict[key]['units'] for key in
+                         results_dict.keys() if key != 'metadata'}
+    if coord_sys is None:
+        coord_sys = results_dict['metadata']['coord_type'] + '-' + \
+            results_dict['metadata']['coord_grid']
+    if 'metadata' in results_dict.keys():  # restructure
+        tmp = {key: value['data'] for key, value in results_dict.items() if key
+               != 'metadata'}
+        results_dict = tmp
+
+    # Continue
     coord_type, coord_grid = coord_sys.split('-')
     output_type = filename.split('.')[-1]
     if output_type == 'csv':

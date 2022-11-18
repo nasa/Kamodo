@@ -53,7 +53,8 @@ import numpy as np
 from time import perf_counter
 from datetime import datetime, timezone
 from netCDF4 import Dataset
-from astropy.constants import R_earth
+from kamodo import Kamodo
+from kamodo_ccmc.readers.reader_utilities import Functionalize_Dataset
 
 
 # replace weird name with standard names in cdf file
@@ -698,25 +699,56 @@ def GitmBin(filename, flag_2D, verbose=False):
     return filename, coords, variables, var_dict, attrs
 
 
-def gitm_toCDF(filename, coords, variables, var_dict, attrs):
-    from numpy import zeros
+def gitm_toCDF(bin_file, coords, variables, var_dict, attrs):
+    '''Prepare and write data into netcdf files.'''
 
     # perform longitude shift, careful of extra values on ends
-    lon_le180 = np.where((coords['lon'] <= 180.) & (coords['lon'] >= 0.))[0]
-    lon_ge180 = np.where((coords['lon'] >= 180.) & (coords['lon'] <= 360.))[0]
-    lon_ge180 = np.insert(lon_ge180, 0, lon_le180[-1])
-    lon_le180 = np.append(lon_le180, lon_ge180[1])
-    lon_shape = len(lon_ge180)+len(lon_le180)
-    new_lon = np.zeros(lon_shape)
-    new_lon[:len(lon_ge180)] = coords['lon'][lon_ge180] - 360.
-    new_lon[len(lon_ge180):] = coords['lon'][lon_le180]  # -182 to 182 deg now
-    coords['lon'] = new_lon
+    # this logic is different because the lon grid doesn't start at zero
+    #   or end at 360. In some cases it goes farther on both ends.
+    lon_le180 = list(np.where((coords['lon'] <= 180.) &
+                              (coords['lon'] >= 0.))[0])
+    lon_ge180 = list(np.where((coords['lon'] >= 180.) &
+                              (coords['lon'] < 360.))[0])
+    if 180. not in coords['lon']:
+        lon_ge180.insert(0, lon_le180[-1])
+        lon_le180.append(lon_ge180[1])
+    full_lon = np.append(coords['lon'][lon_ge180] - 360.,
+                         coords['lon'][lon_le180])  # keep separate
+    new_lon = np.append(coords['lon'][lon_ge180] - 360.,
+                        coords['lon'][lon_le180])  # in memory
+    new_lon[0], new_lon[-1] = -180., 180.  # begins at -180, ends at +180.
+    coords['lon'] = new_lon  # use corrected grid for file
 
-    # start new wrapped output object
-    cdf_filename = filename+'.nc'
+    # prepare for interpolation at +/- 180 deg lon, possible also latitude
+    # interpolation is done after lon wrapping, so wrapped lon grid here
+    ko = Kamodo()
+    ko.variables = {'TMP': {}}
+    ko._registered = 0  # need full lon and lat grids
+    coord_dict = {'lon': {'units': 'deg', 'data': full_lon},
+                  'lat': {'units': 'deg', 'data': coords['lat']}}
+
+    # check for and prepare for latitude wrapping or interpolation
+    lat_check = False
+    if coords['lat'].max() < 90.:
+        coords['lat'] = np.insert(coords['lat'], 0, -90.)
+        coords['lat'] = np.append(coords['lat'], 90.)
+        coord_dict['lat']['data'] = coords['lat']
+        print('Performing scalar averaging at the poles.')
+    elif coords['lat'].max() > 90.:
+        old_lat = coords['lat']
+        lat_idx = list(np.where((old_lat > -90.) & (old_lat < 90.))[0])
+        lat_idx = [min(lat_idx) - 1] + lat_idx + [max(lat_idx) + 1]  # add ends
+        coord_dict['lat']['data'] = old_lat[lat_idx]
+        coords['lat'] = old_lat[lat_idx]  # corrected lat grid for files
+        coords['lat'][0], coords['lat'][-1] = -90., 90.
+        lat_check = True  # signal to perform interpolation at poles
+        print('Interpolating data at the poles.')
+
+    # start new output object
+    cdf_filename = bin_file.replace('.bin', '.nc')
     data_out = Dataset(cdf_filename, 'w', format='NETCDF4')
     # csv list of files
-    data_out.file = ''.join([f+',' for f in attrs['file']]).strip(',')
+    data_out.file = bin_file
     data_out.model = 'GITM'
     data_out.version = attrs['version']
     data_out.endian = attrs['endian']
@@ -727,7 +759,7 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
         # create dimension
         new_dim = data_out.createDimension(dim, coords[dim].size)
         # create variable
-        new_var = data_out.createVariable(dim, np.float64, dim)
+        new_var = data_out.createVariable(dim, np.float32, dim)
         new_var[:] = coords[dim]  # store data for dimension in variable
         if dim == 'height':
             units = 'km'
@@ -738,39 +770,52 @@ def gitm_toCDF(filename, coords, variables, var_dict, attrs):
         new_var.datascale, new_var.units = 'linear', units
 
     # copy over variables to file
-    var_3D = ['TEC', 'NmF2', 'hmF2', 'SolarLocalTime', 'SolarZenithAngle',
-              'phi_qJoule', 'phi_q', 'phi_qEUV', 'phi_qNOCooling']
+    # var_3D = ['TEC', 'NmF2', 'hmF2', 'SolarLocalTime', 'SolarZenithAngle',
+    #          'phi_qJoule', 'phi_q', 'phi_qEUV', 'phi_qNOCooling']
     for variable_name in variables.keys():
         new_name = gitm_varnames[var_dict[variable_name][0]][0]
         # remove height dimension for 2D data
-        if 1 in variables[variable_name].shape[1:]:
-            variables[variable_name] = np.squeeze(variables[variable_name],
-                                                  axis=(1))
-        if len(variables[variable_name].shape) == 4:
-            new_var = data_out.createVariable(new_name, np.float64,
-                                              ('time', 'lon', 'lat', 'height'))
-            var_shape = list(variables[variable_name].shape)
-            var_shape[-1] = lon_shape
-            tmp_arr = zeros(var_shape)
-            tmp_arr[:, :, :, :len(lon_ge180)] =\
-                variables[variable_name][:, :, :, lon_ge180]
-            tmp_arr[:, :, :, len(lon_ge180):] =\
-                variables[variable_name][:, :, :, lon_le180]
-            # (t,h,lat,lon) -> (t,lon,lat,h)
-            new_data = np.transpose(tmp_arr, (0, 3, 2, 1))
-        elif len(variables[variable_name].shape) == 3:
-            new_var = data_out.createVariable(new_name, np.float64,
-                                              ('time', 'lon', 'lat'))
-            var_shape = list(variables[variable_name].shape)
-            var_shape[-1] = lon_shape
-            tmp_arr = zeros(var_shape)
-            tmp_arr[:, :, :len(lon_ge180)] =\
-                variables[variable_name][:, :, lon_ge180]
-            tmp_arr[:, :, len(lon_ge180):] =\
-                variables[variable_name][:, :, lon_le180]
-            # (t,lat,lon) -> (t,lon,lat)
-            new_data = np.transpose(tmp_arr, (0, 2, 1))
-        new_var[:] = new_data  # store data in variable
+        if 1 in variables[variable_name].shape:
+            variables[variable_name] = np.squeeze(variables[variable_name])
+        if len(variables[variable_name].shape) == 3:
+            new_var = data_out.createVariable(new_name, np.float32,
+                                              ('lon', 'lat', 'height'))
+            if 'height' not in coord_dict.keys():
+                coord_dict['height'] = {'units': 'km',
+                                        'data': coords['height']}
+        elif len(variables[variable_name].shape) == 2:
+            new_var = data_out.createVariable(new_name, np.float32,
+                                              ('lon', 'lat'))
+            if 'height' in coord_dict.keys():
+                del coord_dict['height']
+        # 3D: (h,lat,lon) -> (lon,lat,h), 2D: (lat,lon) -> (lon,lat)
+        tmp = variables[variable_name].T
+
+        # check for and perform latitude wrapping or prepare for interpolation
+        if lat_check:
+            tmp = tmp[:, lat_idx]  # chop off extra latitude values
+        elif tmp.shape[1] < len(coords['lat']):
+            spole = np.mean(tmp[:, 0], axis=0)  # avg over lons near pole
+            npole = np.mean(tmp[:, -1], axis=0)  # other pole
+            tmp = np.insert(tmp, tmp.shape[1]-1, npole, axis=1)  # append
+            tmp = np.insert(tmp, 0, spole, axis=1)  # insert on lat axis
+        new_data = tmp[lon_ge180 + lon_le180]  # wrap in longitude
+
+        # replace lon borders with proper interpolated boundary values
+        ko = Functionalize_Dataset(ko, coord_dict, 'TMP',
+                                   {'data': new_data, 'units': ''}, True,
+                                   'GDZsph')
+        new_data[0] = ko['TMP_ijk'](lon=-180.)
+        new_data[-1] = new_data[0]  # wrap in longitude with new values
+
+        # check for and perform latitude interpolation
+        if lat_check:
+            new_data[:, 0] = ko['TMP_ijk'](lat=-90.)
+            new_data[:, -1] = ko['TMP_ijk'](lat=90.)
+        del ko['TMP_ijk'], ko['TMP']
+
+        # store new variable data in file
+        new_var[:] = new_data
         new_var.datascale, new_var.units =\
             gitm_varnames[var_dict[variable_name][0]][1:]
 
@@ -788,23 +833,24 @@ def dts_to_hrs(datetime_string, filedate):
             filedate).total_seconds()/3600.
 
 
-def GITMbin_toCDF(file_prefix, flag_2D=False):
-    '''Collect data from all files found with file_prefix into one netCDF4 file
+def GITMbin_toCDF(file_dir, flag_2D=False):
+    '''Collect data from all files found with file_prefix into netCDF4 files
     '''
     # If flag_2D is False, then 2D files are not present and
     # 2D variables will be calculated
     # Takes much longer if False.
 
-    from os.path import basename
+    from os.path import basename, isfile
 
     ftic = perf_counter()
-    files = sorted(glob(file_prefix+'*.bin'))  # collect files
+    files = sorted(glob(file_dir+'*.bin'))  # collect files
     if len(files) == 0:
-        return False
-    print(f'Converting {len(files)} files to netCDF4.')
+        print('No unconverted files found.')
+        return
+    print('Checking for files that need converting...', end="")
 
-    # initialize values from first file (date, data, etc)
-    file_name = basename(file_prefix)
+    # initialize date values from first file
+    file_name = basename(files[0])
     file_dt_str = file_name.split('_t')[-1].split('_')[0]  # keep only YYMMDD
     if int(file_dt_str[:2]) > 60:  # later than 1960
         string_date = '19' + file_dt_str[:2] + '-' + file_dt_str[2:4] + '-' +\
@@ -814,25 +860,29 @@ def GITMbin_toCDF(file_prefix, flag_2D=False):
             file_dt_str[4:6]
     filedate = datetime.strptime(string_date+' 00:00:00', '%Y-%m-%d %H:%M:%S'
                                  ).replace(tzinfo=timezone.utc)  # dt object
-    # first file data
-    filename, coords, variables, var_dict, attrs = GitmBin(files[0], flag_2D)
-    time = [attrs['time'][:19]]  # accurate to the sec
-    master_variables = {key: [[value]] for key, value in variables.items()}
 
-    # add data from remaining files
-    for f in files[1:]:
-        filename, coordsN, variables, var_dictN, attrsN = GitmBin(f, flag_2D)
-        time.append(attrsN['time'][:19])  # accurate to the sec
-        for var in master_variables.keys():
-            master_variables[var].append([variables[var]])
-    for var in master_variables.keys():
-        master_variables[var] = np.concatenate(tuple(master_variables[var]))
-    coords['time'] = dts_to_hrs(np.array(time, dtype=str), filedate)
-    attrs['filedate'] = filedate.strftime('%Y-%m-%d')  # store in attrs
-    attrs['file'] = files
+    # loop through all .bin files
+    file_count = 0
+    for file in files:
+        file_tic = perf_counter()
+        cdf_file = file.replace('.bin', '.nc')
+        if isfile(cdf_file):
+            continue  # do not convert if conversion already completed
 
-    cdf_filename = gitm_toCDF(file_prefix, coords, master_variables, var_dict,
-                              attrs)
-    print(f'Files of pattern {file_prefix+"*.bin"} converted to ' +
-          f'{cdf_filename} in {perf_counter()-ftic:.5f}s')
+        # read data and attributes from binary file
+        file_count += 1
+        filename, coords, variables, var_dict, attrs = GitmBin(file, flag_2D)
+        time = np.array([attrs['time'][:19]])  # accurate to the sec
+        coords['time'] = dts_to_hrs(time, filedate)
+        attrs['filedate'] = filedate.strftime('%Y-%m-%d')  # store in attrs
+
+        # perform data wrangling and write to cdf file
+        cdf_file = gitm_toCDF(file, coords, variables, var_dict, attrs)
+        print(f'Converted {file} to {cdf_file} in ' +
+              f'{perf_counter()-file_tic:.5f}s')
+    if file_count > 0:
+        print(f'Files of pattern {file_dir+"*.bin"} converted to ' +
+              f'cdf in {perf_counter()-ftic:.5f}s')
+    else:
+        print('All files are already converted.')
     return True

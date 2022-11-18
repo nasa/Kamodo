@@ -21,7 +21,7 @@ See ConvertCoord for details on the coordinate systems.
 """
 import numpy as np
 from os.path import isfile
-import kamodo_ccmc.flythrough.wrapper_output as WO
+import kamodo_ccmc.flythrough.SF_output as O
 import kamodo_ccmc.flythrough.SF_utilities as U
 
 
@@ -45,9 +45,6 @@ def SatelliteTrajectory(dataset, start_ts, stop_ts, coord_type='GEO',
     # convert from utc timestamps to isoformat
     start = U.ts_to_ISOstring(start_ts)
     stop = U.ts_to_ISOstring(stop_ts)
-
-    # convert from integer input of coord_type to string
-    coord_type, coord_grid = U.MW.convert_coordnames(coord_type, 'car')
 
     # check input coord_type
     if coord_type not in ['GEO', 'GSM', 'GSE', 'SM']:
@@ -339,8 +336,8 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     ------------
     model: 'CTIPe','IRI', ...
     file_dir: complete path to where model data files are stored
-    variable_list: List of standardized variable names. Corresponding integers
-        are allowed. See model variable output for details.
+    variable_list: List of standardized variable names. See model variable
+        output for details. Dimensions must be at least time + 2D spatial.
     sat_time: a numpy array of the utc timestamps
     c1, c2, c3: numpy arrays of the positions correlating to the utc timestamps
         (c1, c2, c3) should be (x,y,z) in R_E for cartesian coordinates, and
@@ -387,9 +384,10 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
 
     # give error if unknown output type given BEFORE running flythrough
     output_type = output_name.split('.')[-1]
-    if output_type not in ['nc', 'csv', 'txt', '']:
+    output_typelist = ['nc', 'csv', 'txt', '']
+    if output_type not in output_typelist:
         raise AttributeError('Output extension not recognized. Must be one' +
-                             ' of nc, csv, or txt.')
+                             ' of ', *output_typelist)
 
     # Check if output file already exists. Break if it does.
     if isfile(output_name):
@@ -397,32 +395,15 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
                              'Please either remove the file or change the ' +
                              'output_name and then rerun the command.')
 
-    # if model is given as an integer, then convert to a string
-    model = U.MW.convert_model_string(model)
-
-    # if variable_list is a list of integers,
-    # convert to standard names for given model
-    variable_list = U.MW.convert_variablenames(model, variable_list)
-
-    # convert integer coordinate names or grids to strings
+    # correct variables with 'ilev' in the name 
+    new_list = [''.join([i+'_' for i in var.split('_')[:-1]])[:-1]
+                if 'ilev' in var else var for var in variable_list]
     coord_type, coord_grid = coord_sys.split('-')
-    coord_type, coord_grid = U.MW.convert_coordnames(coord_type, coord_grid)
-
-    # prepare files for run
-    U.Prepare_Files(model, file_dir)
-
-    # ignore variables with 'ilev' in the name
-    clean_var = [var for var in variable_list if 'ilev' not in var]
-    if len(variable_list) != len(clean_var):
-        print('Pressure dependent variables ignored. Please request the ' +
-              'height dependent versions instead.')
-        if len(clean_var) == 0:
-            return
 
     # get interpolated results
     # coord_type should be one of SpacePy's or AstroPy's coordinates
     # coord_grid is either 'sph' or 'car'
-    results = U.Model_SatelliteFlythrough(model, file_dir, variable_list,
+    results = U.Model_SatelliteFlythrough(model, file_dir, new_list,
                                           sat_time, c1, c2, c3,
                                           coord_type, coord_grid,
                                           verbose=verbose)
@@ -430,6 +411,8 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     # remove requested variables not found in the data
     var_list = [key for key in results.keys() if key not in
                 ['utc_time', 'c1', 'c2', 'c3', 'net_idx']]
+    if len(var_list) == 0:
+        return results
 
     # retrieve coordinate and results units
     coord_units = U.MW.coord_units(coord_type, coord_grid)
@@ -447,22 +430,16 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
               'inputs.')
 
     if output_name != '':
-        # retrieve file names/patterns for output
-        file_times = U.MW.File_Times(model, file_dir, print_output=False)
-        filenames = []
-        for key in file_times.keys():
-            filenames.append(file_times[key][0])
-
+        # retrieve list of files used in the execution
+        filenames = U.MW.File_List(model, file_dir)
         # perform output type desired
-        output_filename = WO.SF_write(output_name, filenames, model, results,
+        output_filename = O.SF_write(output_name, results, filenames, model,
                                       results_units, coord_sys)
         # no access to model filenames
         print(f"Output saved in {output_filename}.")
         print('Generating interactive plots...')
 
         # check plot_coord variable
-        # convert from integer and prevent plotting errors
-        plot_coord, plot_grid = U.MW.convert_coordnames(plot_coord, 'car')
         if plot_coord in ['SPH', 'RLL']:
             raise AttributeError('Plots can only be requested in coordinate ' +
                                  'grids where cartesian coordinates are ' +
@@ -498,10 +475,10 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list,
     Parameters:
         start_time: utc timestamp in seconds for start
         stop_time: utc timestamp in seconds for stop
-        model: CTIPe, IRI, .... (integers allowed)
+        model: CTIPe, IRI, ....
         file_dir: complete path to where model data is stored
         variable_list: list of standardized variable names desired.
-            Integers allowed.
+            Integers allowed. Dimensions must be at least time + 2D spatial.
         max_lat: maximum latitude for sample trajectory, in degrees
             (default=65.)
         min_lat: minimum latitude for sample trajectory, in degrees
@@ -520,11 +497,11 @@ def FakeFlight(start_time, stop_time, model, file_dir, variable_list,
             output_name - extension + variable names + plot type (1D or 3D).
             Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
             separated data, or 'txt' for tab separated data files.
-        plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
-            integers also allowed with 'GDZ'=0 and so on. Indicates the
-            coordinate system the plot will be generated in. Only plots in
-            cartesian coordinates systems are supported, so 'SPH' and 'RLL' are
-            not accepted. Default is 'GEO'. Astropy coordinates also allowed.
+        plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', etc.
+            Indicates the coordinate system the plot will be generated in.
+            Only plots in cartesian coordinates systems are supported, so 'SPH'
+            and 'RLL' are not accepted. Default is 'GEO'. Astropy coordinates
+            also allowed.
 
     Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
     - utc_time is an array in UTC seconds since 1970-01-01 of the generated
@@ -571,19 +548,19 @@ def RealFlight(dataset, start, stop, model, file_dir, variable_list,
     stop: utc timestamp for end of desired time interval
     model: 'CTIPe','IRI', ...
     file_dir: complete path to where model data files are stored
-    variable_list: List of standardized variable names. Corresponding integers
-        are allowed. See model variable output for details.
+    variable_list: List of standardized variable names. See model variable
+        output for details. Dimensions must be at least time + 2D spatial.
     coord_type: Pick from GEO, GSM, GSE, or SM for the satellite trajectory.
     output_name: complete path with filename (with the extension) for the file
         to write the results to. Plotting filenames are determined by
         output_name - extension + variable names + plot type (1D or 3D).
         Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
         separated data, or 'txt' for tab separated data files.
-    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
-        integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
-        system the plot will be generated in. Only plots in cartesian
-        coordinates systems are supported, so 'SPH' and 'RLL' are not accepted.
-        Default is 'GEO'. Astropy coordinates also supported.
+    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', etc.
+        Indicates the coordinate system the plot will be generated in.
+        Only plots in cartesian coordinates systems are supported, so 'SPH'
+        and 'RLL' are not accepted. Default is 'GEO'. Astropy coordinates
+        also allowed.
     verbose: Set to true to be overwhelmed with information.
 
     Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
@@ -636,8 +613,8 @@ def TLEFlight(tle_file, start, stop, time_cadence, model, file_dir,
             positions. Should be an integer.
         model: 'CTIPe','IRI', ...
         file_dir: complete path to where model data files are stored.
-        variable_list: List of standardized variable names. Corresponding
-            integers are allowed. See model variable output for details.
+        variable_list: List of standardized variable names. See model variable
+            output for details. Dimensions must be at least time + 2D spatial.
         coord_type: Pick from GEO, GSM, GSE, or SM for the satellite
             trajectory.
         output_name: complete path with filename (with the extension) for the
@@ -699,18 +676,18 @@ def MyFlight(traj_file, model, file_dir, variable_list, output_name='',
         Astropy coordinate systems also supported.
     model: 'CTIPe', 'IRI', ...
     file_dir: complete path to model data files
-    variable_list: List of standardized variable names. Corresponding integers
-        are allowed. See model variable output for details.
+    variable_list: List of standardized variable names. See model variable
+        output for details. Dimensions must be at least time + 2D spatial.
     output_name: complete path with filename (with the extension) for the file
         to write the results to. Plotting filenames are determined by
         output_name - extension + variable names + plot type (1D or 3D).
         Extensions must be one of 'nc' for netCDF4 files, 'csv' for comma
         separated data, or 'txt' for tab separated data files.
-    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG'
-        integers also allowed with 'GDZ'=0 and so on. Indicates the coordinate
-        system the plot will be generated in. Only plots in cartesian
-        coordinates systems are supported, so 'SPH' and 'RLL' are not accepted.
-        Default is 'GEO'.
+    plot_coord: one of 'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', etc.
+        Indicates the coordinate system the plot will be generated in.
+        Only plots in cartesian coordinates systems are supported, so 'SPH'
+        and 'RLL' are not accepted. Default is 'GEO'. Astropy coordinates
+        also allowed.
     verbose: Set to true to be overwhelmed with information.
 
     Returns a dictionary with keys: 'utc_time', 'c1', 'c2', 'c3', and 'net_idx'
@@ -730,7 +707,7 @@ def MyFlight(traj_file, model, file_dir, variable_list, output_name='',
     systems.'''
 
     # read in trajectory from file into dictionary, including metadata
-    traj_data = WO.SF_read(traj_file)
+    traj_data = O.SF_read(traj_file)
 
     # figure out key for time data
     for key in traj_data:

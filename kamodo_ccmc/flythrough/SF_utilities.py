@@ -4,32 +4,19 @@ Created on Fri Apr 23 17:09:14 2021
 @author: rringuet
 Most needed functions to support the SatelliteFlythrough software.
 """
-from numpy import vectorize, array, diff, where, float64, unique, concatenate
+from numpy import vectorize, array, diff, where, unique
 from time import perf_counter
-from os.path import basename, isfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from os.path import isfile
 import kamodo_ccmc.flythrough.model_wrapper as MW
+from kamodo_ccmc.readers.reader_utilities import read_timelist
 from kamodo_ccmc.flythrough.utils import ConvertCoord
 
 
 @vectorize
-def ts_to_hrs(time_val, filedate):
-    '''Convert array of timestamps to hours since midnight of filedate string
-    '''
-    file_datetime = datetime.strptime(filedate+' 00:00:00',
-                                      '%Y-%m-%d %H:%M:%S')
-    return (datetime.utcfromtimestamp(time_val) -
-            file_datetime).total_seconds()/3600.
-
-
-@vectorize
-def hrs_to_ts(time_val, filedate):
-    '''Convert array of hours since midnight of filedate string to timestamps
-    '''
-    file_datetime = datetime.strptime(filedate + ' 00:00:00',
-                                      '%Y-%m-%d %H:%M:%S').replace(
-                                          tzinfo=timezone.utc)
-    return datetime.timestamp(file_datetime + timedelta(hours=time_val))
+def ts_to_hrs(utcts, filedate):
+    '''Convert array of timestamps to hours since midnight of filedate.'''
+    return (utcts - filedate.timestamp())/3600.
 
 
 def ts_to_ISOstring(utc_ts):
@@ -37,179 +24,24 @@ def ts_to_ISOstring(utc_ts):
     return datetime.utcfromtimestamp(utc_ts).isoformat()
 
 
-def check_plot_dir(plot_dir):
-    '''If plot_dir does not exist, create it'''
-    from os import path, mkdir
-    if not path.isdir(plot_dir):
-        mkdir(plot_dir)
-    return
-
-
-def write_timescsv(csv_filename, times):
-    '''writes times dict from day_files to csv for faster execution time next
-    time.'''
-    data_out = open(csv_filename, 'w')
-    data_out.write('# '+csv_filename)
-    data_out.write('\n#file_date, filename, datetimes[0], datetimes[1], ' +
-                   'filetimes[0], filetimes[1], dt')
-    for key in times.keys():
-        data_out.write('\n'+key+','+''.join([f'{value},' for value in
-                                             times[key]]).strip(','))
-    data_out.close()
-    return
-
-
-def read_timescsv(csv_filename):
-    '''reads times dict from csv_filename for faster execution time.'''
-    times = {}
-    data_in = open(csv_filename, 'r')
-    lines = data_in.readlines()
-    data_in.close()
-    for line in lines[2:]:
-        data_line = line.strip('\n').split(',')
-        times[data_line[0]] = data_line[1:4]
-        times[data_line[0]].extend([float64(data_line[4]),
-                                    float64(data_line[5]),
-                                    float(data_line[6])])
-    return times
-
-
-def day_files(file_pattern, model, call_type):
-    '''Retrieve file times. Convert files if necessary.'''
-    # file_pattern could be a list if more than one pattern in file_dir exists
-    if not isinstance(file_pattern, str):  # if a list/array of strings
-        files, times = file_pattern, {}  # run reader with file_prefixes given
-    else:
-        from glob import glob
-        files, times = sorted(glob(file_pattern)), {}
-
-    # collect only time information from files for full time range
-    reader = MW.Model_Reader(model)
-    for f in files:
-        k = reader(f, variables_requested=[], filetime=True, fulltime=True,
-                   printfiles=False)
-        if hasattr(k, 'conversion_test'):
-            if not k.conversion_test:
-                continue  # if file conversion errors, skip file_pattern
-        if call_type == 'normal':
-            file_date = k.datetimes[0][0:10]  # 'YYYY-MM-DD'
-        elif call_type == 'single':
-            file_date = k.datetimes[0][0:13].replace(' ', '_')  # YYYY-MM-DD_HH
-        if file_date not in times.keys():  # prevent overwriting
-            times[file_date] = [f, k.datetimes[0], k.datetimes[1],
-                                k.filetimes[0], k.filetimes[1], k.dt]
-        else:
-            file_date += '_' + k.datetimes[0][11:13]  # 'YYYY-MM-DD_HH'
-            times[file_date] = [f, k.datetimes[0], k.datetimes[1],
-                                k.filetimes[0], k.filetimes[1], k.dt]
-    return times
-
-
-def check_timescsv(file_pattern, model, call_type='normal'):
-    '''check for times csv file, write if not found in file_dir or if outdated
-    '''
-    # file_pattern could be a list if more than one pattern in file_dir exists
-    if not isinstance(file_pattern, str):  # if a list/array of strings
-        sample_pattern = file_pattern[0]
-    else:
-        sample_pattern = file_pattern
-
-    # determine csv filename
-    sample_prefix = basename(sample_pattern)
-    file_dir = sample_pattern.split(sample_prefix)[0]
-    if call_type == 'normal':
-        csv_filename = file_dir + model + '_times.csv'
-    elif call_type == 'single':
-        csv_filename = file_dir + model + '_singletimes.csv'
-
-    # if file DNE or outdated, write and return, else read and return
-    if not isfile(csv_filename):
-        times = day_files(file_pattern, model, call_type)
-        write_timescsv(csv_filename, times)
-    else:
-        times = read_timescsv(csv_filename)
-
-        # compare file contents to data in dir
-        # file_patterns in times.csv file
-        oldfile_pattern = [value[0] for key, value in times.items()]
-        # if same length -> compare contents
-        if len(oldfile_pattern) == len(file_pattern):
-            compare = sum(oldfile_pattern == file_pattern)
-            if compare == len(file_pattern):  # if match, then return
-                return times
-            else:  # not matching -> delete old file and recreate
-                times = day_files(file_pattern, model, call_type)
-                write_timescsv(csv_filename, times)
-        else:  # different lengths -> delete old file and recreate
-            times = day_files(file_pattern, model, call_type)
-            write_timescsv(csv_filename, times)
-    return times
-
-
-def save_times(file_patterns, sat_time, model, verbose=False):
-    '''Adjust times between files to filetime within half of dt in seconds
-    (7.5min by default). Works for models with one day of data per file.'''
-    times = check_timescsv(file_patterns, model)
-    # look for sat_times not in files
-    l_idx, file_dates = 0, list(times.keys())
-    for i in range(len(file_dates)):  # filter out times not in files
-        idx = where((sat_time >= times[file_dates[i]][3]) &
-                    (sat_time <= times[file_dates[i]][4] +
-                     times[file_dates[i]][5]))[0]  # end_time+dt
-        times[file_dates[i]].append(idx)
-        # remove indices from previous idx list if it occurs in this one
-        if i > 0:
-            # prefer time to be after beg time and not in dt section after end
-            tmp_idx = [ival for ival in times[file_dates[i-1]][6] if ival not
-                       in idx]
-            times[file_dates[i-1]][6] = tmp_idx
-
-    # collect indices into one array for plotting
-    net_idx = array(concatenate(tuple([times[file_date][6] for file_date in
-                                       times.keys()])), dtype=int)
-    l_idx = len(net_idx)
-    test_idx = unique(net_idx)
-    if len(test_idx) != l_idx:
-        print(l_idx, len(test_idx))
-        raise AttributeError("net_idx has repeating values. Idx filtering " +
-                             "didn't work correctly.")
-
-    # print errors for any remaining 'bad' times
-    nbad_times = len(sat_time) - l_idx
-    if nbad_times == 1:
-        print(f'{nbad_times} time is not in model output files and is ' +
-              'excluded from the flythrough.')
-    elif nbad_times > 0:
-        print(f'{nbad_times} times are not in model output files and are ' +
-              'excluded from the flythrough.')
-    return sat_time, times, net_idx
-
-
 def sat_tracks(sat_time, c1, c2, c3, z_dependencies, verbose=False):
     '''Calculate satellite tracks for interpolation'''
-
     # Create satellite tracks with appropriate inputs
     sat_track = {}  # initialize list of satellite tracks
     if '3D' in z_dependencies.keys():
-        if verbose:
-            print('Building height-independent satellite track.')
-        sat_track['3D'] = [[t, c1_val, c2_val] for t, c1_val, c2_val in
-                           zip(sat_time, c1, c2)]
+        sat_track['3D'] = array([sat_time, c1, c2]).T
     if '4D' in z_dependencies.keys():
-        if verbose:
-            print('Building height-dependent satellite track.')
-        sat_track['4D'] = [[t, c1_val, c2_val, c3_val] for t, c1_val, c2_val,
-                           c3_val in zip(sat_time, c1, c2, c3)]
+        sat_track['4D'] = array([sat_time, c1, c2, c3]).T
     return sat_track
 
 
-def Model_FlyAway(reader, filename, variable_list, sat_time, c1, c2, c3,
+def Model_FlyAway(reader, file_dir, variable_list, sat_time, c1, c2, c3,
                   z_dependencies, verbose=False):
     '''Perform flythrough for one day of data and one coordinate system.'''
 
     # create kamodo object, initialize some variables
     var_list = variable_list.copy()  # save copy before it gets altered
-    kamodo_object = reader(filename, variables_requested=variable_list,
+    kamodo_object = reader(file_dir, variables_requested=variable_list,
                            gridded_int=False)
 
     # remove requested variables not found in data from var_list and z_dependen
@@ -240,10 +72,10 @@ def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type,
     per type.
     Returns a dictionary. Keys are the coordinate systems. Values are
     0: a list of the variable names needing those coordinates
-    1: x/lon 1D array
-    2: y/lat 1D array
-    3: z/rad/height 1D array
-    4: z_dependencies dictionary
+    1: x/lon 1D array, converted to the coordinate system key
+    2: y/lat 1D array, converted to the coordinate system key
+    3: z/rad/height 1D array, converted to the coordinate system key
+    4: z_dependencies dictionary {3D: ([t, c1, c2]).T, 4D: ([t, c1, c2, c3]).T}
     '''
 
     # determine coordinate types needed
@@ -312,63 +144,72 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
                              f'{len(sat_time)}, {len(c1)}, {len(c2)}, and ' +
                              f'{len(c3)}')
 
-    # reader prefers converted filename, even if it does not exist.
-    # will create if no wrapped data found.
-    file_patterns = MW.FileSearch(model, file_dir)
+    # initialize model reader and times dictionary
     reader = MW.Model_Reader(model)  # Kamodo gets imported here
-
-    # match trajectory times to model data output files
-    sat_time, times, net_idx = save_times(file_patterns, sat_time, model,
-                                          verbose=verbose)
-
-    # initialize results dictionary with given trajectory
-    results_dict = {'utc_time': sat_time[net_idx], 'c1': c1[net_idx],
-                    'c2': c2[net_idx], 'c3': c3[net_idx],
-                    'net_idx': net_idx}
+    start_utcts, end_utcts, filedate = File_UTCTimes(model, file_dir)
+    
+    # cut off trajectory times not found in data in file_dir
+    idx = where((sat_time >= start_utcts) & (sat_time <= end_utcts))[0]
+    results_dict = {'utc_time': sat_time[idx], 'c1': c1[idx],
+                    'c2': c2[idx], 'c3': c3[idx], 'net_idx': idx}
     # net_idx for comparison with other data from real satellite
-
+    if len(idx) < 1:
+        print('None of the given times are in the model output files.')
+        return results_dict
+    if len(idx) < len(sat_time):
+        print(f'{len(sat_time)-len(idx)} times are not in model output files' +
+              ' and are excluded from the flythrough.')
+    
     # perform coordinate conversions and sort variables by coordinate systems
-    coord_dict = coordinate_systems(model, sat_time, c1, c2, c3, variable_list,
-                                    coord_type, coord_grid)
+    coord_dict = coordinate_systems(model, sat_time[idx], c1[idx], c2[idx],
+                                    c3[idx], variable_list, coord_type,
+                                    coord_grid)
 
     # perform flythroughs
     if verbose:
         print('Interpolating through model data...', end="")
     interp_time = perf_counter()
-    for key in coord_dict.keys():
-        # interpolate requested data for each day.
-        # reader, file_name, variable_list, sat_time in hrs, c1, c2, c3,
+    for key in coord_dict.keys():  # keys = coordinate system names
+        # interpolate requested data for each coordinate system
+        # reader, file_dir, variable_list, sat_time in hrs, c1, c2, c3,
         #   z_dependencies
-        list_results = [Model_FlyAway(reader, times[file_date][0],
-                                      coord_dict[key][0],
-                                      ts_to_hrs(sat_time[times[file_date][6]],
-                                                file_date.split('_')[0]),
-                                      coord_dict[key][1][times[file_date][6]],
-                                      coord_dict[key][2][times[file_date][6]],
-                                      coord_dict[key][3][times[file_date][6]],
-                                      coord_dict[key][4], verbose=verbose)
-                        for file_date in times.keys() if
-                        len(sat_time[times[file_date][6]]) > 0]
-
-        # get new variable list from results dictionaries
-        newvar_list = []
-        [newvar_list.extend(list(results.keys())) for results in list_results]
+        
+        results = Model_FlyAway(reader, file_dir, coord_dict[key][0],
+                                ts_to_hrs(sat_time[idx], filedate),
+                                coord_dict[key][1], coord_dict[key][2],
+                                coord_dict[key][3], coord_dict[key][4],
+                                verbose=verbose)
 
         # collect interpolated data into the same dictionary
-        for var in newvar_list:  # sort and combine arrays for the same var
-            results_dict[var] = concatenate(tuple([results[var] for results
-                                                   in list_results]))
+        for var in results.keys():
+            results_dict[var] = results[var]
     if verbose:
         print(f'done in {perf_counter()-interp_time:.5f} s.')
     return results_dict
 
 
-def Prepare_Files(model, file_dir, call_type='normal'):
-    '''Return a list of the required height input for each variable. Create
-    wrapped files if needed.'''
+def File_UTCTimes(model, file_dir):
+    '''Returns the min start utc timestamp, the max end utc timestamp, and the
+    datetime object containing midnight of the start date of the data. Creates
+    preprocessed files if needed.'''
 
-    # Determine possible file patterns. Create wrapped files if needed.
-    file_patterns = MW.FileSearch(model, file_dir, call_type=call_type)
-    times = check_timescsv(file_patterns, model, call_type=call_type)
-    # reader creates converted files if DNE
-    return
+    # get times dictionary and datetime filedate object from files
+    list_file = file_dir + model +'_list.txt'
+    time_file = file_dir + model +'_times.txt'
+    if isfile(list_file):
+        times, tmp, filedate, tmp = read_timelist(time_file, list_file)
+    else:
+        reader = MW.Model_Reader(model)
+        ko = reader(file_dir, filetime=True)  # creates any preprocessed files
+        times, filedate = ko.times, ko.filedate
+        del ko
+        
+    # calculate minimum start time
+    start, end = [], []
+    for p in times.keys():
+        start.append(times[p]['start'][0])
+        end.append(times[p]['end'][-1])
+    start_utcts = (filedate + timedelta(hours=float(min(start)))).timestamp()
+    end_utcts = (filedate + timedelta(hours=float(max(end)))).timestamp()
+    return start_utcts, end_utcts, filedate
+        
