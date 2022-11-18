@@ -107,6 +107,17 @@ def Model_Reader(model):
     return module.MODEL()  # imports Kamodo
 
 
+def Model_Coupling(model):
+    '''Returns model reader for requested model. Model agnostic.
+    Input: model: A string or integer associated with the desired model.
+
+    Output: The MODEL Kamodo class object in the desired model reader.
+    '''
+
+    module = Choose_Model(model)
+    return module.coupling  # imports Kamodo
+
+
 def Model_Variables(model, file_dir=None, return_dict=False):
     '''Returns model variables for requested model. Model agnostic.
 
@@ -144,7 +155,7 @@ def Model_Variables(model, file_dir=None, return_dict=False):
             return
     else:
         reader = Model_Reader(model)
-        ko = reader(file_dir, fulltime=False, variables_requested='all')
+        ko = reader(file_dir, variables_requested='all')
     
         # either return or print nested_dictionary
         if return_dict:
@@ -184,6 +195,7 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
         coordinate dependencies, and variable units as the value.
         '''
 
+    search_string = search_string.lower()
     if model == '' and file_dir == '':
         new_dict = {model: Variable_Search(search_string, model=model,
                                            return_dict=True) for 
@@ -260,6 +272,22 @@ def File_Times(model, file_dir, print_output=True):
         print(f'Start {start_dt.strftime("Date: %Y-%m-%d  Time: %H:%M:%S")}')
         print(f'End {end_dt.strftime("Date: %Y-%m-%d  Time: %H:%M:%S")}')
     return start_dt, end_dt
+
+
+def File_List(model, file_dir, print_output=False):
+    '''Retrieve a list of the model output files in a given directory.
+    Inputs:
+        model: A string or integer associated with the desired model.
+        file_dir: A string giving the full file path for the chosen directory.
+        print_output: A boolean (default=True). If True, the time range of the
+            data in the given file directory is printed to the screen.
+            If False, no print statements are executed.
+    Output: A list of the data files.
+    '''
+
+    reader = Model_Reader(model)
+    kamodo_object = reader(file_dir, filetime=True, printfiles=print_output)
+    return kamodo_object.filename
 
 
 def Var_3D(model):
