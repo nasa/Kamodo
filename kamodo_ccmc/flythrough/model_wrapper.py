@@ -151,8 +151,8 @@ def Model_Variables(model, file_dir=None, return_dict=False):
         if return_dict:
             return var_dict
         else:
-            print('\nThe model accepts the standardized variable names listed ' +
-                  'below.')
+            print(f'\nThe {model} model accepts the standardized variable ' +
+                  'names listed below.')
             print('-------------------------------------------------------------' +
                   '----------------------')
             for key, value in sorted(var_dict.items()):
@@ -188,6 +188,8 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
     Returns a dictionary with information that varies per call type if 
     return_dict is True. Default is to print the information to the screen
     and return nothing (return_dict=False).
+    - if the search_string is left blank, then nothing will be returned. Only
+        the chosen information will be printed to the screen.
     - if neither model nor file_dir is set, the dictionary will have the model
         names as keys and the value will be a dictionary with the variable
         names as keys and the variable description, coordinate dependencies,
@@ -202,7 +204,16 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
         '''
 
     search_string = search_string.lower()
-    if model == '' and file_dir == '':
+    if search_string == '' and model == '' and file_dir == '':
+        print('Printing all possible variables across all models...')
+        for model in model_dict.keys():
+            Model_Variables(model, return_dict=False)
+    elif search_string == '' and model != '' and file_dir == '':
+        Model_Variables(model, return_dict=False)
+    elif search_string == '' and model != '' and file_dir != '':
+        Model_Variables(model, file_dir=file_dir, return_dict=False)
+    # remaining options assume search_string is set
+    elif model == '' and file_dir == '':
         new_dict = {model: Variable_Search(search_string, model=model,
                                            return_dict=True) for 
                      model, desc in model_dict.items()}
