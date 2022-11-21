@@ -4,24 +4,21 @@ Written by Rebecca Ringuette, 2021
 from datetime import datetime, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'b1x': ['B_1x', 'x component of the magnetic field on the ' +
-                          'secondary grid?', 0, 'GSM', 'car',
+model_varnames = {'b1x': ['B_1x', 'x component of the deviation from the ' +
+                          'Earth dipole field', 0, 'GSM', 'car',
                           ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'b1y': ['B_1y', 'y component of the magnetic field on the ' +
-                          'secondary grid?', 0, 'GSM', 'car',
+                  'b1y': ['B_1y', 'x component of the deviation from the ' +
+                          'Earth dipole field', 0, 'GSM', 'car',
                           ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'b1z': ['B_1z', 'z component of the magnetic field on the ' +
-                          'secondary grid?', 0, 'GSM', 'car',
+                  'b1z': ['B_1z', 'x component of the deviation from the ' +
+                          'Earth dipole field', 0, 'GSM', 'car',
                           ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'bx': ['B_x', 'x component of the magnetic field on the ' +
-                         'primary grid', 0, 'GSM', 'car',
-                         ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'by': ['B_y', 'y component of the magnetic field on the ' +
-                         'primary grid', 0, 'GSM', 'car',
-                         ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'bz': ['B_z', 'z component of the magnetic field on the ' +
-                         'primary grid', 0, 'GSM', 'car',
-                         ['time', 'X', 'Y', 'Z'], 'nT'],
+                  'bx': ['B_x', 'x component of the magnetic field', 0, 'GSM',
+                         'car', ['time', 'X', 'Y', 'Z'], 'nT'],
+                  'by': ['B_y', 'y component of the magnetic field', 0, 'GSM',
+                         'car', ['time', 'X', 'Y', 'Z'], 'nT'],
+                  'bz': ['B_z', 'z component of the magnetic field', 0, 'GSM',
+                         'car', ['time', 'X', 'Y', 'Z'], 'nT'],
                   'e': ['u', 'Energy density', 0, 'GSM', 'car',
                         ['time', 'X', 'Y', 'Z'], 'J/m**3'],
                   'jx': ['J_x', 'x component of the current density', 0, 'GSM',
@@ -32,8 +29,8 @@ model_varnames = {'b1x': ['B_1x', 'x component of the magnetic field on the ' +
                          'car', ['time', 'X', 'Y', 'Z'], 'muA/m**2'],
                   'p': ['P', 'Pressure', 0, 'GSM', 'car',
                         ['time', 'X', 'Y', 'Z'], 'nPa'],
-                  'rho': ['rho', 'proton density', 0, 'GSM', 'car',
-                          ['time', 'X', 'Y', 'Z'], '10**6/cm**3'],  # Mp/cc??
+                  'rho': ['N_p', 'proton number density', 0, 'GSM', 'car',
+                          ['time', 'X', 'Y', 'Z'], '10**6/cm**3'],  # Mp/cc
                   'ux': ['v_x', 'x component of velocity', 0, 'GSM', 'car',
                          ['time', 'X', 'Y', 'Z'], 'km/s'],
                   'uy': ['v_y', 'y component of velocity', 0, 'GSM', 'car',
@@ -96,6 +93,10 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+            The run constants c, g, and R are saved in the kamodo.constants
+            dictionary. R is the radius of the minimum inner boundary in R_E,
+            c is the reduced speed of light, and g is the ratio of specific
+            heats. Consult model documentation for more information.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
@@ -194,12 +195,8 @@ def MODEL():
             self._X = array(unique(mhd['x']))
             self._Y = array(unique(mhd['y']))
             self._Z = array(unique(mhd['z']))
-            self.c = mhd.meta['c']
-            self.g = mhd.meta['g']
-            self.R = mhd.meta['R']  # inner Earth radius
-            print(f'Run constants are c={self.c}, g={self.g}, and R={self.R}')
-            print('Access these values with kamodo_object.c, kamodo_object.g' +
-                  ', and kamodo_object.R')
+            self.constants = {'c': mhd.meta['c'], 'g': mhd.meta['g'],
+                              'R': mhd.meta['R']}
 
             # store kay for each variable desired
             self.variables = {model_varnames[var][0]: {
