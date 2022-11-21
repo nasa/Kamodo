@@ -15,7 +15,6 @@ MLAT [deg]   MLT [hr]   Pot [kV] Vazm [deg] Vmag [m/s]
 from glob import glob
 import numpy as np
 from time import perf_counter
-from datetime import datetime, timezone
 from netCDF4 import Dataset
 import re
 import os
@@ -42,13 +41,13 @@ def convert_all(file_dir, pattern):
     gtype = grid_type(test_files[0])
     if gtype:  # 'Uniform' in line
         print('Uniform grid detected. ', end="")
-        ftype = 'df'
+        ftype = 'uni'
     else:
         print('Equal-area grid detected. ', end="")
-        ftype = 'ea'
+        ftype = 'equ'
     # collect file names per timestep and convert
     files = sorted(glob(file_dir+'*'+ftype+'.txt'))
-    file_patterns = np.unique([file[:-7] for file in files])
+    file_patterns = np.unique([file[:-8] for file in files])
     converted_files = []
     for file_prefix in file_patterns:
         if not os.path.isfile(file_prefix+ftype+'.nc'):
@@ -140,7 +139,6 @@ def ascii_reader(filename):
     # add metadata
     variables['metadata'] = {'grid': grid_string[0][5:].strip(),
                              'model': model_string[0][6:].strip()}
-    print(filename, variables['MLAT']['data'].shape)
     return variables
 
 
@@ -209,10 +207,10 @@ def _toCDF(file_prefix):
     grid data files for faster data access.'''
 
     # Get data from both hemispheres, one file per hemisphere
-    files = sorted(glob(file_prefix+'*df.txt'))  # N first, S second if both
-    if files[0][-7] == 'N':
+    files = sorted(glob(file_prefix+'*uni.txt'))  # N first, S second if both
+    if files[0][-8] == 'N':
         variables_N, coords_N, var3D_list, var1D_list = df_data(files[0])
-    if files[-1][-7] == 'S':
+    if files[-1][-8] == 'S':
         variables_S, coords_S, var3D_list, var1D_list = df_data(files[-1])
     if len(files) > 2:
         print('The number of files for the northern and southern hemispheres' +
@@ -220,7 +218,7 @@ def _toCDF(file_prefix):
         return False
 
     # Combine coordinate arrays, assuming time and lon the same
-    if files[0][-7] == 'N':
+    if files[0][-8] == 'N':
         coords = coords_N
         variables = {var: variables_N[var] for var in var1D_list}
     else:
@@ -236,7 +234,7 @@ def _toCDF(file_prefix):
             tmp[:, len(coords_S['lat']):] = variables_N[var]
             variables[var] = tmp
     else:  # only data for one hemisphere was found, copy over data
-        if files[0][-7] == 'N':
+        if files[0][-8] == 'N':
             for var in var3D_list:
                 variables[var] = variables_N[var]
         else:
@@ -256,12 +254,12 @@ def _toCDF(file_prefix):
         variables[var] = tmp
 
     # Data wrangling complete. Start new output file
-    cdf_filename = file_prefix+'df.nc'
+    cdf_filename = file_prefix+'uni.nc'
     data_out = Dataset(cdf_filename, 'w', format='NETCDF4')
     data_out.file = ''.join([f+',' for f in files]).strip(',')
     data_out.model = 'SuperDARN'
     data_out.filedate = os.path.basename(files[0])[5:].split('-')[0]
-    data_out.grid = 'Default grid'
+    data_out.grid = 'Uniform grid'
 
     # establish coordinates (lon, lat, then time open)
     # lon: create dimension and variable
@@ -371,10 +369,10 @@ def _toCDFGroup(file_prefix):
     equal-area grid data files for faster data access.'''
 
     # Get data from both hemispheres, one file per hemisphere
-    files = sorted(glob(file_prefix+'*ea.txt'))  # N first, S second if both
-    if files[0][-7] == 'N':
+    files = sorted(glob(file_prefix+'*equ.txt'))  # N first, S second if both
+    if files[0][-8] == 'N':
         variables_N, coords_N, var3D_list, var1D_list = ea_data(files[0])
-    if files[-1][-7] == 'S':
+    if files[-1][-8] == 'S':
         variables_S, coords_S, var3D_list, var1D_list = ea_data(files[-1])
     if len(files) > 2:
         print('The number of files for the northern and southern hemispheres' +
@@ -382,7 +380,7 @@ def _toCDFGroup(file_prefix):
         return False
 
     # Combine coordinate arrays, assuming time and lon the same
-    if files[0][-7] == 'N':
+    if files[0][-8] == 'N':
         coords = coords_N
         variables = {var: variables_N[var] for var in var1D_list}
     else:
@@ -399,7 +397,7 @@ def _toCDFGroup(file_prefix):
             for lat_val in coords_S['lat']:
                 variables[var][lat_val] = variables_S[var][lat_val]
     else:  # only data for one hemisphere was found, copy over data
-        if files[0][-7] == 'N':
+        if files[0][-8] == 'N':
             for var in var3D_list:
                 variables[var] = variables_N[var]
         else:
@@ -451,7 +449,7 @@ def _toCDFGroup(file_prefix):
                 variables[var][lat_val] = tmp
 
     # Data wrangling complete. Start new output file
-    cdf_filename = file_prefix+'ea.nc'
+    cdf_filename = file_prefix+'equ.nc'
     data_out = Dataset(cdf_filename, 'w', format='NETCDF4')
     data_out.file = ''.join([f+',' for f in files]).strip(',')
     data_out.model = 'SuperDARN'
