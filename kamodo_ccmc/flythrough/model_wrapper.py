@@ -14,8 +14,8 @@ model_dict = {'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
               'OpenGGCM_GM': 'The Open Geospace General Circulation Model - ' +
                              'Global Magnetosphere outputs only',
               'AMGeO': 'Assimilative Mapping of Geospace Observations',
-              'SuperDARN_df': 'SuperDARN default grid output',
-              'SuperDARN_ea': 'SuperDARN equal area grid output',
+              'SuperDARN_uni': 'SuperDARN uniform grid output',
+              'SuperDARN_equ': 'SuperDARN equal area grid output',
               'ADELPHI': 'Coming soon',
               'WACCMX': 'Whole Atmosphere Community Climate Model With ' +
                         'Thermosphere and Ionosphere Extension',
@@ -74,12 +74,12 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.amgeo_4D as module
         return module
 
-    elif model == 'SuperDARN_df':
-        import kamodo_ccmc.readers.superdarndf_4D as module
+    elif model == 'SuperDARN_uni':
+        import kamodo_ccmc.readers.superdarnuni_4D as module
         return module
 
-    elif model == 'SuperDARN_ea':
-        import kamodo_ccmc.readers.superdarnea_4D as module
+    elif model == 'SuperDARN_equ':
+        import kamodo_ccmc.readers.superdarnequ_4D as module
         return module
 
     elif model == 'ADELPHI':
