@@ -7,6 +7,8 @@ model_dict = {'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
               'IRI': 'International Reference Ionosphere Model',
               'SWMF_IE': 'Space Weather Modeling Framework - Ionosphere and ' +
                          'Electrodynamics outputs',
+              'SWMF_GM': 'Space Weather Modeling Framework - Global ' +
+                         'Magnetosphere outputs',
               'TIEGCM': 'Thermosphere Ionosphere Electrodynamics General ' +
                         'Circulation Model',
               'OpenGGCM_GM': 'The Open Geospace General Circulation Model - ' +
@@ -19,7 +21,7 @@ model_dict = {'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
                         'Thermosphere and Ionosphere Extension',
               'WAMIPE': 'The coupled Whole Atmosphere Model - Ionosphere ' +
                         'Plasmasphere Model',
-              'DTM': 'The Drag Temperature Model'
+              'DTM': 'The Drag Temperature Model',
               }
 
 
@@ -54,6 +56,10 @@ def Choose_Model(model):
 
     elif model == 'SWMF_IE':
         import kamodo_ccmc.readers.swmfie_4Dcdf as module
+        return module
+
+    elif model == 'SWMF_GM':
+        import kamodo_ccmc.readers.swmfgm_4D as module
         return module
 
     elif model == 'TIEGCM':
