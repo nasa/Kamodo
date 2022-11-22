@@ -38,8 +38,6 @@ from spacepy.time import Ticktock
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 
-#Set option in spacepy to use ctrans instead of irbempy for coordinate transforms
-spc.DEFAULTS.set_values(use_irbem=False, itol=5)
 
 # Set option in spacepy to use ctrans instead of irbempy
 spc.DEFAULTS.set_values(use_irbem=False, itol=5)
@@ -148,6 +146,7 @@ def spacepy_spacepy(spacepy_coord, outCoord, outType):
     '''Converts given SpacePy object to the final SpacePy coordinate system.'''
 
     new_spacepy_coord = spacepy_coord.convert(outCoord, outType)
+    assert spacepy_coord.data.shape == new_spacepy_coord.data.shape
     return new_spacepy_coord
 
 
@@ -197,22 +196,28 @@ def extract_spacepy(inTime, c1, c2, c3, inCoord, inType, outCoord, outType,
     if outType == 'sph':
         idx = np.where(zz < 0.)[0]
         # neg radii error only observed to occur when lat=-90 deg in GDZ
-        while len(idx) > 0:
-            if verbose:
-                print(f'Shifting {len(idx)} latitudes to avoid negative ' +
-                      'radii or altitudes.')
-            c2[idx] += 0.000000001  # slightly offset lat from -90 deg
-            idx2 = np.where(c2 > 90.)[0]  # check for lat>90 after offset
-            if len(idx2) > 0:
-                c2[idx2] -= 0.000000002  # if so, correct in other direction
-            sat_track_idx = [[c3[idx[i]], c2[idx[i]], c1[idx[i]]] for i in
-                             range(len(idx))]  # make new sat_track
-            cvals_idx = Coords(sat_track_idx, inCoord, inType)
-            tt_idx = Ticktock(ts_to_spacepydt(inTime[idx]), 'UTC')
-            cvals_idx.ticks = tt_idx
-            newC_idx = cvals_idx.convert(outCoord, outType)
-            zz[idx], yy[idx], xx[idx] = newC_idx.data.T
-            idx = np.where(zz < 0.)[0]
+        # also occurs at other times. ignoring those...
+        close_to_pole = all(np.round(yy[idx], 1) == -90.) or \
+            all(np.round(yy[idx], 1) == 90.)
+        if len(idx) > 0 and not close_to_pole:
+            print('Negative radii/altitudes detected away from poles.')
+        if close_to_pole:
+            while len(idx) > 0:
+                if verbose:
+                    print(f'Shifting {len(idx)} latitudes to avoid negative ' +
+                          'radii or altitudes.')
+                c2[idx] += 0.000000001  # slightly offset lat from -90 deg
+                idx2 = np.where(c2 > 90.)[0]  # check for lat>90 after offset
+                if len(idx2) > 0:
+                    c2[idx2] -= 0.000000002  # correct in other direction
+                sat_track_idx = [[c3[idx[i]], c2[idx[i]], c1[idx[i]]] for i in
+                                 range(len(idx))]  # make new sat_track
+                cvals_idx = Coords(sat_track_idx, inCoord, inType)
+                tt_idx = Ticktock(ts_to_spacepydt(inTime[idx]), 'UTC')
+                cvals_idx.ticks = tt_idx
+                newC_idx = cvals_idx.convert(outCoord, outType)
+                zz[idx], yy[idx], xx[idx] = newC_idx.data.T
+                idx = np.where(zz < 0.)[0]
         if outCoord == 'SPH':  # SPH sph lon range should be 0 to 360
             idx = np.where(xx < 0)[0]  # select negative longitudes
             xx[idx] += 360  # fix
@@ -416,7 +421,9 @@ def ConvertCoord(inTime, c1, c2, c3, inCoord, inType, outCoord, outType,
         if verbose:
             print(f'Elapsed time: {toc-tic:.4f} seconds.')
         return c1, c2, c3, units
-
+    if len(c1) > 10000 or verbose:
+        print(f'Converting {len(c1)} positions into {outCoord+outType} ' +
+              'coordinates...', end="")
     # Create coordinate object
     if inCoord in spacepy_coordlist:
         coord_obj = create_spacepy(inTime, c1, c2, c3, inCoord, inType)
@@ -443,9 +450,8 @@ def ConvertCoord(inTime, c1, c2, c3, inCoord, inType, outCoord, outType,
 
     # Ending messages and final return.
     toc = time.perf_counter()
-    if verbose:
-        print('Converted from ', inCoord, inType, 'to:', outCoord, outType,
-              units, 'in', "{:0.4f}".format(toc-tic), 'seconds.')
+    if len(c1) > 10000 or verbose:
+        print(f'done in {toc-tic:0.4f} seconds.')
     return x, y, z, units
 
 

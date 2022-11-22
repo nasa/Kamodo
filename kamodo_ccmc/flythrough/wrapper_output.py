@@ -10,22 +10,29 @@ from scipy.interpolate import interp1d
 from datetime import datetime, timezone
 
 
-@np.vectorize
-def ts_to_datetime(time_val):
-    '''Convert from utc timestamp to datetime object.'''
-    return datetime.utcfromtimestamp(int(time_val)).replace(
+def utcts_to_datetime(utc_time):
+    '''Returns a datetime object representing midnight of the first day for the
+    given array of UTC timestamps.'''
+    first_ts = np.array(utc_time).min()
+    date_str = datetime.utcfromtimestamp(first_ts).replace(
+        tzinfo=timezone.utc).isoformat()[:10]
+    return datetime.strptime(date_str, '%Y-%m-%d').replace(
         tzinfo=timezone.utc)
-
+    
 
 @np.vectorize
-def datetime_to_utcts(date_time):
-    '''Convert from datetime UTC object to utc timestamp.'''
-    return datetime.timestamp(date_time)
+def utcts_to_hrs(utcts, filedate):
+    '''Converts the given utc timestamp to hours since the given filedate.'''
+    tmp = datetime.utcfromtimestamp(utcts).replace(tzinfo=timezone.utc)
+    return np.float32((tmp - filedate).total_seconds()/3600.)
 
 
 def Functionalize_TimeSeries(utc_time, variable_name, variable_units,
                              variable_data, kamodo_object=None):
-    '''Funtionalize the given time series data, return in a kamodo object.
+    '''Funtionalize the given time series data, return in a kamodo object. The
+    times are converted to hours since midnight of the first day in the
+    utc_time array, assuming the timestamps are given in UTC. The datetime
+    object for this date is stored as kamodo_object.filedate.
 
     utc_time = a 1D array of utc timestamps.
     variable_name = a string representation of the name of the variable.
@@ -33,35 +40,39 @@ def Functionalize_TimeSeries(utc_time, variable_name, variable_units,
     variable_data = a 1D array of the variable data of the same length as the
         utc_time array.
     Each command returns a kamodo object with the data functionalized. If you
-        want additional functions added to
-    a pre-existing kamodo object, then input the desired kamodo object through
-        the kamodo_object keyword.
+        want additional functions added to a pre-existing kamodo object, then
+        input the desired kamodo object through the kamodo_object keyword.
     '''
-
-    # Perform the conversion on the array of UTC timestamps
-    time_date = ts_to_datetime(utc_time)
-
-    # Define an interpolator for the given time series array.
-    interp = interp1d(utc_time, variable_data, bounds_error=False,
-                      fill_value=np.NaN)
-
-    # Functionalize the time series array
-    @kamodofy(units=variable_units, data=variable_data)  # units
-    # function depends on array of datetime objects
-    def timeseries_func(time=time_date):
-        # convert the given datetime objects to UTC timestamps
-        utc_ts = datetime_to_utcts(time)
-        return interp(utc_ts)     # return the scipy interpolator
 
     # Define a Kamodo object to include the desired functions.
     if kamodo_object is None:
         kamodo_object = Kamodo()
+
+    # create the filedate attribute if DNE
+    if not hasattr(kamodo_object, 'filedate'):
+        # Perform the conversion on the array of UTC timestamps
+        kamodo_object.filedate = utcts_to_datetime(utc_time)
+    # convert utc timestamps to hours since filedate
+    time = utcts_to_hrs(utc_time, kamodo_object.filedate)
+
+    # Define an interpolator for the given time series array.
+    interp = interp1d(time, variable_data, bounds_error=False,
+                      fill_value=np.NaN)
+
+    # Functionalize the time series array and return
+    @kamodofy(units=variable_units, data=variable_data,
+              arg_units={'time': 'hr'})  # units
+    def timeseries_func(time=time):
+        return interp(time)     # return the scipy interpolator
     kamodo_object[variable_name] = timeseries_func
     return kamodo_object
 
 
 def Functionalize_SFResults(model, results, kamodo_object=None):
     '''Functionalizes all non-coordinate variables in the results dictionary.
+    The code assumes that all variables given in the results dictionary come
+    from the given model. The UTC timestamps given are converted to hours since
+    midnight of the earliest timestamp. Interpolation calls should use hours.
 
     model = name of model (string) from outut of MW.Choose_Model('').
     results = dictionary returned from any flythrough function.
@@ -70,8 +81,6 @@ def Functionalize_SFResults(model, results, kamodo_object=None):
     '''
     import kamodo_ccmc.flythrough.model_wrapper as MW
 
-    if kamodo_object is None:
-        kamodo_object = Kamodo()
     variable_list = [item for item in list(results.keys()) if item not in
                      ['utc_time', 'c1', 'c2', 'c3', 'net_idx', 'metadata']]
     for varname in variable_list:

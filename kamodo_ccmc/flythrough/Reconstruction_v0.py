@@ -64,9 +64,8 @@ from scipy.interpolate import RegularGridInterpolator
 import kamodo_ccmc.flythrough.model_wrapper as MW
 
 
-def read_GDC_sattraj(file_dir):
-    #read data from Bob's file into dictionary
-    filename = file_dir+'KGS_orbit_data.txt'
+def read_GDC_sattraj(filename):
+    # read data from Bob's file into dictionary
     file_dict = {}
     sat_file = DictReader(open(filename,'r'),delimiter='\t')
     for row in sat_file:
@@ -245,7 +244,7 @@ class RECON(Kamodo):
         self.file_dir = file_dir  #file path to model data
         self.dx, self.dy = dx, dy  #grid resolution for x and y axes
         self.d1, self.d2 = d1, d2  #resolution for non-reconstructed dimensions
-        self.sat_time = sat_time   #save input satellite trajectory time
+        self.sat_time = sat_time   #save input satellite trajectory time (utc timestamps)
         self.c1, self.c2, self.c3 = c1, c2, c3  #save input trajectory spatial coordinates
         self.coord_type = coord_type  #'GDZ', 'GEO', 'GSM', 'GSE', 'SM', 'GEI', 'MAG', 'SPH', 'RLL'
         self.coord_grid = coord_grid  #'car' or 'sph'
@@ -411,13 +410,33 @@ class RECON(Kamodo):
             fly_c1 = fly_c1[LT_idx]
             fly_c2 = fly_c2[LT_idx]
             fly_c3 = fly_c3[LT_idx]
-        
+
+        # decrease computation time by removing times not in files
+        beg, end = MW.File_Times(self.model, self.file_dir, print_output=False)
+        beg_ts, end_ts = beg.timestamp(), end.timestamp()
+        tidx = np.where((fly_t >= beg_ts) & (fly_t <= end_ts))[0]
+        if len(tidx) > 0:
+            if len(tidx) < len(fly_t):
+                diff = len(fly_t) - len(tidx)
+                print(f'{diff} times not in model data. Removing.')
+            fly_t, fly_c1 = fly_t[tidx], fly_c1[tidx]
+            fly_c2, fly_c3 = fly_c2[tidx], fly_c3[tidx]
+
         #perform flythrough        
         print(f'Performing satellite constellation flythrough for {fly_t.size} locations...')
         results = SF.ModelFlythrough(self.model, self.file_dir, 
                         [self.variable_name], fly_t, fly_c1, fly_c2, 
                         fly_c3, self.coord_type+'-'+self.coord_grid,
                         _print_units=False)
+        
+        # save correct time array for flythrough (all bad times removed)
+        self.time_min = results['utc_time'].min()
+        self.time_max = results['utc_time'].max()
+        if self.t_avg > self.time_max or self.t_avg < self.time_min:
+            self.t_avg = np.mean([self.time_min, self.time_max])
+            print('Average time not in model data. Choosing new time in ' +
+                  f'middle of model data time range: {self.t_avg}s or ' +
+                  f'{ts_to_dt(self.t_avg)}')
         self.data_datetime = ts_to_dt(results['utc_time'][0])
         #self.results = results  #too much demand on memory
         return results
@@ -656,7 +675,7 @@ class RECON(Kamodo):
             #assign values for model grid according to recon_dims chosen   
             #x coordinate first
             if self.recon_dims[:-2]=='t':  #convert hours back to UTC timestamps
-                new_time = self.x*3600.+self.sat_time.min() #model_x
+                new_time = self.x*3600.+self.time_min  #model_x
             elif self.recon_dims[:-2]=='c1':
                 new_c1 = self.x #model_x
             elif self.recon_dims[:-2]=='c2':
@@ -684,15 +703,15 @@ class RECON(Kamodo):
                                 self.coord_type+'-'+self.coord_grid,
                                 _print_units=False)
             #self.model_results = model_results  #store for sanity checks
+            print(f'Grid flythrough completed in {ti.perf_counter()-t0:.5f} s.')
             
-            #reshape data and return
+            # reshape data and return. The times should always be defined.
             if self.recon_dims=='tc1': #needed only for this combination
                 model_data = np.reshape(model_results[self.variable_name],
                                     (self.y.size,self.x.size)).T
             else:
                 model_data = np.reshape(model_results[self.variable_name],
                                     (self.x.size,self.y.size))
-            print(f'Grid flythrough completed in {ti.perf_counter()-t0:.5f} s.')
             return model_data
 
         #A model orbit slice is what an infinite number of satellites would see if
@@ -763,7 +782,7 @@ class RECON(Kamodo):
             #..._AvgDSlice
             #x coordinate first
             if self.recon_dims[:-2]=='t':  #convert hours back to UTC timestamps
-                new_time = self.x*3600.+self.sat_time.min() #model_x
+                new_time = self.x*3600.+self.time_min  #model_x
             elif self.recon_dims[:-2]=='c1':
                 new_c1 = self.x #model_x
             elif self.recon_dims[:-2]=='c2':
@@ -803,60 +822,44 @@ class RECON(Kamodo):
                 final_shape = (self.n1,self.nx,self.n2,self.ny)  #flip t and c1
                 mean_axes = (1,2)
             elif self.recon_dims=='c1c2':  
-                self.n1 = int(np.ceil((self.sat_time.max()-self.sat_time.min())/self.d1))
+                self.n1 = int(np.ceil((self.time_max-self.time_min)/self.d1))
                 self.n2 = int(np.ceil((self.c3.max()-self.c3.min())/self.d2))
-                new_time = np.linspace(self.sat_time.min(), self.sat_time.max(), self.n1)
+                new_time = np.linspace(self.time_min, self.time_max, self.n1)
                 new_c3 = np.linspace(self.c3.min(), self.c3.max(), self.n2)            
                 final_shape = (self.nx,self.n1,self.ny,self.n2) #have to flip t and c1
                 mean_axes = (0,3)
             elif self.recon_dims=='c1c3':
-                self.n1 = int(np.ceil((self.sat_time.max()-self.sat_time.min())/self.d1))
+                self.n1 = int(np.ceil((self.time_max-self.time_min)/self.d1))
                 self.n2 = int(np.ceil((self.c2.max()-self.c2.min())/self.d2))
-                new_time = np.linspace(self.sat_time.min(), self.sat_time.max(), self.n1)
+                new_time = np.linspace(self.time_min, self.time_max, self.n1)
                 new_c2 = np.linspace(self.c2.min(), self.c2.max(), self.n2)  
                 final_shape = (self.nx,self.n1,self.n2,self.ny) #flip t and c1
                 mean_axes = (0,2)
             elif self.recon_dims=='c2c3':
-                self.n1 = int(np.ceil((self.sat_time.max()-self.sat_time.min())/self.d1))
+                self.n1 = int(np.ceil((self.time_max-self.time_min)/self.d1))
                 self.n2 = int(np.ceil((self.c1.max()-self.c1.min())/self.d2))
-                new_time = np.linspace(self.sat_time.min(), self.sat_time.max(), self.n1)
+                new_time = np.linspace(self.time_min, self.time_max, self.n1)
                 new_c1 = np.linspace(self.c1.min(), self.c1.max(), self.n2)      
                 final_shape = (self.n2,self.n1,self.nx,self.ny)  #flip t and c1
                 mean_axes = (0,1)
             final_shape = list(final_shape)
-                
+
             #create coordinate arrays of same length for flythrough, perform flythrough
             tt, xx, yy, zz = np.meshgrid(new_time, new_c1, new_c2, new_c3, indexing = 'xy')
-            print(f'Performing non-averaged grid flythrough for {np.ravel(tt).size} locations in {len(new_time)} time increments...')
+            print(f'Performing non-averaged grid flythrough for {np.ravel(tt).size} locations.')
             t0 = ti.perf_counter()
-            model_results, t_skipped = {}, 0
-            for t in new_time:  #loop through grids at individual times
-                idx = np.where(new_time==t)[0]
-                print(f'Performing flythrough for time increment {idx[0]+1} out of {len(new_time)}...  ',end='\r')
-                tt, xx, yy, zz = np.meshgrid(t, new_c1, new_c2, new_c3, indexing = 'xy')
-                t_results = SF.ModelFlythrough(self.model, self.file_dir, 
-                                    [self.variable_name], np.ravel(tt), np.ravel(xx),
-                                    np.ravel(yy), np.ravel(zz),
-                                    self.coord_type+'-'+self.coord_grid,
-                                    _print_units=False)                
-                #store results if time not excluded
-                if len(model_results.keys())==0 and len(t_results['utc_time'])>0: 
-                    model_results=t_results
-                    for key in model_results: model_results[key] = list(model_results[key]) 
-                    #change to lists for more efficient memory handling
-                elif len(model_results.keys())>0 and len(t_results['utc_time'])>0: 
-                    for key in model_results.keys(): model_results[key].extend(list(t_results[key]))
-                elif len(t_results['utc_time'])==0:
-                    final_shape[1]-=1  #if a time is skipped, update the expected final shape accordingly
-                    t_skipped += 1
+            model_results = SF.ModelFlythrough(self.model, self.file_dir, 
+                                [self.variable_name], np.ravel(tt), np.ravel(xx),
+                                np.ravel(yy), np.ravel(zz),
+                                self.coord_type+'-'+self.coord_grid,
+                                _print_units=False)
             print(f'Grid flythrough completed in {ti.perf_counter()-t0:.5f} s.')
-            for key in model_results.keys(): model_results[key] = np.array(model_results[key])
             #self.model_results = model_results
 
             #reshape, average grids over non-reconstructed dimensions and return
             tmp = np.reshape(model_results[self.variable_name],
-                                    tuple(final_shape))
-            model_array = np.transpose(tmp, axes=(1,0,2,3))
+                             tuple(final_shape))
+            model_array = np.transpose(tmp, axes=(1, 0, 2, 3))
             model_data = np.nanmean(model_array, mean_axes)  #ignore NaN values in avg
             return model_data
 

@@ -7,19 +7,21 @@ model_dict = {'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
               'IRI': 'International Reference Ionosphere Model',
               'SWMF_IE': 'Space Weather Modeling Framework - Ionosphere and ' +
                          'Electrodynamics outputs',
+              'SWMF_GM': 'Space Weather Modeling Framework - Global ' +
+                         'Magnetosphere outputs',
               'TIEGCM': 'Thermosphere Ionosphere Electrodynamics General ' +
                         'Circulation Model',
               'OpenGGCM_GM': 'The Open Geospace General Circulation Model - ' +
                              'Global Magnetosphere outputs only',
               'AMGeO': 'Assimilative Mapping of Geospace Observations',
-              'SuperDARN_df': 'SuperDARN default grid output',
-              'SuperDARN_ea': 'SuperDARN equal area grid output',
+              'SuperDARN_uni': 'SuperDARN uniform grid output',
+              'SuperDARN_equ': 'SuperDARN equal area grid output',
               'ADELPHI': 'Coming soon',
               'WACCMX': 'Whole Atmosphere Community Climate Model With ' +
                         'Thermosphere and Ionosphere Extension',
               'WAMIPE': 'The coupled Whole Atmosphere Model - Ionosphere ' +
                         'Plasmasphere Model',
-              'DTM': 'The Drag Temperature Model'
+              'DTM': 'The Drag Temperature Model',
               }
 
 
@@ -56,6 +58,10 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.swmfie_4Dcdf as module
         return module
 
+    elif model == 'SWMF_GM':
+        import kamodo_ccmc.readers.swmfgm_4D as module
+        return module
+
     elif model == 'TIEGCM':
         import kamodo_ccmc.readers.tiegcm_4D as module
         return module
@@ -68,12 +74,12 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.amgeo_4D as module
         return module
 
-    elif model == 'SuperDARN_df':
-        import kamodo_ccmc.readers.superdarndf_4D as module
+    elif model == 'SuperDARN_uni':
+        import kamodo_ccmc.readers.superdarnuni_4D as module
         return module
 
-    elif model == 'SuperDARN_ea':
-        import kamodo_ccmc.readers.superdarnea_4D as module
+    elif model == 'SuperDARN_equ':
+        import kamodo_ccmc.readers.superdarnequ_4D as module
         return module
 
     elif model == 'ADELPHI':
@@ -145,8 +151,8 @@ def Model_Variables(model, file_dir=None, return_dict=False):
         if return_dict:
             return var_dict
         else:
-            print('\nThe model accepts the standardized variable names listed ' +
-                  'below.')
+            print(f'\nThe {model} model accepts the standardized variable ' +
+                  'names listed below.')
             print('-------------------------------------------------------------' +
                   '----------------------')
             for key, value in sorted(var_dict.items()):
@@ -182,6 +188,8 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
     Returns a dictionary with information that varies per call type if 
     return_dict is True. Default is to print the information to the screen
     and return nothing (return_dict=False).
+    - if the search_string is left blank, then nothing will be returned. Only
+        the chosen information will be printed to the screen.
     - if neither model nor file_dir is set, the dictionary will have the model
         names as keys and the value will be a dictionary with the variable
         names as keys and the variable description, coordinate dependencies,
@@ -196,7 +204,16 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
         '''
 
     search_string = search_string.lower()
-    if model == '' and file_dir == '':
+    if search_string == '' and model == '' and file_dir == '':
+        print('Printing all possible variables across all models...')
+        for model in model_dict.keys():
+            Model_Variables(model, return_dict=False)
+    elif search_string == '' and model != '' and file_dir == '':
+        Model_Variables(model, return_dict=False)
+    elif search_string == '' and model != '' and file_dir != '':
+        Model_Variables(model, file_dir=file_dir, return_dict=False)
+    # remaining options assume search_string is set
+    elif model == '' and file_dir == '':
         new_dict = {model: Variable_Search(search_string, model=model,
                                            return_dict=True) for 
                      model, desc in model_dict.items()}
