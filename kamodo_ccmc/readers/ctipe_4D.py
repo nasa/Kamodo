@@ -268,7 +268,7 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ',
 
 
 def MODEL():
-    from numpy import array, zeros, NaN, unique, append, where
+    from numpy import array, NaN, unique, append, where
     from numpy import transpose, median
     from time import perf_counter
     from glob import glob
@@ -366,6 +366,11 @@ def MODEL():
                                             filedate_ts)/3600.
                     self.times[p]['all'] = (array(self.times[p]['all']) -
                                             filedate_ts)/3600.
+
+                # perform post-processing to speed up pressure level conversion
+                from kamodo_ccmc.readers.ctipe_tocdf import convert_all
+                convert_all(file_dir, self.pattern_files, self.times)
+
                 # create time list file if DNE
                 RU.create_timelist(list_file, time_file, self.modelname,
                                    self.times, self.pattern_files,
@@ -537,19 +542,23 @@ def MODEL():
                 if p == 'density':
                     setattr(self, '_ilev1',
                             array(cdf_data.variables['plev']))
-                    tmp = array(cdf_data.variables['height'])  # t, plev, l, l
-                    km = median(tmp, axis=[0, 2, 3])/1000.
-                    setattr(self, '_km_ilev1', km)
-                    setattr(self, '_km_ilev1_max', tmp.max()/1000.)
-                    setattr(self, '_km_ilev1_min', tmp.min()/1000.)
+                    if isfile(file_dir+'CTIPe_km.nc'):  # km_ilev1 from file
+                        km_data = Dataset(file_dir+'CTIPe_km.nc')
+                        setattr(self, '_km_ilev1',
+                                array(km_data.variables['km_ilev1']))
+                        setattr(self, '_km_ilev1_max', km_data.km_ilev1_max)
+                        setattr(self, '_km_ilev1_min', km_data.km_ilev1_min)
+                        km_data.close()
                 elif p == 'neutral':
                     setattr(self, '_ilev',
                             array(cdf_data.variables['plev']))
-                    tmp = array(cdf_data.variables['height'])
-                    km = median(tmp, axis=[0, 2, 3])/1000.  # t, plev, l, l
-                    setattr(self, '_km_ilev', km)
-                    setattr(self, '_km_ilev_max', tmp.max()/1000.)
-                    setattr(self, '_km_ilev_min', tmp.min()/1000.)
+                    if isfile(file_dir+'CTIPe_km.nc'):  # km_ilev from file
+                        km_data = Dataset(file_dir+'CTIPe_km.nc')
+                        setattr(self, '_km_ilev',
+                                array(km_data.variables['km_ilev']))
+                        setattr(self, '_km_ilev_max', km_data.km_ilev_max)
+                        setattr(self, '_km_ilev_min', km_data.km_ilev_min)
+                        km_data.close()
                     lon = array(cdf_data.variables['elon'])  # 0 to 360
                     lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
                     lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
