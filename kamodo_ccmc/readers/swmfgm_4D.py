@@ -110,7 +110,8 @@ def MODEL():
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
-                files = sorted(glob(file_dir+'*.out*'))  # .out or .outs
+                files = sorted(glob(file_dir+'*.out')) +\
+                    sorted(glob(file_dir+'*.outs'))  # .out or .outs
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 patterns = unique([basename(f)[:10] for f in files])
                 # get time grid from files
@@ -128,7 +129,8 @@ def MODEL():
                 # establish time attributes from filenames
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.out*'))
+                    pattern_files = sorted(glob(file_dir+p+'*.out')) +\
+                        sorted(glob(file_dir+p+'*.outs'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
@@ -197,6 +199,7 @@ def MODEL():
             self._Z = array(unique(mhd['z']))
             self.constants = {'c': mhd.meta['c'], 'g': mhd.meta['g'],
                               'R': mhd.meta['R']}
+            # close file. HOW???
 
             # store kay for each variable desired
             self.variables = {model_varnames[var][0]: {
@@ -209,6 +212,7 @@ def MODEL():
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
             if printfiles:
                 print(self.filename)
+            self.octree = {p: {} for p in self.pattern_files.keys()}
 
             # register interpolators for each requested variable
             t_reg = perf_counter()
@@ -253,13 +257,22 @@ def MODEL():
 
             # all of data is time + 3D spatial
             def func(i):  # i is the file/time number
+                # initialize octree instance for file if not already done
+                if i not in self.octree[key].keys():
+                    mhd = sp.IdlFile(self.pattern_files[key][i])
+                    x = array(mhd['x'])
+                    y = array(mhd['y'])
+                    z = array(mhd['z'])
+                    self.octree[key][i] = None  # initialized octree object
+                    # close file (how?)
                 # get data from file
+                octree = self.octree[key][i]
                 data = sp.IdlFile(self.pattern_files[key][i])[gvar]  # dmarray
 
                 # assign custom interpolator: Lutz Rastaetter 2021
                 def interp(xvec):
                     tic = perf_counter()
-                    X, Y, Z = xvec.T
+                    X, Y, Z = xvec.T  # xvec can be used like this
                     '''
                     var_data = ffi.new("float[]", list(data))
                     xpos = ffi.new("float[]", list(X))
@@ -271,7 +284,7 @@ def MODEL():
                     # THIS NEEDS TO RETURN THE return_data_ffi VARIABLE!!!!!!!!!!!
                     IS_OK = lib.interpolate_amrdata_multipos(
                       xpos, ypos, zpos, npos, var_data, return_data_ffi)
-                    return_data[:] = list(return_data_ffi)  # STILL ZEROS!
+                    return_data[:] = list(return_data_ffi)  # STILL ZEROS because return_data_ffi was not returned?
                     toc = perf_counter()
                     print(varname,' interp: ', toc-tic, 'seconds elapsed')
                     return return_data
