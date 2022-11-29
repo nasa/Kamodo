@@ -284,7 +284,7 @@ def MODEL():
     from os.path import basename, isfile
     from glob import glob
     from numpy import zeros, transpose, array, append, insert, where, unique
-    from numpy import NaN, mean, broadcast_to, cos, sin, sum, median, squeeze
+    from numpy import NaN, mean, broadcast_to, cos, sin, sum, squeeze
     from numpy import pi as nppi
     from netCDF4 import Dataset
     from kamodo import Kamodo
@@ -370,6 +370,10 @@ def MODEL():
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
+
+                # perform post-processing to speed up pressure level conversion
+                from kamodo_ccmc.readers.tiegcm_tocdf import convert_all
+                convert_all(file_dir, self.pattern_files, self.times)
 
                 # create time list file if DNE
                 RU.create_timelist(list_file, time_file, self.modelname,
@@ -529,23 +533,23 @@ def MODEL():
             if 'H_ilev' in varname_list:  # height in cm
                 varname_list.remove('H_ilev')
                 varname_list = ['H_ilev'] + varname_list
-                tmp = [key for key, values in model_varnames.items()
-                       if values[0] == 'H_ilev'][0]
-                h = array(cdf_data.variables[tmp])
-                self._km_ilev = median(h, axis=[0, 2, 3])/100000.  # ilev [1]
-                self._km_ilev_max = h.max()/100000.
-                self._km_ilev_min = h.min()/100000.
-                del h
+                if isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev from file
+                    km_data = Dataset(file_dir+'TIEGCM_km.nc')
+                    if hasattr(km_data, 'km_ilev_max'):
+                        self._km_ilev = array(km_data.variables['km_ilev'])
+                        self._km_ilev_max = km_data.km_ilev_max
+                        self._km_ilev_min = km_data.km_ilev_min
+                    km_data.close()
             if 'H_ilev1' in varname_list:  # height in cm
                 varname_list.remove('H_ilev1')
                 varname_list = ['H_ilev1'] + varname_list
-                tmp = [key for key, values in model_varnames.items()
-                       if values[0] == 'H_ilev1'][0]
-                h = array(cdf_data.variables[tmp])
-                self._km_ilev1 = median(h, axis=[0, 2, 3])/100000.  # ilev [1]
-                self._km_ilev1_max = h.max()/100000.
-                self._km_ilev1_min = h.min()/100000.
-                del h
+                if isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev1 from file
+                    km_data = Dataset(file_dir+'TIEGCM_km.nc')
+                    if hasattr(km_data, 'km_ilev1_max'):
+                        self._km_ilev1 = array(km_data.variables['km_ilev1'])
+                        self._km_ilev1_max = km_data.km_ilev1_max
+                        self._km_ilev1_min = km_data.km_ilev1_min
+                    km_data.close()
             cdf_data.close()
             t_reg = perf_counter()
             for varname in varname_list:
