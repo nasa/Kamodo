@@ -23091,9 +23091,13 @@ def shoreline(rscale=1.0, coord='GEO', coordT='car', utcts=''):
         pos[maskNaN] = np.nan
 
     if coordT == 'sph':
+        # Check that longitude range is -180 to 180 and not 0 to 360
+        pos[pos>180.] += -360.
+
         # Special check to insert additional NaNs where data jumps more than 300 degrees in longitude
-        for i in range(len(pos[:,0])-2):
-            j = len(pos[:,0])-1 - i
+        startlen = pos.shape[0]
+        for i in range(startlen-1):
+            j = startlen-1-i
             if abs(pos[j,0] - pos[j-1,0]) > 300.:
                 pos = np.insert(pos, j, np.array((None,None,None)), 0)
 
