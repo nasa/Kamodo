@@ -12,6 +12,9 @@ __pycache__/
 *.o
 *.mod
 
+# Emacs editor backup files
+*~
+
 # Distribution / packaging
 .Python
 build/
