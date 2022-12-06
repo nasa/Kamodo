@@ -1,3 +1,4 @@
+import os
 from cffi import FFI
 ffibuilder = FFI()
 
@@ -34,6 +35,10 @@ int trace_fieldline_octree(float x_start,float y_start,float z_start, float r_en
                            float dn, float bdp, float *tilt, float spherical_deg2rad);
 """)
 
+
+libraries=['']    # on Windowns, no explicit list of libraries is needed
+if os.name == 'posix': # Unix-like OS (MacOS, Linux)
+    libraries=['m']   # link with the math library (libm)
 
 ffibuilder.set_source("_interpolate_amrdata",  # name of the output C extension
 """
@@ -220,7 +225,7 @@ if (NZ==1){return(-6);}
 """,
     sources=['interpolate_amrdata.c', 'setup_parent.c', 'setup_octree.c', 'interpolate_in_block.c',
              'find_octree_block.c','find_in_block.c','find_block.c','trace_fieldline.c'],
-    libraries=['m'])    # on Unix, link with the math library
+    libraries=libraries)
 
 if __name__ == "__main__":
     ffibuilder.compile(verbose=True,debug=False)
