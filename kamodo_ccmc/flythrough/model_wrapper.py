@@ -372,3 +372,25 @@ def coord_units(coord_type, coord_grid):
                     'c3': 'R_E'}
 
 
+def coord_names(coord_type, coord_grid):
+    '''Determines the proper coordinate component names for a given coordinate
+    system and grid type.
+
+    Inputs:
+        coord_type: An integer or string corresponding to the desired
+            coordinate system.
+        coord_grid: An integer or string corresponding to the desired
+            coordinate grid type (e.g. 0 for cartesian or 1 for spherical.)
+    Outputs: A dictionary with key, value pairs giving the proper coordinate
+        component names for each coordinate grid component (e.g. c1, c2, c3
+        associated with Longitude, Latitude, and Radius for most spherical
+        systems).
+    '''
+
+    if coord_grid == 'car':
+        return {'c1': 'X_'+coord_type, 'c2': 'Y_'+coord_type,
+                'c3': 'Z_'+coord_type}
+    elif coord_grid == 'sph' and coord_type == 'GDZ':
+        return {'c1': 'Longitude', 'c2': 'Latitude', 'c3': 'Altitude'}
+    elif coord_grid == 'sph' and coord_type != 'GDZ':
+        return {'c1': 'Longitude', 'c2': 'Latitude', 'c3': 'Radius'}
