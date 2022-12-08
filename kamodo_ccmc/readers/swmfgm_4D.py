@@ -120,11 +120,8 @@ def MODEL():
                     self.filedate = datetime.strptime(
                         dt.isoformat()[:10], '%Y-%m-%d').replace(
                         tzinfo=timezone.utc)
-                    delta_t = RU.str_to_hrs(dt.isoformat(), self.filedate,
-                                            '%Y-%m-%dT%H:%M:%S')
                 else:
                     self.filedate = datetime(1900, 1, 1, tzinfo=timezone.utc)
-                    delta_t = 0.
 
                 # establish time attributes from filenames
                 for p in patterns:
@@ -137,8 +134,8 @@ def MODEL():
                     # loop through to get times, one file per time step
                     self.times[p]['start'] = array([RU.tstr_to_hrs(
                         sp.IdlFile(f).attrs['strtime'][:-1].replace(
-                            'h', ':').replace('m', ':')) + delta_t
-                        for f in pattern_files])
+                            'h', ':').replace('m', ':')) for f in
+                        pattern_files])
                     self.times[p]['end'] = self.times[p]['start'].copy()
                     self.times[p]['all'] = self.times[p]['start'].copy()
 

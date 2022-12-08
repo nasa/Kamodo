@@ -82,9 +82,9 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.superdarnequ_4D as module
         return module
 
-    elif model == 'ADELPHI':
-        import kamodo_ccmc.readers.adelphi_4D as module
-        return module
+    # elif model == 'ADELPHI':
+    #    import kamodo_ccmc.readers.adelphi_4D as module
+    #    return module
 
     elif model == 'WACCMX':
         import kamodo_ccmc.readers.waccmx_4D as module
@@ -233,6 +233,8 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
         new_dict = {key: [value[0], value[-4]+'-'+value[-3], value[-2],
                           value[-1]] for key, value in
                     var_dict.items() if search_string in value[0].lower()}
+        if new_dict == {}:
+            print(f'No {search_string} variables found for {model}.')
         if not return_dict:
             for key, value in new_dict.items():
                 print(key+':', value)
@@ -244,6 +246,9 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
         new_dict = {name: [value[0], value[-4]+'-'+value[-3],
                            value[-2], value[-1]] for name, value in
                     ko_var_dict.items() if search_string in value[0].lower()}
+        if new_dict == {}:
+            print(f'No {search_string} variables found for {model} in ' +
+                  f'{file_dir}.')
         if not return_dict:
             for name, value in new_dict.items():
                 print(name+':', value)
@@ -367,3 +372,25 @@ def coord_units(coord_type, coord_grid):
                     'c3': 'R_E'}
 
 
+def coord_names(coord_type, coord_grid):
+    '''Determines the proper coordinate component names for a given coordinate
+    system and grid type.
+
+    Inputs:
+        coord_type: An integer or string corresponding to the desired
+            coordinate system.
+        coord_grid: An integer or string corresponding to the desired
+            coordinate grid type (e.g. 0 for cartesian or 1 for spherical.)
+    Outputs: A dictionary with key, value pairs giving the proper coordinate
+        component names for each coordinate grid component (e.g. c1, c2, c3
+        associated with Longitude, Latitude, and Radius for most spherical
+        systems).
+    '''
+
+    if coord_grid == 'car':
+        return {'c1': 'X_'+coord_type, 'c2': 'Y_'+coord_type,
+                'c3': 'Z_'+coord_type}
+    elif coord_grid == 'sph' and coord_type == 'GDZ':
+        return {'c1': 'Longitude', 'c2': 'Latitude', 'c3': 'Altitude'}
+    elif coord_grid == 'sph' and coord_type != 'GDZ':
+        return {'c1': 'Longitude', 'c2': 'Latitude', 'c3': 'Radius'}
