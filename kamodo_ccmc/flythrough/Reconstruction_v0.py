@@ -133,8 +133,8 @@ class RECON(Kamodo):
         a radius in R_E, and all cartesian coordinate systems expect x, y, z values
         in R_E. All times should be in UTC timestamps.
     - recon_option = string representing reconstruction and comparison method
-        Choose from 'Unmod_AvgSlice','Unmod_AvgDSlice','AvgMod_AvgSlice',
-        'AvgMod_AvgDSlice', 'Unmod_OrbitSliceD', 'Unmod_OrbitSliceN', 'AvgMod_OrbitSliceD',
+        Choose from 'UnMod_AvgSlice','UnMod_AvgDSlice','AvgMod_AvgSlice',
+        'AvgMod_AvgDSlice', 'UnMod_OrbitSliceD', 'UnMod_OrbitSliceN', 'AvgMod_OrbitSliceD',
         and 'AvgMod_OrbitSliceN'
         - UnMod means the satellite trajectory is not modified
         - AvgMod means the dimensions not reconstructed are replaced with either 
@@ -257,12 +257,12 @@ class RECON(Kamodo):
         self.run_option = run_option  #either only flythrough or all
         
         #check inputs for validity
-        if recon_option not in  ['Unmod_AvgSlice','Unmod_AvgDSlice','AvgMod_AvgSlice',
-                                 'AvgMod_AvgDSlice', 'Unmod_OrbitSliceD', 'Unmod_OrbitSliceN',
+        if recon_option not in  ['UnMod_AvgSlice','UnMod_AvgDSlice','AvgMod_AvgSlice',
+                                 'AvgMod_AvgDSlice', 'UnMod_OrbitSliceD', 'UnMod_OrbitSliceN',
                                  'AvgMod_OrbitSliceD', 'AvgMod_OrbitSlice_N']:
-            print("Possible values for recon_option are 'Unmod_AvgSlice','Unmod_AvgDSlice',"+\
-                  "'AvgMod_AvgSlice', 'AvgMod_AvgDSlice', 'Unmod_OrbitSliceD', "+\
-                      "'Unmod_OrbitSliceN', 'AvgMod_OrbitSliceD', and 'AvgMod_OrbitSlice_N'")
+            print("Possible values for recon_option are 'UnMod_AvgSlice','UnMod_AvgDSlice',"+\
+                  "'AvgMod_AvgSlice', 'AvgMod_AvgDSlice', 'UnMod_OrbitSliceD', "+\
+                      "'UnMod_OrbitSliceN', 'AvgMod_OrbitSliceD', and 'AvgMod_OrbitSlice_N'")
             raise AttributeError('Value for recon_option not recognized.')
         if recon_dims not in ['tc1','tc2','tc3','c1c2','c1c3','c2c3']:
             print("Possible values for recon_dims are 'tc1','tc2','tc3','c1c2','c1c3','c2c3'")
@@ -655,7 +655,7 @@ class RECON(Kamodo):
         '''Retrieve model grid in method chosen.'''
         
         #section off code by analysis choice
-        if self.recon_option[-8:]=='AvgSlice':  #for Unmod_AvgSlice and AvgMod_AvgSlice
+        if self.recon_option[-8:]=='AvgSlice':  #for UnMod_AvgSlice and AvgMod_AvgSlice
             #get slice from model data at average value of each dimensions not used
             
             #determine average value of dimensions not included in reconstruction
