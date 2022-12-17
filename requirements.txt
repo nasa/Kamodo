@@ -1,0 +1,11 @@
+numpy
+scipy
+sympy
+pandas
+plotly==5.11.0
+pytest
+psutil
+kamodo
+spacepy
+astropy
+hapiclient
