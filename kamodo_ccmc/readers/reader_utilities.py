@@ -660,6 +660,22 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
         and pressure level and returns time, lon, lat, and height. The second
         interpolator accepts the same arguments and returns only the height.
         Both interpolators are 'kamodofied'.
+
+    This code changes a function from being dependent on pressure level to
+    instead depending upon altitude. The model reader calling this function
+    needs to first create a gridded height variable using typical methods and
+    use Kamodo-core's unit conversion capability to convert the gridded height
+    function into km. This routine creates a function that uses the slicing
+    technique to find the height values at a given time, longitude and latitude
+    for the default grid values of pressure level. These height values and
+    pressure level grid values are then used as the X and Y input values to a
+    1D interpolator (height is X, pressure level is Y) to invert the function.
+    This interpolator is then evaluated at the requested height (or heights)
+    associated with the same time, longitude and latitude and returns the
+    pressure level(s). The code repeats this process for each unique
+    (t, lon, lat) trio. We use the interp1d interpolator for the 1D inversion
+    (from SciPy). Regular and gridded interpolators based on this logic are
+    returned.
     '''
 
     def km_to_ilev(t, lon, lat, km):
