@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime, timezone
+from kamodo import get_defaults
 
 model_dict = {'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
                        'Electrodynamics Model',
@@ -394,3 +395,62 @@ def coord_names(coord_type, coord_grid):
         return {'c1': 'Longitude', 'c2': 'Latitude', 'c3': 'Altitude'}
     elif coord_grid == 'sph' and coord_type != 'GDZ':
         return {'c1': 'Longitude', 'c2': 'Latitude', 'c3': 'Radius'}
+
+
+def Coord_Range(kamodo_object, var_names, print_output=True,
+                return_dict=False):
+    '''Returns max and min of each dependent coordinate for the given variable
+    in the given kamodo_object.
+
+    Inputs:
+        kamodo_object: an object returned by a kamodo model reader
+        var_name: a list of variable names in the kamodo_object. For a complete
+            list of variable names, type kamodo_object.detail().
+        print_output: a boolean controlling whether information is printed to
+            the screen, default is True.
+        return_dict: a boolean controlling whether the constructed dictionary
+            is returned, default is False.
+    Output: A dictionary containing the max and min of each coordinate, named
+        by the coordinate name.
+    '''
+
+    return_d = {}
+    if print_output:
+        print('The minimum and maximum values for each variable and ' +
+              'coordinate are:', end="")
+    for var in var_names:
+        if print_output:
+            print('\n' + var + ':')
+        defaults = get_defaults(kamodo_object[var])
+        key_list = list(defaults.keys())
+        vals = defaults[key_list[0]].T
+        if len(key_list) == 1 and len(vals.shape) > 1:  # not gridded
+            if 'arg_units' in kamodo_object[var].meta.keys():  # coord names
+                cunits = kamodo_object[var].meta['arg_units']
+                names = list(cunits.keys())
+                units = [value for key, value in cunits.items()]
+                return_d[var] = {names[i]: [vals[i].min(), vals[i].max(),
+                                            units[i]]
+                                 for i in range(vals.shape[0])}
+            else:
+                return_d[var] = {'coord'+str(i): [vals[i].min(), vals[i].max()]
+                                 for i in range(vals.shape[0])}
+        else:  # assumes a gridded interpolator
+            if 'arg_units' in kamodo_object[var].meta.keys():  # add units
+                cunits = kamodo_object[var].meta['arg_units']
+                return_d[var] = {key: [defaults[key].min(),
+                                       defaults[key].max(),
+                                       cunits[key.split('_')[0]]]
+                                 for key in key_list}
+                
+            else:
+                return_d[var] = {key: [defaults[key].min(),
+                                       defaults[key].max()]
+                                 for key in key_list}
+        if print_output:
+            for key in return_d[var]:
+                print(key+':', return_d[var][key])
+    if return_dict:
+        return return_d
+    else:
+        return None
