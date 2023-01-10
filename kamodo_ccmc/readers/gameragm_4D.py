@@ -7,56 +7,47 @@ Created on Wed Jan  4 15:37:59 2023
 from numpy import vectorize
 from datetime import datetime, timezone
 
-model_varnames = {'Bx': ['B_x', 'Magnetic field (x component)',
+model_varnames = {'Bx': ['B_x', 'X-component of magnetic field',
                            0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'By': ['B_y', 'Magnetic field (y component)',
+                  'By': ['B_y', 'Y-component of magnetic field',
                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'Bz': ['B_z', 'Magnetic field (z component)',
+                  'Bz': ['B_z', 'Z-component of magnetic field',
                            0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'Cs': ['c_s', 'sound speed of plasma', 0, 'SM', 'car',
+                  'Cs': ['c_s', 'Sound speed of plasma', 0, 'SM', 'car',
                          ['time', 'X', 'Y', 'Z'], 'km/s'],
                   'D': ['N_plasma', 'Plasma number density (M/mp)', 0, 'SM', 'car',
-                         ['time', 'X', 'Y', 'Z'], '1/cm**3'],  # always 'D'?
-                  'Jx': ['J_x', 'current density (x component)',
+                         ['time', 'X', 'Y', 'Z'], '1/cm**3'],
+                  'Jx': ['J_x', 'X-component of current density',
                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
-                  'Jy': ['J_y', 'current density (y component)',
+                  'Jy': ['J_y', 'Y-component of current density',
                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
-                  'Jz': ['J_z', 'current density (z component)',
+                  'Jz': ['J_z', 'Z-component of current density',
                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
                   'P': ['P', 'Pressure', 0, 'SM', 'car', 
                         ['time', 'X', 'Y', 'Z'], 'nPa'],
-                  'Pb': ['P_M', 'Magnetic pressure', 0, 'SM', 'car', 
+                  'Pb': ['P_mag', 'Magnetic pressure', 0, 'SM', 'car',
                           ['time', 'X', 'Y', 'Z'], 'nPa'],
-                  'SrcD': ['N_src', 'number density of ???', 0, 'SM', 'car',
-                           ['time', 'X', 'Y', 'Z'], '1/cm**3'],  # HIDE?
-                  'SrcDT': ['t_src', 'time scale of ???', 0, 'SM', 'car',
-                            ['time', 'X', 'Y', 'Z'], 's'],  # HIDE?
-                  'SrcP': ['P_src', 'pressure of ???', 0, 'SM', 'car',
-                           ['time', 'X', 'Y', 'Z'], 'nPa'],  # HIDE?
-                  'SrcX1': ['theta_X1', 'scattering angle of ???, X-Y plane',
-                            0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'deg'],  # HIDE?
-                  'SrcX2': ['theta_X2', 'scattering angle of ???, X-Z plane', 
-                            0, 'SM', 'car',['time', 'X', 'Y', 'Z'], 'deg'],  # HIDE?
-                  'Vx': ['v_x', 'particle speed (x component)',
+                  'Vx': ['v_x', 'X-component of velocity',
                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
-                  'Vy': ['v_y', 'particle speed (y component)',
+                  'Vy': ['v_y', 'Y-component of velocity',
                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
-                  'Vz': ['v_z', 'particle speed (z component)',
+                  'Vz': ['v_z', 'Z-component of velocity',
                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
+                  # CONSTANTS below this line. Are these needed for user calculations?
                   'Bx0': ['B_0x', 'Solar wind ??? Background magnetic field (x component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'By0': ['B_0y', 'Initial ??? Background magnetic field (y component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'Bz0': ['B_0z', '??? Background magnetic field (z component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'BxD': ['B_Dx', 'Dipole ??? Magnetic field (x component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'ByD': ['B_Dy', '??? Magnetic field (y component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'BzD': ['B_Dz', '??? Magnetic field (z component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'dV': ['dV', 'Simulation cell volume', 0, 'SM', 'car',
-                         ['X', 'Y', 'Z'], 'R_E**3']  # UNIT?
+                         ['X', 'Y', 'Z'], 'R_E**3']  # will double check on unit
     }
 
 constants = ['X', 'Y', 'Z', 'Bx0', 'By0', 'Bz0', 'BxD', 'ByD', 'BzD', 'dV']
@@ -174,12 +165,17 @@ def MODEL():
                 else:
                     ms_timing = False
 
-                # If the cell centers need to be calculated, then this is
-                # where that should be done.
-                if not isfile(file_dir + 'gridcenters.nc'):  # REMOVE WHEN DONE TESTING
-                    print('Computing grid cell centers...', end="")  # ****************************
-                    self._Xc, self._Yc, self._Zc = G.ComputeCellCenters(data_files)
-                    print('done.')
+                # Pre-calculate the ranges of the coordinate grids.
+                # Needed to generate a default uniform grid for plotting.
+                print('Computing grid ranges...', end="")
+                G.GridRanges(data_files)
+                print('done.')
+
+                # Pre-calculate the centers of the coordinate grids for each
+                # file separately. Needed for interpolation later.
+                print('Computing cell centers...', end="")
+                G.ComputeCellCentersFile(data_files)
+                print('done.')
 
                 # create time list file if DNE
                 RU.create_timelist(list_file, time_file, self.modelname,
@@ -208,13 +204,14 @@ def MODEL():
             h5_data = h5py.File(self.pattern_files[p][0])
             key_list = [key for key in h5_data.keys() if 'Step' not in key and
                         key not in ['X', 'Y', 'Z']]  # skip coordinates
-            key_list.extend(list(h5_data['Step#0'].keys()))
+            step_list = list(h5_data['Step#0'].keys())
+            var_list = key_list + step_list
             h5_data.close()
 
             if len(variables_requested) > 0 and variables_requested != 'all':
                 gvar_list = [key for key, value in model_varnames.items()
                              if value[0] in variables_requested and
-                             key in key_list]  # file variable names
+                             key in var_list]  # file variable names
             
                 # check for variables requested but not available
                 if len(gvar_list) != len(variables_requested):
@@ -225,7 +222,7 @@ def MODEL():
                         print('Some requested variables are not available:',
                               err_list)
             else:  # only input variables on the avoid_list if requested
-                gvar_list = [key for key in key_list if key in
+                gvar_list = [key for key in var_list if key in
                              model_varnames.keys()]
                 # return list of variables included in data files
                 if variables_requested == 'all':
@@ -239,37 +236,24 @@ def MODEL():
                               {'units': model_varnames[var][-1],
                                'data': p} for var in gvar_list}
 
-            # read in coordinate grid for cell-centers (is this needed?)*********************
-            if not hasattr(self, '_Xc'):
-                center_file = file_dir + 'gridcenters.nc'
-                center_data = Dataset(center_file)
-                self._Xc = array(center_data['X_center'])
-                self._Yc = array(center_data['Y_center'])
-                self._Zc = array(center_data['Z_center'])
-                center_data.close()
-            self._X = linspace(self._Xc.min(), self._Xc.max(),
-                               endpoint=True, num=self._Xc.shape[0])
-            self._Y = linspace(self._Yc.min(), self._Yc.max(),
-                               endpoint=True, num=self._Yc.shape[1])
-            self._Z = linspace(self._Zc.min(), self._Zc.max(),
-                               endpoint=True, num=self._Zc.shape[2])
-
-            # IF data needs to be assembled, create the index mapping here ****************
-            # once per variable type (constant vs variable) instead of once per
-            # variable to save on execution time
+            # read in coordinate grid ranges and make sample grids
+            # X, Y, and Z are the same shape in the data because they are the
+            # x, y, and z coordinates of the same set of points.
+            X_min, X_max, Y_min, Y_max, Z_min, Z_max =\
+                G.Read_GridRanges(file_dir)
             if len(self.pattern_files[p]) > 1:
-                const_variables = [var for var in gvar_list if var in
-                                   constants]
-                time_variables = [var for var in gvar_list if var not in
-                                   constants]
-                if len(const_variables) > 0:
-                    self.constant_map = G.GridMapping(
-                        self.pattern_files[p], True, const_variables[0])
-                    print('Index map created for constants.')
-                if len(time_variables) > 0:
-                    self.variable_map = G.GridMapping(self.pattern_files[p],
-                                                      False, time_variables[0])
-                    print('Index map created for variables.')
+                sample_var = [gvar for gvar in model_varnames.keys()
+                              if gvar in step_list][0]
+                net_indices = G.GridMapping(self.pattern_files[p], False,
+                                            sample_var)
+                shape = net_indices['net'][1]  # shape of total array
+            else:
+                h5_data = h5py.File(self.pattern_files[p][0])
+                shape = list(h5_data['X'].shape)  # shape of total array
+                h5_data.close()
+            self._X = linspace(X_min, X_max, endpoint=True, num=shape[0])
+            self._Y = linspace(Y_min, Y_max, endpoint=True, num=shape[1])
+            self._Z = linspace(Z_min, Z_max, endpoint=True, num=shape[2])
 
             # store a few items
             self.missing_value = NaN
@@ -282,8 +266,8 @@ def MODEL():
             # This will confuse the lazy interpolation, so stripping down the
             # times dict to one file entry (only start and end fields needed).
             # For ms_timing, 'all' has ms resolution, start and end do not.
-            self.singletimes = {'start': self.times[p]['all'][0],
-                                'end': self.times[p]['all'][-1]}
+            self.singletimes = {'start': [self.times[p]['all'][0]],
+                                'end': [self.times[p]['all'][-1]]}
 
             # register interpolators for each requested variable
             t_reg = perf_counter()
@@ -310,6 +294,8 @@ def MODEL():
                     value[0] == varname][0]
             coord_str = [value[3]+value[4] for key, value in
                          model_varnames.items() if value[0] == varname][0]
+            file_dir = self.pattern_files[key][0].split(
+                basename(self.pattern_files[key][0]))[0]
             if 'time' in coord_list:
                 coord_dict = {'time': {'units': 'hr',
                                        'data': self.times[key]['all']},
@@ -318,24 +304,29 @@ def MODEL():
                               'Z': {'units': 'R_E', 'data': self._Z}}
 
                 def func(i, fi):  # i = file# (always 0), fi = slice# (= Step#)
-                    # Do the data need to be assembled for the interpolator,
-                    # or left in blocks?
-                    # If it needs to be assembled, do that here per time step *************
-                    if len(self.pattern_files[key]) > 1:
-                        data = G.AssembleGrid(self.pattern_files[key],
-                                              self.variable_map,
-                                              False, gvar, step=fi)
-                    else:
-                        h5_data = h5py.File(self.pattern_files[key][0])
-                        data = array(h5_data['Step#'+str(fi)][gvar])
-                        h5_data.close()
+                    # Leave data in blocks. Need interpolator to determine
+                    # which block is needed. Setting default of block 0 for now
+                    block = 0  # default, but need this value from the interp
+                    # read in data from block
+                    file = self.pattern_files[key][block]
+                    h5_data = h5py.File(file)
+                    data = array(h5_data['Step#'+str(fi)][gvar])
+                    h5_data.close()
+                    # read in cell centers for requested block
+                    center_file = file_dir + basename(file).split('.')[0] +\
+                        '_gridcenters.nc'
+                    cdf_data = Dataset(center_file)
+                    X_c = array(cdf_data['X_c'])
+                    Y_c = array(cdf_data['Y_c'])
+                    Z_c = array(cdf_data['Z_c'])
+                    cdf_data.close()
     
                     # define custom interpolator here  ********************************
                     def interp(xvec):
                         tic = perf_counter()
                         X, Y, Z = xvec.T  # xvec can be used like this
                         # call custom interpolator here
-                        print('variable', i, fi, data.shape)
+                        print('variable', i, fi, data.shape, X_c.shape)
                         # dummy code for now
                         if not isinstance(X, ndarray):
                             return NaN
@@ -357,23 +348,29 @@ def MODEL():
                               'Z': {'units': 'R_E', 'data': self._Z}}
                 
                 def func():
-                    # Do the data need to be assembled for the interpolator,
-                    # or left in blocks?
-                    # If it needs to be assembled, do that here         *************
-                    if len(self.pattern_files[key]) > 1:
-                        data = G.AssembleGrid(self.pattern_files[key],
-                                              self.constant_map, True, gvar)
-                    else:
-                        h5_data = h5py.File(self.pattern_files[key][0])
-                        data = array(h5_data[gvar])
-                        h5_data.close()
+                    # Leave data in blocks. Need interpolator to determine
+                    # which block is needed. Setting default of block 0 for now
+                    block = 0  # default, but need this value from the interp
+                    # read in data from block
+                    file = self.pattern_files[key][block]
+                    h5_data = h5py.File(file)
+                    data = array(h5_data[gvar])
+                    h5_data.close()
+                    # read in cell centers for requested block
+                    center_file = file_dir + basename(file).split('.')[0] +\
+                        '_gridcenters.nc'
+                    cdf_data = Dataset(center_file)
+                    X_c = array(cdf_data['X_c'])
+                    Y_c = array(cdf_data['Y_c'])
+                    Z_c = array(cdf_data['Z_c'])
+                    cdf_data.close()
     
                     # define custom interpolator here  ***********************************
                     def interp(xvec):
                         tic = perf_counter()
                         X, Y, Z = array(xvec).T  # xvec can be used like this
                         # call custom interpolator here
-                        print('constant', data.shape)
+                        print('constant', data.shape, X_c.shape)
                         # dummy code for now
                         if not isinstance(X, ndarray):
                             return NaN
