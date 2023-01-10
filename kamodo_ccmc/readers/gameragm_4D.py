@@ -8,49 +8,53 @@ from numpy import vectorize
 from datetime import datetime, timezone
 
 model_varnames = {'Bx': ['B_x', 'X-component of magnetic field',
-                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
                   'By': ['B_y', 'Y-component of magnetic field',
-                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
                   'Bz': ['B_z', 'Z-component of magnetic field',
-                           0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nT'],
                   'Cs': ['c_s', 'Sound speed of plasma', 0, 'SM', 'car',
                          ['time', 'X', 'Y', 'Z'], 'km/s'],
-                  'D': ['N_plasma', 'Plasma number density (M/mp)', 0, 'SM', 'car',
-                         ['time', 'X', 'Y', 'Z'], '1/cm**3'],
+                  'D': ['N_plasma', 'Plasma number density (M/mp)', 0, 'SM',
+                        'car', ['time', 'X', 'Y', 'Z'], '1/cm**3'],
                   'Jx': ['J_x', 'X-component of current density',
-                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
                   'Jy': ['J_y', 'Y-component of current density',
-                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
                   'Jz': ['J_z', 'Z-component of current density',
-                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
-                  'P': ['P', 'Pressure', 0, 'SM', 'car', 
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'nA/m**2'],
+                  'P': ['P', 'Pressure', 0, 'SM', 'car',
                         ['time', 'X', 'Y', 'Z'], 'nPa'],
                   'Pb': ['P_mag', 'Magnetic pressure', 0, 'SM', 'car',
-                          ['time', 'X', 'Y', 'Z'], 'nPa'],
+                         ['time', 'X', 'Y', 'Z'], 'nPa'],
                   'Vx': ['v_x', 'X-component of velocity',
-                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
                   'Vy': ['v_y', 'Y-component of velocity',
-                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
                   'Vz': ['v_z', 'Z-component of velocity',
-                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
-                  # CONSTANTS below this line. Are these needed for user calculations?
-                  'Bx0': ['B_0x', 'Solar wind ??? Background magnetic field (x component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
-                  'By0': ['B_0y', 'Initial ??? Background magnetic field (y component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
-                  'Bz0': ['B_0z', '??? Background magnetic field (z component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
+                         0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
+                  # CONSTANTS below this line. Remove 0 and D variables? *****************
+                  'Bx0': ['B_0x', 'Solar wind ??? magnetic field ' +\
+                          '(x component)',
+                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
+                  'By0': ['B_0y', 'Initial ??? Background magnetic field ' +\
+                          '(y component)',
+                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
+                  'Bz0': ['B_0z', '??? Background magnetic field ' +\
+                          '(z component)',
+                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'BxD': ['B_Dx', 'Dipole ??? Magnetic field (x component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
+                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'ByD': ['B_Dy', '??? Magnetic field (y component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
+                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'BzD': ['B_Dz', '??? Magnetic field (z component)',
-                         0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
+                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
                   'dV': ['dV', 'Simulation cell volume', 0, 'SM', 'car',
-                         ['X', 'Y', 'Z'], 'R_E**3']  # will double check on unit
-    }
+                         ['X', 'Y', 'Z'], 'R_E**3']  # double checking on unit
+                  }
 
 constants = ['X', 'Y', 'Z', 'Bx0', 'By0', 'Bz0', 'BxD', 'ByD', 'BzD', 'dV']
+
 
 @vectorize
 def timestr_timestamp(time_str):
@@ -212,7 +216,7 @@ def MODEL():
                 gvar_list = [key for key, value in model_varnames.items()
                              if value[0] in variables_requested and
                              key in var_list]  # file variable names
-            
+
                 # check for variables requested but not available
                 if len(gvar_list) != len(variables_requested):
                     err_list = [value[0] for key, value in
@@ -230,7 +234,7 @@ def MODEL():
                                      model_varnames.items()
                                      if key in gvar_list}
                     return
-            
+
             # initialize data mapping for each variable desired
             self.variables = {model_varnames[var][0]:
                               {'units': model_varnames[var][-1],
@@ -320,8 +324,8 @@ def MODEL():
                     Y_c = array(cdf_data['Y_c'])
                     Z_c = array(cdf_data['Z_c'])
                     cdf_data.close()
-    
-                    # define custom interpolator here  ********************************
+
+                    # define custom interpolator here  ***********************************
                     def interp(xvec):
                         tic = perf_counter()
                         X, Y, Z = xvec.T  # xvec can be used like this
@@ -333,7 +337,7 @@ def MODEL():
                         else:
                             return zeros(len(X)) * NaN
                     return interp
-    
+
                 # functionalize the variable dataset
                 tmp = self.variables[varname]
                 tmp['data'] = zeros((2, 2, 2, 2))  # saves execution time
@@ -346,7 +350,7 @@ def MODEL():
                 coord_dict = {'X': {'units': 'R_E', 'data': self._X},
                               'Y': {'units': 'R_E', 'data': self._Y},
                               'Z': {'units': 'R_E', 'data': self._Z}}
-                
+
                 def func():
                     # Leave data in blocks. Need interpolator to determine
                     # which block is needed. Setting default of block 0 for now
@@ -364,7 +368,7 @@ def MODEL():
                     Y_c = array(cdf_data['Y_c'])
                     Z_c = array(cdf_data['Z_c'])
                     cdf_data.close()
-    
+
                     # define custom interpolator here  ***********************************
                     def interp(xvec):
                         tic = perf_counter()
@@ -377,14 +381,13 @@ def MODEL():
                         else:
                             return zeros(len(X)) * NaN
                     return interp
-                
+
                 # functionalize the variable dataset
                 tmp = self.variables[varname]
                 tmp['data'] = zeros((2, 2, 2))  # saves execution time
-                
+
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, tmp, gridded_int, coord_str,
                     interp_flag=0, func=func, func_default='custom')
-
             return
     return MODEL

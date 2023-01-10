@@ -145,7 +145,7 @@ def GridMapping(data_files, constant, sample_var):
         else:
             indices[key] = h5_data['Step#0'][sample_var].shape
         h5_data.close()
-        
+
     # then get the total shape by summing the data shapes
     # this assumes that the assembled block will have a single (x, y, z) shape
     x_shape = sum([indices[str(i).zfill(4)+'_0000_0000'][0] for i in
@@ -220,7 +220,7 @@ def ComputeCellCentersFile(data_files):
         Z_c - numpy array of Z locations of cell centers, one size smaller than
             the assembled Z grid from the file(s)
     '''
-    
+
     # read in data from each file
     file_dir = data_files[0].split(basename(data_files[0]))[0]
     for f in data_files:
@@ -232,16 +232,16 @@ def ComputeCellCentersFile(data_files):
         Y = array(h5_data['Y'])
         Z = array(h5_data['Z'])
         h5_data.close()
-        
+
         # compute cell centers
         X_c = zeros([X.shape[0]-1, X.shape[1]-1, X.shape[2]-1])
         Y_c, Z_c = X_c.copy(), X_c.copy()
         for i in range(X_c.shape[0]):
             for j in range(X_c.shape[1]):
                 for k in range(X_c.shape[2]):
-                    X_c[i,j,k] = mean(X[i:i+2, j:j+2, k:k+2])
-                    Y_c[i,j,k] = mean(Y[i:i+2, j:j+2, k:k+2])
-                    Z_c[i,j,k] = mean(Z[i:i+2, j:j+2, k:k+2])
+                    X_c[i, j, k] = mean(X[i:i+2, j:j+2, k:k+2])
+                    Y_c[i, j, k] = mean(Y[i:i+2, j:j+2, k:k+2])
+                    Z_c[i, j, k] = mean(Z[i:i+2, j:j+2, k:k+2])
 
         # prepare output file
         data_out = Dataset(center_file, 'w', format='NETCDF4')
@@ -253,23 +253,23 @@ def ComputeCellCentersFile(data_files):
         new_dim = data_out.createDimension('c2', X_c.shape[1])
         new_dim = data_out.createDimension('c3', X_c.shape[2])
         # save X center positions
-        new_var = data_out.createVariable('X_c', float32, ('c1', 'c2', 'c3'))  
+        new_var = data_out.createVariable('X_c', float32, ('c1', 'c2', 'c3'))
         new_var[:] = X_c
         new_var.units = 'R_E'
         new_var.Description = 'X coordinate of grid cell centers'
         # save Y center positions
-        new_var = data_out.createVariable('Y_c', float32, ('c1', 'c2', 'c3'))  
+        new_var = data_out.createVariable('Y_c', float32, ('c1', 'c2', 'c3'))
         new_var[:] = Y_c
         new_var.units = 'R_E'
         new_var.Description = 'Y coordinate of grid cell centers'
         # save Z center positions
-        new_var = data_out.createVariable('Z_c', float32, ('c1', 'c2', 'c3')) 
+        new_var = data_out.createVariable('Z_c', float32, ('c1', 'c2', 'c3'))
         new_var[:] = Z_c
         new_var.units = 'R_E'
         new_var.Description = 'Z coordinate of grid cell centers'
         # close file
-        data_out.close()   
-    
+        data_out.close()
+
     return None
 
 
@@ -302,16 +302,16 @@ def ComputeCellCentersTotal(data_files, write_file=True, grid=True):
         Y = array(h5_data['Y'])
         Z = array(h5_data['Z'])
         h5_data.close()
-        
+
     # compute cell centers
     X_c = zeros([X.shape[0]-1, X.shape[1]-1, X.shape[2]-1])
     Y_c, Z_c = X_c.copy(), X_c.copy()
     for i in range(X_c.shape[0]):
         for j in range(X_c.shape[1]):
             for k in range(X_c.shape[2]):
-                X_c[i,j,k] = mean(X[i:i+2, j:j+2, k:k+2])
-                Y_c[i,j,k] = mean(Y[i:i+2, j:j+2, k:k+2])
-                Z_c[i,j,k] = mean(Z[i:i+2, j:j+2, k:k+2])
+                X_c[i, j, k] = mean(X[i:i+2, j:j+2, k:k+2])
+                Y_c[i, j, k] = mean(Y[i:i+2, j:j+2, k:k+2])
+                Z_c[i, j, k] = mean(Z[i:i+2, j:j+2, k:k+2])
 
     # write to file if requested
     if write_file:
@@ -327,23 +327,23 @@ def ComputeCellCentersTotal(data_files, write_file=True, grid=True):
         new_dim = data_out.createDimension('c3', X_c.shape[2])
         # save X center positions
         new_var = data_out.createVariable('X_center', float32,
-                                          ('c1', 'c2', 'c3'))  
+                                          ('c1', 'c2', 'c3'))
         new_var[:] = X_c
         new_var.units = 'R_E'
         new_var.Description = 'X coordinate of grid cell centers'
         # save Y center positions
         new_var = data_out.createVariable('Y_center', float32,
-                                          ('c1', 'c2', 'c3'))  
+                                          ('c1', 'c2', 'c3'))
         new_var[:] = Y_c
         new_var.units = 'R_E'
         new_var.Description = 'Y coordinate of grid cell centers'
         # save Z center positions
         new_var = data_out.createVariable('Z_center', float32,
-                                          ('c1', 'c2', 'c3'))  
+                                          ('c1', 'c2', 'c3'))
         new_var[:] = Z_c
         new_var.units = 'R_E'
         new_var.Description = 'Z coordinate of grid cell centers'
         # close file
-        data_out.close()   
-    
+        data_out.close()
+
     return X_c, Y_c, Z_c
