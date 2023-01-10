@@ -97,38 +97,6 @@ def adelphi_data_hemisphere(file_name):
     return data, dt_str
 
 
-def vector_average3D(top, shape_list, varname, latval, lon):
-    '''find vector average at pole for array with shape (time, lon,
-    height)'''
-
-    # CAN NOT TEST BECAUSE NUMBERS ARE ALL ZEROS!!!
-    # find net x and y components, final array shapes are (t, lon, ht)
-    # reverse and .T?
-    lon_arr = np.broadcast_to(lon[1:], (shape_list[0], shape_list[1]-1))
-    # need to put 'old' shape at end in broadcast_to call ^
-    xval = np.sum(top*np.cos((lon_arr+180.)*np.pi/180.), axis=1)  # same shape
-    yval = np.sum(top*np.sin((lon_arr+180.)*np.pi/180.), axis=1)  # as t and z
-    xarr = np.broadcast_to(xval, (shape_list[1]-1, shape_list[0])).T
-    yarr = np.broadcast_to(yval, (shape_list[1]-1, shape_list[0])).T
-
-    # convert to proper unit vector (see wiki on spherical coordinates)
-    if 'EAST' in varname:
-        # Zonal/east components -> convert to psi_hat vector (lon)
-        # -xsin(psi)+ycos(psi), psi = longitude (0 to 360)
-        new_top = -xarr*np.sin((lon_arr+180.)*np.pi/180.) +\
-            yarr*np.cos((lon_arr+180.)*np.pi/180.)
-    elif 'NORTH' in varname:
-        # meridional/north -> convert to theta_hat vector (latitude)
-        # xcos(psi)cos(theta)+ysin(psi)cos(theta)
-        # sin(theta) is always zero at the poles
-        # theta = latitude (0 to 180), psi = longitude (0 to 360)
-        new_top = xarr * np.cos((lon_arr+180.) * np.pi/180.) *\
-            np.cos((90.-latval)*np.pi/180.) + yarr *\
-            np.sin((lon_arr+180.) * np.pi/180.) *\
-            np.cos((90.-latval) * np.pi/180.)
-    return new_top
-
-
 def combine_hemispheres(north_file, south_file):
     '''Given the filenames for the northern and southern hemispheres, combine
     the data into a single dictionary and return.'''
@@ -137,90 +105,61 @@ def combine_hemispheres(north_file, south_file):
     data_S, date_str = adelphi_data_hemisphere(south_file)
     key_list = [key for key in data_N.keys() if key not in ['Time', 'MLT',
                                                             'MLAT']]
-    # for key in key_list:
-    #   print(key, np.max(data_S[key][:, :, 0]), np.max(data_S[key][:, :, -1]),
-    #          np.max(data_N[key][:, :, 0]), np.max(data_N[key][:, :, -1]))
-
     # Combine coordinate grids, carefully piecing together the latitudes
-    # ********* CHECK WITH SCIENTISTS ABOUT THE 180 DEGREE SHIFT **************
+    # not extending towards the poles because the model fills in zeros there
     len_lat = len(data_N['MLAT'])
     data = {'Time': data_N['Time'], 'Lon': np.append(data_N['MLT'], 360.)-180.}
-    data['Lat'] = np.zeros(len_lat*2+6)  # need poles and NaN rows
-    data['Lat'][0], data['Lat'][-1] = -90., 90.  # add pole latitude values
-    data['Lat'][1:len_lat+1] = np.flip(data_S['MLAT'])
+    data['Lat'] = np.zeros(len_lat*2+4)  # need NaN and buffer rows at equator
+    data['Lat'][:len_lat] = np.flip(data_S['MLAT'])
     # add buffer rows for S hemisphere
-    data['Lat'][len_lat+1] = data['Lat'][len_lat] +\
+    data['Lat'][len_lat] = data['Lat'][len_lat-1] +\
         abs(np.diff(data_S['MLAT'])[0])/10.
-    data['Lat'][len_lat+2] = data['Lat'][len_lat] +\
+    data['Lat'][len_lat+1] = data['Lat'][len_lat-1] +\
         abs(np.diff(data_S['MLAT'])[0])
-    data['Lat'][len_lat+5:-1] = data_N['MLAT']  # add in N hemi lats
-    data['Lat'][len_lat+4] = data['Lat'][len_lat+5] -\
+    data['Lat'][len_lat+4:] = data_N['MLAT']  # add in N hemi lats
+    data['Lat'][len_lat+3] = data['Lat'][len_lat+4] -\
         np.diff(data_N['MLAT'])[0]/10.  # add buffer rows for N hemisphere
-    data['Lat'][len_lat+3] = data['Lat'][len_lat+5] -\
+    data['Lat'][len_lat+2] = data['Lat'][len_lat+4] -\
         np.diff(data_N['MLAT'])[0]
-    # print('Latitude:', data['Lat'])
+    print('Latitude:', data['Lat'])
 
     # combine data from different hemispheres
     new_shape = (len(data['Time']), len(data['Lon']), len(data['Lat']))
     for key in key_list:
         # pull in data and set buffer rows on equator side for both hemispheres
         data[key] = np.zeros(new_shape)
-        data[key][:, 1:, 1:len_lat+1] = np.flip(data_S[key], axis=2)  # S data
-        data[key][:, 1:, len_lat+1] = data[key][:, 1:, len_lat]  # value buffer
-        data[key][:, 1:, len_lat+2:len_lat+4] = \
+        data[key][:, 1:, :len_lat] = np.flip(data_S[key], axis=2)  # S data
+        data[key][:, 1:, len_lat] = data[key][:, 1:, len_lat-1]  # value buffer
+        data[key][:, 1:, len_lat+1:len_lat+3] = \
             np.tile(np.NaN, (new_shape[0], new_shape[1]-1, 2))  # NaN buffer
-        data[key][:, 1:, len_lat+4] = data[key][:, 1:, len_lat+5]  # value buff
-        data[key][:, 1:, len_lat+5:-1] = data_N[key]  # N hemisphere data
+        data[key][:, 1:, len_lat+3] = data[key][:, 1:, len_lat+4]  # value buff
+        data[key][:, 1:, len_lat+4:] = data_N[key]  # N hemisphere data
 
         # wrap in longitude
         data[key][:, 0, :] = data[key][:, -1, :]
 
-        ''' The # of rows cut off is different for each variable, so avoiding
-        # slice off zeros at each pole before averaging and functionalizing
+        # The # of rows cut off is different for each variable, so avoiding
+        # slicing off zeros at each pole, instead replace with NaNs.
         # find first latitude row that is nonzero, only near poles
         # this purposefully ignores the buffer rows near the equator
-        # this is not in the file converter due to the dynamic nature of
-        #   the latitude grid.  ????
         # south pole at beginning
-        SP_idx, slice_idx = 1, []
+        SP_idx, slice_idx = 0, []
         zero_check = np.count_nonzero(data[key][:, :, SP_idx])
         while zero_check == 0:
             slice_idx.append(SP_idx)
             SP_idx += 1
             zero_check = np.count_nonzero(data[key][:, :, SP_idx])
         # north pole at the end
-        NP_idx = -2
+        NP_idx = -1
         zero_check = np.count_nonzero(data[key][:, :, NP_idx])
         while zero_check == 0:
             slice_idx.append(NP_idx)
             NP_idx -= 1
             zero_check = np.count_nonzero(data[key][:, :, NP_idx])
-        # remove 'extra' latitude values from coordinate grid and from data
-        #data['Lat'] = np.delete(data['Lat'], slice_idx)
+        # replace 'extra' latitude rows from data with NaNs
         print(key, len(slice_idx), slice_idx)
-        data[key] = np.delete(data[key], slice_idx, axis=2)
-        '''
-
-        # perform scalar averaging at the poles
-        # new_shape =(data['Time'].shape, data['Lon'].shape, data['Lat'].shape)
-        if key not in ['E_east', 'E_north', 'J_east', 'J_north']:
-            # south pole
-            top = np.mean(data[key][:, 1:, 1], axis=1)  # same shape as time
-            data[key][:, 1:, 0] = np.broadcast_to(
-                top, (new_shape[1]-1, new_shape[0])).T
-            # north pole
-            top = np.mean(data[key][:, 1:, -2], axis=1)  # same shape as time
-            data[key][:, 1:, -1] = np.broadcast_to(
-                top, (new_shape[1]-1, new_shape[0])).T
-        else:  # perform vector averaging at the poles
-            # calculate net vector magnitude for south pole
-            data[key][:, 1:, 0] = \
-                vector_average3D(data[key][:, 1:, 1], list(data[key].shape),
-                                 key, data['Lat'][0], data['Lon'])
-            # repeat for north pole
-            data[key][:, 1:, -1] = \
-                vector_average3D(data[key][:, 1:, -2], list(data[key].shape),
-                                 key, data['Lat'][-1], data['Lon'])
+        data[key][:, :, slice_idx] = np.tile(np.NaN, (
+            new_shape[0], new_shape[1], len(slice_idx)))
 
     # data wrangling complete, return data dictionary
     return data, date_str
@@ -232,7 +171,7 @@ def to_CDF(file_prefix):
     from time import perf_counter
 
     print('Converted data file not found. Converting files with ' +
-          f'{file_prefix} prefix to a netCDF4 file.')  # , end="")
+          f'{file_prefix} naming pattern to a netCDF4 file.')  # , end="")
     north_file = file_prefix[:-13]+'_N'+file_prefix[-13:]+'.txt'
     south_file = file_prefix[:-13]+'_S'+file_prefix[-13:]+'.txt'
     time0 = perf_counter()
