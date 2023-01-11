@@ -810,7 +810,7 @@ def str_to_hrs(dt_str, filedate, format_string='%Y-%m-%d %H:%M:%S'):
 
 
 @vectorize
-def hrs_to_tstr(hrs, ms_timing):
+def hrs_to_tstr(hrs, ms_timing=False):
     '''Convert number of hours into HH:MM:SS format. If ms_timing is True,
     str is in format HH:MM:SS.mms'''
     h, m = floor(hrs), round(hrs % 1 * 60., 4)
@@ -824,7 +824,7 @@ def hrs_to_tstr(hrs, ms_timing):
 
 
 @vectorize
-def tstr_to_hrs(time_str, ms_timing):
+def tstr_to_hrs(time_str, ms_timing=False):
     '''Convert str from HH:MM:SS format to float 32. If ms_timing is True,
     str is in format HH:MM:SS.mms'''
     hh, mm, ss = time_str.split(':')
