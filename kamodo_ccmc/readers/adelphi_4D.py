@@ -3,35 +3,35 @@ Written by Rebecca Ringuette, 2021
 '''
 
 # variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'PED': ['Sigma_P', 'Pedersen conductance ', 0, 'MAG', 'sph',
+model_varnames = {'PED': ['Sigma_P', 'Pedersen conductance ', 0, 'SM', 'sph',
                           ['time', 'lon', 'lat'], 'S'],
-                  'HALL': ['Sigma_H', 'hall Conductance', 1, 'MAG', 'sph',
+                  'HALL': ['Sigma_H', 'hall Conductance', 1, 'SM', 'sph',
                            ['time', 'lon', 'lat'], 'S'],
-                  'PHI': ['phi', 'Electric potential', 2, 'MAG', 'sph',
+                  'PHI': ['phi', 'Electric potential', 2, 'SM', 'sph',
                           ['time', 'lon', 'lat'], 'kV'],
                   'EEAST': ['E_east', 'electric field in eastern direction ' +
-                            '(increasing longitude) ', 3, 'MAG', 'sph',
+                            '(increasing longitude) ', 3, 'SM', 'sph',
                             ['time', 'lon', 'lat'], 'mV/m'],
                   'ENORTH': ['E_north', 'electric field in north direction ' +
-                             '(increasing latitude) ', 4, 'MAG', 'sph',
+                             '(increasing latitude) ', 4, 'SM', 'sph',
                              ['time', 'lon', 'lat'], 'mV/m'],
                   'JEAST': ['J_east', 'electric current in eastern direction' +
                             '(increasing longitude) (height integrated ' +
-                            'current density)', 5, 'MAG', 'sph',
+                            'current density)', 5, 'SM', 'sph',
                             ['time', 'lon', 'lat'], 'A/m'],
                   'JNORTH': ['J_north', 'electric current in north direction' +
                              ' (increasing latitude) (height integrated ' +
-                             'current density)', 6, 'MAG', 'sph',
+                             'current density)', 6, 'SM', 'sph',
                              ['time', 'lon', 'lat'], 'A/m'],
-                  'EFLUX': ['Phi', 'energy flux', 7, 'MAG', 'sph',
+                  'EFLUX': ['Phi', 'energy flux', 7, 'SM', 'sph',
                             ['time', 'lon', 'lat'], 'mW/m**2'],
-                  'JHEAT': ['J_heat', 'Joule heating rate ', 8, 'MAG', 'sph',
+                  'JHEAT': ['J_heat', 'Joule heating rate ', 8, 'SM', 'sph',
                             ['time', 'lon', 'lat'], 'mW/m**2'],
                   'JRIN': ['J_Rin', 'Input radial current',
-                           9, 'MAG', 'sph', ['time', 'lon', 'lat'], 'mA/m**2'],
+                           9, 'SM', 'sph', ['time', 'lon', 'lat'], 'mA/m**2'],
                   'JROUT': ['J_Rout', 'model-generated radial current ' +
                             'would be identical to J_Rin if the model were ' +
-                            'perfect', 10, 'MAG', 'sph',
+                            'perfect', 10, 'SM', 'sph',
                             ['time', 'lon', 'lat'], 'mA/m**2'],
                   }
 
