@@ -1,4 +1,4 @@
-    #include "fl.h"
+    #include "fl_extern.h"
     #include "octree_block.h"
     int octree_blocklist_init(octree_block *octree_blocklist,
                                 float *x, float *y, float *z, int N, int postions_centered)

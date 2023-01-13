@@ -49,15 +49,18 @@ def MODEL():
     from kamodo import Kamodo
     import spacepy.pybats as sp
     from glob import glob
+    import time
     from os.path import basename, isfile
     from numpy import array, NaN, unique, zeros, ravel, ndarray
+    from numpy import min, max, floor, log
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
-    # from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi
-    # from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib
+
+    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi
+    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib
 
     class MODEL(Kamodo):
-        '''SWMF model data reader for the magnetoshpere outputs.
+        '''SWMF model data reader for magnetosphere outputs.
 
         Inputs:
             file_dir: a string representing the file directory of the
@@ -97,6 +100,14 @@ def MODEL():
             dictionary. R is the radius of the minimum inner boundary in R_E,
             c is the reduced speed of light, and g is the ratio of specific
             heats. Consult model documentation for more information.
+
+        The reader requires code in readers/OCTREE_BLOCK_GRID/:
+        Compile the library using the command
+          python interpolate_amrdata_extension_build.py
+        inside the anaconda/miniconda3/miniforge3 environment for Kamodo.
+        The shared library file name contains the python version
+        and the name of the operation system, e.g.,
+          _interpolate_amrdata.cpython-39-darwin.so
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
@@ -134,8 +145,8 @@ def MODEL():
                     # loop through to get times, one file per time step
                     self.times[p]['start'] = array([RU.tstr_to_hrs(
                         sp.IdlFile(f).attrs['strtime'][:-1].replace(
-                            'h', ':').replace('m', ':')) for f in
-                        pattern_files])
+                            'h', ':').replace('m', ':'))
+                        for f in pattern_files])
                     self.times[p]['end'] = self.times[p]['start'].copy()
                     self.times[p]['all'] = self.times[p]['start'].copy()
 
@@ -165,6 +176,8 @@ def MODEL():
 
             # collect variable list
             mhd = sp.IdlFile(self.pattern_files[p][0])
+            # mhd = sp.IdlFile(self.pattern_files[p][0],
+            #                  sort_unstructured_data=False)
             file_variables = [key for key in mhd.keys() if key not in
                               ['grid', 'status', 'x', 'y', 'z']] + ['th']
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -194,9 +207,16 @@ def MODEL():
             self._X = array(unique(mhd['x']))
             self._Y = array(unique(mhd['y']))
             self._Z = array(unique(mhd['z']))
-            self.constants = {'c': mhd.meta['c'], 'g': mhd.meta['g'],
-                              'R': mhd.meta['R']}
-            # close file. HOW???
+            self.constants = {'c': mhd.meta['c'], 'g': mhd.meta['g']}
+            # older runs may not have these
+            if 'R' in mhd.meta.keys():
+                self.constants['R'] = mhd.meta['R']
+            if 'NX' in mhd.meta.keys():
+                self.constants['NX'] = mhd.meta['NX']
+            if 'NY' in mhd.meta.keys():
+                self.constants['NY'] = mhd.meta['NY']
+            if 'NZ' in mhd.meta.keys():
+                self.constants['NZ'] = mhd.meta['NZ']
 
             # store kay for each variable desired
             self.variables = {model_varnames[var][0]: {
@@ -216,7 +236,7 @@ def MODEL():
             # store original list b/c gridded interpolators change key list
             varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
-                self.register_variables(varname, gridded_int)
+                self.register_variables(varname, gridded_int, verbose=verbose)
             if verbose:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
@@ -224,8 +244,145 @@ def MODEL():
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
-        # define and register the variable
-        def register_variables(self, varname, gridded_int):
+        def setup_octree(self, x, y, z, verbose=False):
+            '''
+            This function requires _interpolate_amrdata*.so in
+            readers/OCTREE_BLOCK_GRID/
+            '''
+            if verbose:
+                tic = time.time()
+
+            Ncell = int(len(x))
+
+            if verbose:
+                print("setup_octree: Ncell=", Ncell)
+
+            if 'NX' in self.constants.keys():
+                NX = int(self.constants['NX'])
+            else:
+                NX = 4  # minimum block size in BATSRUS is 4x4xc4 cells
+            if 'NZ' in self.constants.keys():
+                NY = int(self.constants['NY'])
+            else:
+                NY = 4
+            if 'NZ' in self.constants.keys():
+                NZ = int(self.constants['NZ'])
+            else:
+                NZ = 4
+
+            N_blks = int(len(x)/(NX*NY*NZ))
+
+            if 'R' in self.constants.keys():
+                R = float(self.constants['R'])
+            else:
+                R = 3.0
+
+            # initialize cffi arrays with Python lists may be slightly faster
+            octree = {}
+            x = ffi.new("float[]", list(x))
+            y = ffi.new("float[]", list(y))
+            z = ffi.new("float[]", list(z))
+            # 2 elements per block, smallest blocks have 2x2x2=8 positions
+            # at cell corners (GUMICS), so maximum array size is N/4
+            # BATSRUS blocks have at least 4x4x4 cell centers
+            octree['xr_blk'] = ffi.new("float[]", 2*N_blks)
+            octree['yr_blk'] = ffi.new("float[]", 2*N_blks)
+            octree['zr_blk'] = ffi.new("float[]", 2*N_blks)
+            octree['x_blk'] = ffi.new("float[]", NX*N_blks)
+            octree['y_blk'] = ffi.new("float[]", NY*N_blks)
+            octree['z_blk'] = ffi.new("float[]", NZ*N_blks)
+            octree['box_range'] = ffi.new("float[]", 7)
+            octree['NX'] = ffi.new("int[]", [NX])
+            octree['NY'] = ffi.new("int[]", [NY])
+            octree['NZ'] = ffi.new("int[]", [NZ])
+
+            N_blks = lib.xyz_ranges(Ncell, x, y, z, octree['xr_blk'],
+                                    octree['yr_blk'], octree['zr_blk'],
+                                    octree['x_blk'], octree['y_blk'],
+                                    octree['z_blk'], octree['box_range'],
+                                    octree['NX'], octree['NY'],
+                                    octree['NZ'], 1)
+
+            if N_blks < 0:
+                print('NX:', list(octree['NX']))
+                print('NY:', list(octree['NY']))
+                print('NZ:', list(octree['NZ']))
+                print('Y:', list(y[0:16]))
+                print('Z:', list(z[0:16]))
+                print('X_blk:', list(octree['x_blk'][0:16]))
+                print('Y_blk:', list(octree['y_blk'][0:16]))
+                print('Z_blk:', list(octree['z_blk'][0:16]))
+                raise IOError("Block shape and size was not determined.")
+
+            octree['N_blks'] = ffi.new("int[]", [N_blks])
+
+            N_octree = int(N_blks*8/7)
+            octree['octree_blocklist'] = ffi.new("octree_block[]", N_octree)
+
+            dx_blk = zeros(N_blks, dtype=float)
+            dy_blk = zeros(N_blks, dtype=float)
+            dz_blk = zeros(N_blks, dtype=float)
+
+            for i in range(0, N_blks):
+                dx_blk[i] = octree['xr_blk'][2*i+1]-octree['xr_blk'][2*i]
+                dy_blk[i] = octree['yr_blk'][2*i+1]-octree['yr_blk'][2*i]
+                dz_blk[i] = octree['zr_blk'][2*i+1]-octree['zr_blk'][2*i]
+
+            dxmin_blk = min(dx_blk)
+            dxmax_blk = max(dx_blk)
+            dymin_blk = min(dy_blk)
+            dymax_blk = max(dy_blk)
+            dzmin_blk = min(dz_blk)
+            dzmax_blk = max(dz_blk)
+            XMIN = octree['box_range'][0]
+            XMAX = octree['box_range'][1]
+            YMIN = octree['box_range'][2]
+            YMAX = octree['box_range'][3]
+            ZMIN = octree['box_range'][4]
+            ZMAX = octree['box_range'][5]
+            p1 = int(floor((XMAX-XMIN)/dxmax_blk+0.5))
+            p2 = int(floor((YMAX-YMIN)/dymax_blk+0.5))
+            p3 = int(floor((ZMAX-ZMIN)/dzmax_blk+0.5))
+            while ((int(p1/2)*2 == p1)
+                   & (int(p2/2)*2 == p2)
+                   & (int(p3/2)*2 == p3)
+                   ):
+                p1 = int(p1/2)
+                p2 = int(p2/2)
+                p3 = int(p3/2)
+
+            if verbose:
+                print("XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX: ",
+                      XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX)
+                print("p1, p2, p3: ", p1, p2, p3, "dxmin,dymin,dzmin: ",
+                      dxmin_blk, dymin_blk, dzmin_blk)
+
+            MAX_AMRLEVEL = int(log((XMAX-XMIN)/(p1*dxmin_blk))/log(2.)+0.5)+1
+            octree['MAX_AMRLEVEL'] = MAX_AMRLEVEL
+
+            if verbose:
+                print("MAX_AMRLEVEL:", MAX_AMRLEVEL)
+
+            octree['numparents_at_AMRlevel'] = ffi.new("int[]",
+                                                       N_blks*(MAX_AMRLEVEL+1))
+            octree['block_at_AMRlevel'] = ffi.new("int[]",
+                                                  N_blks*(MAX_AMRLEVEL+1))
+            success = int(-1)
+            success = lib.setup_octree(N_blks,
+                                       octree['xr_blk'], octree['yr_blk'],
+                                       octree['zr_blk'], MAX_AMRLEVEL,
+                                       octree['box_range'],
+                                       octree['octree_blocklist'], N_octree,
+                                       octree['numparents_at_AMRlevel'],
+                                       octree['block_at_AMRlevel'])
+
+            if verbose:
+                toc = time.time()
+                print('setup_octree: ', toc-tic, 'seconds elapsed')
+
+            return (octree)
+
+        def register_variables(self, varname, gridded_int, verbose=False):
             '''Functionalizes the indicated dataset.'''
 
             # determine coordinate variables and xvec by coord list
@@ -256,21 +413,51 @@ def MODEL():
             def func(i):  # i is the file/time number
                 # initialize octree instance for file if not already done
                 if i not in self.octree[key].keys():
+                    # files is closed after read in spacepy.pybats.IdlFile
                     mhd = sp.IdlFile(self.pattern_files[key][i])
+                    # pull request pending to implement sort_unstructured_data
+                    # lib/site-packages/spacepy/pybats/__init__.py needs to be
+                    # modified in your installation to not sort unstructured
+                    # data in _read_Idl_bin() by default
+                    #  def _read_idl_bin(pbdat, header='units', start_loc=0,
+                    #                     keep_case=True, headeronly=False,
+                    #                     sort_unstructured_data=False):
+                    # ...
+                    #
+                    # # Unstructured data can be in any order, so let's sort it
+                    # if gtyp == 'Unstructured' and sort_unstructured_data:
+                    #     gridtotal = np.zeros(npts)
+                    #
+                    # Once pull request is implemented in spacepy use keyword:
+                    # mhd = sp.IdlFile(self.pattern_files[key][i],
+                    #                  sort_unstructured_data=False)
                     x = array(mhd['x'])
                     y = array(mhd['y'])
                     z = array(mhd['z'])
-                    self.octree[key][i] = None  # initialized octree object
-                    # close file (how?)
+                    # initialize octree object and store in dictionary
+                    self.octree[key][i] = self.setup_octree(x, y, z,
+                                                            verbose=verbose)
+
+                # update which octree arrays the library points to
+                lib.setup_octree_pointers(self.octree[key][i]['MAX_AMRLEVEL'],
+                                          self.octree[key][i]['octree_blocklist'],
+                                          self.octree[key][i]['numparents_at_AMRlevel'],
+                                          self.octree[key][i]['block_at_AMRlevel'])
                 # get data from file
-                octree = self.octree[key][i]
                 data = sp.IdlFile(self.pattern_files[key][i])[gvar]  # dmarray
 
                 # assign custom interpolator: Lutz Rastaetter 2021
                 def interp(xvec):
                     tic = perf_counter()
+                    if not isinstance(xvec, ndarray):
+                        xvec = array(xvec)
+
                     X, Y, Z = xvec.T  # xvec can be used like this
-                    '''
+                    if not isinstance(X, ndarray):
+                        X = array([X])
+                        Y = array([Y])
+                        Z = array([Z])
+
                     var_data = ffi.new("float[]", list(data))
                     xpos = ffi.new("float[]", list(X))
                     ypos = ffi.new("float[]", list(Y))
@@ -278,18 +465,19 @@ def MODEL():
                     npos = len(X)
                     return_data = list(zeros(npos, dtype=float))
                     return_data_ffi = ffi.new("float[]", return_data)
-                    # THIS NEEDS TO RETURN THE return_data_ffi VARIABLE!!!!!!!!!!!
-                    IS_OK = lib.interpolate_amrdata_multipos(
-                      xpos, ypos, zpos, npos, var_data, return_data_ffi)
-                    return_data[:] = list(return_data_ffi)  # STILL ZEROS because return_data_ffi was not returned?
+
+                    IS_ERROR = lib.interpolate_amrdata_multipos(
+                        xpos, ypos, zpos, npos, var_data, return_data_ffi)
+                    if IS_ERROR != 0:
+                        print("Warning: SWMF/BATSRUS interpolation failed.")
+
+                    return_data[:] = list(return_data_ffi)
                     toc = perf_counter()
-                    print(varname,' interp: ', toc-tic, 'seconds elapsed')
+                    if verbose:
+                        print(varname, ' interp: ', toc-tic, 'seconds elapsed')
+
                     return return_data
-                    '''
-                    if not isinstance(X, ndarray):
-                        return NaN
-                    else:
-                        return zeros(len(X)) * NaN
+
                 return interp
 
             # functionalize the variable dataset

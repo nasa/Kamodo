@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "fl.h"
+#include "fl_extern.h"
 
 IDL_LONG find_octree_block(float x, float y, float z, 
 			   IDL_LONG old_blocknumber, IDL_LONG max_level)
