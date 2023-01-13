@@ -36,9 +36,11 @@ int trace_fieldline_octree(float x_start,float y_start,float z_start, float r_en
 """)
 
 
-libraries=['']    # on Windowns, no explicit list of libraries is needed
-if os.name == 'posix': # Unix-like OS (MacOS, Linux)
-    libraries=['m']   # link with the math library (libm)
+# on Windows (os.name == 'nt'), no explicit list of libraries is needed
+libraries=['']    
+# link with the math library (libm) in Unix-style OS (Linux, Mac-OS)
+if os.name == 'posix':
+    libraries=['m']
 
 ffibuilder.set_source("_interpolate_amrdata",  # name of the output C extension
 """
