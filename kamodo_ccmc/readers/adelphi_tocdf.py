@@ -121,7 +121,6 @@ def combine_hemispheres(north_file, south_file):
         np.diff(data_N['MLAT'])[0]/10.  # add buffer rows for N hemisphere
     data['Lat'][len_lat+2] = data['Lat'][len_lat+4] -\
         np.diff(data_N['MLAT'])[0]
-    print('Latitude:', data['Lat'])
 
     # combine data from different hemispheres
     new_shape = (len(data['Time']), len(data['Lon']), len(data['Lat']))
@@ -157,7 +156,6 @@ def combine_hemispheres(north_file, south_file):
             NP_idx -= 1
             zero_check = np.count_nonzero(data[key][:, :, NP_idx])
         # replace 'extra' latitude rows from data with NaNs
-        print(key, len(slice_idx), slice_idx)
         data[key][:, :, slice_idx] = np.tile(np.NaN, (
             new_shape[0], new_shape[1], len(slice_idx)))
 

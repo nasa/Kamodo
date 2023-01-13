@@ -16,7 +16,7 @@ model_varnames = {'E_ph': ['E_east', 'Electric Field (eastward)',
                   'cond_ped': ['Sigma_P', 'Ovation Pyme Pedersen Conductance',
                                3, 'SM', 'sph', ['time', 'lon', 'lat'], 'S'],
                   # units=mho=S
-                  'epot': ['V', 'Electric Potential',
+                  'epot': ['phi', 'Electric Potential',
                            4, 'SM', 'sph', ['time', 'lon', 'lat'], 'V'],
                   'int_joule_heat_n': ['W_JouleN', 'Northern Hemisphere ' +
                                        'Integrated Joule Heating',
