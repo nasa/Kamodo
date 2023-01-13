@@ -12,6 +12,9 @@ __pycache__/
 *.o
 *.mod
 
+# cffi C sources written during compilation of shared library)
+_*.c
+
 # Emacs editor backup files
 *~
 
