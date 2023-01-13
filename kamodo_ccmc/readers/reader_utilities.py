@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 from os.path import basename
 
 
-def create_interp(coord_data, data_dict, func, func_default='data'):
+def create_interp(coord_data, data_dict, func=None, func_default='data'):
     '''Create an interpolator depending on the dimensions of the input.
     Inputs:
         coord_data: a dictionary containing the coordinate data.
