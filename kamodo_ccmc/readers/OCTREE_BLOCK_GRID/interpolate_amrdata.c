@@ -3,12 +3,12 @@
 #include <string.h>
 #include <math.h>
 
-#include "fl.h"
+#include "fl_extern.h"
 
 #define no_idl
 
-//#define DEBUG
-//#define DEBUG2
+// #define DEBUG
+// #define DEBUG2
 // #define DEBUG3 
 // #define debug_main
 //#define test_with_missing  
@@ -374,231 +374,221 @@ IDL_LONG  interpolate_amrdata_multivar_IDL(int argc, char *argv[]) {
 #endif
 
         for (ic=0;ic<8;ic++){
-            ib_c[ic]=ib;    
+            ib_c[ic] = ib;    
 #ifdef xyz_blk
-            xx_c[ic]=x_blk[NX*ib]+ix_c[ic]*dx;
-            yy_c[ic]=y_blk[NY*ib]+iy_c[ic]*dy;
-            zz_c[ic]=z_blk[NZ*ib]+iz_c[ic]*dz; 
+            xx_c[ic] = x_blk[NX*ib]+ix_c[ic]*dx;
+            yy_c[ic] = y_blk[NY*ib]+iy_c[ic]*dy;
+            zz_c[ic] = z_blk[NZ*ib]+iz_c[ic]*dz; 
 #else
-            xx_c[ic]=XMIN+(inside_block_offset+ix_c[ic])*dx;
-            yy_c[ic]=YMIN+(inside_block_offset+iy_c[ic])*dy;
-            zz_c[ic]=ZMIN+(inside_block_offset+iz_c[ic])*dz;
+            xx_c[ic] = XMIN+(inside_block_offset+ix_c[ic])*dx;
+            yy_c[ic] = YMIN+(inside_block_offset+iy_c[ic])*dy;
+            zz_c[ic] = ZMIN+(inside_block_offset+iz_c[ic])*dz;
 #endif
             new_blk[ic]=0;            
 /* validate positions in block and find new block as necessary */
             if (ix_c[ic] < 0.){
-                new_blk[ic]=1;
+                new_blk[ic] = 1;
 #ifdef xyz_blk
-                xx_c[ic]=x_blk[NX*ib]-next_block_offset*dx;
+                xx_c[ic] = x_blk[NX*ib]-next_block_offset*dx;
 #else
-                xx_c[ic]=XMIN-0.5*dx;
+                xx_c[ic] = XMIN-0.5*dx;
 #endif
             } else {
                 if (ix_c[ic] > (NX-0.5)) {
-                    new_blk[ic]=1;
+                    new_blk[ic] = 1;
 #ifdef xyz_blk
-                    xx_c[ic]=x_blk[NX-1+NX*ib]+next_block_offset*dx; 
+                    xx_c[ic] = x_blk[NX-1+NX*ib]+next_block_offset*dx; 
 #else
-                    xx_c[ic]=XMAX+0.5*dx;
+                    xx_c[ic] = XMAX+0.5*dx;
 #endif
                 } else {
 #ifdef xyz_blk
-                    xx_c[ic]=x_blk[ix_c[ic]+NX*ib];
+                    xx_c[ic] = x_blk[ix_c[ic]+NX*ib];
 #else
-                    xx_c[ic]=XMIN+(inside_block_offset+ix_c[ic])*dx; 
+                    xx_c[ic] = XMIN+(inside_block_offset+ix_c[ic])*dx; 
 #endif
                 }
             }
             
             if (iy_c[ic] < 0) {
-                new_blk[ic]=1;              
+                new_blk[ic] = 1;              
 #ifdef xyz_blk
-                yy_c[ic]=y_blk[NY*ib]-next_block_offset*dy;
+                yy_c[ic] = y_blk[NY*ib]-next_block_offset*dy;
 #else
-                yy_c[ic]=YMIN-0.5*dy;
+                yy_c[ic] = YMIN-0.5*dy;
 #endif
             } else {
                 if (iy_c[ic] > (NY-1) ) {
-                    new_blk[ic]=1;
+                    new_blk[ic] = 1;
 #ifdef xyz_blk
-                    yy_c[ic]=y_blk[NY-1+NY*ib]+next_block_offset*dy; 
+                    yy_c[ic] = y_blk[NY-1+NY*ib]+next_block_offset*dy; 
 #else
-                    yy_c[ic]=YMAX+0.5*dy;
+                    yy_c[ic] = YMAX+0.5*dy;
 #endif
                 } else {
 #ifdef xyz_blk
-                    yy_c[ic]=y_blk[iy_c[ic]+NY*ib];
+                    yy_c[ic] = y_blk[iy_c[ic]+NY*ib];
 #else
-                    yy_c[ic]=YMIN+(inside_block_offset+iy_c[ic])*dy;
+                    yy_c[ic] = YMIN+(inside_block_offset+iy_c[ic])*dy;
 #endif
                 }
             }
             if (iz_c[ic] < 0) {
-                new_blk[ic]=1;
+                new_blk[ic] = 1;
 #ifdef xyz_blk
-                zz_c[ic]=z_blk[NZ*ib]-next_block_offset*dz;
+                zz_c[ic] = z_blk[NZ*ib]-next_block_offset*dz;
 #else
-                zz_c[ic]=ZMIN-0.5*dz;
+                zz_c[ic] = ZMIN-0.5*dz;
 #endif
             } else {  
                 if (iz_c[ic] > (NZ-1) ){
-                    new_blk[ic]=1;
+                    new_blk[ic] = 1;
 #ifdef xyz_blk
-                    zz_c[ic]=z_blk[NZ-1+NZ*ib]+next_block_offset*dz; 
+                    zz_c[ic] = z_blk[NZ-1+NZ*ib]+next_block_offset*dz; 
 #else
-                    zz_c[ic]=ZMAX+0.5*dz;
+                    zz_c[ic] = ZMAX+0.5*dz;
 #endif
                 } else {
 #ifdef xyz_blk
-                    zz_c[ic]=z_blk[iz_c[ic]+NZ*ib]; 
+                    zz_c[ic] = z_blk[iz_c[ic]+NZ*ib]; 
 #else
-                    zz_c[ic]=ZMIN+(inside_block_offset+iz_c[ic])*dz;
+                    zz_c[ic] = ZMIN+(inside_block_offset+iz_c[ic])*dz;
 #endif
                 }
             }
 #ifdef DEBUG
             fprintf(stderr,"ic: %ld Block: %ld ixyz_c: %i %i %i XYZ_c: %f %f %f\n",
-                   ic,ib_c[ic],ix_c[ic],iy_c[ic],iz_c[ic],
-                   xx_c[ic],yy_c[ic],zz_c[ic]);
+                   ic, ib_c[ic], ix_c[ic], iy_c[ic], iz_c[ic],
+                   xx_c[ic], yy_c[ic], zz_c[ic]);
 #endif
         } /* end for ic=0..7 */
 
 #ifdef DEBUG3
        fprintf(stderr,"XYZ: %f %f %f\n",xx,yy,zz);
 #endif
-        for (ic=0;ic<8;ic++){
-	    valid_c[ic]=1;
+        for (ic=0; ic<8; ic++){
+	    valid_c[ic] = 1;
             if (new_blk[ic]) {
                 long ibc;
-                ibc=find_octree_block(xx_c[ic],yy_c[ic],zz_c[ic],-1L,-1);
+                ibc=find_octree_block(xx_c[ic], yy_c[ic], zz_c[ic], -1L, -1);
 #ifdef DEBUG2
                 fprintf(stderr,"New block: %ld XYZ: %f %f %f\n",
-                        ibc,xx_c[ic],yy_c[ic],zz_c[ic]);
+                        ibc, xx_c[ic], yy_c[ic], zz_c[ic]);
 #endif
 /* ; now snap into position at new block cell */
 #ifdef DEBUG
                 fprintf(stderr,"New block: %ld\n",ibc);
 #endif
                 if (ibc >= 0 && ibc < N_blks) { // we may allow for blocks with incomplete child count
-                    ib_c[ic]=ibc; /* change block number */
+                    ib_c[ic] = ibc; /* change block number */
 #ifdef xyz_blk
-                    dx2=x_blk[NX*ibc+1]-x_blk[NX*ibc];
-                    dy2=y_blk[NY*ibc+1]-y_blk[NY*ibc];
-                    dz2=z_blk[NZ*ibc+1]-z_blk[NZ*ibc];
+                    dx2 = x_blk[NX*ibc+1]-x_blk[NX*ibc];
+                    dy2 = y_blk[NY*ibc+1]-y_blk[NY*ibc];
+                    dz2 = z_blk[NZ*ibc+1]-z_blk[NZ*ibc];
 #else
-                    XMIN=(octree_blocklist[ibc]).XMIN;
-                    XMAX=(octree_blocklist[ibc]).XMAX;
-                    YMIN=(octree_blocklist[ibc]).YMIN;
-                    YMAX=(octree_blocklist[ibc]).YMAX;
-                    ZMIN=(octree_blocklist[ibc]).ZMIN;
-                    ZMAX=(octree_blocklist[ibc]).ZMAX;
-                    dx2=(XMAX - XMIN)/(NX-have_cell_corners);
-                    dy2=(YMAX - YMIN)/(NY-have_cell_corners);
-		    dz2=(ZMAX - ZMIN)/(NZ-have_cell_corners);
+                    XMIN = (octree_blocklist[ibc]).XMIN;
+                    XMAX = (octree_blocklist[ibc]).XMAX;
+                    YMIN = (octree_blocklist[ibc]).YMIN;
+                    YMAX = (octree_blocklist[ibc]).YMAX;
+                    ZMIN = (octree_blocklist[ibc]).ZMIN;
+                    ZMAX = (octree_blocklist[ibc]).ZMAX;
+                    dx2 = (XMAX - XMIN)/(NX-have_cell_corners);
+                    dy2 = (YMAX - YMIN)/(NY-have_cell_corners);
+		    dz2 = (ZMAX - ZMIN)/(NZ-have_cell_corners);
 #endif
-                    xx_c[ic]=xx+(    ic   % 2)*dx2; /* adjust stencil with */
-                    yy_c[ic]=yy+((ic % 4) / 2)*dy2; /* resolution change between */
-                    zz_c[ic]=zz+(    ic   / 4)*dz2; /* neighboring blocks */
+                    xx_c[ic] = xx+(    ic   % 2)*dx2; /* adjust stencil with */
+                    yy_c[ic] = yy+((ic % 4) / 2)*dy2; /* resolution change between */
+                    zz_c[ic] = zz+(    ic   / 4)*dz2; /* neighboring blocks */
 #ifdef xyz_blk
-                    ix_c[ic]=min(NX-1,max(0,floor((xx_c[ic]-x_blk[NX*ibc])/dx2)));
-                    iy_c[ic]=min(NY-1,max(0,floor((yy_c[ic]-y_blk[NY*ibc])/dy2)));
-                    iz_c[ic]=min(NZ-1,max(0,floor((zz_c[ic]-z_blk[NZ*ibc])/dz2)));
-                    xx_c[ic]=x_blk[ix_c[ic]+NX*ib_c[ic]];
-                    yy_c[ic]=y_blk[iy_c[ic]+NY*ib_c[ic]];
-                    zz_c[ic]=z_blk[iz_c[ic]+NZ*ib_c[ic]];
+                    ix_c[ic] = min(NX-1,max(0,floor((xx_c[ic]-x_blk[NX*ibc])/dx2)));
+                    iy_c[ic] = min(NY-1,max(0,floor((yy_c[ic]-y_blk[NY*ibc])/dy2)));
+                    iz_c[ic] = min(NZ-1,max(0,floor((zz_c[ic]-z_blk[NZ*ibc])/dz2)));
+                    xx_c[ic] = x_blk[ix_c[ic]+NX*ib_c[ic]];
+                    yy_c[ic] = y_blk[iy_c[ic]+NY*ib_c[ic]];
+                    zz_c[ic] = z_blk[iz_c[ic]+NZ*ib_c[ic]];
 #else
-                    ix_c[ic]=min(NX-1,max(0,floor((xx_c[ic]-XMIN)/dx2 - 0.5)));
-                    iy_c[ic]=min(NY-1,max(0,floor((yy_c[ic]-YMIN)/dy2 - 0.5)));
-                    iz_c[ic]=min(NZ-1,max(0,floor((zz_c[ic]-ZMIN)/dz2 - 0.5)));
-                    xx_c[ic]=XMIN+dx2*(inside_block_offset+ix_c[ic]); 
-                    yy_c[ic]=YMIN+dx2*(inside_block_offset+iy_c[ic]); 
-                    zz_c[ic]=ZMIN+dx2*(inside_block_offset+iz_c[ic]);
+                    ix_c[ic] = min(NX-1,max(0,floor((xx_c[ic]-XMIN)/dx2 - 0.5)));
+                    iy_c[ic] = min(NY-1,max(0,floor((yy_c[ic]-YMIN)/dy2 - 0.5)));
+                    iz_c[ic] = min(NZ-1,max(0,floor((zz_c[ic]-ZMIN)/dz2 - 0.5)));
+                    xx_c[ic] = XMIN+dx2*(inside_block_offset+ix_c[ic]); 
+                    yy_c[ic] = YMIN+dx2*(inside_block_offset+iy_c[ic]); 
+                    zz_c[ic] = ZMIN+dx2*(inside_block_offset+iz_c[ic]);
 #endif
                 } else {
 		  /* invalidate points outside domain */
-		    valid_c[ic]=0;
+		    valid_c[ic] = 0;
 /* point to some grid point near the position (xx,yy,zz) */
-                    ib_c[ic]=ib;
-                    ix_c[ic]=NX/2;
-                    iy_c[ic]=NY/2;
-                    iz_c[ic]=NZ/2;
+                    ib_c[ic] = ib;
+                    ix_c[ic] = NX/2;
+                    iy_c[ic] = NY/2;
+                    iz_c[ic] = NZ/2;
 /* throw out those points by moving them off */
-                    xx_c[ic]=fabs(MISSING); /*x_blk[ib*NX+ix_c[ic]]; */
-                    yy_c[ic]=fabs(MISSING); /*y_blk[ib*NY+iy_c[ic]]; */
-                    zz_c[ic]=fabs(MISSING); /*z_blk[ib*NZ+iz_c[ic]]; */
+                    xx_c[ic] = fabs(MISSING); /*x_blk[ib*NX+ix_c[ic]]; */
+                    yy_c[ic] = fabs(MISSING); /*y_blk[ib*NY+iy_c[ic]]; */
+                    zz_c[ic] = fabs(MISSING); /*z_blk[ib*NZ+iz_c[ic]]; */
                 }
 #ifdef DEBUG2
-                fprintf(stderr,"IC: %ld XYZ_c: %f %f %f\n",ic,xx_c[ic],yy_c[ic],zz_c[ic]);
+                fprintf(stderr,"IC: %ld XYZ_c: %f %f %f\n", ic, xx_c[ic], yy_c[ic], zz_c[ic]);
 #endif
             }
         }    
     
 #ifdef DEBUG2
-        fprintf(stderr,"Interpolate_amrdata: %f %f %f %ld\n",xx,yy,zz,ib);
+        fprintf(stderr,"Interpolate_amrdata: %f %f %f %ld\n", xx, yy, zz, ib);
 #endif
 /* end if new_position */
     } else {
         if (ib < 0) {return(MISSING);} /* outside of range */
     }
 #ifdef test_with_missing
-    MISSING_2=7*MISSING/8;
+    MISSING_2 = 7*MISSING/8;
 #endif
 /************************************/
 /* retrieve data                    */
 /************************************/
     if (field != NULL){
         for (ic=0;ic<8;ic++){
-            data_c[ic]=field[VAR_ID
+            data_c[ic] = field[VAR_ID
                      +NVAR*(ix_c[ic]+NX*(iy_c[ic]+NY*(iz_c[ic]+NZ*ib_c[ic])) )
             ];
 #ifdef test_with_missing
-	    valid_c[ic]=valid_c[ic]*(data_c[ic] > MISSING_2); 
+	    valid_c[ic] = valid_c[ic]*(data_c[ic] > MISSING_2); 
 #endif
 #ifdef DEBUG2
             fprintf(stderr,"Corners: %f %f %f %f\n",
-                    xx_c[ic],yy_c[ic],zz_c[ic],data_c[ic]);
+                    xx_c[ic], yy_c[ic], zz_c[ic], data_c[ic]);
 #endif
         }
     }
 #ifdef DEBUG3
     if (VAR_ID == 0) {
       fprintf(stderr,"Data=[%f, %f, %f, %f, %f, %f, %f, %f]\n",
-	     data_c[0],data_c[1],data_c[2],data_c[3],
-	     data_c[4],data_c[5],data_c[6],data_c[7]);
+	     data_c[0], data_c[1], data_c[2], data_c[3],
+	     data_c[4], data_c[5], data_c[6], data_c[7]);
       fprintf(stderr,"XX=[ %f, %f, %f, %f, %f, %f, %f, %f]\n",
-	     xx_c[0],xx_c[1],xx_c[2],xx_c[3],
-	     xx_c[4],xx_c[5],xx_c[6],xx_c[7]);
+	     xx_c[0], xx_c[1], xx_c[2], xx_c[3],
+	     xx_c[4], xx_c[5], xx_c[6], xx_c[7]);
       fprintf(stderr,"YY=[ %f, %f, %f, %f, %f, %f, %f, %f]\n",
-	     yy_c[0],yy_c[1],yy_c[2],yy_c[3],
-	     yy_c[4],yy_c[5],yy_c[6],yy_c[7]);
+	     yy_c[0], yy_c[1], yy_c[2], yy_c[3],
+	     yy_c[4], yy_c[5], yy_c[6], yy_c[7]);
       fprintf(stderr,"ZZ=[ %f, %f, %f, %f, %f, %f, %f, %f]\n",
-	     zz_c[0],zz_c[1],zz_c[2],zz_c[3],
-	     zz_c[4],zz_c[5],zz_c[6],zz_c[7]);
+	     zz_c[0], zz_c[1], zz_c[2], zz_c[3],
+	     zz_c[4], zz_c[5], zz_c[6], zz_c[7]);
     }
 #endif
-/* if (field == NULL and "variable_name is recognized")
-   add code to access dat from CDF file here 
-   need cdf file opened and cdf_id in global variable domain or handed through
-   
-   else {
-        for (ic=0;ic<8;ic++) {
-            data_c[ic] = cdf_...
-        }
-    }
-           */
 /************************************/
 /* do pair-wise interpolations      */
 /* in x,y and z directions          */
 /************************************/
-    for (ic=0;ic<4;ic++){
-        int ic2,ic2_1;
-        ic2=2*ic;
-        ic2_1=ic2+1;
-        d_m1=(xx-xx_c[ic2]);
-        d_m2=(xx_c[ic2_1]-xx);
+    for (ic=0; ic<4; ic++){
+        int ic2, ic2_1;
+        ic2 = 2*ic;
+        ic2_1 = ic2+1;
+        d_m1 = (xx-xx_c[ic2]);
+        d_m2 = (xx_c[ic2_1]-xx);
 #ifdef DEBUG2
         fprintf(stderr,"Interp_x: X: %f %f dx: %f %f data: %f %f\n",
-                xx_c[ic2],xx_c[ic2_1],d_m1,d_m2,data_c[ic2],data_c[ic2_1]);
+                xx_c[ic2], xx_c[ic2_1], d_m1, d_m2, data_c[ic2], data_c[ic2_1]);
 #endif
 
         if (
@@ -607,71 +597,71 @@ IDL_LONG  interpolate_amrdata_multivar_IDL(int argc, char *argv[]) {
 #endif
             (fabs(d_m1+d_m2) > (dx/4.) ) 
 	    ){
-            data_c[ic]=(d_m2*data_c[ic2]+d_m1*data_c[ic2_1])
+            data_c[ic] = (d_m2*data_c[ic2]+d_m1*data_c[ic2_1])
                 /(d_m1+d_m2);
-            yy_c2[ic]=(d_m2*yy_c[ic2]+d_m1*yy_c[ic2_1])
+            yy_c2[ic] = (d_m2*yy_c[ic2]+d_m1*yy_c[ic2_1])
                 /(d_m1+d_m2);
-            zz_c2[ic]=(d_m2*zz_c[ic2]+d_m1*zz_c[ic2_1])
+            zz_c2[ic] = (d_m2*zz_c[ic2]+d_m1*zz_c[ic2_1])
                 /(d_m1+d_m2);
 	    valid=1;
         } else {
 	    valid=0;
 	    if (valid_c[ic2_1]) {
-	        data_c[ic]=data_c[ic2_1];
-                yy_c2[ic]=yy_c[ic2_1];
-                zz_c2[ic]=zz_c[ic2_1];
-		valid=1;
+	        data_c[ic] = data_c[ic2_1];
+                yy_c2[ic] = yy_c[ic2_1];
+                zz_c2[ic] = zz_c[ic2_1];
+		valid = 1;
             } 
 	    if (valid_c[ic2]){
-                data_c[ic]=data_c[ic2];
-                yy_c2[ic]=yy_c[ic2];
-                zz_c2[ic]=zz_c[ic2];
-		valid=1;
+                data_c[ic] = data_c[ic2];
+                yy_c2[ic] = yy_c[ic2];
+                zz_c2[ic] = zz_c[ic2];
+		valid = 1;
 	    } 
 	}
-	valid_c[ic]=valid;
+	valid_c[ic] = valid;
     }
     
-    for (ic=0;ic<2;ic++){
-        int ic2,ic2_1;
-        ic2=2*ic;
-        ic2_1=ic2+1;
-        d_m1=(yy-yy_c2[ic2]);
-        d_m2=(yy_c2[ic2_1]-yy);
+    for (ic=0; ic<2; ic++){
+        int ic2, ic2_1;
+        ic2 = 2*ic;
+        ic2_1 = ic2+1;
+        d_m1 = (yy-yy_c2[ic2]);
+        d_m2 = (yy_c2[ic2_1]-yy);
 #ifdef DEBUG2
         fprintf(stderr,"Interp_y: Y: %f %f dy: %f %f data: %f %f\n",
-                yy_c2[ic2],yy_c2[ic2_1],d_m1,d_m2,data_c[ic2],data_c[ic2_1]);
+                yy_c2[ic2], yy_c2[ic2_1], d_m1, d_m2, data_c[ic2], data_c[ic2_1]);
 #endif
         if (
 #ifdef test_with_missing
             (valid_c[ic2]) && (valid_c[ic2_1]) &&
 #endif
             (fabs(d_m1+d_m2) >= (dy/4.)) ){  
-            zz_c2[ic]=(d_m2*zz_c2[ic2]+d_m1*zz_c2[ic2_1])
+            zz_c2[ic] = (d_m2*zz_c2[ic2]+d_m1*zz_c2[ic2_1])
                 /(d_m1+d_m2);
-            data_c[ic]=(d_m2*data_c[ic2]+d_m1*data_c[ic2_1])
+            data_c[ic] = (d_m2*data_c[ic2]+d_m1*data_c[ic2_1])
                 /(d_m1+d_m2);
-	    valid=1;
+	    valid = 1;
         } else {
-	    valid=0;
+	    valid = 0;
             if (valid_c[ic2_1]) {
-                data_c[ic]=data_c[ic2_1];
-                zz_c2[ic]=zz_c2[ic2_1];
-		valid=1;
+                data_c[ic] = data_c[ic2_1];
+                zz_c2[ic] = zz_c2[ic2_1];
+		valid = 1;
 	    } 
 	    if (valid_c[ic2]) {
-                data_c[ic]=data_c[ic2];
-                zz_c2[ic]=zz_c2[ic2];
-		valid=1;
+                data_c[ic] = data_c[ic2];
+                zz_c2[ic] = zz_c2[ic2];
+		valid = 1;
             }                
         }
-        valid_c[ic]=valid;
+        valid_c[ic] = valid;
     }
-    d_m1=(zz-zz_c2[0]);
-    d_m2=(zz_c2[1]-zz);
+    d_m1 = (zz-zz_c2[0]);
+    d_m2 = (zz_c2[1]-zz);
 #ifdef DEBUG2
     fprintf(stderr,"Interp_z: Z: %f %f dz: %f %f data: %f %f\n",
-            zz_c2[0],zz_c2[1],d_m1,d_m2,data_c[0],data_c[1]);
+            zz_c2[0], zz_c2[1], d_m1, d_m2, data_c[0], data_c[1]);
 #endif    
 
 /**************************************************/
@@ -683,23 +673,23 @@ IDL_LONG  interpolate_amrdata_multivar_IDL(int argc, char *argv[]) {
 #endif
         (fabs(d_m1+d_m2) >= (dz/4.))  ){  
         data_c[0]=((d_m2*data_c[0]+d_m1*data_c[1])/(d_m1+d_m2));
-	valid=1;
+	valid = 1;
     } else {
       valid=0;
         if (valid_c[1]) {
-            data_c[0]=data_c[1];
-	    valid=1;
+            data_c[0] = data_c[1];
+	    valid = 1;
         }
 	if (valid_c[0]){
-	    valid=1;
+	    valid = 1;
 	}
     }
 #ifdef DEBUG2
     fprintf(stderr,"Interp: Z: %f %f dz: %f %f data: %f\n",
-            zz_c2[0],zz_c2[1],d_m1,d_m2,data_c[0]);
+            zz_c2[0], zz_c2[1], d_m1, d_m2, data_c[0]);
 #endif        
 #ifdef DEBUG3
-    fprintf(stderr,"Interp=%f Valid=%ld\n",data_c[0],valid);
+    fprintf(stderr,"Interp=%f Valid=%ld\n", data_c[0], valid);
 #endif        
     if (valid) {
       return(data_c[0]);
