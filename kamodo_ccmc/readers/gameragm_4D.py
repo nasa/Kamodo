@@ -33,27 +33,12 @@ model_varnames = {'Bx': ['B_x', 'X-component of magnetic field',
                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
                   'Vz': ['v_z', 'Z-component of velocity',
                          0, 'SM', 'car', ['time', 'X', 'Y', 'Z'], 'km/s'],
-                  # CONSTANTS below this line. Remove 0 and D variables? *****************
-                  'Bx0': ['B_0x', 'Solar wind ??? magnetic field ' +\
-                          '(x component)',
-                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
-                  'By0': ['B_0y', 'Initial ??? Background magnetic field ' +\
-                          '(y component)',
-                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
-                  'Bz0': ['B_0z', '??? Background magnetic field ' +\
-                          '(z component)',
-                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
-                  'BxD': ['B_Dx', 'Dipole ??? Magnetic field (x component)',
-                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
-                  'ByD': ['B_Dy', '??? Magnetic field (y component)',
-                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
-                  'BzD': ['B_Dz', '??? Magnetic field (z component)',
-                          0, 'SM', 'car', ['X', 'Y', 'Z'], 'nT'],  # HIDE?
+                  # CONSTANTS below this line.
                   'dV': ['dV', 'Simulation cell volume', 0, 'SM', 'car',
-                         ['X', 'Y', 'Z'], 'R_E**3']  # double checking on unit
+                         ['X', 'Y', 'Z'], 'R_E**3']
                   }
 
-constants = ['X', 'Y', 'Z', 'Bx0', 'By0', 'Bz0', 'BxD', 'ByD', 'BzD', 'dV']
+constants = ['X', 'Y', 'Z', 'dV']
 
 
 @vectorize
