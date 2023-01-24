@@ -322,6 +322,7 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
 
     import numpy as np
     import time
+    import datetime as dt
     from kamodo import Kamodo
     import kamodo_ccmc.flythrough.model_wrapper as MW
     from kamodo_ccmc.flythrough.utils import ConvertCoord
@@ -512,6 +513,13 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
     if axis[1] == 'Time':
         fig.update_yaxes(tick0=0.,dtick=3.)
     timestr = date.strftime("%Y/%m/%d")
+    # Check if fixed_time is >= 24 hours, if so adjust timestr and fixed_time
+    if fixed_time != "":
+        date2 = date
+        while fixed_time >= 24.:
+            fixed_time += -24.
+            date2 = date2 + dt.timedelta(days=1)
+            timestr = date2.strftime("%Y/%m/%d")
     subt = model+',  '+plotCoord+' Coordinates,  '+timestr+',  Slice at:'
     if fixed_time != "": subt = subt+'  '+str(fixed_time)+' hrs'
     if fixed_alt != "":  subt = subt+'  '+str(fixed_alt) +' km Altitude'
