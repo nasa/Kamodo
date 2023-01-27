@@ -4,7 +4,13 @@ Written by Rebecca Ringuette, 2022
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {'PHI': ['phi', 'Electric potential', 0, 'SM', 'sph',
-                          ['time', 'lon', 'lat'], 'kV']}
+                          ['time', 'lon', 'lat'], 'kV'],
+                  'Psi': ['Psi', '???', 0, 'SM', 'sph',
+                          ['time', 'lon', 'lat'], 'cT*m'],
+                  'FAC': ['j_FAC', 'Field-aligned current density', 0, 'SM',
+                          'sph', ['time', 'lon', 'lat'], 'muA/m**2'],
+                  'JH': ['JH', '???', 0, 'SM', 'sph',
+                         ['time', 'lon', 'lat'], 'mW/m**2']}
 
 
 def MODEL():
@@ -77,7 +83,7 @@ def MODEL():
                 txt_files = sorted(glob(file_dir+'*.txt'))
                 if len(nc_files) == 0:  # perform file conversion if none
                     from kamodo_ccmc.readers.weimer_tocdf import convert_all
-                    convert_all(file_dir, txt_files)
+                    convert_all(txt_files)
                     nc_files = sorted(glob(file_dir+'*.nc'))
                 self.filename = ''.join([f+',' for f in txt_files])[:-1]
                 p = basename(nc_files[0]).split('.')[0]  # only one nc file
