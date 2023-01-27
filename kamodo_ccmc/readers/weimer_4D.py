@@ -3,13 +3,13 @@ Written by Rebecca Ringuette, 2022
 '''
 
 # variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'PHI': ['phi', 'Electric potential', 0, 'SM', 'sph',
+model_varnames = {'PHI': ['Phi', 'Electric potential', 0, 'SM', 'sph',
                           ['time', 'lon', 'lat'], 'kV'],
-                  'Psi': ['Psi', '???', 0, 'SM', 'sph',
+                  'Psi': ['Psi', 'Magnetic potential', 0, 'SM', 'sph',
                           ['time', 'lon', 'lat'], 'cT*m'],
                   'FAC': ['j_FAC', 'Field-aligned current density', 0, 'SM',
                           'sph', ['time', 'lon', 'lat'], 'muA/m**2'],
-                  'JH': ['JH', '???', 0, 'SM', 'sph',
+                  'JH': ['JH', 'Joule heating rate', 0, 'SM', 'sph',
                          ['time', 'lon', 'lat'], 'mW/m**2']}
 
 
