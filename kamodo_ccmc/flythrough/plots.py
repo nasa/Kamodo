@@ -1269,44 +1269,36 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
         fig.update_xaxes(autorange="reversed")
         
     if coord == 'GEO':
-        # CCMC is blocking image pulls directly from add_layout_image but copying
-        #   the file locally to /tmp and loading with PIL allows it to be used.
+        # CCMC is blocking image pulls directly from add_layout_image but
+        #   loading with PIL allows it to be used.  (pip install pillow)
         from PIL import Image
         import urllib.request
         if NS == 'S':
             if zoom:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole50.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
+                url = 'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole50.png'
+                localIMG = Image.open(urllib.request.urlopen(url))
                 fig.add_layout_image(
                     dict(source=localIMG,xref="x", yref="y", x=c50, y=c50, sizex=2*c50, sizey=2*c50,
                          sizing="stretch", opacity=0.5, layer="below")
                 )
             else:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
+                url = 'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole.png'
+                localIMG = Image.open(urllib.request.urlopen(url))
                 fig.add_layout_image(
                     dict(source=localIMG,xref="x", yref="y", x=1, y=1, sizex=2, sizey=2,
                          sizing="stretch", opacity=0.5, layer="below")
                 )
         else:
             if zoom:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole50.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
+                url = 'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole50.png'
+                localIMG = Image.open(urllib.request.urlopen(url))
                 fig.add_layout_image(
                     dict(source=localIMG,xref="x", yref="y", x=-c50, y=c50, sizex=2*c50, sizey=2*c50,
                          sizing="stretch", opacity=0.5, layer="below")
                 )
             else:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
+                url = 'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole.png'
+                localIMG = Image.open(urllib.request.urlopen(url))
                 fig.add_layout_image(
                     dict(source=localIMG,xref="x", yref="y", x=-1, y=1, sizex=2, sizey=2,
                          sizing="stretch", opacity=0.5, layer="below")
