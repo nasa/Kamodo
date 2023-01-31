@@ -421,7 +421,8 @@ def ConvertCoord(inTime, c1, c2, c3, inCoord, inType, outCoord, outType,
         if verbose:
             print(f'Elapsed time: {toc-tic:.4f} seconds.')
         return c1, c2, c3, units
-    if len(c1) > 10000 or verbose:
+    #if len(c1) > 10000 or verbose:
+    if verbose:
         print(f'Converting {len(c1)} positions into {outCoord+outType} ' +
               'coordinates...', end="")
     # Create coordinate object
@@ -450,7 +451,8 @@ def ConvertCoord(inTime, c1, c2, c3, inCoord, inType, outCoord, outType,
 
     # Ending messages and final return.
     toc = time.perf_counter()
-    if len(c1) > 10000 or verbose:
+    #if len(c1) > 10000 or verbose:
+    if verbose:
         print(f'done in {toc-tic:0.4f} seconds.')
     return x, y, z, units
 
