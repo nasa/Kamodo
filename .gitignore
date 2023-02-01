@@ -105,6 +105,7 @@ venv.bak/
 
 # mkdocs documentation
 /site
+/Validation
 
 # mypy
 .mypy_cache/
