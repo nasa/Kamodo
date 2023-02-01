@@ -1,183 +1,139 @@
-# About this repo
+# The CCMC Kamodo Analysis Suite
+## Vision Statement
+CCMC's Kamodo is an official NASA open-source python package built upon the functionalization of datasets. Once a dataset is functionalized in Kamodo, several important capabilities are then available to the user, including data analysis via function composition, automatic unit conversions, and publication quality graphics all using intuitive and simplistic syntax. By applying these capabilities to heliophysics model outputs, we aim to:
+-	Drastically simplify the currently complex data utilization process for model outputs,
+-	Provide interactive access to functionalized model outputs for users ranging in programming skill from beginners – via code-free interfaces and video tutorials – to advanced users – via thorough documentation, Jupyter notebook examples and sample workflows,
+-	Layer multiple functionalities on top of the functionalized model outputs, all with model-agnostic and uniform syntax, including but not limited to:
+    - Flythrough tools,
+    - Vector field tracing (including magnetic field mapping),
+    - Coordinate conversions,
+    - Domain-specific interactive plots of publication quality,
+    - One- and two-way model coupling,
+    - Satellite constellation mission planning tools,
+    - Simulated imagery,
+    - and a line of sight calculation tool,
+-	Greatly reduce the programming skill currently required outside of Kamodo to perform model validation studies and model-data comparisons,
+-	Enable model output utilization both on the cloud and on personal laptops in a variety of methods (e.g. through HAPI and interactive calls from the command line),
+-	Streamline the CCMC user workflow by becoming interoperable with other CCMC services (e.g. CAMEL and the various scoreboards),
+-	Expand the number of possible model-coupling groupings at CCMC by functionalizing the process,
+-	And become the next generation interface for CCMC users to interact with and analyze model outputs (e.g. through ROR and IR),
 
-This repo includes kamodo-core as a submodule, which includes core functionality and default plotting options. This CCMC repository contains model and data output readers as well as extra functionality such as satellite flythrough.
+...all while keeping the developed software open-source and freely available. The Kamodo team also supports the heliophysics community by pursuing interoperability with commonly-used python packages, collaborating with community members to add model outputs and new functionalities, and remaining involved with community events (e.g. conferences, challenges, and research support). As the library of supported model outputs types expands and new model-agnostic tools are added, CCMC-Kamodo will become a staple software package in the heliophysics community to transform current workflows into a more efficient and productive process. We are building the next generation of capability with CCMC’s Kamodo. Join us!
 
-See the file Kamodo_CCMC_InstallationInstructions.md for detailed setup steps.
+## CCMC Kamodo Installation Instructions   
 
-# Kamodo
+### Conda prompt commands: 
+- Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:
 
-[![codecov](https://codecov.io/gh/asherp/Kamodo/branch/master/graph/badge.svg?token=W1B3L19REF)](https://codecov.io/gh/asherp/Kamodo)
+> conda create -n Kamodo_env python=3.7  
 
-Kamodo is a CCMC tool for access, interpolation, and visualization of space weather models and data in python. Kamodo allows model developers to represent simulation results as mathematical functions which may be manipulated directly by end users. Kamodo handles unit conversion transparently and supports interactive science discovery through jupyter notebooks with minimal coding and is accessible through python.
+- Add the packages needed by the CCMC readers to the desired environment (replace 'Kamodo_env' with your environment name):
+
+> conda install -n Kamodo_env -c conda-forge netCDF4 cdflib astropy ipython jupyter h5py sgp4
+
+- Activate the desired environment. 
+
+> conda activate Kamodo_env
+
+- Install remaining dependencies:
+
+> python -m pip install --upgrade spacepy  
+> python -m pip install hapiclient    
+
+- Download CCMC Kamodo to the current directory:
+
+> git clone https://github.com/nasa/Kamodo.git
+
+- Install the CCMC Kamodo package. (Check the directory structure before using this command. The ./Kamodo directory should contain the kamodo_ccmc directory.)
+
+> python -m pip install ./Kamodo 
+
+Note: Developers should install CCMC Kamodo with the -e option
+
+### Testing commands from an ipython or notebook session
 
 
-The project page is located at the Community Coordinated Modeling Center, located at NASA Goddard Space Flight Center.
-
-* Official site page [https://ccmc.gsfc.nasa.gov/tools/Kamodo/](https://ccmc.gsfc.nasa.gov/tools/kamodo/)
-
-Kamodo's official source code is hosted on github under a permissive NASA open source license:
-
-* [https://github.com/nasa/Kamodo](https://github.com/nasa/Kamodo)
-
-Kamodo sample model output data is available from the CCMC for several different models.
-
-* [https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/](https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/)
-
-## Usage
-Suppose we have a vector field defined by a function of positions in the x-y plane:
-
-```python
-from kamodo import kamodofy
-import numpy as np
-
-x = np.linspace(-np.pi, np.pi, 25)
-y = np.linspace(-np.pi, np.pi, 30)
-xx, yy = np.meshgrid(x,y)
-points = np.array(zip(xx.ravel(), yy.ravel()))
-
-@kamodofy(units = 'km/s')
-def fvec(rvec = points):
-    ux = np.sin(rvec[:,0])
-    uy = np.cos(rvec[:,1])
-    return np.vstack((ux,uy)).T
-```
-
-The @kamodofy decorator lets us register this field with units to enable unit-conversion downstream:
 ```python
 from kamodo import Kamodo
-
-kamodo = Kamodo(fvec = fvec)
-kamodo
-```
-When run in a jupyter notebook, the above kamodo object will render as a set of equations:
-
-$$\vec{f}{\left (\vec{r} \right )} [km/s] = \lambda{\left (\vec{r} \right )}$$
-
-We can now evaluate our function using dot notation:
-
-```python
-kamodo.fvec(np.array([[-1,1]]))
-```
-```console
-array([[-0.84147098,  0.54030231]])
-```
-We can perform unit conversion by function composition:
-```python
-kamodo['gvec[m/s]'] = 'fvec'
-```
-kamodo automatically generates the appropriate multiplicative factors:
-$$\vec{g}{\left (\vec{r} \right )} [m/s] = 1000 \vec{f}{\left (\vec{r} \right )}$$
-we can verify these results through evaluation
-
-```python
-kamodo.gvec(np.array([[-1,1]]))
-```
-```console
-array([[-841.47098481,  540.30230587]])
-```
-Kamodo also generates quick-look graphics via function inspection.
-```python
-import plotly.io as pio
-
-fig = kamodo.plot('fvec')
-pio.write_image(fig, 'images/fig2d-usage.svg')
-```
-![usage](notebooks/images/fig2d-usage.svg)
-
-Head over to the [Introduction](notebooks/Kamodo.ipynb) page for more details.
-
-
-## Getting started
-
-Kamodo may be installed from pip
-
-```console
-pip install kamodo
+k = Kamodo()  
+import kamodo_ccmc.flythrough.model_wrapper as MW  
+MW.Model_Variables('OpenGGCM_GM')
 ```
 
-To get the latest version, install from Asher's fork:
+    
+    The OpenGGCM_GM model accepts the standardized variable names listed below.
+    -----------------------------------------------------------------------------------
+    B_x : '['x component of magnetic field', 0, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'nT']'
+    B_y : '['y component of magnetic field', 1, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'nT']'
+    B_z : '['z component of magnetic field', 2, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'nT']'
+    E_x : '['x component of electric field', 6, 'GSE', 'car', ['time', 'x', 'x', 'x'], 'mV/m']'
+    E_y : '['y component of electric field', 7, 'GSE', 'car', ['time', 'y', 'y', 'y'], 'mV/m']'
+    E_z : '['z component of electric field', 8, 'GSE', 'car', ['time', 'z', 'z', 'z'], 'mV/m']'
+    N_plasma : '['number density of plasma (hydrogen equivalent)', 12, 'GSE', 'car', ['time', 'x', 'y', 'z'], '1/cm**3']'
+    P_plasma : '['plasma pressure', 14, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'pPa']'
+    eta : '['resistivity', 13, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'm**2/s']'
+    j_x : '['current density, x component', 15, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'muA/m**2']'
+    j_y : '['current density, y component', 16, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'muA/m**2']'
+    j_z : '['current density, z component', 17, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'muA/m**2']'
+    v_plasmax : '['x component of plasma velocity', 9, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'km/s']'
+    v_plasmay : '['y component of plasma velocity', 10, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'km/s']'
+    v_plasmaz : '['z component of plasma velocity', 11, 'GSE', 'car', ['time', 'x', 'y', 'z'], 'km/s']'
+    
+    
 
-```console
-pip install git+https://github.com/asherp/Kamodo.git
-```
+## Citation Requirements
 
-!!! note
-    Asher's fork is periodically merged into the CCMC's official NASA version.
+Use of CCMC's Kamodo in published work or in other development projects requires citing one or more of the publications below as indicated.
 
-### Kamodo Environment 
+### The Data Functionalization function
 
-We strongly recommend using the conda environment system to avoid library conflicts with your host machine's python.
+Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
 
-Download and install miniconda from [here](https://conda.io/miniconda.html). The advantage to using miniconda is that each new environment includes the bare-minimum for a project. This allows you to keep many different projects on a single work station.
+### The Model Readers
 
-#### Create Kamodo environment
+Ringuette, R., L. Rastaetter, D. De Zeeuw, A. Pembroke, and O. Gerland (2023). Simplifying model data access and utilization. Adv. Space. Res. under review.
 
-Create a new environment for kamodo
+### The Flythrough functions
 
-```console
-conda create -n kamodo python==3.7
-conda activate kamodo
-(kamodo) pip install kamodo
-```
-!!! note
-    The leading (kamodo) in your prompt indicates that you have activated the `kamodo` environment.
-    From here on, anything you install will be isolated to the `kamodo` environment.
+Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
 
-#### Loading example notebooks
+### The Constellation Mission planning tool
 
-If you want to run any of the notebooks in docs, you will need to install `jupyter`:
+Ringuette, R., L. Rastaetter, D. De Zeeuw, K. Garcia-Sage, R. Robinson, and O. Gerland (2022). Kamodo's Satellite Constellation Mission Planning Tool, poster presentation presented by L. Rastaetter at the 2022 Fall meeting of AGU, Dec 12-16, Chicago, IL, USA. https://doi.org/10.22541/essoar.167214257.73153757/v1.
 
-```console
-(kamodo) conda install jupyter
-```
+## Resources
+CCMC's Kamodo Official website - https://ccmc.gsfc.nasa.gov/tools/kamodo/
 
-Navigate to the top-level of the kamodo repo, then point jupyter to `docs/notebooks`:
+CCMC's Kamodo Documentation page - https://nasa.github.io/Kamodo/
 
-    (kamodo) jupyter notebook docs/notebooks
+Sample model outputs: https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/
 
-This should open a browser window that will allow you to load any of the example notebooks.
+Youtube tutorial channel: https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa
 
-#### Requirements
+Ensemble's Kamodo-core Documentation page - https://ensemblegovservices.github.io/kamodo-core/
 
-The following requirements are obtained by running `pip install kamodo`
+## The Kamodo team
+### Dr. Rebecca Ringuette
+ORCiD: https://orcid.org/0000-0003-0875-2023
 
-* numpy
-* scipy
-* sympy
-* pandas
-* plotly==3.3 
-* pytest
-* psutil
-* conda install antlr-python-runtime (rendering latex)
-* conda install -c plotly plotly-orca (for writing images)
+NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/rebecca-ringuette/
 
-!!! note
-    plotly version in flux
+### Dr. Lutz Rastaetter
+ORCiD: https://orcid.org/0000-0002-7343-4147
 
+NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/lutz-rastaetter/
 
-## Generating Docs
+### Dr. Darren De Zeeuw
+ORCiD: https://orcid.org/0000-0002-4313-5998
 
-Kamodo's documentation site is a good example of how to embed your own plots in your own website.
-The documentation site is generated by the `mkdocs` package with some addons
+NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/darren-de-zeeuw/
 
-* mkdocs - handles site generation and deployment (configured by top-level `mkdocs.yaml`)
-* markdown-include - allows for embedding of markdown files (and graph divs) outside the docs folder
-* python-markdown-math - enables LaTeX rendering
-* mknotebooks - allows for the embedding of jupyter notebooks
+### Dr. Katherine Garcia-Sage
+ORCiD: https://orcid.org/0000-0001-6398-8755
 
-All of the above requirements can be installed with this line:
+NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/katherine-garcia-sage/
 
-```console
-pip install mkdocs python-markdown-math markdown-include mknotebooks
-```
+Note: Each NASA staff page includes links to email addresses.
 
-You can then generate the docs and serve locally with
-
-`mkdocs serve`
-
-To deploy your own documentation on github-pages:
-
-`mkdocs gh-deploy`
-
-This generates a gh-pages branch with the static site files and pushes it to github. Github automatically creates a website url based on that branch.
-
+## Open-Source License
+CCMC's Kamodo is an official NASA open source software package. CCMC's Kamodo's official source code is hosted on github under a permissive NASA open source license: For more details, go here: https://github.com/nasa/Kamodo/blob/master/LICENSE
