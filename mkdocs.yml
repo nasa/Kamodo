@@ -1,0 +1,25 @@
+site_name: CCMC Kamodo Analysis Suite
+
+nav:
+- Home: notebooks/README.ipynb
+- Functionalizing a generic dataset: notebooks/DataFunctionalization.ipynb
+- Choosing a model and variable: notebooks/ChoosingModelsAndVariables.ipynb
+- Functionalizing a modeled dataset: notebooks/FunctionalizingModeledDatasets.ipynb
+- Satellite Trajectories: notebooks/SatelliteTrajectories.ipynb
+- Coordinate conversions: notebooks/CoordinateConversions.ipynb
+- Performing a flythrough in a notebook: notebooks/FlythroughNotebook.ipynb
+- Performing a flythrough from the command line: ComingSoon.md
+- Constellation mission planning tool: ComingSoon.md
+- Advanced plotting routines: ComingSoon.md
+- Contribution guidelines: ComingSoon.md
+- How to write a model reader: ComingSoon.md
+- How to add a new tool: ComingSoon.md
+
+
+theme: readthedocs
+plugins:
+  - mkdocs-jupyter:
+      include_source: True
+      kernel_name: python3
+      execute: False
+      ignore_h1_titles: False
