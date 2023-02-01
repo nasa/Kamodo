@@ -106,9 +106,9 @@ CCMC's Kamodo Official website - https://ccmc.gsfc.nasa.gov/tools/kamodo/
 
 CCMC's Kamodo Documentation page - https://nasa.github.io/Kamodo/
 
-Sample model outputs: https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/
+Sample model outputs - https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/
 
-Youtube tutorial channel: https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa
+Youtube tutorial channel - https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa
 
 Ensemble's Kamodo-core Documentation page - https://ensemblegovservices.github.io/kamodo-core/
 
