@@ -8,7 +8,7 @@ nav:
 - Satellite Trajectories: notebooks/SatelliteTrajectories.ipynb
 - Coordinate conversions: notebooks/CoordinateConversions.ipynb
 - Performing a flythrough in a notebook: notebooks/FlythroughNotebook.ipynb
-- Performing a flythrough from the command line: ComingSoon.md
+- Performing a flythrough from the command line: notebooks/FlythroughCommandLine.ipynb
 - Constellation mission planning tool: ComingSoon.md
 - Advanced plotting routines: ComingSoon.md
 - Contribution guidelines: ComingSoon.md
@@ -17,6 +17,7 @@ nav:
 
 
 theme: readthedocs
+use_directory_urls: False
 plugins:
   - mkdocs-jupyter:
       include_source: True
