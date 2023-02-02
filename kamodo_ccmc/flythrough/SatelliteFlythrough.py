@@ -433,8 +433,8 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
         # retrieve list of files used in the execution
         filenames = U.MW.File_List(model, file_dir)
         # perform output type desired
-        output_filename = O.SF_write(output_name, results, filenames, model,
-                                      results_units, coord_sys)
+        output_filename = O.SF_write(output_name, filenames, model, results,
+                                     results_units, coord_sys)
         # no access to model filenames
         print(f"Output saved in {output_filename}.")
         print('Generating interactive plots...')
@@ -745,7 +745,13 @@ if __name__ == '__main__':
             help(MyFlight)
         else:
             U.MW.Model_Variables(argv[1])
-    elif len(argv) > 2:
+    elif len(argv) == 4:
+        search_str = argv[1]
+        model = argv[2]
+        file_dir = argv[3]
+        U.MW.Variable_Search(search_string=search_str, model=model,
+                             file_dir=file_dir)
+    elif len(argv) > 7:
         if argv[1] == 'FakeFlight':  # gather variables and call FakeFlight
             start_time = int(argv[2])
             stop_time = int(argv[3])
@@ -808,7 +814,7 @@ if __name__ == '__main__':
                   f'\nvariable_list: {variable_list}, ' +
                   f'\ncoord_type: {coord_type},' +
                   f'\noutput_name: {output_name}, ' +
-                  f'\nplot_coord: {plot_coord}n')
+                  f'\nplot_coord: {plot_coord}')
 
             results = RealFlight(dataset, start, stop, model, file_dir,
                                  variable_list, coord_type=coord_type,
@@ -829,10 +835,9 @@ if __name__ == '__main__':
                                              "").replace(' ',
                                                          '').replace('"', '')
             variable_list = temp_str.split(',')   # ['rho','N_n']
-            coord_type = argv[9]
-            output_name = argv[10]
-            plot_coord = argv[11]
-            method = argv[12]
+            output_name = argv[9]
+            plot_coord = argv[10]
+            method = argv[11]
 
             # check input
             print(f'\ntle_file: {tle_file}, \nstart: {start}, ' +
@@ -840,40 +845,37 @@ if __name__ == '__main__':
                   f'\ntime_cadence: {time_cadence},' +
                   f'\nmodel: {model}, \nfile_dir: {file_dir},' +
                   f'\nvariable_list: {variable_list}, ' +
-                  f'\ncoord_type: {coord_type},' +
                   f'\noutput_name: {output_name}, ' +
                   f'\nplot_coord: {plot_coord}, ' +
                   f'\nmethod: {method}\n')
 
             results = TLEFlight(tle_file, start, stop, time_cadence,
                                 model, file_dir, variable_list,
-                                coord_type=coord_type, output_name=output_name,
+                                output_name=output_name,
                                 plot_coord=plot_coord, method=method)
 
         elif argv[1] == 'MyFlight':  # gather variables and call MyFlight
             traj_file = argv[2]
-            file_type = argv[3]
-            if len(argv[4]) == 1:
-                model = int(argv[4])
+            if len(argv[3]) == 1:
+                model = int(argv[3])
             else:
-                model = argv[4]
-            file_dir = argv[5]
-            temp_str = argv[6][1:-1].replace("'",
+                model = argv[3]
+            file_dir = argv[4]
+            temp_str = argv[5][1:-1].replace("'",
                                              "").replace(' ',
                                                          '').replace('"', '')
             variable_list = temp_str.split(',')   # ['rho','N_n']
-            output_name = argv[7]
-            plot_coord = argv[8]
+            output_name = argv[6]
+            plot_coord = argv[7]
 
             # check inputs
-            print(f'\ntraj_file: {traj_file}, \nfile_type: {file_type},' +
+            print(f'\ntraj_file: {traj_file},' +
                   f'\nmodel: {model}, \nfile_dir: {file_dir},' +
                   f'\nvariable_list: {variable_list}, ' +
                   f'\noutput_name: {output_name}, ' +
                   f'\nplot_coord: {plot_coord}\n')
 
-            results = MyFlight(traj_file, file_type,
-                               model, file_dir, variable_list,
+            results = MyFlight(traj_file, model, file_dir, variable_list,
                                output_name=output_name, plot_coord=plot_coord)
         else:
             print('Call signature not recognized.')
