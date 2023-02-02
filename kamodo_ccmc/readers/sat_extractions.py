@@ -297,7 +297,23 @@ class SATEXTRACT(Kamodo):
                               varname,"of size",data.size)
                 data[mask]=np.nan
                 self.variables[varname]['data'] = data
-        
+
+    def info(self):
+        '''
+        Show information stored in this Kamodo object.
+        '''
+        print('Kamodo object information:')
+        print('  server         CCMC RoR')
+        print('  runID         ',self.runID)
+        print('  coordinates   ',self.coordinates)
+        print('  satellite     ',self.satellite)
+        print('  run start     ',self.start)
+        print('  run end       ',self.stop)
+        print('  variables')
+        for varname in self.variables:
+            units = self.variables[varname]['units']
+            print('     ',varname,' [',units,']')
+
     def get_plot(self, type="1Dpos", scale="R_E", var="", groupby="all",
                  quiver=False, quiverscale="5.", quiverskip="0"):
         '''
@@ -740,7 +756,28 @@ class SATEXTRACTALL(Kamodo):
             print(' -data extracted from model: ',self.modelname)
         # end timer
         toc = time.perf_counter()
-        print(f"Time loading files and registering all satellites: {toc - tic:0.4f} seconds")
+        print(f"Time loading files and registering satellites: {toc - tic:0.4f} seconds")
+
+    def info(self):
+        '''
+        Show information stored in this Kamodo object.
+        '''
+        print('Kamodo object information:')
+        print('  server         CCMC RoR')
+        print('  runID         ',self.runID)
+        print('  coordinates   ',self.coordinates)
+        print('  satellites')
+        for sat in self.satellites:
+            print('     ',sat)
+        print('  run start     ',self.start)
+        print('  run end       ',self.stop)
+        print('  variables')
+        for sat in self.satellites:
+            ror = self.satellites[sat]
+            for varname in ror.variables:
+                units = ror.variables[varname]['units']
+                print('     ',varname,' [',units,']')
+            break
 
     def get_plot(self, type="3Dvar", scale="R_E", var="", groupby="all",
                  quiver=False, quiverscale="5.", quiverskip="0"):
