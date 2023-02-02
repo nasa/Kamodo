@@ -1,12 +1,14 @@
-def shoreline(rscale=1.0, coord='GEO', coordT='car', utcts=''):
+def shoreline(rscale=1.0, coord='GEO', coordT='car', utcts='', zlimit=0.):
     """
     This function returns a position array defining land/water boundaries on Earth
 
     Arguments:
       rscale   Function returns values on a sphere of radius 1, multiplying by rscale
-      coord    Name of coordinate system to transform the results to, GEO by default
-      coordT   Coordinate system type, 'sph' or 'car'
+      coord    Name of coordinate system to transform the results to (GEO by default)
+      coordT   Coordinate system type: 'sph' or 'car'
       utcts    If coordinate system is not GEO-car, then UTC timestamp is needed for conversion
+      zlimit   Z position limit of returned positions, 0. is all, >0 values above, <0 values below
+                 -only valid for coordT='car', applied before rscale.
     """
 
     import numpy as np
@@ -23094,12 +23096,20 @@ def shoreline(rscale=1.0, coord='GEO', coordT='car', utcts=''):
         # Check that longitude range is -180 to 180 and not 0 to 360
         pos[pos>180.] += -360.
 
-        # Special check to insert additional NaNs where data jumps more than 300 degrees in longitude
+        # Special check to insert additional NaNs where data jumps
+        #   more than 300 degrees in longitude (wrap points)
         startlen = pos.shape[0]
         for i in range(startlen-1):
             j = startlen-1-i
             if abs(pos[j,0] - pos[j-1,0]) > 300.:
                 pos = np.insert(pos, j, np.array((None,None,None)), 0)
+
+    if coordT == 'car' and zlimit != 0.:
+        # For now just NaN values outside range
+        if zlimit > 0.: mask1 = pos[:,2] < zlimit
+        if zlimit < 0.: mask1 = pos[:,2] > zlimit
+        mask2 = np.stack((mask1,mask1,mask1),axis=1)
+        pos[mask2] = np.nan
 
     pos = rscale * pos
 
