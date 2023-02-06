@@ -56,6 +56,21 @@ def toColor(fig,colorscale='Viridis'):
     return fig
 
 
+def lock2DAxis(fig):
+    """
+    Function to lock the X and Y axis to keep the aspect ratio to 1.
+    
+    Arguments:
+        fig   A plotly figure object
+    
+    Returns a plotly figure object.
+    """
+
+    fig.update_xaxes(scaleanchor='y')
+    
+    return fig
+
+
 def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
         colorscale='Viridis', crange='',):
     """
