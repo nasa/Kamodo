@@ -170,9 +170,10 @@ class SATEXTRACT(Kamodo):
                         units.append('R_E')
                     for p in parts[7:]:
                         if self.modelname == "BATSRUS":
-                            # need a unit applied for status variable, currently missing
-                            if vars[len(units)] == "status":
-                                units.append('')
+                            # need a unit applied for status variable, currently missing in some
+                            if len(units) != len(vars):
+                                if vars[len(units)] == "status":
+                                    units.append('')
                         p=re.sub("cm\^-3","1/cm^3",p)
                         p=re.sub("m2","m^2",p)
                         p=re.sub("m3","m^3",p)
