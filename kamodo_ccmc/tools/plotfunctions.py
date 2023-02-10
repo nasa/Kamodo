@@ -1,73 +1,75 @@
-def toLog10(fig):
-    """
-    Function to take a 2D contour figure and make the contour log10 scale.
-    Pass in a plotly figure and it will return an updated plotly figure.
+def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
+              cutInside=-1., returnGrid=False):
+    '''
+    Function to modify a plotly figure object in multiple ways.
     
     Arguments:
-        fig   A plotly figure object
-    
-    Returns a plotly figure object.
-    """
-    
+      fig         A plotly figure object
+      log10       Logical, if true take the log of the contour values
+      lockAR      Logical, if true lock the X/Y axis aspect ratio to 1
+      ncont       number of contours to include in the plot
+      colorscale  Set the desired colorscale for the plot
+      cutInside   Make values inside a radius of cutInside NaNs
+      returnGrid  Take the plot and return a new grid only plotly object
+    '''
+
     import numpy as np
-    
-    # grab values from old plot
-    val = fig.data[0]['z']
-    # set negative and zero values to NaN
-    # compute log10 of values, NaN will stay NaN
-    val[val <= 0.] = np.nan
-    val = np.log10(val)
-    # assign back to plot object
-    fig.data[0]['z'] = val
-    # add log10 to colorbar label
-    newlabel = 'log10<br>'+fig.data[0]['colorbar']['title']['text']
-    fig.data[0]['colorbar']['title']['text'] = newlabel
-    return fig
+    import plotly.graph_objects as go
 
+    if returnGrid:
+        xx = fig.data[0]['x']
+        yy = fig.data[0]['y']
+        zz = fig.data[0]['z']
+        xx_mg, yy_mg = np.meshgrid(xx,yy)
+        xm=np.reshape(xx_mg,-1)
+        ym=np.reshape(yy_mg,-1)
+        fig2 = go.Figure(data=go.Scattergl(x=xm,y=ym,mode='markers'))
+        #fig.add_trace(fig2.data[0])
+        return fig2
 
-def toColor(fig,colorscale='Viridis'):
-    """
-    Function to take a 2D contour figure from Kamodo and change the colorscale
-    and set the number of contours to a larger number.
-    
-    Arguments:
-        fig   A plotly figure object
-        colorscale  Optional string name of colorscale. Takes custom 
-                    colorscales RdBu, Rainbow, or standard python values
-    
-    Returns a plotly figure object.
-    """
+    if log10:
+        # grab values from old plot
+        val = fig.data[0]['z']
+        # set negative and zero values to NaN
+        # compute log10 of values, NaN will stay NaN
+        val[val <= 0.] = np.nan
+        val = np.log10(val)
+        # assign back to plot object
+        fig.data[0]['z'] = val
+        # add log10 to colorbar label
+        newlabel = 'log10<br>'+fig.data[0]['colorbar']['title']['text']
+        fig.data[0]['colorbar']['title']['text'] = newlabel
 
-    # Set colorscale
-    if colorscale == "BlueRed":
-        fig.update_traces(colorscale="RdBu", reversescale=True)
-    elif colorscale == "Rainbow":
-        fig.update_traces(
-            colorscale=[[0.00, 'rgb(0,0,255)'],
-                        [0.25, 'rgb(0,255,255)'],
-                        [0.50, 'rgb(0,255,0)'],
-                        [0.75, 'rgb(255,255,0)'],
-                        [1.00, 'rgb(255,0,0)']])
-    else:
-        fig.update_traces(colorscale=colorscale)
-    fig.update_traces(ncontours=201, 
-                      contours=dict(coloring="fill", showlines=False))
-    
-    return fig
+    if lockAR:
+        fig.update_xaxes(scaleanchor='y')
 
+    if ncont > 0:
+        fig.update_traces(ncontours=ncont, 
+                          contours=dict(coloring="fill", showlines=False))
 
-def lock2DAxis(fig):
-    """
-    Function to lock the X and Y axis to keep the aspect ratio to 1.
-    
-    Arguments:
-        fig   A plotly figure object
-    
-    Returns a plotly figure object.
-    """
+    if colorscale != '':
+        if colorscale == "BlueRed":
+            fig.update_traces(colorscale="RdBu", reversescale=True)
+        elif colorscale == "Rainbow":
+            fig.update_traces(
+                colorscale=[[0.00, 'rgb(0,0,255)'],
+                            [0.25, 'rgb(0,255,255)'],
+                            [0.50, 'rgb(0,255,0)'],
+                            [0.75, 'rgb(255,255,0)'],
+                            [1.00, 'rgb(255,0,0)']])
+        else:
+            fig.update_traces(colorscale=colorscale)
 
-    fig.update_xaxes(scaleanchor='y')
-    
+    if cutInside > 0.:
+        xx = fig.data[0]['x']
+        yy = fig.data[0]['y']
+        zz = fig.data[0]['z']
+        xx_mg, yy_mg = np.meshgrid(xx,yy)  # Now the same dimensions as zz
+        rr_mg = np.sqrt(xx_mg*xx_mg + yy_mg*yy_mg)
+        maskR = rr_mg < cutInside
+        zz[maskR] = np.nan
+        fig.data[0]['z'] = zz
+
     return fig
 
 
