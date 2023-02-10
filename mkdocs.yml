@@ -1,7 +1,7 @@
 site_name: CCMC Kamodo Analysis Suite
 
 nav:
-- Home: notebooks/Home.ipynb
+- Home: notebooks/README.ipynb
 - Functionalizing a generic dataset: notebooks/DataFunctionalization.ipynb
 - Choosing a model and variable: notebooks/ChoosingModelsAndVariables.ipynb
 - Functionalizing a modeled dataset: notebooks/FunctionalizingModeledDatasets.ipynb
