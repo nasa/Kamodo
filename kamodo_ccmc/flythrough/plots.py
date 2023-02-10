@@ -13,6 +13,7 @@ from plotly.subplots import make_subplots
 from plotly.offline import iplot
 import kamodo
 from flythrough.utils import ConvertCoord
+from kamodo_ccmc.tools.shoreline import shoreline
 
 def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
               displayplot=True,returnfig=False,type='3D',body='black',zoom=False,divfile='',htmlfile='',
@@ -1269,48 +1270,22 @@ def custom2Dpolar(datad, NS, zoom=False, vbose=1):
         fig.update_xaxes(autorange="reversed")
         
     if coord == 'GEO':
-        # CCMC is blocking image pulls directly from add_layout_image but copying
-        #   the file locally to /tmp and loading with PIL allows it to be used.
-        from PIL import Image
-        import urllib.request
         if NS == 'S':
             if zoom:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole50.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
-                fig.add_layout_image(
-                    dict(source=localIMG,xref="x", yref="y", x=c50, y=c50, sizex=2*c50, sizey=2*c50,
-                         sizing="stretch", opacity=0.5, layer="below")
-                )
+                pos = shoreline(zlimit=-c40)
             else:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/SPole.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
-                fig.add_layout_image(
-                    dict(source=localIMG,xref="x", yref="y", x=1, y=1, sizex=2, sizey=2,
-                         sizing="stretch", opacity=0.5, layer="below")
-                )
+                pos = shoreline(zlimit=-0.001)
+            fig.add_scatter(mode='lines', x=pos[:,0], y=pos[:,1],
+                            line=dict(width=1,color='black'),
+                            showlegend=False,hoverinfo='skip')
         else:
             if zoom:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole50.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
-                fig.add_layout_image(
-                    dict(source=localIMG,xref="x", yref="y", x=-c50, y=c50, sizex=2*c50, sizey=2*c50,
-                         sizing="stretch", opacity=0.5, layer="below")
-                )
+                pos = shoreline(zlimit=c40)
             else:
-                urllib.request.urlretrieve(
-                    'https://ccmc.gsfc.nasa.gov/Kamodo/demo/images/NPole.png',
-                    "/tmp/TMP.png")
-                localIMG = Image.open("/tmp/TMP.png")
-                fig.add_layout_image(
-                    dict(source=localIMG,xref="x", yref="y", x=-1, y=1, sizex=2, sizey=2,
-                         sizing="stretch", opacity=0.5, layer="below")
-                )
+                pos = shoreline(zlimit=0.001)
+            fig.add_scatter(mode='lines', x=pos[:,0], y=pos[:,1],
+                            line=dict(width=1,color='black'),
+                            showlegend=False,hoverinfo='skip')
 
     # end timer                                                                               
     toc = time.perf_counter()

@@ -1,17 +1,17 @@
-#include "fl.h"
+#include "fl_extern.h"
 float interpolate_in_block(float x, float y, float z, 
                            float *x_blk, float *y_blk, float *z_blk,
                            float *data,
-                           int NX,int NY,int NZ)
+                           int NX, int NY, int NZ)
 {
-    float value,dx_blk,dy_blk,dz_blk,m_x,m_y,m_z;
+    float value, dx_blk, dy_blk, dz_blk, m_x, m_y, m_z;
     int ix,iy,iz;
     long int NV_blk;
 
     NV_blk=NX*NY;
-    find_in_block(x,y,z,&ix,&iy,&iz,
-                  x_blk,y_blk,z_blk,
-                  NX,NY,NZ);
+    find_in_block(x, y, z, &ix, &iy, &iz,
+                  x_blk, y_blk, z_blk,
+                  NX, NY, NZ);
     
     dx_blk = x_blk[ix+1]-x_blk[ix];
     dy_blk = y_blk[iy+1]-y_blk[iy];
@@ -40,7 +40,6 @@ float interpolate_in_block(float x, float y, float z,
                 +   m_x *data[ix+1+(iy+1)*NX+(iz+1)*NV_blk]
                 )
             );
-/*    printf("X: %f Y: %f Z: %f V: %f\n",x,y,z,value); */
     
     return(value);
 }

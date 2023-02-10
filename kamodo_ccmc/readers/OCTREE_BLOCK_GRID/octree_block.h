@@ -10,6 +10,6 @@ typedef struct {
     IDL_LONG parent_ID;
     IDL_LONG child_count;
     IDL_LONG child_IDs[8];
-    float XMIN,XMAX,XCenter,YMIN,YMAX,YCenter,ZMIN,ZMAX,ZCenter;
+    float XMIN, XMAX, XCenter, YMIN, YMAX, YCenter, ZMIN, ZMAX, ZCenter;
 } octree_block;
 #endif
