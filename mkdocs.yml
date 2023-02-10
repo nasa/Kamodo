@@ -1,7 +1,7 @@
 site_name: CCMC Kamodo Analysis Suite
 
 nav:
-- Home: notebooks/README.ipynb
+- Home: notebooks/Home.ipynb
 - Functionalizing a generic dataset: notebooks/DataFunctionalization.ipynb
 - Choosing a model and variable: notebooks/ChoosingModelsAndVariables.ipynb
 - Functionalizing a modeled dataset: notebooks/FunctionalizingModeledDatasets.ipynb
@@ -9,10 +9,10 @@ nav:
 - Coordinate conversions: notebooks/CoordinateConversions.ipynb
 - Performing a flythrough in a notebook: notebooks/FlythroughNotebook.ipynb
 - Performing a flythrough from the command line: notebooks/FlythroughCommandLine.ipynb
-- Constellation mission planning tool: ComingSoon.md
+- Constellation mission planning tool: notebooks/ConstellationMissionPlanningToolIntro.ipynb
 - Advanced plotting routines: ComingSoon.md
-- Contribution guidelines: ComingSoon.md
-- How to write a model reader: ComingSoon.md
+- Contribution guidelines: ContributionGuidelines.md
+- How to write a model reader: ModelReaderInstructions.md
 - How to add a new tool: ComingSoon.md
 
 
