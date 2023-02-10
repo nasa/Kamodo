@@ -16,8 +16,9 @@ from flythrough.utils import ConvertCoord
 from kamodo_ccmc.tools.shoreline import shoreline
 
 def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
-              displayplot=True,returnfig=False,type='3D',body='black',zoom=False,divfile='',htmlfile='',
-              plotCoordType1D='car'):
+              displayplot=True,returnfig=False,type='3D',body='black',zoom=False,divfile='',
+              htmlfile='',plotCoordType1D='car',colorscale='Viridus',
+              vUnit='',vxName='',vx='',vyName='',vy='',vzName='',vz='',vScale=1.,vSkip=0):
     """New 4D plotting for satellite trajectories using plotly by Darren De Zeeuw
     
     __Required variables__
@@ -46,6 +47,14 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     divfile: string with filename to save a html div file of the plot
     htmlfile: string with filename to save a full html file of the plot
     plotCoordType1D: string for displayed coordinate type for 1D plots.  car, sph
+    colorscale: name of standard python colorscale
+    vUnit: units of quiver vector quantity, ie 'nT'
+    vxName: string name of X component of quiver vector, ie 'B_x'
+    vx: array of values of X component of quiver vector
+    vyName: string name of Y component of quiver vector, ie 'B_y'
+    vy: array of values of Y component of quiver vector
+    vzName: string name of Z component of quiver vector, ie 'B_z'
+    vz: array of values of Z component of quiver vector
     """
 
     REkm = (R_earth.value/1000.)
@@ -61,7 +70,10 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     else:
         for key in oC_names.keys(): oC_names[key]=oC_names[key][:1]
 
-    if type == "3D" or type == "2DPN" or type == "2DPS":
+    isQuiver = False
+    if type == "3Dv":  isQuiver = True
+
+    if type == "3D" or type == "3Dv" or type == "2DPN" or type == "2DPS":
         #Convert incoming coordinates into plot coordinages (cartesian)
         xx,yy,zz,units = ConvertCoord(time,c1,c2,c3,inCoordName,inCoordType,plotCoord,'car')
 
@@ -83,12 +95,12 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
                 position_units = "R_E",
                 var = var,
                 hover_vars = [],
-                quiver = False,
-                quiver_scale = 0.1,
-                quiver_skip = 0,
+                quiver = isQuiver,
+                quiver_scale = vScale,
+                quiver_skip = vSkip,
                 groupby = groupby,
                 body = body,
-                colorscale = "Viridis",
+                colorscale = colorscale,
                 REkm = REkm,
                 coord = plotCoord,
             ),
@@ -100,9 +112,14 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
         plot_dict['Sat1']['vars'][iC_names['c3']]=dict(units=iC_units['c3'], data=c3, coord=inCoordName)
         if plotCoord != inCoordName:
             plot_dict['options']['hover_vars']=[iC_names['c1'],iC_names['c2'],iC_names['c3']]
+        if isQuiver:
+            plot_dict['Sat1']['vars'][vxName]=dict(units=vUnit, data=vx, coord=inCoordName)
+            plot_dict['Sat1']['vars'][vyName]=dict(units=vUnit, data=vy, coord=inCoordName)
+            plot_dict['Sat1']['vars'][vzName]=dict(units=vUnit, data=vz, coord=inCoordName)
+            plot_dict['Sat1']['vector_variables']=[vxName,vyName,vzName]
 
         # Execute creation and display of figure
-        if type == "3D":
+        if type == "3D" or type == "3Dv":
             fig=custom3Dsat(plot_dict,vbose=0)
         elif type == "2DPN":
             fig=custom2Dpolar(plot_dict,'N',zoom=zoom,vbose=0)
@@ -142,6 +159,7 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
                 var = var,
                 hover_vars = [],
                 groupby = groupby,
+                colorscale = colorscale,
                 coord = plotCoord,
             ),
         )
@@ -282,6 +300,7 @@ iplot(fig)
         quiverscale=datad['options']['quiver_scale']
         if scale == "km":
             quiverscale=quiverscale*REkm
+        quiverscale2=quiverscale
         quiverskip=int(datad['options']['quiver_skip'])
     if 'body' in datad['options']:
         body=datad['options']['body']
@@ -444,6 +463,11 @@ iplot(fig)
                 qx=datad[sat]['vars'][qxvar]['data']
                 qy=datad[sat]['vars'][qyvar]['data']
                 qz=datad[sat]['vars'][qzvar]['data']
+                qunit=datad[sat]['vars'][qxvar]['units']
+                qcoord=datad[sat]['vars'][qxvar]['coord']
+                # Set to unit scale
+                qmax = np.max(np.sqrt(qx*qx + qy*qy + qz*qz))
+                quiverscale2 = quiverscale/qmax
 
             # Update position min/max values
             if date == ugroup[0]:
@@ -467,9 +491,9 @@ iplot(fig)
                 cd.append(qx[mask])
                 cd.append(qy[mask])
                 cd.append(qz[mask])
-                qline+=qxvar+": %{customdata[1]:.2f}<br>"
-                qline+=qyvar+": %{customdata[2]:.2f}<br>"
-                qline+=qzvar+": %{customdata[3]:.2f}<br>"
+                qline+=qxvar+": %{customdata[1]:.2f} "+qunit+" "+qcoord+"<br>"
+                qline+=qyvar+": %{customdata[2]:.2f} "+qunit+" "+qcoord+"<br>"
+                qline+=qzvar+": %{customdata[3]:.2f} "+qunit+" "+qcoord+"<br>"
                 Ndv+=3
             for i in range(Nhv):
                 cd.append(datad[sat]['vars'][datad['options']['hover_vars'][i]]['data'][mask])
@@ -527,9 +551,9 @@ iplot(fig)
                             xx[j]=x[i]*sc
                             yy[j]=y[i]*sc
                             zz[j]=z[i]*sc
-                            xx[j+1]=x[i]*sc+quiverscale*qx[i]
-                            yy[j+1]=y[i]*sc+quiverscale*qy[i]
-                            zz[j+1]=z[i]*sc+quiverscale*qz[i]
+                            xx[j+1]=x[i]*sc+quiverscale2*qx[i]
+                            yy[j+1]=y[i]*sc+quiverscale2*qy[i]
+                            zz[j+1]=z[i]*sc+quiverscale2*qz[i]
                             xx[j+2]=None
                             yy[j+2]=None
                             zz[j+2]=None
@@ -550,7 +574,7 @@ iplot(fig)
                 data_dict = {
                     "type": "scatter3d",
                     "name": "positions", "x": list(xx), "y": list(yy), "z": list(zz),
-                    "mode": "lines", "line": {"width": 3, "color": "rgba(22,22,22,0.2)"},
+                    "mode": "lines", "line": {"width": 3, "color": "rgba(55,22,22,0.4)"},
                     "hoverinfo": "none",
                 }
                 # Put each part of sequence in frame data block
