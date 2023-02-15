@@ -17,9 +17,9 @@ from kamodo_ccmc.tools.shoreline import shoreline
 
 def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,groupby,model,
               displayplot=True,returnfig=False,type='3D',body='black',zoom=False,divfile='',
-              htmlfile='',plotCoordType1D='car',colorscale='Viridus',
+              htmlfile='',plotCoordType1D='car',
               vUnit='',vxName='',vx='',vyName='',vy='',vzName='',vz='',vScale=1.,vSkip=0):
-    """New 4D plotting for satellite trajectories using plotly by Darren De Zeeuw
+    """4D plotting for satellite trajectories using plotly by Darren De Zeeuw
     
     __Required variables__
     
@@ -30,24 +30,27 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     c3: altitude  or Z
     vard: data of variable var, same size array as positions
     varu: string of variable var units
-    inCoordName: string for incoming coordinate system.  GDZ, GEO, GSM, GSE, SM, GEI, MAG, RLL
+    inCoordName: string for incoming coordinate system.
+        GDZ, GEO, GSM, GSE, SM, GEI, MAG, RLL
     inCoordType: string for incoming coordinate type.  car, sph
-    plotCoord: string for coordinate system used in 3D plot. Assumes car for 3D and Polar, sph otherwise.
+    plotCoord: string for coordinate system used in 3D plot. 
+        Assumes car for 3D and Polar, sph otherwise.
     groupby: grouping of data for animation, values include
         all, day, hour, minute, N, orbitE, orbitM
     model: string of name of model the data was extracted from
     
     __Optional variables__
     
-    displayplot: logical to show/hide displayed plot (may want false when saving htmlfile)
-    returnfig: logical to return figure object for further modification, will override displayplot if True
-    type: string for choice of plot type, values: 3D, 1D, 2D, 2DLT, 2DPN, 2DPS
-    body: string for choice of 3D inner body, values: black, earth (only GEO), none
+    displayplot: logical to show/hide displayed plot
+    returnfig: logical to return figure object for further modification,
+        will override displayplot if True
+    type: string for choice of plot type, values:
+        3D, 3Dv, 1D, 2D, 2DLT, 2DPN, 2DPS
+    body: string choice of 3D inner body, values: black, earth (GEO), none
     zoom: logical to show zoomed in view for polar plots
     divfile: string with filename to save a html div file of the plot
     htmlfile: string with filename to save a full html file of the plot
-    plotCoordType1D: string for displayed coordinate type for 1D plots.  car, sph
-    colorscale: name of standard python colorscale
+    plotCoordType1D: displayed coordinate type for 1D plots.  car, sph
     vUnit: units of quiver vector quantity, ie 'nT'
     vxName: string name of X component of quiver vector, ie 'B_x'
     vx: array of values of X component of quiver vector
@@ -55,6 +58,8 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
     vy: array of values of Y component of quiver vector
     vzName: string name of Z component of quiver vector, ie 'B_z'
     vz: array of values of Z component of quiver vector
+    vScale: length scale factor to quiver vectors
+    vSkip: skip this number of points between displaying quiver vector
     """
 
     REkm = (R_earth.value/1000.)
@@ -100,7 +105,7 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
                 quiver_skip = vSkip,
                 groupby = groupby,
                 body = body,
-                colorscale = colorscale,
+                colorscale = "Viridis",
                 REkm = REkm,
                 coord = plotCoord,
             ),
@@ -159,7 +164,6 @@ def SatPlot4D(var,time,c1,c2,c3,vard,varu,inCoordName,inCoordType,plotCoord,grou
                 var = var,
                 hover_vars = [],
                 groupby = groupby,
-                colorscale = colorscale,
                 coord = plotCoord,
             ),
         )
