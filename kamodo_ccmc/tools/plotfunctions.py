@@ -110,7 +110,7 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
     fig = plot1.plot(plot_2D = dict())
 
     # Set colorscale
-    fig = toColor(fig,colorscale=colorscale)
+    fig = figMods(fig,colorscale=colorscale,ncont=200)
 
     # Set plot options
     fig.update_traces(
@@ -510,7 +510,7 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
     fig = plot1.plot(plot_2D = dict())
 
     # Set colorscale
-    fig = toColor(fig,colorscale=colorscale)
+    fig = figMods(fig,colorscale=colorscale,ncont=200)
 
     # Set plot options
     fig.update_traces(
