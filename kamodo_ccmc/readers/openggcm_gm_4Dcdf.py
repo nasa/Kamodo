@@ -88,7 +88,24 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
-            '''
+
+        Notes and special features:
+            - The file converter for the OpenGGCM global magnetosphere outputs
+              (compressed binary files) currently only runs on CCMC machines.
+              Please contact CCMC for the desired run to be converted to
+              netCDF4 (Lutz Rastaetter).
+            - This model reader has two special properties called
+              kamodo_object.near_Earth_boundary_radius and
+              kamodo_object.near_Earth_boundary_radius_unit that give the
+              inner boundaries of the radial domain for the given run. The
+              inner boundary will also be readily apparent when viewing any
+              plot including the coordinate origin (X, Y, Z) = (0, 0, 0). The
+              unit of the inner boundary is typically earth radii (R_E).
+            - The model outputs are produced with one time step per file, so
+              interpolation method 1 is chosen. The standard SciPy interpolator
+              is used.
+                
+        '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
                      printfiles=False, **kwargs):
@@ -104,9 +121,17 @@ def MODEL():
                 # collect filenames
                 files = sorted(glob(file_dir+'*.nc'))
                 if len(files) == 0:
-                    from kamodo_ccmc.readers.openggcm_to_cdf import \
-                        openggcm_combine_magnetosphere_files as gmconv
-                    self.conversion_test = gmconv(file_dir)
+                    try:
+                        from kamodo_ccmc.readers.openggcm_to_cdf import \
+                            openggcm_combine_magnetosphere_files as gmconv
+                        self.conversion_test = gmconv(file_dir)
+                    except:
+                        print('The file converter for the OpenGGCM global ' +
+                              'magnetosphere outputs currently only runs on ' +
+                              'CCMC machines. Please contact CCMC for the ' +
+                              'files for the desired run converted to ' +
+                              'netCDF4 from Lutz Rastaetter.')
+                        return
                 patterns = unique([basename(file[:-19]) for file in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(

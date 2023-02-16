@@ -268,8 +268,7 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ',
 
 
 def MODEL():
-    from numpy import array, NaN, unique, append, where
-    from numpy import transpose, median
+    from numpy import array, NaN, unique, append, where, transpose
     from time import perf_counter
     from glob import glob
     from os.path import basename, isfile
@@ -316,6 +315,27 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - CTIPe output files are given in multiple netCDF files per day. No
+              attempt is made to combine these files, but some pre-processing
+              is needed to calculate the median height across the entire
+              dataset (time, lon, lat) for a given pressure level value.
+            - CTIPe data is given in several coordinate systems, two depending
+              on pressure level - a unitless representation of height
+              corresponding to a given atmospheric pressure. The preset values
+              of pressure level in the two coordinate systems are not
+              guaranteed to be identical, so they are inverted independently of
+              the other unless only one is provided. In that case, the are
+              assumed to be identical.
+            - Pressure level inversion is performed in the reader_utilities
+              script, specifically the PLevelInterp function. Two versions of
+              all variables that depend on pressure level are created: the
+              original and one dependent on height, which is created through
+              Kamodo's function composition feature.
+            - The files are small and contain multiple time steps per file, so
+              interpolation method 2 is chosen. The standard SciPy interpolator
+              is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, printfiles=False, gridded_int=True,

@@ -127,6 +127,17 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - AMGeO model outputs are given in h5 files with one file per N/S
+              hemisphere per day. The data from both hemispheres are assembled
+              at each interpolation call.
+            - The outputs do not provide values at the poles, so scalar and
+              vector averaging are used as appropriate to determine these
+              values.
+            - The files are small and contain multiple time steps per file, so
+              interpolation method 2 is chosen. The standard SciPy interpolator
+              is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,

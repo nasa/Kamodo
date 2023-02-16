@@ -92,6 +92,17 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - ADELPHI model outputs are produced in ascii form with one file
+              per each N/S hemisphere per day. The file converter combines the
+              data from both hemispheres into one netCDF4 file per day.
+            - The data is only given within 40-60 degrees of the poles, so a
+              buffer row of the same values is added in the data to avoid
+              losing the most equatorward ring of data in the interpolation.
+            - The converted files are small and contain multiple time steps per
+              file, so interpolation method 2 is chosen. The standard SciPy
+              interpolator is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,

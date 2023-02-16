@@ -327,6 +327,16 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - GITM output files are given in multiple binary files per time
+              step. No attempt is made to combine these files into a single
+              file per time step, but each is converted into a netCDF4 file
+              using code adapted from a script written by Dan Welling and
+              Angeline Burrell (used with permission).
+            - The converted files are small and are created with one time step
+              per file, so interpolation method 1 is chosen. The standard SciPy
+              interpolator is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
@@ -452,16 +462,10 @@ def MODEL():
                 self.gvarfiles[p] = gvar_list
                 cdf_data.close()
 
-            # clean up error list and then take action
+            # collect all possible variables in set of files and return
             var_list = []
             for p in self.varfiles.keys():
                 var_list.extend(self.varfiles[p])
-            err_list = [var for var in self.err_list if var not in var_list]
-            if len(err_list) > 0:
-                print('Some requested variables are not available: ',
-                      err_list)
-
-            # collect all possible variables in set of files and return
             if variables_requested == 'all':
                 self.var_dict = {value[0]: value[1:] for key, value in
                                  model_varnames.items() if value[0] in
@@ -482,7 +486,7 @@ def MODEL():
             if len(self.err_list) > 0:
                 print('Some requested variables are not available in the ' +
                       'files found:\n',
-                      self.patterns, self.err_list)
+                      self.pattern_files.keys(), self.err_list)
 
             if printfiles:
                 print(f'{len(self.filename)} Files:')

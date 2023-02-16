@@ -99,6 +99,12 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - IRI output files are given in multiple netCDF files per day.
+            - The files are small and contain multiple time steps per file, so
+              interpolation method 2 is chosen. The standard SciPy interpolator
+              is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
