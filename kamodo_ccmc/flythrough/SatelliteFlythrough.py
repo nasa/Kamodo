@@ -36,6 +36,13 @@ def SatelliteTrajectory(dataset, start_ts, stop_ts, coord_type='GEO',
     coord_type: Pick from GEO, GSM, GSE, or SM
     verbose: Set to true to be overwhelmed with information.
 
+    Returns a dictionary with keys: sat_time, c1, c2, and c3.
+        sat_time is an array in UTC seconds since 1970-01-01.
+        (c1,c2,c3) = (lon, lat, alt) in (deg,deg,km) in the 'GDZ', 'sph'
+        coordinate system in SpacePy. See
+        kamodo_ccmc.flythrough.utils.ConvertCoord for more info on the
+        coordinate systems.
+
     Coordinates are retrieved on a cartesian grid.
     See kamodo_ccmc.flythrough.utils.ConvertCoord for info on the coordinate
     systems.
