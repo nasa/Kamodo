@@ -1,0 +1,2 @@
+# How to write a model reader
+Details coming soon. For now, there is a tutorial video on the Kamodo Youtube channel towards the end of the playlist. Also, take a look at the model_custom.py script in the kamodo_ccmc/readers/ directory for instructions.
