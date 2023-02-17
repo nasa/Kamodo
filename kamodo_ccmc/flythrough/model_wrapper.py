@@ -2,31 +2,53 @@
 from datetime import datetime, timezone
 from kamodo import get_defaults
 
-model_dict = {'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
-                       'Electrodynamics Model',
-              'GITM': 'Global Ionosphere Thermosphere Model',
-              'IRI': 'International Reference Ionosphere Model',
-              'SWMF_IE': 'Space Weather Modeling Framework - Ionosphere and ' +
-                         'Electrodynamics outputs',
-              'SWMF_GM': 'Space Weather Modeling Framework - Global ' +
-                         'Magnetosphere outputs',
-              'TIEGCM': 'Thermosphere Ionosphere Electrodynamics General ' +
-                        'Circulation Model',
+model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
+                         'High-latitude Ionosphere ' +
+                         'https://doi.org/10.1029/2020SW002677',
+              'AMGeO': 'Assimilative Mapping of Geospace Observations ' +
+                       'https://doi.org/10.5281/zenodo.3564914',
+              'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
+                       'Electrodynamics Model ' +
+                       'https://doi.org/10.1029/2007SW000364',
+              'DTM': 'The Drag Temperature Model ' +
+                     'https://doi.org/10.1051/swsc/2015001',
+              'GAMERA_GM': 'Grid Agnostic MHD for Extended Research ' +
+                        'Applications - Global Magnetosphere outputs ' +
+                        'https://doi.org/10.3847/1538-4365/ab3a4c' +
+                        ' (coming soon)',
+              'GITM': 'Global Ionosphere Thermosphere Model ' +
+                      'https://doi.org/10.1016/j.jastp.2006.01.008',
+              'IRI': 'International Reference Ionosphere Model ' +
+                     'https://doi.org/10.5194/ars-16-1-2018',
               'OpenGGCM_GM': 'The Open Geospace General Circulation Model - ' +
-                             'Global Magnetosphere outputs only',
-              'AMGeO': 'Assimilative Mapping of Geospace Observations',
-              'SuperDARN_uni': 'SuperDARN uniform grid output',
-              'SuperDARN_equ': 'SuperDARN equal area grid output',
-              'ADELPHI': 'Coming soon',
+                             'Global Magnetosphere outputs only ' +
+                             'https://doi.org/10.1023/A:1014228230714',
+              'SuperDARN_uni': 'SuperDARN uniform grid output ' +
+                               'https://doi.org/10.1029/2010JA016017',
+              'SuperDARN_equ': 'SuperDARN equal area grid output ' +
+                               'https://doi.org/10.1029/2010JA016017',
+              'SWMF_IE': 'Space Weather Modeling Framework - Ionosphere and ' +
+                         'Electrodynamics outputs ' +
+                         'https://doi.org/10.1029/2006SW000272',
+              'SWMF_GM': 'Space Weather Modeling Framework - Global ' +
+                         'Magnetosphere outputs ' +
+                         'https://doi.org/10.1029/2006SW000272',
+              'TIEGCM': 'Thermosphere Ionosphere Electrodynamics General ' +
+                        'Circulation Model ' +
+                        'https://doi.org/10.1029/2012GM001297',
               'WACCMX': 'Whole Atmosphere Community Climate Model With ' +
-                        'Thermosphere and Ionosphere Extension',
+                        'Thermosphere and Ionosphere Extension ' +
+                        'https://doi.org/10.1002/2017MS001232',
               'WAMIPE': 'The coupled Whole Atmosphere Model - Ionosphere ' +
-                        'Plasmasphere Model',
-              'DTM': 'The Drag Temperature Model',
+                        'Plasmasphere Model ' +
+                        'https://doi.org/10.1002/2015GL067312 and ' +
+                        'https://doi.org/10.1029/2022SW003193',
+              'Weimer': 'Weimer Ionosphere model ' +
+                        'https://doi.org/10.1029/2005JA011270'
               }
 
 
-def Choose_Model(model):
+def Choose_Model(model=''):
     '''Returns module specific to the model requested.
 
     Input:
@@ -83,9 +105,9 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.superdarnequ_4D as module
         return module
 
-    # elif model == 'ADELPHI':
-    #    import kamodo_ccmc.readers.adelphi_4D as module
-    #    return module
+    elif model == 'ADELPHI':
+        import kamodo_ccmc.readers.adelphi_4D as module
+        return module
 
     elif model == 'WACCMX':
         import kamodo_ccmc.readers.waccmx_4D as module
@@ -99,8 +121,16 @@ def Choose_Model(model):
         import kamodo_ccmc.readers.dtm_4D as module
         return module
 
+    elif model == 'GAMERA_GM':
+        import kamodo_ccmc.readers.gameragm_4D as module
+        return module
+
+    elif model == 'Weimer':
+        import kamodo_ccmc.readers.weimer_4D as module
+        return module
+
     else:
-        raise AttributeError('Model not yet added.')
+        raise AttributeError('Model not yet added: ' + str(model))
 
 
 def Model_Reader(model):
@@ -112,17 +142,6 @@ def Model_Reader(model):
 
     module = Choose_Model(model)
     return module.MODEL()  # imports Kamodo
-
-
-def Model_Coupling(model):
-    '''Returns model reader for requested model. Model agnostic.
-    Input: model: A string or integer associated with the desired model.
-
-    Output: The MODEL Kamodo class object in the desired model reader.
-    '''
-
-    module = Choose_Model(model)
-    return module.coupling  # imports Kamodo
 
 
 def Model_Variables(model, file_dir=None, return_dict=False):
@@ -177,7 +196,7 @@ def Model_Variables(model, file_dir=None, return_dict=False):
             return
 
 
-def Variable_Search(search_string, model='', file_dir='', return_dict=False):
+def Variable_Search(search_string='', model='', file_dir='', return_dict=False):
     '''Search variable descriptions for the given string. If the model string
     is set, the chosen model will be searched. If file_dir is set to the
     directory where some model data is stored, the files available in that
@@ -234,8 +253,6 @@ def Variable_Search(search_string, model='', file_dir='', return_dict=False):
         new_dict = {key: [value[0], value[-4]+'-'+value[-3], value[-2],
                           value[-1]] for key, value in
                     var_dict.items() if search_string in value[0].lower()}
-        if new_dict == {}:
-            print(f'No {search_string} variables found for {model}.')
         if not return_dict:
             for key, value in new_dict.items():
                 print(key+':', value)

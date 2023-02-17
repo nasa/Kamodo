@@ -167,7 +167,7 @@ def df_data(df_file, verbose=False):
     # perform lat wrapping in variable data
     for var in var3D_list:
         # perform scalar averaging for pole values (latitude wrapping)
-        # addind NaN on equator-side assuming the data never reaches it.
+        # adding NaN on equator-side assuming the data never reaches it.
         data_shape = variables[var].shape
         total_shape = (data_shape[0], data_shape[1]+3)  # lon, lat
         tmp = np.zeros(total_shape, dtype=float)

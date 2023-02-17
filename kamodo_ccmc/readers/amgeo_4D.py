@@ -16,7 +16,7 @@ model_varnames = {'E_ph': ['E_east', 'Electric Field (eastward)',
                   'cond_ped': ['Sigma_P', 'Ovation Pyme Pedersen Conductance',
                                3, 'SM', 'sph', ['time', 'lon', 'lat'], 'S'],
                   # units=mho=S
-                  'epot': ['V', 'Electric Potential',
+                  'epot': ['phi', 'Electric Potential',
                            4, 'SM', 'sph', ['time', 'lon', 'lat'], 'V'],
                   'int_joule_heat_n': ['W_JouleN', 'Northern Hemisphere ' +
                                        'Integrated Joule Heating',
@@ -127,6 +127,17 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - AMGeO model outputs are given in h5 files with one file per N/S
+              hemisphere per day. The data from both hemispheres are assembled
+              at each interpolation call.
+            - The outputs do not provide values at the poles, so scalar and
+              vector averaging are used as appropriate to determine these
+              values.
+            - The files are small and contain multiple time steps per file, so
+              interpolation method 2 is chosen. The standard SciPy interpolator
+              is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,

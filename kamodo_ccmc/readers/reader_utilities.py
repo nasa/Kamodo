@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 from os.path import basename
 
 
-def create_interp(coord_data, data_dict):
+def create_interp(coord_data, data_dict, func=None, func_default='data'):
     '''Create an interpolator depending on the dimensions of the input.
     Inputs:
         coord_data: a dictionary containing the coordinate data.
@@ -30,17 +30,22 @@ def create_interp(coord_data, data_dict):
     # determine the number of coordinates, create the interpolator
     coord_list = [value for key, value in coord_data.items()]  # list of arrays
     n_coords = len(coord_data.keys())
-    if n_coords == 1:
+    if n_coords == 1 and func_default == 'data':
         rgi = rgi1D(*coord_list, data_dict['data'], bounds_error=False,
                     fill_value=NaN)
-    else:
+        # wrap in a function and return the function
+        def interp(xvec):
+            return rgi(xvec)
+        return interp
+    elif n_coords > 1 and func_default == 'data':
         rgi = rgiND(coord_list, data_dict['data'], bounds_error=False,
                     fill_value=NaN)
-
-    # wrap in a function and return the function
-    def interp(xvec):
-        return rgi(xvec)
-    return interp
+        # wrap in a function and return the function
+        def interp(xvec):
+            return rgi(xvec)
+        return interp
+    elif func_default == 'custom':
+        return func()  # returns the custom interpolator
 
 
 def create_funcsig(coord_data, coord_str, bounds):
@@ -173,7 +178,8 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     # create a functionalized interpolator and modified function signature
     param_xvec = create_funcsig(coord_data, coord_str, bounds)
     if interp_flag == 0:  # standard logic
-        interp = create_interp(coord_data, data_dict)
+        interp = create_interp(coord_data, data_dict, func,
+                               func_default=func_default)
     elif interp_flag == 1:
         interp = time_interp(coord_dict, data_dict, func,
                              func_default=func_default)
@@ -486,10 +492,11 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
     # define method for how to add time slices to memory
     # i is the file#, fi is the time slice # in file
     def add_timeinterp(i, fi, time_interps):
-        if len(coord_list) > 1:
+        if len(coord_list) > 1 and func_default == 'data':
             time_interps.append(rgiND(coord_list[1:], func(i, fi),
                                       bounds_error=False, fill_value=NaN))
-        elif len(coord_list) == 1:  # has to be different for time series data
+        # has to be different for time series data
+        elif len(coord_list) == 1 and func_default == 'data':
             def dummy_1D(spatial_position):
                 return func(i, fi)  # data only
             time_interps.append(dummy_1D[0])
@@ -803,23 +810,30 @@ def str_to_hrs(dt_str, filedate, format_string='%Y-%m-%d %H:%M:%S'):
 
 
 @vectorize
-def hrs_to_tstr(hrs):
-    '''Convert number of hours into HH:MM:SS format.'''
+def hrs_to_tstr(hrs, ms_timing=False):
+    '''Convert number of hours into HH:MM:SS format. If ms_timing is True,
+    str is in format HH:MM:SS.mms'''
     h, m = floor(hrs), round(hrs % 1 * 60., 4)
-    sec = round(((hrs - h) * 60. - m) * 60.)
-    return str(f'\n{int(h):02d}:{int(m):02d}:{int(sec):02d}')
+    if not ms_timing:
+        sec = round(((hrs - h) * 60. - m) * 60.)
+        return str(f'\n{int(h):02d}:{int(m):02d}:{int(sec):02d}')
+    else:
+        sec = ((hrs - h) * 60. - int(m)) * 60.
+        sec_str = f'{sec:2.3f}'.zfill(6)
+        return str(f'\n{int(h):02d}:{int(m):02d}:'+sec_str)
 
 
 @vectorize
-def tstr_to_hrs(time_str):
-    '''Convert str from HH:MM:SS format to float 32.'''
+def tstr_to_hrs(time_str, ms_timing=False):
+    '''Convert str from HH:MM:SS format to float 32. If ms_timing is True,
+    str is in format HH:MM:SS.mms'''
     hh, mm, ss = time_str.split(':')
     t = float32(hh) + float32(mm)/60. + float32(ss)/3600.
     return float32(t)
 
 
 def create_timelist(list_file, time_file, modelname, times, pattern_files,
-                    filedate):
+                    filedate, ms_timing=False):
     '''Used by all the readers to create the time_file and list_file files.
     Inputs:
         list_file - the name of the file, including the file directory, to
@@ -842,6 +856,8 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
             directory that match the file pattern.
         filedate - a datetime object indicating the date of the first file of
             all the files in the file_dir.
+        ms_timing - a boolean indicating whether millisecond timing is needed.
+            Default is False.
     Returns nothing.
     '''
 
@@ -855,7 +871,7 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
     for p in pattern_files.keys():
         # print out time grid to time file
         time_out.write('\nPattern: '+p)
-        str_out = hrs_to_tstr(times[p]['all'])
+        str_out = hrs_to_tstr(times[p]['all'], ms_timing)
         time_out.write(''.join(str_out))
         # print start and end dates and times to list file
         start_time_str = hrs_to_str(times[p]['start'], filedate)
@@ -870,7 +886,7 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
     return
 
 
-def read_timelist(time_file, list_file):
+def read_timelist(time_file, list_file, ms_timing=False):
     '''Used by all readers to read in the time grid from the time_file and
     the list of files with start and end times from the list_file.
     Returns:
@@ -889,7 +905,10 @@ def read_timelist(time_file, list_file):
         filedate - a datetime object indicating the date of the first file of
             all the files in the file_dir.
         filename - a string containing the names of all the files in the file
-            directory, separated by commas.'''
+            directory, separated by commas.
+        ms_timing - a boolean indicating whether millisecond timing is needed.
+            Default is False.
+    '''
 
     # get time grids and initialize self.times structure
     times, pattern_files = {}, {}
@@ -903,7 +922,7 @@ def read_timelist(time_file, list_file):
             times[p]['all'].append(line.strip())
     time_obj.close()
     for p in times.keys():
-        times[p]['all'] = tstr_to_hrs(times[p]['all'])
+        times[p]['all'] = tstr_to_hrs(times[p]['all'], ms_timing)
 
     # get filenames, dates and times from list file
     files, start_date_times, end_date_times = [], [], []

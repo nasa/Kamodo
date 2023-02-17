@@ -1,32 +1,26 @@
 site_name: Kamodo Analysis Suite
 
 nav:
-- Home: README.md
-- About: about.md
-- Introduction: notebooks/Kamodo.ipynb
-- Visualization: notebooks/Visualization.ipynb
-- Syntax: notebooks/Syntax.ipynb
-- Kamodofying Models: notebooks/Kamodofying_Models.ipynb
-- Field Integration: notebooks/FieldIntegration.ipynb
-- Kameleon: notebooks/kameleon-kamodo.ipynb
-- TIEGCM: notebooks/TIEGCM.ipynb
-- CommandLine: notebooks/CommandLineInterface.ipynb
-- Additional Resources: additional_resources.md
+- Quick Start: notebooks/QuickStart.ipynb
+- Introduction: notebooks/Introduction.ipynb
+- Data Functionalizion: notebooks/DataFunctionalization.ipynb
+- Choosing Models and Variables: notebooks/ChoosingModelsAndVariables.ipynb
+- Functionalizing a Modeled Dataset: notebooks/FunctionalizingModeledDatasets.ipynb
+- Satellite Trajectories: notebooks/SatelliteTrajectories.ipynb
+- Coordinate Conversions: notebooks/CoordinateConversions.ipynb
+- Performing a Flythrough in a Notebook: notebooks/FlythroughNotebook.ipynb
+- Performing a Flythrough from the Command Line: notebooks/FlythroughCommandLine.ipynb
+- Constellation Mission Planning Tool: notebooks/ConstellationMissionPlanningToolIntro.ipynb
+- Advanced Plotting Routines: notebooks/AdvancedPlottingRoutines.ipynb
+- Contribution Guidelines: ContributionGuidelines.md
+- How to Write a Model Reader: ModelReaderInstructions.md
+
 
 theme: readthedocs
+use_directory_urls: False
 plugins:
-  - mknotebooks:
-      execute: true
-  - search
-markdown_extensions:
-  - admonition
-  - tables
-  - mdx_math:
-      enable_dollar_delimiter: True 
-  - toc:
-      permalink: true
-  - markdown_include.include:
-      base_path: docs
-
-extra_javascript: 
-    - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+  - mkdocs-jupyter:
+      include_source: True
+      kernel_name: python3
+      execute: False
+      ignore_h1_titles: False

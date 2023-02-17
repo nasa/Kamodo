@@ -71,6 +71,25 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - The SuperDARN default grid model output is given in one ascii
+              file per timestep per N/S hemisphere. The file converter combines
+              these files into one netCDF4 file per timestep.
+            - The data is only given within 40-60 degrees of the poles, so a
+              buffer row of the same values is added in the data to avoid
+              losing the most equatorward ring of data in the interpolation.
+            - The outputs do not provide values at the poles, so scalar
+              averaging is used to determine these values. (The three
+              spatially dependent variables are all scalars.)
+            - The converted files are small and are created with one time step
+              per file, so interpolation method 1 is chosen for spatially
+              dependent variables. Interpolation method 0 is chosen for the
+              spatially independent variables, meaning the entire time series
+              is read into memory and the standard SciPy interpolator is used.
+              For the spatially dependent variables, the standard SciPy
+              interpolator is used, but with a custom layer to accomodate the
+              changing range of the latitude grid with time.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,

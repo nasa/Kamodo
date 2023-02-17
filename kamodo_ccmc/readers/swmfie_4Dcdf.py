@@ -115,6 +115,16 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - SWMF Ionosphere Electrodynamics outputs are given in .tec files
+              with one timestep per file. Each file is converted into a netCDF4
+              file.
+            - The outputs do not provide values at the poles, so scalar
+              averaging is used to determine these values.
+            - The converted files are small and are created with one time step
+              per file, so interpolation method 1 is chosen. The standard SciPy
+              interpolator is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,

@@ -457,6 +457,37 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - WACCM-X model outputs are given in netCDF files, so no file
+              conversion is needed. However, some of the variables depend on a
+              pressure level coordinate, so some pre-processing is needed to
+              calculate the median height across the entire dataset
+              (time, lon, lat) for a given pressure level value for each type
+              of pressure level coordinate (typically two).
+            - WACCM-X data is given in several coordinate systems depending
+              on pressure level - a representation of height in Pascals
+              corresponding to a given atmospheric pressure. The preset values
+              of pressure level in the coordinate systems are not
+              guaranteed to be identical, so they are inverted independently of
+              the other unless only one is provided. In that case, the are
+              assumed to be identical.
+            - Pressure level inversion is performed in the reader_utilities
+              script, specifically the PLevelInterp function. Two versions of
+              all variables that depend on pressure level are created: the
+              original and one dependent on height, which is created through
+              Kamodo's function composition feature.
+            - Interpolation method 0 is chosen for the spatially independent
+              variables, meaning the entire time series is read into memory and
+              the standard SciPy interpolator is used.
+            - All of the files have multiple time steps per file, but some of
+              the files are small, while some are larger than 16 GB. This
+              motivates some logic to automatically choose the appropriate
+              interpolation method based on the file size compared to the
+              available computer memory. Interpolation method 3 is chosen if
+              the file size is large, and interpolation method 2 is chosen if
+              the file size is manageable. In both cases, the standard SciPy
+              interpolator is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,

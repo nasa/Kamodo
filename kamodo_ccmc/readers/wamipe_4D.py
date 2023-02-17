@@ -149,6 +149,28 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - WAM-IPE output files are given in multiple netCDF files per day.
+              No attempt is made to combine these files, but some
+              pre-processing is needed to calculate the median height across
+              the entire dataset (time, lon, lat) for a given pressure level
+              value. If a tarball of files is detected in the absense of the
+              netCDF files, then the tarball will be decompressed and the
+              netCDF files extracted automatically.
+            - WAM-IPE data is given in several coordinate systems, one
+              depending on pressure level - a unitless representation of height
+              corresponding to a given atmospheric pressure. The pressure
+              level values are not given in the data, so an arbitrary integer
+              representation is chosen. 
+            - Pressure level inversion is performed in the reader_utilities
+              script, specifically the PLevelInterp function. Two versions of
+              all variables that depend on pressure level are created: the
+              original and one dependent on height, which is created through
+              Kamodo's function composition feature.
+            - The files are small and contain one time step per file, so
+              interpolation method 1 is chosen. The standard SciPy interpolator
+              is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
