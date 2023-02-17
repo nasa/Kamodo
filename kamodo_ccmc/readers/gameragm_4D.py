@@ -99,6 +99,22 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes and instructions:
+        - The GAMERA global magnetosphere outputs are given in one or more h5
+          files, each containing all of the time steps for the entire run. If
+          the model is run in serial model, only one file will be produced. If
+          the model is run in MPI mode, then multiple files will be produced
+          with the grid of the simulation sectioned off into one piece per
+          file. No file conversion is attempted, but some pre-processing is
+          performed on the coordinate grids.
+        - The files are typically larger than 16 GB, so interpolation method 3
+          is chosen for the time-varying variables. Interpolation method 0 is
+          chosen for the constants (e.g. dV). The coordinate grid is not
+          uniform in any manner, so a custom interpolator is required for both
+          interpolation methods.
+        - Adding this interpolator to the reader is a work in process via a
+          collaboration with the GAMERA modeling team.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,

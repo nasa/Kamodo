@@ -327,6 +327,45 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - TIE-GCM model outputs are given in netCDF files, so no file
+              conversion is needed. However, all of the variables depend on a
+              pressure level coordinate, so some pre-processing is needed to
+              calculate the median height across the entire dataset
+              (time, lon, lat) for a given pressure level value for each type
+              of pressure level coordinate (up to three).
+            - TIE-GCM data is given in several coordinate systems depending
+              on pressure level - a unitless representation of height
+              corresponding to a given atmospheric pressure. The preset values
+              of pressure level in the coordinate systems are not
+              guaranteed to be identical, so they are inverted independently of
+              the other unless only one is provided. In that case, the are
+              assumed to be identical. The magnetic pressure level coordinate
+              is always treated independently of the other two.
+            - Pressure level inversion is performed in the reader_utilities
+              script, specifically the PLevelInterp function. Two versions of
+              all variables that depend on pressure level are created: the
+              original and one dependent on height, which is created through
+              Kamodo's function composition feature.
+            - The outputs do not provide values at the poles, so scalar and
+              vector averaging are used as appropriate to determine these
+              values on the fly.
+            - The files are small, but different versions require different
+              interpolation choices. The high-altitude version of TIEGCM has
+              one timestep per file, requiring that interpolation methods 1 be
+              chosen, while the normal version of TIEGCM has multiple timesteps
+              per file, requiring that interpolation method 2 be chosen. This
+              difference requires custom code to automatically choose the
+              appropriate interpolation method and the associated read logic.
+
+        Developer note:
+            The current logic for variables that depend on imlev slices off the
+            e36 values in self._imlev coordinate array. This only works because
+            there is only one variable that depends on imlev: H_imlev. The
+            logic beginning on line 767 will have to be reworked a bit if any
+            new variables depend on imlev to avoid repeatedly slicing off the
+            coordinate values.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,

@@ -65,6 +65,14 @@ def MODEL():
 
         Returns: a kamodo object (see Kamodo core documentation) containing all
             requested variables in functionalized form.
+
+        Notes:
+            - Weimer model outputs are given in ascii files with one timestep
+              per file. Since the files are extremely small, all of the data
+              for the run is collected into one netCDF4 file.
+            - The converted file is assumed to be larger than 16 GB, so
+              interpolation method 3 is chosen. The standard SciPy
+              interpolator is used.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
