@@ -83,7 +83,7 @@ MW.Model_Variables('OpenGGCM_GM')
 
 ## Citing Kamodo
 
-When publishing research which used Kamodo, please provide appropriate credit to the Kamodo team via citation or acknowledgment. Please also let the team know of publications or presentations that use Kamodo. Below is list of publications for Kamodo.
+When publishing research which used Kamodo, please provide appropriate credit to the CCMC and the Kamodo team via citation or acknowledgment. Please also let the team know of publications or presentations that use Kamodo. Below is list of publications for Kamodo.
 
 - Pembroke, A., D. De Zeeuw, L. Rastaetter, R. Ringuette, O. Gerland, D. Patel and M. Contreras (2022). Kamodo: A functional API for space weather models and data. JOSS 7, 75, 4053, https://doi.org/10.21105/joss.04053.
 
