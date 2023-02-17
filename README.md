@@ -9,14 +9,13 @@ Kamodo is an official NASA open-source python package built upon the functionali
     - Vector field tracing (including magnetic field mapping),
     - Coordinate conversions,
     - Domain-specific interactive plots of publication quality,
-    - One- and two-way model coupling,
+    - Modular driver swapping,
     - Satellite constellation mission planning tools,
-    - Simulated imagery,
-    - and a line of sight calculation tool,
+    - Simulated imagery, and
+    - A line of sight calculation tool,
 -	Greatly reduce the programming skill currently required outside of Kamodo to perform model validation studies and model-data comparisons,
 -	Enable model output utilization both on the cloud and on personal laptops in a variety of methods (e.g. through HAPI and interactive calls from the command line),
 -	Streamline the CCMC user workflow by becoming interoperable with other CCMC services (e.g. CAMEL and the various scoreboards),
--	Expand the number of possible model-coupling groupings at CCMC by functionalizing the process,
 -	And become the next generation interface for CCMC users to interact with and analyze model outputs (e.g. through ROR and IR),
 
 ...all while keeping the developed software open-source and freely available. The Kamodo team also supports the heliophysics community by pursuing interoperability with commonly-used python packages, collaborating with community members to add model outputs and new functionalities, and remaining involved with community events (e.g. conferences, challenges, and research support). As the library of supported model outputs types expands and new model-agnostic tools are added, Kamodo will become a staple software package in the heliophysics community to transform current workflows into a more efficient and productive process. We are building the next generation of capability with Kamodo. Join us!
