@@ -1,6 +1,7 @@
+![CCMC](docs/notebooks/Files/CCMC.png) ![Kamodo](docs/notebooks/Files/Kamodo.png)
 # The CCMC Kamodo Analysis Suite
 ## Vision Statement
-CCMC's Kamodo is an official NASA open-source python package built upon the functionalization of datasets. Once a dataset is functionalized in Kamodo, several important capabilities are then available to the user, including data analysis via function composition, automatic unit conversions, and publication quality graphics all using intuitive and simplistic syntax. By applying these capabilities to heliophysics model outputs, we aim to:
+Kamodo is an official NASA open-source python package built upon the functionalization of datasets. Once a dataset is functionalized in Kamodo, several important capabilities are then available to the user, including data analysis via function composition, automatic unit conversions, and publication quality graphics all using intuitive and simplistic syntax. By applying these capabilities to heliophysics model outputs, we aim to:
 -	Drastically simplify the currently complex data utilization process for model outputs,
 -	Provide interactive access to functionalized model outputs for users ranging in programming skill from beginners – via code-free interfaces and video tutorials – to advanced users – via thorough documentation, Jupyter notebook examples and sample workflows,
 -	Layer multiple functionalities on top of the functionalized model outputs, all with model-agnostic and uniform syntax, including but not limited to:
@@ -18,9 +19,9 @@ CCMC's Kamodo is an official NASA open-source python package built upon the func
 -	Expand the number of possible model-coupling groupings at CCMC by functionalizing the process,
 -	And become the next generation interface for CCMC users to interact with and analyze model outputs (e.g. through ROR and IR),
 
-...all while keeping the developed software open-source and freely available. The Kamodo team also supports the heliophysics community by pursuing interoperability with commonly-used python packages, collaborating with community members to add model outputs and new functionalities, and remaining involved with community events (e.g. conferences, challenges, and research support). As the library of supported model outputs types expands and new model-agnostic tools are added, CCMC-Kamodo will become a staple software package in the heliophysics community to transform current workflows into a more efficient and productive process. We are building the next generation of capability with CCMC’s Kamodo. Join us!
+...all while keeping the developed software open-source and freely available. The Kamodo team also supports the heliophysics community by pursuing interoperability with commonly-used python packages, collaborating with community members to add model outputs and new functionalities, and remaining involved with community events (e.g. conferences, challenges, and research support). As the library of supported model outputs types expands and new model-agnostic tools are added, Kamodo will become a staple software package in the heliophysics community to transform current workflows into a more efficient and productive process. We are building the next generation of capability with Kamodo. Join us!
 
-## CCMC Kamodo Installation Instructions   
+## Kamodo Installation Instructions   
 
 ### Conda prompt commands: 
 - Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:
@@ -81,59 +82,44 @@ MW.Model_Variables('OpenGGCM_GM')
     
     
 
-## Citation Requirements
+## Citing Kamodo
 
-Use of CCMC's Kamodo in published work or in other development projects requires citing one or more of the publications below as indicated.
+When publishing research which used Kamodo, please provide appropriate credit to the Kamodo team via citation or acknowledgment. Please also let the team know of publications or presentations that use Kamodo. Below is list of publications for Kamodo.
 
-### The Data Functionalization function
+- Pembroke, A., D. De Zeeuw, L. Rastaetter, R. Ringuette, O. Gerland, D. Patel and M. Contreras (2022). Kamodo: A functional API for space weather models and data. JOSS 7, 75, 4053, https://doi.org/10.21105/joss.04053.
 
-Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
+- Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
 
-### The Model Readers
+- Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
 
-Ringuette, R., L. Rastaetter, D. De Zeeuw, A. Pembroke, and O. Gerland (2023). Simplifying model data access and utilization. Adv. Space. Res. under review.
+- Ringuette, R., L. Rastaetter, D. De Zeeuw, K. Garcia-Sage, R. Robinson, and O. Gerland (2022). Kamodo's Satellite Constellation Mission Planning Tool, poster presentation presented by L. Rastaetter at the 2022 Fall meeting of AGU, Dec 12-16, Chicago, IL, USA. https://doi.org/10.22541/essoar.167214257.73153757/v1.
 
-### The Flythrough functions
+- Ringuette, R., L. Rastaetter, D. De Zeeuw, A. Pembroke, and O. Gerland (2023). Simplifying model data access and utilization. Adv. Space. Res. under review.Use of Kamodo in published work or in other development projects requires citing one or more of the publications below as indicated.
 
-Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
-
-### The Constellation Mission planning tool
-
-Ringuette, R., L. Rastaetter, D. De Zeeuw, K. Garcia-Sage, R. Robinson, and O. Gerland (2022). Kamodo's Satellite Constellation Mission Planning Tool, poster presentation presented by L. Rastaetter at the 2022 Fall meeting of AGU, Dec 12-16, Chicago, IL, USA. https://doi.org/10.22541/essoar.167214257.73153757/v1.
 
 ## Resources
-CCMC's Kamodo Official website - https://ccmc.gsfc.nasa.gov/tools/kamodo/
-
-CCMC's Kamodo Documentation page - https://nasa.github.io/Kamodo/
-
-Sample model outputs - https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/
-
-Youtube tutorial channel - https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa
-
-Ensemble's Kamodo-core Documentation page - https://ensemblegovservices.github.io/kamodo-core/
+- CCMC's Kamodo Official website - https://ccmc.gsfc.nasa.gov/tools/kamodo/  
+- CCMC's Kamodo Documentation page - https://nasa.github.io/Kamodo/  
+- Sample model outputs - https://ccmc.gsfc.nasa.gov/RoR_WWW/output_files/KAMODO_DEMO/  
+- Youtube tutorial channel - https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa  
 
 ## The Kamodo team
 ### Dr. Rebecca Ringuette
-ORCiD: https://orcid.org/0000-0003-0875-2023
-
+ORCiD: https://orcid.org/0000-0003-0875-2023  
 NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/rebecca-ringuette/
 
 ### Dr. Lutz Rastaetter
-ORCiD: https://orcid.org/0000-0002-7343-4147
-
+ORCiD: https://orcid.org/0000-0002-7343-4147  
 NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/lutz-rastaetter/
 
 ### Dr. Darren De Zeeuw
-ORCiD: https://orcid.org/0000-0002-4313-5998
-
+ORCiD: https://orcid.org/0000-0002-4313-5998  
 NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/darren-de-zeeuw/
 
 ### Dr. Katherine Garcia-Sage
-ORCiD: https://orcid.org/0000-0001-6398-8755
-
+ORCiD: https://orcid.org/0000-0001-6398-8755  
 NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/katherine-garcia-sage/
 
-Note: Each NASA staff page includes links to email addresses.
 
 ## Open-Source License
-CCMC's Kamodo is an official NASA open source software package. CCMC's Kamodo's official source code is hosted on github under a permissive NASA open source license: For more details, go here: https://github.com/nasa/Kamodo/blob/master/LICENSE
+Kamodo is an official NASA open source software package. Kamodo's official source code is hosted on github under a permissive NASA open source license: For more details, go here: https://github.com/nasa/Kamodo/blob/master/LICENSE

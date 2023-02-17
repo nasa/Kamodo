@@ -1,19 +1,19 @@
-site_name: CCMC Kamodo Analysis Suite
+site_name: Kamodo Analysis Suite
 
 nav:
-- Home: notebooks/README.ipynb
-- Functionalizing a generic dataset: notebooks/DataFunctionalization.ipynb
-- Choosing a model and variable: notebooks/ChoosingModelsAndVariables.ipynb
-- Functionalizing a modeled dataset: notebooks/FunctionalizingModeledDatasets.ipynb
+- Quick Start: notebooks/QuickStart.ipynb
+- Introduction: notebooks/Introduction.ipynb
+- Data Functionalizion: notebooks/DataFunctionalization.ipynb
+- Choosing Models and Variables: notebooks/ChoosingModelsAndVariables.ipynb
+- Functionalizing a Modeled Dataset: notebooks/FunctionalizingModeledDatasets.ipynb
 - Satellite Trajectories: notebooks/SatelliteTrajectories.ipynb
-- Coordinate conversions: notebooks/CoordinateConversions.ipynb
-- Performing a flythrough in a notebook: notebooks/FlythroughNotebook.ipynb
-- Performing a flythrough from the command line: notebooks/FlythroughCommandLine.ipynb
-- Constellation mission planning tool: notebooks/ConstellationMissionPlanningToolIntro.ipynb
-- Advanced plotting routines: ComingSoon.md
-- Contribution guidelines: ContributionGuidelines.md
-- How to write a model reader: ModelReaderInstructions.md
-- How to add a new tool: ComingSoon.md
+- Coordinate Conversions: notebooks/CoordinateConversions.ipynb
+- Performing a Flythrough in a Notebook: notebooks/FlythroughNotebook.ipynb
+- Performing a Flythrough from the Command Line: notebooks/FlythroughCommandLine.ipynb
+- Constellation Mission Planning Tool: notebooks/ConstellationMissionPlanningToolIntro.ipynb
+- Advanced Plotting Routines: notebooks/AdvancedPlottingRoutines.ipynb
+- Contribution Guidelines: ContributionGuidelines.md
+- How to Write a Model Reader: ModelReaderInstructions.md
 
 
 theme: readthedocs
