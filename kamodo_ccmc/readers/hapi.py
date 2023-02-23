@@ -270,12 +270,13 @@ class HAPI(Kamodo):
             data = self.variables[varname]['data']
             fill = self.variables[varname]['fill']
             if fill != None and fill != "NaN":
+                # NOTE: If values are integers and nbad > 0, it will throw errer.
                 mask = data==float(fill)
                 nbad = np.count_nonzero(mask)
                 if nbad > 0:
                     if verbose: print("Found",nbad,"fill values, replacing with NaN for variable",
                           varname,"of size",data.size)
-                data[mask]=np.nan
+                    data[mask]=np.nan
                 self.variables[varname]['data'] = data
         
     def get_plot(self, coord="", type="1Dpos", scale="R_E", var=""):
