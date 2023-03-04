@@ -647,9 +647,34 @@ All of the interpolation methods shown above support the use of custom interpola
 The section of code begins with importing the custom interpolator script, which is then initialized with the data required for a given time step. (The superdarnequ_4D.py model reader script uses interpolation method 1.) A few extra steps are performed to prevent automatic execution of the interpolator, namely setting the data attribute of the self.variables dictionary to an array of zeros with the same dimensionality of the data for the time step (in this case, three dimensions for the longitude, latitude, and height dimensions in the data). A more complex example of a custom interpolator is given in the swmfgm_4D.py script (in the Kamodo/kamodo_ccmc/readers/ directory).
 
 ## Model Reader Testing
-Once the developer has an initial version of the model reader script, it should be tested in a variety of ways.
+Once the developer has an initial version of the model reader script, it should be tested in a variety of ways. See the /Kamodo/Validation/Notebooks/ directory for the notebooks used to test each model reader for a full array of functionalities. These tests include generation of the list and times files, proper variable handling, proper behavior of the interpolators for one variable of each dimensionality, correct plot creation for the same variables, proper creation of the model_varnames metadata dictionary through the metadata search functions, and proper integration into the flythrough functions. Each model reader must successfully pass these tests and any others needed to verify full functionality before it can be included in the Kamodo software. 
 
+Before running these tests on the newly developed model reader, the developer should include the model reader script into the model_wrapper.py script located in the Kamodo/kamodo_ccmc/flythrough directory through the following two additions:
+- The model information should be added to the model_dict dictionary at the top of the model_warpper.py script in alphabetical order. The acronym representation of the model should be added as a key in the dictionary with the full name and associated DOI(s) as the value associated with the key, as shown below, and
+```py
+model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
+                         'High-latitude Ionosphere ' +
+                         'https://doi.org/10.1029/2020SW002677',
+              'AMGeO': 'Assimilative Mapping of Geospace Observations ' +
+                       'https://doi.org/10.5281/zenodo.3564914',
+              'CTIPe': 'Coupled Thermosphere Ionosphere Plasmasphere ' +
+                       'Electrodynamics Model ' +
+                       'https://doi.org/10.1029/2007SW000364',
+              'DTM': 'The Drag Temperature Model ' +
+                     'https://doi.org/10.1051/swsc/2015001',
+```  
+- An elif logic block should be added in the *Choose_Model* function before the else statement. The example below shows the logic included for the DTM model reader script.
+```py
+    elif model == 'DTM':
+        import kamodo_ccmc.readers.dtm_4D as module
+        return module
+```  
 
-```python
-
+Finally, the model reader script should align with PEP8 standards. This can be tested by running the following commands in a terminal window opened in the same directory as the model reader script:
 ```
+pip install pycodestyle
+pycodestyle dtm_4D.py
+```
+The reported errors should be resolved until no errors are given when the second command is executed. For more information on PEP8 standards, see https://peps.python.org/pep-0008/.
+
+Note that the notebooks ending with the string 'timing' were used to produce the timing data used in the Kamodo model reader paper (Figure 10).
