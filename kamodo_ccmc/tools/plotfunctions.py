@@ -1,5 +1,5 @@
 def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
-              cutInside=-1., returnGrid=False):
+              cutInside=-1., returnGrid=False, enhanceHover=False, newTitle=''):
     '''
     Function to modify a plotly figure object in multiple ways.
     
@@ -13,6 +13,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
       returnGrid  Take the plot and return a new grid only plotly object
     '''
 
+    import re
     import numpy as np
     import plotly.graph_objects as go
 
@@ -69,6 +70,21 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
         maskR = rr_mg < cutInside
         zz[maskR] = np.nan
         fig.data[0]['z'] = zz
+
+    if enhanceHover:
+        xvar = re.sub(' +', ' ',fig.layout.xaxis.title.text.strip('$').strip())
+        yvar = re.sub(' +', ' ',fig.layout.yaxis.title.text.strip('$').strip())
+        cvar = re.sub(' +', ' ',fig.data[0]['colorbar'].title.text.strip('$').strip())
+        fig.update_traces(
+            hovertemplate=
+                xvar+": %{x:.3f} <br>"+
+                yvar+": %{y:.3f} <br>"+
+                cvar+": %{z:.4g} <br>"+
+                "<extra></extra>"
+        )
+
+    if newTitle != '':
+        fig.layout.title.text = newTitle
 
     return fig
 
@@ -562,5 +578,385 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
 
     toc = time.perf_counter()
     print(f"Time: {toc - tic:0.4f} seconds")
+    return fig
+
+
+def swmfgm3D(ko, var, time=0., title='',
+             xcut=-999., ycut=-999., zcut=-999., 
+             zgrid=False, znodes=False):
+    '''
+    Function to combine default X,Y,Z constant slices into one 3D
+      plot. Returns a full 3D plotly figure.
+    
+    ko:      Kamodo object
+    var:     string variable name
+    time:    floating time in hours from start of first day of data
+    title:   string text for plot title top left
+    xcut:    if set, value for X slice through data
+    ycut:    if set, value for Y slice through data
+    zcut:    if set, value for Z slice through data
+    zgrid:   logical to return plot of grid dz size
+    znodes:  logical to show dots at grid locations
+    '''
+    import re
+    import numpy as np
+    import pandas as pd
+    from kamodo import Kamodo
+    import plotly.graph_objs as go
+    
+    useX = False; useY = False; useZ = False
+    if xcut > -999.: useX = True
+    if ycut > -999.: useY = True
+    if zcut > -999.: useZ = True
+    
+    cmin =  1.e+99; cmax = -1.e+99
+    opacity = 1
+
+    if useZ:
+        print('Extracting z slice at',zcut)
+        figZ = ko.plot(var, plot_partial={var: {'time':time, 'Z':zcut}})
+        x0 = figZ.data[0]['x']
+        y0 = figZ.data[0]['y']
+        z0 = np.array([zcut])
+        val0 = figZ.data[0]['z']
+        cmin = min(cmin,np.min(val0))
+        cmax = max(cmax,np.max(val0))
+
+    if useY:
+        print('Extracting y slice at',ycut)
+        figY = ko.plot(var, plot_partial={var: {'time':time, 'Y':ycut}})
+        x1 = figY.data[0]['x']
+        z1 = figY.data[0]['y']
+        y1 = np.array([ycut])
+        val1 = figY.data[0]['z']
+        cmin = min(cmin,np.min(val1))
+        cmax = max(cmax,np.max(val1))
+    
+    if useX:
+        print('Extracting x slice at',xcut)
+        figX = ko.plot(var, plot_partial={var: {'time':time, 'X':xcut}})
+        y2 = figX.data[0]['x']
+        z2 = figX.data[0]['y']
+        x2 = np.array([xcut])
+        val2 = figX.data[0]['z']
+        cmin = min(cmin,np.min(val2))
+        cmax = max(cmax,np.max(val2))
+    
+    print('starting plot')
+    fig = go.Figure()
+    if useZ:
+        if zgrid:
+            x_mg, y_mg, z_mg = np.meshgrid(x0,y0,z0)
+            x_mg_1d = x_mg.reshape(-1)
+            y_mg_1d = y_mg.reshape(-1)
+            z_mg_1d = z_mg.reshape(-1)
+            iv = []
+            jv = []
+            kv = []
+            dx = []
+            for iy in range(len(y0)-1):
+                for ix in range(len(x0)-1):
+                    # For each cell, create two triangular connectivity entries with dx
+                    iv.append(  ix+ iy   *len(x0))
+                    jv.append(1+ix+ iy   *len(x0))
+                    kv.append(  ix+(iy+1)*len(x0))
+                    dx.append(max(x_mg_1d[iv[-1]],x_mg_1d[jv[-1]],x_mg_1d[kv[-1]])-
+                              min(x_mg_1d[iv[-1]],x_mg_1d[jv[-1]],x_mg_1d[kv[-1]]))
+                    iv.append(  ix+(iy+1)*len(x0))
+                    jv.append(1+ix+(iy+1)*len(x0))
+                    kv.append(1+ix+ iy   *len(x0))
+                    dx.append(max(x_mg_1d[iv[-1]],x_mg_1d[jv[-1]],x_mg_1d[kv[-1]])-
+                              min(x_mg_1d[iv[-1]],x_mg_1d[jv[-1]],x_mg_1d[kv[-1]]))
+            dxlog2 = np.log2(dx)
+            figG = go.Figure(data=[
+                go.Mesh3d(
+                    x=x_mg_1d,
+                    y=y_mg_1d,
+                    z=z_mg_1d,
+                    colorbar_title='log2(dx)',
+                    colorscale='Viridis',
+                    intensity=dxlog2,
+                    intensitymode='cell',
+                    #intensity=x_mg_1d,  # If using, fix hover and labeling
+                    #intensitymode='vertex',
+                    i=iv,
+                    j=jv,
+                    k=kv,
+                    name='y',
+                    showscale=True
+                )
+            ])
+            figG.update_traces(
+                flatshading=True,
+                customdata=dx,
+                hovertemplate="<b>Grid Size</b><br>"+
+                    #"i: %{i:9i}<br>"+
+                    #"j: %{j:9i}<br>"+
+                    #"k: %{k:9i}<br>"+
+                    "log2(dx): %{intensity:.4g}<br>"+
+                    "dx: %{customdata:.4g}<br>"+
+                    "<extra></extra>"
+            )
+            if znodes:
+                figG.add_scatter3d(x=x_mg_1d, y=y_mg_1d, z=z_mg_1d, mode='markers', 
+                      marker=dict(size=1, color='black'),line=dict(width=1))
+
+            return figG
+
+        val0b = np.reshape(val0,(len(y0),len(x0),len(z0)))
+        xvar = re.sub(' +', ' ',figZ.layout.xaxis.title.text.strip('$').strip())
+        yvar = re.sub(' +', ' ',figZ.layout.yaxis.title.text.strip('$').strip())
+        zvar = xvar.replace('X','Z')
+        cvar = re.sub(' +', ' ',figZ.data[0]['colorbar'].title.text.strip('$').strip())
+        def plot3d_var0(X = x0, Y = y0, Z = z0):
+            return val0b
+        ko0 = Kamodo(plot_var = plot3d_var0)
+        figZ2 = ko0.plot(plot_var = dict())
+        figZ2.update_traces(colorscale='Viridis')
+        figZ2.update_traces(
+            cmin=cmin, cmax=cmax, 
+            colorbar=dict(title=cvar, tickformat=".3g"),
+            opacity=opacity,
+            customdata=np.transpose(val0b, axes=[1, 0, 2]),
+            hovertemplate="<b>Position Values</b><br>"+
+                xvar+": %{x:.3f}<br>"+
+                yvar+": %{y:.3f}<br>"+
+                zvar+": %{z:.3f}<br>"+
+                cvar+": %{customdata:.4g}<br>"+
+                "<extra></extra>"
+        )
+        fig.add_trace(figZ2.data[0])
+
+    if useY:
+        xm,ym,zm=np.meshgrid(x1,y1,z1)
+        val1tp = np.transpose(val1, axes=[1, 0])
+        val1b = np.reshape(val1tp,(len(y1),len(x1),len(z1)))
+        xvar = re.sub(' +', ' ',figY.layout.xaxis.title.text.strip('$').strip())
+        zvar = re.sub(' +', ' ',figY.layout.yaxis.title.text.strip('$').strip())
+        yvar = xvar.replace('X','Y')
+        cvar = re.sub(' +', ' ',figY.data[0]['colorbar'].title.text.strip('$').strip())
+        def plot3d_var1(X = x1, Y = y1, Z = z1):
+            return val1b
+        ko1 = Kamodo(plot_var = plot3d_var1)
+        figY2 = ko1.plot(plot_var = dict())
+        figY2.update_traces(colorscale='Viridis')
+        figY2.update_traces(
+            cmin=cmin, cmax=cmax, 
+            colorbar=dict(title=cvar, tickformat=".3g"),
+            opacity=opacity,
+            customdata=np.transpose(val1b, axes=[2, 1, 0]),
+            hovertemplate="<b>Position Values</b><br>"+
+                xvar+": %{x:.3f} <br>"+
+                yvar+": %{y:.3f} <br>"+
+                zvar+": %{z:.3f} <br>"+
+                cvar+": %{customdata:.4g} <br>"+
+                "<extra></extra>"
+        )
+        fig.add_trace(figY2.data[0])
+    
+    if useX:
+        xm,ym,zm=np.meshgrid(x2,y2,z2)
+        val2tp = np.transpose(val2, axes=[1, 0])
+        val2b = np.reshape(val2tp,(len(y2),len(x2),len(z2)))
+        yvar = re.sub(' +', ' ',figX.layout.xaxis.title.text.strip('$').strip())
+        zvar = re.sub(' +', ' ',figX.layout.yaxis.title.text.strip('$').strip())
+        xvar = yvar.replace('Y','Z')
+        cvar = re.sub(' +', ' ',figX.data[0]['colorbar'].title.text.strip('$').strip())
+        def plot3d_var2(X = x2, Y = y2, Z = z2):
+            return val2b
+        ko2 = Kamodo(plot_var = plot3d_var2)
+        figX2 = ko2.plot(plot_var = dict())
+        figX2.update_traces(colorscale='Viridis')
+        figX2.update_traces(
+            cmin=cmin, cmax=cmax, 
+            colorbar=dict(title=cvar, tickformat=".3g"),
+            opacity=opacity,
+            customdata=np.transpose(val2b, axes=[2, 0, 1]),
+            hovertemplate="<b>Position Values</b><br>"+
+                xvar+": %{x:.3f} <br>"+
+                yvar+": %{y:.3f} <br>"+
+                zvar+": %{z:.3f} <br>"+
+                cvar+": %{customdata:.4g} <br>"+
+                "<extra></extra>"
+        )
+        fig.add_trace(figX2.data[0])
+    
+    # Create blank inner boundary
+    elon = np.linspace(-180, 180, 181)
+    elat = np.linspace(-90, 90, 91)
+    elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+    ex=-2.5*(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+    ey=-2.5*(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+    ez= 2.5*(np.sin(elat_mg*np.pi/180.))
+    colorse = np.zeros(shape=ex.shape)
+    #colorse[ex<0.]=1  # Option to make day side a lighter color
+    colorscalee = [ 'rgb(99,99,99)', 'rgb(0,0,0)']
+    fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                    cmin=0, cmax=1, colorscale=colorscalee,
+                    showlegend=False, showscale=False, hoverinfo='skip')
+
+    camera = dict(
+        center=dict(x=0.35, y=0., z=0.),
+    )
+    fig.update_layout(
+        scene_camera=camera,
+        scene_aspectmode='data',
+        title=dict(text=title,
+                   yref="container", yanchor="top", x=0.01, y=0.97,
+                   font=dict(size=16, family="sans serif", color="#000000"))
+    )
+
+    return fig
+
+
+def swmfgm3Darb(ko, var, time=0., pos=[0,0,0], normal=[0,1,0],
+                title='', lowerlabel='', showgrid=False, showibs=False):
+    '''
+    Function to create a slice for any point and normal and interpolate
+      from Kamodo object onto that grid. Returns a full 3D plotly figure.
+    
+    ko:    Kamodo object
+    var:   string variable name
+    time:  floating time in hours from start of first day of data
+    pos, normal:   position and normal vector for slice plane
+    title:         string text for plot title top left
+    lowerlabel:    string text to label plot lower left
+    showgrid:      logical to show dots at grid locations
+    showibs:       logical to show inner boundary sphere
+    '''
+    import numpy as np
+    import plotly.graph_objs as go
+
+    # Set interpolator and variable labels
+    interp = getattr(ko, var)
+    varu = ko.variables[var]['units']
+    varlabel = var+" ["+varu+"]"
+    
+    # Compute values from pos, normal values
+    uvec = normal/np.linalg.norm(normal)  # unit normal vector
+    odist = np.dot(uvec,pos)  # closest distance to slice from origin
+    opos = odist*uvec  # vector from origin to closest point
+
+    # Compute base grid
+    dg = np.linspace(-180, 180, 121)  # degree grid
+    rv = 0.  # radius value
+    if abs(odist) < 2.5:
+        rv = 2.5*np.sin(((2.5-odist)/2.5)*np.pi/2.)
+    rg = []  # radius grid
+    rg.append(rv)
+    rtrans = 2.5  # radius transition point from fixed dr to variable
+    for _ in range(250):
+        if rv < rtrans:
+            rv += .125
+        else:
+            rv += .125*rv/rtrans
+        if rv > 300.: break
+        rg.append(rv)
+    rg = np.array(rg)
+    dg_mg, rg_mg = np.meshgrid(dg, rg)
+    gx = rg_mg*np.cos(dg_mg*np.pi/180.)
+    gy = rg_mg*np.sin(dg_mg*np.pi/180.)
+    gx_1d = gx.reshape(-1)
+    gy_1d = gy.reshape(-1)
+    gz_1d = np.zeros([len(gx_1d)])
+    time_1d = np.full((len(gx_1d)), time)
+    grid0 = np.stack((gx_1d,gy_1d,gz_1d), axis=-1)  # nx3 position grid
+
+    # Transform base grid to pos/normal and trim if needed
+    # Rotate
+    if abs(uvec[2]) < 1.:  # No rotation for +/- Z normal
+        new_xaxis = np.cross([0,0,1], uvec)
+        new_yaxis = np.cross(new_xaxis, uvec)
+        transform  = np.array([new_xaxis, new_yaxis, uvec]).T
+        grid0 = np.inner(grid0,transform)
+    # Shift
+    grid0[:,0] += opos[0]
+    grid0[:,1] += opos[1]
+    grid0[:,2] += opos[2]
+    
+    # Trim points to simulation edge (NEED TO AUTOMATE)
+    grid0[grid0[:,0] >   31.5, 0] =   31.5
+    grid0[grid0[:,0] < -220. , 0] = -220.
+    grid0[grid0[:,1] >  126. , 1] =  126.
+    grid0[grid0[:,1] < -126. , 1] = -126.
+    grid0[grid0[:,2] >  126. , 2] =  126.
+    grid0[grid0[:,2] < -126. , 2] = -126.
+ 
+    # Create 4D (nx4) grid and interpolate plot values
+    grid = np.ndarray(shape=(len(gx_1d),4), dtype=np.float32)
+    grid[:,0] = time_1d
+    grid[:,1] = grid0[:,0]
+    grid[:,2] = grid0[:,1]
+    grid[:,3] = grid0[:,2]
+    value = interp(grid)
+    
+    # Build connectivity grid cell by cell looping over positions
+    iv = []
+    jv = []
+    kv = []
+    for iy in range(len(rg)-1):
+        for ix in range(len(dg)-1):
+            # For each cell, create two triangular connectivity entries
+            iv.append(  ix+ iy   *len(dg))
+            jv.append(1+ix+ iy   *len(dg))
+            kv.append(  ix+(iy+1)*len(dg))
+            
+            iv.append(  ix+(iy+1)*len(dg))
+            jv.append(1+ix+(iy+1)*len(dg))
+            kv.append(1+ix+ iy   *len(dg))
+
+    # Build resulting plot
+    fig = go.Figure(data=[
+        go.Mesh3d(
+            x=grid[:,1], y=grid[:,2], z=grid[:,3],
+            i=iv, j=jv, k=kv,
+            colorbar_title=varlabel, colorscale='Viridis',
+            intensity=value, intensitymode='vertex',
+            name='y', showscale=True
+        )
+    ])
+    fig.update_traces(
+        flatshading=True,
+        hovertemplate=""+
+            "X: %{x:.4g}<br>"+"Y: %{y:.4g}<br>"+"Z: %{z:.4g}<br>"+
+            var+": %{intensity:.4g}<br>"+"<extra></extra>"
+    )
+    # Add grid points
+    if showgrid:
+        fig.add_scatter3d(x=grid[:,1], y=grid[:,2], z=grid[:,3], mode='markers', 
+            marker=dict(size=1, color='white'),line=dict(width=1))
+    
+    # Create blank inner boundary
+    if showibs:
+        elon = np.linspace(-180, 180, 181)
+        elat = np.linspace(-90, 90, 91)
+        elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+        ex=-2.5*(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+        ey=-2.5*(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+        ez= 2.5*(np.sin(elat_mg*np.pi/180.))
+        colorse = np.zeros(shape=ex.shape)
+        #colorse[ex<0.]=1  # Option to make day side a lighter color
+        colorscalee = [ 'rgb(99,99,99)', 'rgb(0,0,0)']
+        fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                        cmin=0, cmax=1, colorscale=colorscalee,
+                        showlegend=False, showscale=False, hoverinfo='skip')
+
+    fig.update_layout(
+        scene_aspectmode='data',
+        title=dict(text=title,
+                   yref="container", yanchor="top", x=0.01, y=0.97,
+                   font=dict(size=16, family="sans serif", color="#000000")),
+        scene = dict(
+            xaxis = dict(showbackground=False ,showgrid=False),
+            yaxis = dict(showbackground=False ,showgrid=False),
+            zaxis = dict(showbackground=False ,showgrid=False) ),
+        annotations=[
+            dict(text=lowerlabel, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                 xshift=0, yshift=-20, xref="paper", yref="paper",
+                 font=dict(size=16, family="sans serif", color="#000000"))
+        ],
+        margin=dict(l=0,t=35),
+    )
+
     return fig
 
