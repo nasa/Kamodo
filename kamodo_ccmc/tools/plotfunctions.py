@@ -875,12 +875,22 @@ def swmfgm3Darb(ko, var, time=0., pos=[0,0,0], normal=[0,1,0],
     grid0[:,2] += opos[2]
     
     # Trim points to simulation edge (NEED TO AUTOMATE)
-    grid0[grid0[:,0] >   31.5, 0] =   31.5
-    grid0[grid0[:,0] < -220. , 0] = -220.
-    grid0[grid0[:,1] >  126. , 1] =  126.
-    grid0[grid0[:,1] < -126. , 1] = -126.
-    grid0[grid0[:,2] >  126. , 2] =  126.
-    grid0[grid0[:,2] < -126. , 2] = -126.
+    if max(abs(uvec)) > .99:
+        # for uvec mostly aligned with X,Y,Z, clipt to known edge
+        grid0[grid0[:,0] >   31.5, 0] =   31.5
+        grid0[grid0[:,0] < -220. , 0] = -220.
+        grid0[grid0[:,1] >  126. , 1] =  126.
+        grid0[grid0[:,1] < -126. , 1] = -126.
+        grid0[grid0[:,2] >  126. , 2] =  126.
+        grid0[grid0[:,2] < -126. , 2] = -126.
+    else:
+        # for tilted slice, set to nan
+        grid0[grid0[:,0] >   31.5, 0] = np.nan
+        grid0[grid0[:,0] < -220. , 0] = np.nan
+        grid0[grid0[:,1] >  126. , 1] = np.nan
+        grid0[grid0[:,1] < -126. , 1] = np.nan
+        grid0[grid0[:,2] >  126. , 2] = np.nan
+        grid0[grid0[:,2] < -126. , 2] = np.nan
  
     # Create 4D (nx4) grid and interpolate plot values
     grid = np.ndarray(shape=(len(gx_1d),4), dtype=np.float32)
