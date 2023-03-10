@@ -873,33 +873,73 @@ def swmfgm3Darb(ko, var, time=0., pos=[0,0,0], normal=[0,1,0],
     grid0[:,0] += opos[0]
     grid0[:,1] += opos[1]
     grid0[:,2] += opos[2]
+    # back to 2D grid
+    gx_2d = grid0[:,0].reshape(len(rg),-1)
+    gy_2d = grid0[:,1].reshape(len(rg),-1)
+    gz_2d = grid0[:,2].reshape(len(rg),-1)
+    # Trim points beyond data (NEED TO AUTOMATE GETTING POINTS)
+    x1, x2 = -220.,  31.5
+    y1, y2 = -126., 126.
+    z1, z2 = -126., 126.
+    for j in range(len(dg)):
+        for i in range(len(rg)):
+            if gx_2d[i,j] < x1:
+                frac = (gx_2d[i,j] - x1)/(gx_2d[i,j] - gx_2d[i-1,j])
+                gx_2d[i,j] -= frac*(gx_2d[i,j] - gx_2d[i-1,j])
+                gy_2d[i,j] -= frac*(gy_2d[i,j] - gy_2d[i-1,j])
+                gy_2d[i,j] -= frac*(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i+1:,j] = gx_2d[i,j]
+                gy_2d[i+1:,j] = gy_2d[i,j]
+                gz_2d[i+1:,j] = gz_2d[i,j]
+            if gx_2d[i,j] > x2:
+                frac = (gx_2d[i,j] - x2)/(gx_2d[i,j] - gx_2d[i-1,j])
+                gx_2d[i,j] -= frac*(gx_2d[i,j] - gx_2d[i-1,j])
+                gy_2d[i,j] -= frac*(gy_2d[i,j] - gy_2d[i-1,j])
+                gz_2d[i,j] -= frac*(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i+1:,j] = gx_2d[i,j]
+                gy_2d[i+1:,j] = gy_2d[i,j]
+                gz_2d[i+1:,j] = gz_2d[i,j]
+            if gy_2d[i,j] < y1:
+                frac = (gy_2d[i,j] - y1)/(gy_2d[i,j] - gy_2d[i-1,j])
+                gx_2d[i,j] -= frac*(gx_2d[i,j] - gx_2d[i-1,j])
+                gy_2d[i,j] -= frac*(gy_2d[i,j] - gy_2d[i-1,j])
+                gz_2d[i,j] -= frac*(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i+1:,j] = gx_2d[i,j]
+                gy_2d[i+1:,j] = gy_2d[i,j]
+                gz_2d[i+1:,j] = gz_2d[i,j]
+            if gy_2d[i,j] > y2:
+                frac = (gy_2d[i,j] - y2)/(gy_2d[i,j] - gy_2d[i-1,j])
+                gx_2d[i,j] -= frac*(gx_2d[i,j] - gx_2d[i-1,j])
+                gy_2d[i,j] -= frac*(gy_2d[i,j] - gy_2d[i-1,j])
+                gz_2d[i,j] -= frac*(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i+1:,j] = gx_2d[i,j]
+                gy_2d[i+1:,j] = gy_2d[i,j]
+                gz_2d[i+1:,j] = gz_2d[i,j]
+            if gz_2d[i,j] < z1:
+                frac = (gz_2d[i,j] - z1)/(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i,j] -= frac*(gx_2d[i,j] - gx_2d[i-1,j])
+                gy_2d[i,j] -= frac*(gy_2d[i,j] - gy_2d[i-1,j])
+                gz_2d[i,j] -= frac*(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i+1:,j] = gx_2d[i,j]
+                gy_2d[i+1:,j] = gy_2d[i,j]
+                gz_2d[i+1:,j] = gz_2d[i,j]
+            if gz_2d[i,j] > z2:
+                frac = (gz_2d[i,j] - z2)/(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i,j] -= frac*(gx_2d[i,j] - gx_2d[i-1,j])
+                gy_2d[i,j] -= frac*(gy_2d[i,j] - gy_2d[i-1,j])
+                gz_2d[i,j] -= frac*(gz_2d[i,j] - gz_2d[i-1,j])
+                gx_2d[i+1:,j] = gx_2d[i,j]
+                gy_2d[i+1:,j] = gy_2d[i,j]
+                gz_2d[i+1:,j] = gz_2d[i,j]
     
-    # Trim points to simulation edge (NEED TO AUTOMATE)
-    if max(abs(uvec)) > .99:
-        # for uvec mostly aligned with X,Y,Z, clipt to known edge
-        grid0[grid0[:,0] >   31.5, 0] =   31.5
-        grid0[grid0[:,0] < -220. , 0] = -220.
-        grid0[grid0[:,1] >  126. , 1] =  126.
-        grid0[grid0[:,1] < -126. , 1] = -126.
-        grid0[grid0[:,2] >  126. , 2] =  126.
-        grid0[grid0[:,2] < -126. , 2] = -126.
-    else:
-        # for tilted slice, set to nan
-        grid0[grid0[:,0] >   31.5, 0] = np.nan
-        grid0[grid0[:,0] < -220. , 0] = np.nan
-        grid0[grid0[:,1] >  126. , 1] = np.nan
-        grid0[grid0[:,1] < -126. , 1] = np.nan
-        grid0[grid0[:,2] >  126. , 2] = np.nan
-        grid0[grid0[:,2] < -126. , 2] = np.nan
- 
     # Create 4D (nx4) grid and interpolate plot values
     grid = np.ndarray(shape=(len(gx_1d),4), dtype=np.float32)
     grid[:,0] = time_1d
-    grid[:,1] = grid0[:,0]
-    grid[:,2] = grid0[:,1]
-    grid[:,3] = grid0[:,2]
+    grid[:,1] = gx_2d.reshape(-1)
+    grid[:,2] = gy_2d.reshape(-1)
+    grid[:,3] = gz_2d.reshape(-1)
     value = interp(grid)
-    
+
     # Build connectivity grid cell by cell looping over positions
     iv = []
     jv = []
