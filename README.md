@@ -1,5 +1,7 @@
 ![CCMC](docs/notebooks/Files/CCMC.png) ![Kamodo](docs/notebooks/Files/Kamodo.png)
 # The CCMC Kamodo Analysis Suite
+## Online Documentation
+https://nasa.github.io/Kamodo/
 ## Vision Statement
 Kamodo is an official NASA open-source python package built upon the functionalization of datasets. Once a dataset is functionalized in Kamodo, several important capabilities are then available to the user, including data analysis via function composition, automatic unit conversions, and publication quality graphics all using intuitive and simplistic syntax. By applying these capabilities to heliophysics model outputs, we aim to:
 -	Drastically simplify the currently complex data utilization process for model outputs,
