@@ -514,11 +514,11 @@ def GDZSlice4D(interp, varname, model, date, plotType, plotCoord='GEO',
         xx, yy, zz = x, y, z
     else:
         # GDZ only converts to/from GEO, so  have to convert twice
-        xx, yy, zz, units =
-        ConvertCoord(t, x, y, z, plotCoord, 'sph', 'GEO', 'sph')
+        xx, yy, zz, units = ConvertCoord(t, x, y, z, plotCoord,
+                                         'sph', 'GEO', 'sph')
         x, y, z = xx, yy, zz
-        xx, yy, zz, units =
-        ConvertCoord(t, x, y, z, 'GEO', 'sph', 'GDZ', 'sph')
+        xx, yy, zz, units = ConvertCoord(t, x, y, z,
+                                         'GEO', 'sph', 'GDZ', 'sph')
 
     # Don't use transformed zz, reset to desired altitude (km) to interpolate
     if axis[0] == 'Alt':
@@ -585,8 +585,8 @@ def GDZSlice4D(interp, varname, model, date, plotType, plotCoord='GEO',
             fixed_time += -24.
             date2 = date2 + dt.timedelta(days=1)
             timestr = date2.strftime("%Y/%m/%d")
-    subt = model + ',  ' + plotCoord + ' Coordinates,  ' +
-    timestr + ',  Slice at:'
+    subt = model + ',  ' + plotCoord + ' Coordinates,  '
+    subt += timestr + ',  Slice at:'
     if fixed_time != "":
         subt = subt + '  ' + str(fixed_time) + ' hrs'
     if fixed_alt != "":
