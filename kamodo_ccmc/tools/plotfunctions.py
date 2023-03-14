@@ -90,6 +90,21 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
     return fig
 
 
+def toColor(fig, colorscale='Viridis'):
+    '''
+    Placeholder function for compatibility with old notebooks.
+    Use figMods instead.
+
+    Arguments:
+      fig         A plotly figure object
+      colorscale  Set the desired colorscale for the plot
+
+    Returns a modified plotly figure object
+    '''
+
+    return figMods(fig, colorscale=colorscale, ncont=200)
+
+
 def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
         colorscale='Viridis', crange='',):
     """
@@ -182,16 +197,19 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
         cmax = float(crange[1])
 
     # Prepare variables for use later
+    rscale = (altkm + 6.3781E3)/6.3781E3
     lon_mg, lat_mg = np.meshgrid(np.array(lon), np.array(lat))
     x = lon_mg
     y = lat_mg
-    z = np.full(x.shape, altkm)
+    if co == 'GDZ':
+        z = np.full(x.shape, altkm)
+    else:
+        z = np.full(x.shape, rscale)
     t = np.full(x.shape, plotts)
     full_x = np.reshape(x, -1)
     full_y = np.reshape(y, -1)
     full_z = np.reshape(z, -1)
     full_t = np.reshape(t, -1)
-    rscale = (altkm + 6.3781E3)/6.3781E3
     ilon = np.linspace(-180, 180, 181)
     # ilat = np.linspace(-90, 90, 91)
 
@@ -201,12 +219,20 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
         xx, yy, zz, units = ConvertCoord(full_t, full_x, full_y, full_z,
                                          co, cot, 'GEO', 'car')
         full_x, full_y, full_z = xx, yy, zz
-    if plotCoord != 'GEO':
+        if plotCoord != 'GEO':
+            xx, yy, zz, units = ConvertCoord(full_t, full_x, full_y, full_z,
+                                             'GEO', 'car', plotCoord, 'car')
+    else:
         xx, yy, zz, units = ConvertCoord(full_t, full_x, full_y, full_z,
-                                         'GEO', 'car', plotCoord, 'car')
+                                         co, cot, plotCoord, 'car')
     x = np.reshape(xx, (len(lat), len(lon)))
     y = np.reshape(yy, (len(lat), len(lon)))
     z = np.reshape(zz, (len(lat), len(lon)))
+    # NaNs in original plot don't hide properly, so set positions to NaN
+    mask2 = np.isnan(val2)
+    x[mask2] = np.nan
+    y[mask2] = np.nan
+    z[mask2] = np.nan
 
     # Generate initial figure to build upon
 
