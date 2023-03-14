@@ -679,4 +679,4 @@ pycodestyle dtm_4D.py
 ```
 The reported errors should be resolved until no errors are given when the second command is executed. For more information on PEP8 standards, see https://peps.python.org/pep-0008/.
 
-Note that the notebooks ending with the string 'timing' were used to produce the timing data used in the Kamodo model reader paper (Figure 10).
+Note that the notebooks ending with the string 'timing' in the Kamodo/Validation/Notebooks/ directory were used to produce the timing data used in the Kamodo model reader paper (Figure 10). Not every model has a timing notebook because some timings were performed with the testing notebook for that model output, but the logic for each is the same. Some timing notebooks also include the logic for timing the file conversions (e.g. the SWMF_IE and GITM timing notebooks). See the Kamodo model reader paper linked in the Resources section for more details.
