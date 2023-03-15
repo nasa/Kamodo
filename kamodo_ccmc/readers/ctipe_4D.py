@@ -772,14 +772,17 @@ def MODEL():
                         kms_max = getattr(self, '_km_'+other_name[0]+'_max')
                         kms_min = getattr(self, '_km_'+other_name[0]+'_min')
                         self[new_varname] = varname+'(P'+other_name[0][1:]+')'
+                        interp_ijk = self[new_varname]
+                        self[new_varname].meta['arg_units'] = \
+                            self['P'+other_name[0][1:]].meta['arg_units']
                     else:
                         kms = getattr(self, '_km_'+coord_list[-1])
                         kms_max = getattr(self, '_km_'+coord_list[-1]+'_max')
                         kms_min = getattr(self, '_km_'+coord_list[-1]+'_min')
                         self[new_varname] = varname+'(P'+coord_list[-1][1:]+')'
-                    interp_ijk = self[new_varname]
-                    self[new_varname].meta['arg_units'] = \
-                        self['P'+coord_list[-1][1:]].meta['arg_units']
+                        interp_ijk = self[new_varname]
+                        self[new_varname].meta['arg_units'] = \
+                            self['P'+coord_list[-1][1:]].meta['arg_units']
                 self.variables[new_varname] = {'units': units, 'data': key}
 
                 # Register in kamodo object with a dedicated logic
