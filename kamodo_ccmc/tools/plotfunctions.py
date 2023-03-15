@@ -564,3 +564,41 @@ def GDZSlice4D(interp,varname,model,date,plotType,plotCoord='GEO',
     print(f"Time: {toc - tic:0.4f} seconds")
     return fig
 
+def toColor(fig, colorscale='Viridis'):
+    '''
+    Placeholder function for compatibility with old notebooks.
+    Use figMods instead.
+    Arguments:
+      fig         A plotly figure object
+      colorscale  Set the desired colorscale for the plot
+    Returns a modified plotly figure object
+    '''
+
+    return figMods(fig, colorscale=colorscale, ncont=200)
+
+
+def toLog10(fig):
+    """
+    Function to take a 2D contour figure and make the contour log10 scale.
+    Pass in a plotly figure and it will return an updated plotly figure.
+    
+    Arguments:
+        fig   A plotly figure object
+    
+    Returns a plotly figure object.
+    """
+    
+    import numpy as np
+    
+    # grab values from old plot
+    val = fig.data[0]['z']
+    # set negative and zero values to NaN
+    # compute log10 of values, NaN will stay NaN
+    val[val <= 0.] = np.nan
+    val = np.log10(val)
+    # assign back to plot object
+    fig.data[0]['z'] = val
+    # add log10 to colorbar label
+    newlabel = 'log10<br>'+fig.data[0]['colorbar']['title']['text']
+    fig.data[0]['colorbar']['title']['text'] = newlabel
+    return fig
