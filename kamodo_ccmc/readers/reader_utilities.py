@@ -5,7 +5,7 @@ Created on Thu May 13 18:28:18 2021
 """
 from kamodo import kamodofy, gridify
 from numpy import NaN, vectorize, append, array, meshgrid, ravel, diff
-from numpy import unique, zeros, ndarray, floor, float32, all
+from numpy import unique, zeros, ndarray, floor, float32, all, insert
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -652,7 +652,7 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
     '''Custom interpolator functionto convert from altitude in km to pressure
     level.
     Parameters:
-        h_func - the H_ilev function/interpolator in km
+        h_func - the H_ilev gridded function/interpolator in km
         time - a 1D array with the grid values for time
         longitude - a 1D array with the grid values for longitude
         latitude - a 1D array with the grid values for latitude
@@ -763,7 +763,7 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
 
 
 def register_griddedPlev(kamodo_object, new_varname, units, interp_ijk,
-                         coord_dict, kms):
+                         coord_dict, kms, km_min_max):
     '''Properly register the gridded interpolators defined either from the
     pressure level inversion or by function composition. Need height coord
     grid to be median values in gridded creation but have absolute max/min in
@@ -775,7 +775,8 @@ def register_griddedPlev(kamodo_object, new_varname, units, interp_ijk,
     coord_data = {key: value['data'] for key, value in
                   coord_dict.items() if key in
                   new_coord_units.keys()}  # exclude ilev
-    coord_data['height'] = kms
+    coord_data['height'] = insert(insert(kms, len(kms), km_min_max[-1]),
+                                  0, km_min_max[0])  # add min and max
     kamodo_object.variables[new_varname+'_ijk'] = {'data': fake_data,
                                                    'units': units}
     kamodo_object[new_varname+'_ijk'] = kamodofy(
@@ -948,23 +949,3 @@ def read_timelist(time_file, list_file, ms_timing=False):
     filename = ''.join([f+',' for f in files])[:-1]
 
     return times, pattern_files, filedate, filename
-
-
-# ######### Logscale colorbar from Darren.
-
-def toLog10(fig):
-    """Quick function to take a 2D contour figure and make contour log10 scale.
-    """
-    from numpy import log10
-    # grab values from old plot
-    val = fig.data[0]['z']
-    # set negative and zero values to NaN, compute log10 of values,
-    # NaN will stay NaN
-    val[val <= 0.] = NaN
-    val = log10(val)
-    # assign back to plot object    
-    fig.data[0]['z'] = val
-    # add log10 to colorbar label
-    newlabel = 'log10<br>'+fig.data[0]['colorbar']['title']['text']
-    fig.data[0]['colorbar']['title']['text'] = newlabel
-    return fig
