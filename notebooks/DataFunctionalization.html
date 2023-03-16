@@ -49,9 +49,9 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#how-to-functionalize-data">How to functionalize data</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#generating-a-generic-1d-plot">Generating a generic 1D plot</a>
+    <li class="toctree-l2"><a class="reference internal" href="#generating-a-generic-1d-plot">Generating a generic 1D Plot</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#generating-a-generic-2d-plot">Generating a generic 2D plot</a>
+    <li class="toctree-l2"><a class="reference internal" href="#generating-a-generic-2d-plot">Generating a generic 2D Plot</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#adding-new-functionalized-datasets-to-a-kamodo-object">Adding new functionalized datasets to a kamodo object</a>
     </li>
@@ -97,7 +97,7 @@
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../ModelReaderInstructions.html">How to Write a Model Reader</a>
+                <li class="toctree-l1"><a class="reference internal" href="HowtoWriteaModelReader.html">How to Write a Model Reader</a>
                 </li>
               </ul>
       </div>
@@ -1197,10 +1197,10 @@ Licensed under the Apache License, Version 2.0.
                 </div>
             </clipboard-copy>
         </div>
-            <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span> <span class="nn">kamodo_ccmc.flythrough.functionalize</span> <span class="kn">import</span> <span class="n">Functionalize_Dataset</span>
+            <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span> <span class="nn">kamodo_ccmc.tools.functionalize</span> <span class="kn">import</span> <span class="n">Functionalize_Dataset</span>
 <span class="n">help</span><span class="p">(</span><span class="n">Functionalize_Dataset</span><span class="p">)</span>
 </pre></div>
-<div id="cell-1" class="clipboard-copy-txt">from kamodo_ccmc.flythrough.functionalize import Functionalize_Dataset
+<div id="cell-1" class="clipboard-copy-txt">from kamodo_ccmc.tools.functionalize import Functionalize_Dataset
 help(Functionalize_Dataset)</div>
     
         </div>
@@ -1297,8 +1297,6 @@ Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None, coord_str=&#39;
               <span class="s1">&#39;nada&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;hPa&#39;</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.00005</span><span class="p">,</span> <span class="mf">15000.</span><span class="p">,</span> <span class="mi">20</span><span class="p">)}}</span>
 <span class="n">var_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Test_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;S&#39;</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">rng1</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">20</span><span class="p">)},</span>
             <span class="s1">&#39;Good_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;mK&#39;</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">rng2</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">20</span><span class="p">)}}</span>
-<span class="n">kamodo_object</span> <span class="o">=</span> <span class="n">Functionalize_Dataset</span><span class="p">(</span><span class="n">coord_dict</span><span class="p">,</span> <span class="n">var_dict</span><span class="p">)</span>
-<span class="n">kamodo_object</span>
 </pre></div>
 <div id="cell-2" class="clipboard-copy-txt"># Example of functionalizing a 7D array
 import numpy as np
@@ -1313,8 +1311,7 @@ coord_dict = {'time': {'units': 'hr', 'data': np.linspace(0., 24., 25)},
               'nada': {'units': 'hPa', 'data': np.linspace(0.00005, 15000., 20)}}
 var_dict = {'Test_7D': {'units': 'S', 'data': rng1.rand(25, 12, 5, 10, 15, 25, 20)},
             'Good_7D': {'units': 'mK', 'data': rng2.rand(25, 12, 5, 10, 15, 25, 20)}}
-kamodo_object = Functionalize_Dataset(coord_dict, var_dict)
-kamodo_object</div>
+ </div>
     
         </div>
     </div>
@@ -1355,7 +1352,7 @@ kamodo_object</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="generating-a-generic-1d-plot">Generating a generic 1D plot<a class="anchor-link" href="#generating-a-generic-1d-plot">&#182;</a></h2><p>Plot a 1D slice of all the variables by choosing a slice value in all but one dimension.</p>
+<h2 id="generating-a-generic-1d-plot">Generating a generic 1D Plot<a class="anchor-link" href="#generating-a-generic-1d-plot">&#182;</a></h2><p>Plot a 1D slice of all the variables by choosing a slice value in all but one dimension.</p>
 <div class="highlight"><pre><span></span><span class="n">kamodo_object</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;Test_7D&#39;</span><span class="p">,</span> <span class="s1">&#39;Good_7D&#39;</span><span class="p">,</span> <span class="n">plot_partial</span><span class="o">=</span><span class="p">{</span>
     <span class="s1">&#39;Test_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">,</span> <span class="s1">&#39;nope&#39;</span><span class="p">:</span> <span class="mf">5.</span><span class="p">},</span>
     <span class="s1">&#39;Good_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">,</span> <span class="s1">&#39;nope&#39;</span><span class="p">:</span> <span class="mf">5.</span><span class="p">}})</span>
@@ -1372,7 +1369,7 @@ kamodo_object</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="generating-a-generic-2d-plot">Generating a generic 2D plot<a class="anchor-link" href="#generating-a-generic-2d-plot">&#182;</a></h2><p>Plot a 2D slice of one variable by choosing a slice value in all but two dimensions.</p>
+<h2 id="generating-a-generic-2d-plot">Generating a generic 2D Plot<a class="anchor-link" href="#generating-a-generic-2d-plot">&#182;</a></h2><p>Plot a 2D slice of one variable by choosing a slice value in all but two dimensions.</p>
 <div class="highlight"><pre><span></span><span class="n">kamodo_object</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;Test_7D&#39;</span><span class="p">,</span> <span class="n">plot_partial</span><span class="o">=</span><span class="p">{</span>
     <span class="s1">&#39;Test_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">}})</span>
 </pre></div>
