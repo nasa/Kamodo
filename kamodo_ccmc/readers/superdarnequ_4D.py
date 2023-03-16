@@ -9,7 +9,7 @@ model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
                   "theta_v": ['theta_v', 'Azimuthal angle of convection ' +
                               'velocity', 1, 'SM', 'sph', ['time', 'lon',
                                                            'lat'], 'deg'],
-                  "v": ['v', 'SMnetiude of convection velocity', 2, 'SM',
+                  "v": ['v', 'magnitude of convection velocity', 2, 'SM',
                         'sph', ['time', 'lon', 'lat'], 'm/s'],
                   # remaining variables are time series
                   "theta_Btilt": ['theta_Btilt', 'Dipole tilt', 3, 'SM',
