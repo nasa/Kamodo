@@ -23,6 +23,7 @@ Kamodo is an official NASA open-source python package built upon the functionali
 ...all while keeping the developed software open-source and freely available. The Kamodo team also supports the heliophysics community by pursuing interoperability with commonly-used python packages, collaborating with community members to add model outputs and new functionalities, and remaining involved with community events (e.g. conferences, challenges, and research support). As the library of supported model outputs types expands and new model-agnostic tools are added, Kamodo will become a staple software package in the heliophysics community to transform current workflows into a more efficient and productive process. We are building the next generation of capability with Kamodo. Join us!
 
 ## Kamodo Installation Instructions   
+Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.  
 
 ### Conda prompt commands: 
 - Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:
