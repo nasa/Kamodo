@@ -91,11 +91,9 @@ When publishing research which used Kamodo, please provide appropriate credit to
 
 - Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
 
-- Ringuette, R., D. De Zeeuw, L. Rastaetter, A. Pembroke, O. Gerland, K. Garcia-Sage (2022). Kamodo’s model-agnostic satellite flythrough: Lowering the utilization barrier for heliophysics model outputs, Frontiers in Astronomy and Space Sciences, vol 9. http://dx.doi.org/10.3389/fspas.2022.1005977.
-
 - Ringuette, R., L. Rastaetter, D. De Zeeuw, K. Garcia-Sage, R. Robinson, and O. Gerland (2022). Kamodo's Satellite Constellation Mission Planning Tool, poster presentation presented by L. Rastaetter at the 2022 Fall meeting of AGU, Dec 12-16, Chicago, IL, USA. https://doi.org/10.22541/essoar.167214257.73153757/v1.
 
-- Ringuette, R., L. Rastaetter, D. De Zeeuw, A. Pembroke, and O. Gerland (2023). Simplifying model data access and utilization. Adv. Space. Res. under review.Use of Kamodo in published work or in other development projects requires citing one or more of the publications below as indicated.
+- Ringuette, R., L. Rastaetter, D. De Zeeuw, A. Pembroke, and O. Gerland (2023). Simplifying model data access and utilization. Adv. Space. Res. under review.
 
 
 ## Resources

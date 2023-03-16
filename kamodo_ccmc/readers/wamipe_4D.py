@@ -492,12 +492,14 @@ def MODEL():
                     units = self.variables[varname]['units']
                     self[new_varname] = varname+'(Plev)'
                     interp_ijk = self[new_varname]
+                    self[new_varname].meta['arg_units'] = \
+                        self['Plev'].meta['arg_units']
                 self.variables[new_varname] = {'units': units, 'data': key}
 
                 # create gridded interpolator if requested
                 if gridded_int:
-                    self = RU.register_griddedPlev(self, new_varname, units,
-                                                   interp_ijk, coord_dict,
-                                                   self._km_ilev)
+                    self = RU.register_griddedPlev(
+                        self, new_varname, units, interp_ijk, coord_dict,
+                        self._km_ilev, [self._km_ilev_min, self._km_ilev_max])
             return
     return MODEL

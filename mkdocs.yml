@@ -13,7 +13,7 @@ nav:
 - Constellation Mission Planning Tool: notebooks/ConstellationMissionPlanningToolIntro.ipynb
 - Advanced Plotting Routines: notebooks/AdvancedPlottingRoutines.ipynb
 - Contribution Guidelines: ContributionGuidelines.md
-- How to Write a Model Reader: ModelReaderInstructions.md
+- How to Write a Model Reader: notebooks/HowtoWriteaModelReader.md
 
 
 theme: readthedocs

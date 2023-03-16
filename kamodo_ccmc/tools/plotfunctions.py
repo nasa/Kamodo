@@ -105,6 +105,20 @@ def toColor(fig, colorscale='Viridis'):
     return figMods(fig, colorscale=colorscale, ncont=200)
 
 
+def toLog10(fig):
+    """
+    Placeholder function for compatibility with old notebooks.
+    Use figMods instead.
+
+    Arguments:
+      fig         A plotly figure object
+
+    Returns a modified plotly figure object
+    """
+
+    return figMods(fig, log10=True)
+
+
 def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
         colorscale='Viridis', crange='',):
     """

@@ -380,7 +380,9 @@ def MODEL():
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames, all one pattern, so doesn't matter
-                files = sorted(glob(file_dir+'*.nc'))
+                raw_files = sorted(glob(file_dir+'*.nc'))
+                files = [f for f in raw_files if self.modelname not in
+                         basename(f)]
                 patterns = unique([basename(f)[0] for f in files])  # one patte
                 self.filename = ''.join([f+',' for f in files])[:-1]
 
@@ -842,16 +844,26 @@ def MODEL():
                         other_name = ['ilev', 'ilev1']
                         other_name.remove(self.ilev_sub[2:])
                         kms = getattr(self, '_km_'+other_name[0])
+                        kms_max = getattr(self, '_km_'+other_name[0]+'_max')
+                        kms_min = getattr(self, '_km_'+other_name[0]+'_min')
                         self[new_varname] = varname+'(P'+other_name[0][1:]+')'
+                        interp_ijk = self[new_varname]
+                        self[new_varname].meta['arg_units'] = \
+                            self['P'+other_name[0][1:]].meta['arg_units']
                     else:
                         kms = getattr(self, '_km_'+coord_list[-1])
+                        kms_max = getattr(self, '_km_'+coord_list[-1]+'_max')
+                        kms_min = getattr(self, '_km_'+coord_list[-1]+'_min')
                         self[new_varname] = varname+'(P'+coord_list[-1][1:]+')'
-                    interp_ijk = self[new_varname]
+                        interp_ijk = self[new_varname]
+                        self[new_varname].meta['arg_units'] = \
+                            self['P'+coord_list[-1][1:]].meta['arg_units']
                 self.variables[new_varname] = {'units': units}
 
                 # create gridded interpolator if requested
                 if h_grid:
                     self = RU.register_griddedPlev(self, new_varname, units,
-                                                   interp_ijk, coord_dict, kms)
+                                                   interp_ijk, coord_dict, kms,
+                                                   [kms_min, kms_max])
             return
     return MODEL
