@@ -844,7 +844,7 @@ def MODEL():
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],
                     gridded_int, coord_str, interp_flag=2, func=func,
-                    times_dict=self.times)
+                    times_dict=self.times[key])
 
             if len(coord_list) < 4:  # remaining logic is for 4D data.
                 return
@@ -859,18 +859,22 @@ def MODEL():
                         self['H_ilev_ijk'], coord_dict['time']['data'],
                         coord_dict['lon']['data'], coord_dict['lat']['data'],
                         coord_dict['ilev']['data'], units, self._km_ilev,
-                        [self._km_ilev_min, self._km_ilev_max])
+                        [self._km_ilev_max, self._km_ilev_min])
+                    # max pressure level is at lowest height, so flip order
                 elif varname != 'H_geopot_ilev':  # define by function comp
                     new_varname = varname.split('_ilev')[0]
-                    self[new_varname] = varname+'(Plev)'
                     units = self.variables[varname]['units']
+                    self[new_varname] = varname+'(Plev)'
                     interp_ijk = self[new_varname]
+                    self[new_varname].meta['arg_units'] = \
+                        self['Plev'].meta['arg_units']
                 self.variables[new_varname] = {'units': units, 'data': key}
 
                 # create gridded interpolator if requested
                 if gridded_int:
-                    self = RU.register_griddedPlev(self, new_varname, units,
-                                                   interp_ijk, coord_dict,
-                                                   self._km_ilev)
+                    self = RU.register_griddedPlev(
+                        self, new_varname, units, interp_ijk, coord_dict,
+                        self._km_ilev, [self._km_ilev_max, self._km_ilev_min])
+                    # max pressure level is at lowest height, so flip order
             return
     return MODEL
