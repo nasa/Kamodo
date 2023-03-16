@@ -106,18 +106,21 @@ class HAPI(Kamodo):
                 asize = 1
                 if "size" in metaparam:
                     asize = metaparam['size'][0]
-                aunit=metaparam['units']
-                adata=self.hdata[varname]
-                afill=metaparam['fill']
-                adesc=metaparam['description']
+                aunit = metaparam['units']
+                adata = self.hdata[varname]
+                afill = metaparam['fill']
+                adesc = metaparam['description']
                 if "0.1nT" in aunit:
                     # Fix wonky geotail data
                     aunit="nT"
-                    afill=0.1*float(afill)
-                    adata=0.1*adata.astype(np.float)
+                    afill = 0.1*float(afill)
+                    adata = 0.1*adata.astype(np.float)
                 if aunit == "n/cc":
                     # The unit n/cc should be 1/cc to register properly in Kamodo
-                    aunit="1/cc"
+                    aunit = "1/cc"
+                if aunit == " ":
+                    # A space is not valid for units
+                    aunit = ""
                 self.variables[varname] = dict(units=aunit,
                                                data=adata,
                                                size=asize,
@@ -270,12 +273,13 @@ class HAPI(Kamodo):
             data = self.variables[varname]['data']
             fill = self.variables[varname]['fill']
             if fill != None and fill != "NaN":
+                # NOTE: If values are integers and nbad > 0, it will throw errer.
                 mask = data==float(fill)
                 nbad = np.count_nonzero(mask)
                 if nbad > 0:
                     if verbose: print("Found",nbad,"fill values, replacing with NaN for variable",
                           varname,"of size",data.size)
-                data[mask]=np.nan
+                    data[mask]=np.nan
                 self.variables[varname]['data'] = data
         
     def get_plot(self, coord="", type="1Dpos", scale="R_E", var=""):

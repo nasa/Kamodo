@@ -1,5 +1,7 @@
 ![CCMC](docs/notebooks/Files/CCMC.png) ![Kamodo](docs/notebooks/Files/Kamodo.png)
 # The CCMC Kamodo Analysis Suite
+## Online Documentation
+https://nasa.github.io/Kamodo/
 ## Vision Statement
 Kamodo is an official NASA open-source python package built upon the functionalization of datasets. Once a dataset is functionalized in Kamodo, several important capabilities are then available to the user, including data analysis via function composition, automatic unit conversions, and publication quality graphics all using intuitive and simplistic syntax. By applying these capabilities to heliophysics model outputs, we aim to:
 -	Drastically simplify the currently complex data utilization process for model outputs,
@@ -83,7 +85,7 @@ MW.Model_Variables('OpenGGCM_GM')
 
 ## Citing Kamodo
 
-When publishing research which used Kamodo, please provide appropriate credit to the Kamodo team via citation or acknowledgment. Please also let the team know of publications or presentations that use Kamodo. Below is list of publications for Kamodo.
+When publishing research which used Kamodo, please provide appropriate credit to the CCMC and the Kamodo team via citation or acknowledgment. Please also let the team know of publications or presentations that use Kamodo. Below is list of publications for Kamodo.
 
 - Pembroke, A., D. De Zeeuw, L. Rastaetter, R. Ringuette, O. Gerland, D. Patel and M. Contreras (2022). Kamodo: A functional API for space weather models and data. JOSS 7, 75, 4053, https://doi.org/10.21105/joss.04053.
 
@@ -101,21 +103,21 @@ When publishing research which used Kamodo, please provide appropriate credit to
 - Youtube tutorial channel - https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa  
 
 ## The Kamodo team
-### Dr. Rebecca Ringuette
-ORCiD: https://orcid.org/0000-0003-0875-2023  
-NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/rebecca-ringuette/
+**Dr. Rebecca Ringuette**  
+- ORCiD: https://orcid.org/0000-0003-0875-2023  
+- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/rebecca-ringuette/
 
-### Dr. Lutz Rastaetter
-ORCiD: https://orcid.org/0000-0002-7343-4147  
-NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/lutz-rastaetter/
+**Dr. Lutz Rastaetter**  
+- ORCiD: https://orcid.org/0000-0002-7343-4147  
+- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/lutz-rastaetter/
 
-### Dr. Darren De Zeeuw
-ORCiD: https://orcid.org/0000-0002-4313-5998  
-NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/darren-de-zeeuw/
+**Dr. Darren De Zeeuw**  
+- ORCiD: https://orcid.org/0000-0002-4313-5998  
+- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/darren-de-zeeuw/
 
-### Dr. Katherine Garcia-Sage
-ORCiD: https://orcid.org/0000-0001-6398-8755  
-NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/katherine-garcia-sage/
+**Dr. Katherine Garcia-Sage**  
+- ORCiD: https://orcid.org/0000-0001-6398-8755  
+- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/katherine-garcia-sage/
 
 
 ## Open-Source License
