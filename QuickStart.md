@@ -1,4 +1,5 @@
 ## Kamodo Installation Instructions
+Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.  
 
 In conda command prompt:
 1. Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:
