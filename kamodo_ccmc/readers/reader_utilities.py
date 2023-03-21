@@ -45,7 +45,7 @@ def create_interp(coord_data, data_dict, func=None, func_default='data'):
             return rgi(xvec)
         return interp
     elif func_default == 'custom':
-        return func()  # returns the custom interpolator
+        return func  # returns the custom interpolator
 
 
 def create_funcsig(coord_data, coord_str, bounds):

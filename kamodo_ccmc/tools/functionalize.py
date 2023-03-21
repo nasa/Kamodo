@@ -11,7 +11,7 @@ from numpy import array, meshgrid, ravel
 
 
 def Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None,
-                          coord_str=''):
+                          coord_str='', func=None, func_default='data'):
     '''Determine and call the correct functionalize routine.
     Inputs:
         coord_dict: a dictionary containing the coordinate information.
@@ -34,6 +34,14 @@ def Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None,
             (e.g. "SMcar" or "GEOsph").
         kamodo_object: the previously created kamodo object. If one is not
             given, then one will be created.
+        func: the function to be used for interpolation through the given
+            datasets. The function must accept values for interpolation in an
+            identical call structure as SciPy's RegularGridInterpolator or
+            interp1D. See SciPy's documentation for more information.
+        func_default: a string indicating whether a custom interpolation
+            method is dersired. The default is 'data', indicating that the
+            standard interpolation method will be used. Set this to 'custom' to
+            indicate that func is a custom interpolator.
 
     Output: A kamodo object with the functionalized dataset.
 
@@ -57,7 +65,8 @@ def Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None,
 
     for key in data_dict.keys():
         # create interpolator function and function signature
-        interp = RU.create_interp(coord_data, data_dict[key])
+        interp = RU.create_interp(coord_data, data_dict[key], func=func,
+                                  func_default=func_default)
         param_xvec = RU.create_funcsig(coord_data, coord_str, bounds)
 
         # Functionalize the dataset
