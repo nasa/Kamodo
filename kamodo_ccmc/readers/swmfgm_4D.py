@@ -460,7 +460,8 @@ def MODEL():
                                           self.octree[key][i]['block_at_AMRlevel'])
                 # get data from file
                 data = sp.IdlFile(self.pattern_files[key][i])[gvar]  # dmarray
-
+                var_data = ffi.new("float[]", list(data))
+                
                 # assign custom interpolator: Lutz Rastaetter 2021
                 def interp(xvec):
                     tic = perf_counter()
@@ -473,7 +474,6 @@ def MODEL():
                         Y = array([Y])
                         Z = array([Z])
 
-                    var_data = ffi.new("float[]", list(data))
                     xpos = ffi.new("float[]", list(X))
                     ypos = ffi.new("float[]", list(Y))
                     zpos = ffi.new("float[]", list(Z))
