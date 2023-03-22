@@ -4,6 +4,7 @@ nav:
 - Quick Start: notebooks/QuickStart.ipynb
 - Introduction: notebooks/Introduction.ipynb
 - Data Functionalizion: notebooks/DataFunctionalization.ipynb
+- Functionalizing HAPI: notebooks/FunctionalizeHAPI.ipynb
 - Choosing Models and Variables: notebooks/ChoosingModelsAndVariables.ipynb
 - Functionalizing a Modeled Dataset: notebooks/FunctionalizingModeledDatasets.ipynb
 - Satellite Trajectories: notebooks/SatelliteTrajectories.ipynb
