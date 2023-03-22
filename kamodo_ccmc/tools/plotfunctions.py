@@ -9,6 +9,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
       lockAR      Logical, if true lock the X/Y axis aspect ratio to 1
       ncont       number of contours to include in the plot
       colorscale  Set the desired colorscale for the plot
+                  NOTE: appending '_r' to colorscale reverses it, ie RdBu_r
       cutInside   Make values inside a radius of cutInside NaNs
       returnGrid  Take the plot and return a new grid only plotly object
     '''
@@ -49,7 +50,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
 
     if colorscale != '':
         if colorscale == "BlueRed":
-            fig.update_traces(colorscale="RdBu", reversescale=True)
+            fig.update_traces(colorscale="RdBu_r")
         elif colorscale == "Rainbow":
             fig.update_traces(
                 colorscale=[[0.00, 'rgb(0,0,255)'],
@@ -258,7 +259,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
 
     # Set colorscale
     if colorscale == "BlueRed":
-        fig.update_traces(colorscale="RdBu", reversescale=True)
+        fig.update_traces(colorscale="RdBu_r")
     elif colorscale == "Rainbow":
         fig.update_traces(
             colorscale=[[0.00, 'rgb(0,0,255)'],
