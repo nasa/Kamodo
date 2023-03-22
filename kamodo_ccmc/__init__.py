@@ -7,4 +7,5 @@ import kamodo # get installed kamodo
 from kamodo.kamodo import Kamodo
 
 import readers
+import tools
 import flythrough
