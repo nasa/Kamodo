@@ -1057,7 +1057,7 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
             x=grid[:, 1], y=grid[:, 2], z=grid[:, 3], i=iv, j=jv, k=kv,
             colorbar_title=varlabel, colorscale='Viridis',
             intensity=value, intensitymode='vertex',
-            name='y', showscale=True
+            name='cont', showscale=True
         )
     ])
     fig.update_traces(
@@ -1070,7 +1070,9 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
     if showgrid:
         fig.add_scatter3d(
             x=grid[:, 1], y=grid[:, 2], z=grid[:, 3], mode='markers',
-            marker=dict(size=1, color='white'), line=dict(width=1))
+            marker=dict(size=1, color='white'), line=dict(width=1),
+            name='grid'
+        )
 
     # Create blank inner boundary
     if showibs:
