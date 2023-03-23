@@ -202,18 +202,20 @@ def Variable_Search(search_string='', model='', file_dir='', return_dict=False):
     directory where some model data is stored, the files available in that
     model data will be searched. If neither is set, then all model variables
     will be searched. Searching all of the model variables will take additional
-    time as the model library grows. All searches are performed using lower
-    case text (e.g. "temperature" not "Temperature").
+    time as the model library grows. All search strings are converted to lower
+    case text before search (e.g. "temperature" not "Temperature").
     
     Returns a dictionary with information that varies per call type if 
     return_dict is True. Default is to print the information to the screen
     and return nothing (return_dict=False).
-    - if the search_string is left blank, then nothing will be returned. Only
-        the chosen information will be printed to the screen.
-    - if neither model nor file_dir is set, the dictionary will have the model
-        names as keys and the value will be a dictionary with the variable
-        names as keys and the variable description, coordinate dependencies,
-        and variable units as the value.
+    - If the search string, model and file directory are all not given or are
+        all empty strings, then no dictionary is returned regardless of the
+        value of the return_dict boolean.
+    - if neither model nor file_dir is set, the search string is given, and
+        the return_dict keyword is set to True, then the returned dictionary
+        will have the model names as keys and the values will be dictionaries
+        with the variable names as keys and the variable description,
+        coordinate dependencies, and variable units as the value.
     - if only the model value is set, then the dictionary will have the
         variable names as keys and the variable description, coordinate
         dependencies, and variable units as the value.
@@ -228,10 +230,24 @@ def Variable_Search(search_string='', model='', file_dir='', return_dict=False):
         print('Printing all possible variables across all models...')
         for model in model_dict.keys():
             Model_Variables(model, return_dict=False)
+        return None
     elif search_string == '' and model != '' and file_dir == '':
-        Model_Variables(model, return_dict=False)
+        new_dict = Model_Variables(model, return_dict=True)
+        if not return_dict:
+            for name, value in new_dict.items():
+                print(name+':', value)
+            return None
+        else:
+            return new_dict
     elif search_string == '' and model != '' and file_dir != '':
-        Model_Variables(model, file_dir=file_dir, return_dict=False)
+        new_dict = Model_Variables(model, file_dir=file_dir,
+                                   return_dict=True)
+        if not return_dict:
+            for name, value in new_dict.items():
+                print(name+':', value)
+            return None
+        else:
+            return new_dict
     # remaining options assume search_string is set
     elif model == '' and file_dir == '':
         new_dict = {model: Variable_Search(search_string, model=model,
