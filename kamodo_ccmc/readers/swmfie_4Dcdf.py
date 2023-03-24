@@ -153,7 +153,7 @@ def MODEL():
                 patterns = unique([basename(f)[:-22] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(
-                    basename(files[0])[-22:-7], '%Y%m%d-%H%M%S').replace(
+                    basename(files[0])[-22:-13]+'000000', '%Y%m%d-%H%M%S').replace(
                         tzinfo=timezone.utc)
 
                 # establish time attributes from filenames
