@@ -1,4 +1,4 @@
-![CCMC](docs/notebooks/Files/CCMC.png) ![Kamodo](docs/notebooks/Files/Kamodo.png)
+![CCMC](https://github.com/nasa/Kamodo/blob/master/docs/notebooks/Files/CCMC.png) ![Kamodo](https://github.com/nasa/Kamodo/blob/master/docs/notebooks/Files/Kamodo.png)
 # The CCMC Kamodo Analysis Suite
 ## Online Documentation
 https://nasa.github.io/Kamodo/
