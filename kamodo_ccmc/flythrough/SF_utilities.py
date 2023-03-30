@@ -37,7 +37,7 @@ def sat_tracks(sat_time, c1, c2, c3, z_dependencies, verbose=False):
 
 def Model_FlyAway(reader, file_dir, variable_list, sat_time, c1, c2, c3,
                   z_dependencies, verbose=False):
-    '''Perform flythrough for one day of data and one coordinate system.'''
+    '''Perform flythrough for each coordinate system.'''
 
     # create kamodo object, initialize some variables
     var_list = variable_list.copy()  # save copy before it gets altered
@@ -76,6 +76,10 @@ def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type,
     2: y/lat 1D array, converted to the coordinate system key
     3: z/rad/height 1D array, converted to the coordinate system key
     4: z_dependencies dictionary {3D: ([t, c1, c2]).T, 4D: ([t, c1, c2, c3]).T}
+
+    Developer's Note: This section will need to be rewritten once the new
+        coordinate conversion method is available through Kamodo-core. The
+        other sections will be fine as is.
     '''
 
     # determine coordinate types needed

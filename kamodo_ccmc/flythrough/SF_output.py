@@ -115,6 +115,7 @@ def SFdata_tocdf(filename, model_filename, model_name, results_dict,
 
     # start new output object
     data_out = Dataset(filename, 'w', format='NETCDF4')
+    print(model_filename)
     data_out.modelfile = model_filename
     data_out.model = model_name
     data_out.coord_type = coord_type

@@ -97,6 +97,7 @@ def functionalize_variable(coord_dict, var_dict, meta_par, kamodo_object=None,
                        range(len(meta_par['bins']))]
         for j, c in enumerate(coord_names):
             coord_u = kamodo_units(meta_par['bins'][j]['units'])
+            # the choice of 'centers' below may need to be generalized
             coord_dict[c] = {'data': np.array(meta_par['bins'][j]['centers']),
                              'units': coord_u}
             if len(coord_dict[c]['data'].shape) > 1:
