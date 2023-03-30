@@ -127,6 +127,7 @@ hourly-outputs/
 
 # kamodo
 kamodo_output/
+KAMODO_DATA
 
 # MacOS
 .DS_Store

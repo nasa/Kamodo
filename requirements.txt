@@ -1,6 +1,10 @@
 jupyter
 ipython
+kaleido
 build
 twine
 mkdocs
 mkdocs-jupyter
+mknotebooks
+python-markdown-math
+markdown_include
