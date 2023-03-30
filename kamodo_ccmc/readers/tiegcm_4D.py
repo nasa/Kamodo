@@ -381,10 +381,19 @@ def MODEL():
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames, all one pattern, so doesn't matter
                 raw_files = sorted(glob(file_dir+'*.nc'))
+                # ignore TIEGCM_km.nc, pxxx.nc, and runname_tie_ files
+                # This will not work if TIEGCM is in the runname
                 files = [f for f in raw_files if self.modelname not in
-                         basename(f)]
-                patterns = unique([basename(f)[0] for f in files])  # one patte
+                         basename(f) and 
+                         (len(basename(f))==7 and basename(f)[0]=='s'
+                          or '_sech_tie_' in basename(f))]
+                if len(basename(files[0])) == 7:  # e.g. s001.nc
+                    patterns = unique([basename(f)[0] for f in files])
+                else:  # e.g. the high altitude outputs
+                    patterns = unique([basename(f)[:-22] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
+                print(files)
+                print(patterns)
 
                 # establish time attributes
                 for p in patterns:
