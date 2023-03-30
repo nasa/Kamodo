@@ -12,7 +12,9 @@ In your Python environment:
 > python -m pip install ./Kamodo  
 
 NOTE: Sometimes an error will occur installing the spacepy dependency if numpy is not yet installed. 
-Running 'python -m pip install numpy' then repeating the Kamodo pip install usually resolves it.
+Running 'python -m pip install numpy' then repeating the Kamodo pip install usually resolves it. 
+If that does not resolve the issue, check out the spacepy troubleshooting page: 
+https://spacepy.github.io/install.html#troubleshooting
 
 ### Testing commands:
 ```
@@ -22,7 +24,7 @@ import kamodo_ccmc.flythrough.model_wrapper as MW
 MW.Model_Variables('OpenGGCM_GM')
 ```
 
-Correct output:
+Output should be similar to this:
 ```
 The model accepts the standardized variable names listed below.
 -----------------------------------------------------------------------------------
