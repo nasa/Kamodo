@@ -566,7 +566,7 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                     idx_map.append(idx)
                     print(f'Time slice index {idx} (file time {fi}) added ' +
                           f'from file {i+1}.')
-            if len(idx_list) > 1:
+            if len(idx_list) > 1:  # this section is identical to interp=1
                 interp_locations = [idx_map.index(val) for val in idx_list]
                 if isinstance(times, ndarray):
                     interp_values = array([time_interps[ii](sposition[st_idx])
@@ -795,7 +795,7 @@ def hrs_to_str(hrs, filedate):
     '''Convert hrs since midnight of first day to a string for the file list
     of format "Date: YYYY-MM-DD  Time: HH:MM:SS".'''
     h, m = floor(hrs), round(hrs % 1 * 60., 4)
-    sec = round(((hrs - h) * 60. - m) * 60.)
+    sec = round(((hrs - h) * 60. - int(m)) * 60.)
     return datetime.strftime(filedate + timedelta(hours=int(h), minutes=int(m),
                                                   seconds=int(sec)),
                              '  Date: %Y-%m-%d  Time: %H:%M:%S')
@@ -816,7 +816,7 @@ def hrs_to_tstr(hrs, ms_timing=False):
     str is in format HH:MM:SS.mms'''
     h, m = floor(hrs), round(hrs % 1 * 60., 4)
     if not ms_timing:
-        sec = round(((hrs - h) * 60. - m) * 60.)
+        sec = round(((hrs - h) * 60. - int(m)) * 60.)
         return str(f'\n{int(h):02d}:{int(m):02d}:{int(sec):02d}')
     else:
         sec = ((hrs - h) * 60. - int(m)) * 60.

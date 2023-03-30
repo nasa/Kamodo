@@ -11,7 +11,7 @@
 # the names of the variables as given in the files. The list begins with the
 # LaTeX representation of the variable and is followed by a description of the
 # variable. These are followed by an integer, coordinate information, a list of
-# the coordinate names, and the units. See the ConcertCoord function in
+# the coordinate names, and the units. See the ConvertCoord function in
 # kamodo_ccmc/flythrough/utils.py for more details on the coordinate systems.
 # See https://ensemblegovservices.github.io/kamodo-core/notebooks/Syntax/
 # for details on naming syntax.

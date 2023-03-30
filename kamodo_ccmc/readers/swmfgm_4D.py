@@ -101,28 +101,13 @@ def MODEL():
             c is the reduced speed of light, and g is the ratio of specific
             heats. Consult model documentation for more information.
 
-        Notes and instructions:
-        - The SWMF global magnetosphere outputs are given in one or more files
-          per timestep in *.out files. The structure of these files are
-          advantageous for efficient interpolation, so no file conversion is
-          attempted.
-        - The files are small and contain one time step per file, so
-          interpolation method 1 is chosen. A custom interpolator is required.
-        - The reader requires code in readers/OCTREE_BLOCK_GRID/:
-          Compile the library using the command
-            python interpolate_amrdata_extension_build.py
-          inside the anaconda/miniconda3/miniforge3 environment for Kamodo.
-          The shared library file name contains the python version and the name
-          of the operation system, e.g.,
-            _interpolate_amrdata.cpython-39-darwin.so
-        - There is a pull request pending to implement sort_unstructured_data
-          in the SpacePy software package. Until that PR is merged into
-          SpacePy, you will need to manually modify the package. The
-          lib/site-packages/spacepy/pybats/__init__.py script needs to be
-          modified in your installation to not sort unstructured data in
-          _read_Idl_bin() by default. See detailed instructions on the 2022 AGU
-          poster https://doi.org/10.22541/essoar.167214301.16153548/v1 , at the
-          bottom of the second to last column.
+        The reader requires code in readers/OCTREE_BLOCK_GRID/:
+        Compile the library using the command
+          python interpolate_amrdata_extension_build.py
+        inside the anaconda/miniconda3/miniforge3 environment for Kamodo.
+        The shared library file name contains the python version
+        and the name of the operation system, e.g.,
+          _interpolate_amrdata.cpython-39-darwin.so
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
@@ -458,10 +443,10 @@ def MODEL():
                                           self.octree[key][i]['octree_blocklist'],
                                           self.octree[key][i]['numparents_at_AMRlevel'],
                                           self.octree[key][i]['block_at_AMRlevel'])
-                # get data from file
+                # get data from file and initialize
                 data = sp.IdlFile(self.pattern_files[key][i])[gvar]  # dmarray
                 var_data = ffi.new("float[]", list(data))
-                
+
                 # assign custom interpolator: Lutz Rastaetter 2021
                 def interp(xvec):
                     tic = perf_counter()

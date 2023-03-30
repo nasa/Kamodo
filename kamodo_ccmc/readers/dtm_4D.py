@@ -137,14 +137,13 @@ def MODEL():
                 self.times, self.pattern_files, self.filedate, self.filename =\
                     RU.read_timelist(time_file, list_file)
             if filetime:
-                return  # return times as is to prevent infinite recursion
+                return  # return times as is 
 
             # store variables
             self.missing_value = NaN
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
-            self.variables = {}
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -161,16 +160,7 @@ def MODEL():
             # there is only one pattern for DTM, so just save the one grid
             p = list(self.pattern_files.keys())[0]
             pattern_files = self.pattern_files[p]
-
-            # get coordinate grids from first file
             cdf_data = Dataset(pattern_files[0], 'r')
-            self._lat = array(cdf_data.variables['lat'])  # -90 to 90
-            lon = array(cdf_data.variables['lon'])  # 0 to 360
-            lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
-            lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
-            self._lon_idx = lon_ge180 + lon_le180
-            self._lon = lon - 180.
-            self._height = array(cdf_data.variables['ht'])  # km
 
             # check var_list for variables not possible in this file set
             if len(variables_requested) > 0 and\
@@ -192,6 +182,15 @@ def MODEL():
             self.varfiles[p] = [model_varnames[key][0] for
                                 key in gvar_list]
             self.gvarfiles[p] = gvar_list
+
+            # get coordinate grids from first file
+            self._lat = array(cdf_data.variables['lat'])  # -90 to 90
+            lon = array(cdf_data.variables['lon'])  # 0 to 360
+            lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
+            lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
+            self._lon_idx = lon_ge180 + lon_le180
+            self._lon = lon - 180.
+            self._height = array(cdf_data.variables['ht'])  # km
             cdf_data.close()
 
             # print message if variables not found
@@ -207,17 +206,17 @@ def MODEL():
                                  var_list}
                 return
 
-            # initialize storage structure
-            self.variables = {model_varnames[gvar][0]: {
-                'units': model_varnames[gvar][-1], 'data': p} for gvar in
-                self.gvarfiles[p]}
-
             # option to print files
             if printfiles:
                 print(f'{len(self.filename)} Files:')
                 files = self.filename.split(',')
                 for f in files:
                     print(f)
+
+            # initialize storage structure
+            self.variables = {model_varnames[gvar][0]: {
+                'units': model_varnames[gvar][-1], 'data': p} for gvar in
+                self.gvarfiles[p]}
 
             # register interpolators for each variable
             t_reg = perf_counter()
@@ -286,5 +285,6 @@ def MODEL():
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int, coord_str, interp_flag=2, func=func,
                 times_dict=self.times[key])
+            return
 
     return MODEL

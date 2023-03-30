@@ -141,7 +141,7 @@ def MODEL():
                 # find unconverted files and convert them
                 nc_files = sorted(glob(file_dir+'*.nc'))
                 tec_files = sorted(glob(file_dir+'*.tec'))
-                if len(nc_files) != len(tec_files):
+                if len(nc_files) != len(tec_files) and len(tec_files) > 0:
                     from kamodo_ccmc.readers.swmfie_tocdf import \
                         convert_all
                     convert_all(file_dir)
