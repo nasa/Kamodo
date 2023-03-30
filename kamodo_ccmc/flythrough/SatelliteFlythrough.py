@@ -419,6 +419,9 @@ def ModelFlythrough(model, file_dir, variable_list, sat_time, c1, c2, c3,
     var_list = [key for key in results.keys() if key not in
                 ['utc_time', 'c1', 'c2', 'c3', 'net_idx']]
     if len(var_list) == 0:
+        print('None of the variables requested are in the chosen dataset. ' +
+              'Please use MW.Variable_Search to find the correct variable ' +
+              'names.')
         return results
 
     # retrieve coordinate and results units
