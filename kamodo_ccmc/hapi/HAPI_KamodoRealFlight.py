@@ -85,9 +85,11 @@ with urllib.request.urlopen(
 sat_names = [item['id'] for item in data['catalog']]  # list of sat names
 # look for a model name at the beginning of the dataset name, with max length
 model_mask = [model in dataset[:model_length] for model in model_list]
-model = model_list[model_mask.index(True)]  # find first (and only) instance
+model = model_list[model_mask.index(True)]  # find first instance of model name
 sat_name = dataset.split('_')[-1]   # sat name always the last piece
-file_dir = dataset.split(model)[1].split(sat_name)[0][1:-1]  # = file_dir
+# run_name = dataset.split(model)[1].split(sat_name)[0][1:-1]
+# model name will likely be in file_dir, so try below instead
+file_dir = dataset[len(model)+1:].split(sat_name)[0][:-1]
 
 # fake values for now, comment out before running for real testing
 model, file_dir = 'CTIPe', 'D:/CTIPe/Data/'
@@ -192,6 +194,7 @@ else:  # need to add JSON
     print('Formatting option not supported')
 
 # perform output to given file
+# NEED TO REPLACE NaNs WITH A FILL VALUE BEFORE OUTPUT!!!
 for i in range(len(iso_timesZ)):
     # Python 3
     if fmt == 'binary':
