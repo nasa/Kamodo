@@ -37,7 +37,7 @@ int trace_fieldline_octree(float x_start,float y_start,float z_start, float r_en
 
 
 # on Windows (os.name == 'nt'), no explicit list of libraries is needed
-libraries=['']    
+libraries=[]    
 # link with the math library (libm) in Unix-style OS (Linux, Mac-OS)
 if os.name == 'posix':
     libraries=['m']
