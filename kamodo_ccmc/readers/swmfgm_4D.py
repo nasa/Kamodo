@@ -143,10 +143,9 @@ def MODEL():
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times, one file per time step
-                    self.times[p]['start'] = array([RU.tstr_to_hrs(
-                        sp.IdlFile(f).attrs['strtime'][:-1].replace(
-                            'h', ':').replace('m', ':'))
-                        for f in pattern_files])
+                    self.times[p]['start'] = array([(sp.IdlFile(f).attrs[
+                        'time'].replace(tzinfo=timezone.utc) - self.filedate
+                        ).total_seconds()/3600. for f in pattern_files])
                     self.times[p]['end'] = self.times[p]['start'].copy()
                     self.times[p]['all'] = self.times[p]['start'].copy()
 
