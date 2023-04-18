@@ -413,7 +413,8 @@ def MODEL():
                 # initialize octree instance for file if not already done
                 if i not in self.octree[key].keys():
                     # files is closed after read in spacepy.pybats.IdlFile
-                    mhd = sp.IdlFile(self.pattern_files[key][i])
+                    mhd = sp.IdlFile(self.pattern_files[key][i],
+                                     sort_unstructured=False)
                     # pull request pending to implement sort_unstructured_data
                     # lib/site-packages/spacepy/pybats/__init__.py needs to be
                     # modified in your installation to not sort unstructured
