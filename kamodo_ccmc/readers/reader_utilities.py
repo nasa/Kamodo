@@ -11,6 +11,57 @@ from scipy.interpolate import interp1d as rgi1D
 import forge
 from datetime import datetime, timezone, timedelta
 from os.path import basename
+from glob import glob as glob_leg
+import s3fs
+from h5netcdf.legacyapi import Dataset as Dataset_leg
+
+
+def Dataset(filename, access='r'):
+    '''A generalized method to open netCDF files on either s3 buckets or on
+    efs/local storage. Works for reading, not tested for writing files.
+    Inputs:
+        - filename: a string containing the full file path and file name
+        - access: 'r' for read, 'w' for write
+    Output: a Dataset object that behaves similarly to netCDF4's Dataset object
+    '''
+    if filename[:2] == 's3':
+        s3=s3fs.S3FileSystem(anon=False)
+        fgrab = s3.open(filename, access+'b')
+        return Dataset_leg(fgrab)
+    else:
+        return Dataset_leg(filename, access)
+
+
+
+def glob(file_pattern):
+    '''A generalized method to search s3 buckets and efs/local storage.
+    Input: 
+        file_pattern: a string containing the full filepath with the pattern
+    Output: a list of filenames
+    '''
+    if file_pattern[:2] == 's3':
+        s3 = s3fs.S3FileSystem(anon=False)
+        s3_files = sorted(s3.glob(file_pattern))
+        return ['s3://'+f for f in s3_files]
+    else:
+        return glob_leg(file_pattern)
+
+
+def _open(filename, access='r'):
+    '''Alternate method to open files for both s3 and efs/locatl storage.'''
+    if filename[:2] == 's3':
+        s3 = s3fs.S3FileSystem(anon=False)
+        return s3.open(filename, access+'b')
+    else:
+        return open(filename, access)
+
+
+def str_vs_bytes(string, filename):
+    '''Converts to bytes if going to s3, leaves as string otherwise.'''
+    if filename[:2] == 's3':
+        return str.encode(string)
+    else:
+        return string
 
 
 def create_interp(coord_data, data_dict, func=None, func_default='data'):
@@ -864,23 +915,26 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
 
     # create time list file if DNE
     print('Creating the time files...', end="")
-    list_out = open(list_file, 'w')
-    list_out.write(f'{modelname} file list start and end ' +
-                   'dates and times')
-    time_out = open(time_file, 'w')
-    time_out.write(f'{modelname} time grid per pattern')
+    list_out = _open(list_file, 'w')
+    time_out = _open(time_file, 'w')
+    list_out.write(str_vs_bytes(f'{modelname} file list start and end ' +
+                   'dates and times'), list_file)
+    time_out.write(str_vs_bytes(f'{modelname} time grid per pattern',
+                                list_file))
     for p in pattern_files.keys():
-        # print out time grid to time file
-        time_out.write('\nPattern: '+p)
+        # convert time grid to strings
         str_out = hrs_to_tstr(times[p]['all'], ms_timing)
-        time_out.write(''.join(str_out))
-        # print start and end dates and times to list file
+        # calculate start and end dates and times in string
         start_time_str = hrs_to_str(times[p]['start'], filedate)
         end_time_str = hrs_to_str(times[p]['end'], filedate)
         files = pattern_files[p]
+        # write to files
+        time_out.write(str_vs_bytes('\nPattern: '+p, list_file))
+        time_out.write(str_vs_bytes(''.join(str_out), list_file))
         for i in range(len(files)):
-            list_out.write('\n' + files[i].replace('\\', '/') +
-                           start_time_str[i] + '  ' + end_time_str[i])
+            list_out.write(str_vs_bytes('\n' + files[i].replace('\\', '/') +
+                           start_time_str[i] + '  ' + end_time_str[i],
+                           list_file))
     time_out.close()
     list_out.close()
     print('done.')
@@ -913,7 +967,7 @@ def read_timelist(time_file, list_file, ms_timing=False):
 
     # get time grids and initialize self.times structure
     times, pattern_files = {}, {}
-    time_obj = open(time_file)
+    time_obj = _open(time_file)
     data = time_obj.readlines()
     for line in data[1:]:
         if 'Pattern' in line:
@@ -927,7 +981,7 @@ def read_timelist(time_file, list_file, ms_timing=False):
 
     # get filenames, dates and times from list file
     files, start_date_times, end_date_times = [], [], []
-    list_obj = open(list_file)
+    list_obj = _open(list_file)
     data = list_obj.readlines()
     for line in data[1:]:
         file, tmp, date_start, tmp, start_time, tmp, date_end, \

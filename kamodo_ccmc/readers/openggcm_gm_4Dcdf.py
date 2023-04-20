@@ -46,8 +46,6 @@ def MODEL():
     from numpy import array, unique, squeeze
     from time import perf_counter
     from os.path import isfile, basename
-    from glob import glob
-    from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -119,7 +117,7 @@ def MODEL():
             self.times, self.pattern_files = {}, {}
             if not isfile(list_file) or not isfile(time_file):
                 # collect filenames
-                files = sorted(glob(file_dir+'*.nc'))
+                files = sorted(RU.glob(file_dir+'*.nc'))
                 if len(files) == 0:
                     try:
                         from kamodo_ccmc.readers.openggcm_to_cdf import \
@@ -141,7 +139,7 @@ def MODEL():
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
@@ -178,24 +176,24 @@ def MODEL():
             # there is only one pattern for OpenGGCM, so just save the one grid
             p = list(self.pattern_files.keys())[0]
             pattern_files = self.pattern_files[p]
-            cdf_data = Dataset(pattern_files[0], 'r')
+            cdf_data = RU.Dataset(pattern_files[0], 'r')
 
             # check var_list for variables not possible in this file set
             self.err_list = []
             if len(variables_requested) > 0 and\
                     variables_requested != 'all':
                 gvar_list = [key for key in model_varnames.keys()
-                             if key in cdf_data.variables.keys() and
+                             if key in cdf_data.keys() and
                              model_varnames[key][0] in variables_requested]
                 if len(gvar_list) != len(variables_requested):
                     err_list = [value[0] for key, value in
                                 model_varnames.items()
-                                if key not in cdf_data.variables.keys() and
+                                if key not in cdf_data.keys() and
                                 value[0] in variables_requested]
                     self.err_list.extend(err_list)  # add to master list
             else:
                 gvar_list = [key for key in model_varnames.keys()
-                             if key in cdf_data.variables.keys()]
+                             if key in cdf_data.keys()]
 
             # store which file these variables came from
             self.varfiles = [model_varnames[key][0] for
@@ -212,7 +210,7 @@ def MODEL():
             self.near_Earth_boundary_radius_unit = \
                 cdf_data.near_Earth_boundary_radius_units
             for grid in ['_x', '_y', '_z']:
-                setattr(self, grid, array(cdf_data.variables[grid]))
+                setattr(self, grid, array(cdf_data[grid]))
             cdf_data.close()
 
             # print message if variables not found
@@ -269,8 +267,8 @@ def MODEL():
                 timestep.'''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
-                data = array(cdf_data.variables[gvar])
+                cdf_data = RU.Dataset(file)
+                data = array(cdf_data[gvar])
                 cdf_data.close()
                 return squeeze(data)
 
