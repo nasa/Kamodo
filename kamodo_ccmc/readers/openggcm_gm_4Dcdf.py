@@ -45,7 +45,7 @@ model_varnames = {'bx': ['B_x', 'x component of magnetic field',
 def MODEL():
     from numpy import array, unique, squeeze
     from time import perf_counter
-    from os.path import isfile, basename
+    from os.path import basename
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -115,7 +115,7 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
                 files = sorted(RU.glob(file_dir+'*.nc'))
                 if len(files) == 0:

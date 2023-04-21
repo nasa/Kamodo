@@ -10,7 +10,7 @@ from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
 from datetime import datetime, timezone, timedelta
-from os.path import basename
+from os.path import basename, isfile
 from glob import glob as glob_leg
 import s3fs
 from h5netcdf.legacyapi import Dataset as Dataset_leg
@@ -39,7 +39,7 @@ def glob(file_pattern):
         file_pattern: a string containing the full filepath with the pattern
     Output: a list of filenames
     '''
-    if file_pattern[:2] == 's3':
+    if file_pattern[:5] == 's3://':
         s3 = s3fs.S3FileSystem(anon=False)
         s3_files = sorted(s3.glob(file_pattern))
         return ['s3://'+f for f in s3_files]
@@ -49,20 +49,25 @@ def glob(file_pattern):
 
 def _open(filename, access='r'):
     '''Alternate method to open files for both s3 and efs/locatl storage.'''
-    if filename[:2] == 's3':
+    if filename[:5] == 's3://':
         s3 = s3fs.S3FileSystem(anon=False)
         return s3.open(filename, access+'b')
     else:
         return open(filename, access)
 
 
-def str_vs_bytes(string, filename):
-    '''Converts to bytes if going to s3, leaves as string otherwise.'''
-    if filename[:2] == 's3':
-        return str.encode(string)
+def _isfile(filename):
+    '''s3-friendly method to check that the file exists.
+    Input: filename with complete path.
+    Output: boolean
+    '''
+    if filename[:5] == 's3://':
+        s3 = s3fs.S3FileSystem(anon=False)
+        return s3.isfile(filename)
     else:
-        return string
-
+        return isfile(filename)    
+    
+    
 
 def create_interp(coord_data, data_dict, func=None, func_default='data'):
     '''Create an interpolator depending on the dimensions of the input.
@@ -917,10 +922,9 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
     print('Creating the time files...', end="")
     list_out = _open(list_file, 'w')
     time_out = _open(time_file, 'w')
-    list_out.write(str_vs_bytes(f'{modelname} file list start and end ' +
-                   'dates and times'), list_file)
-    time_out.write(str_vs_bytes(f'{modelname} time grid per pattern',
-                                list_file))
+    list_out.write(f'{modelname} file list start and end ' +
+                   'dates and times')
+    time_out.write(f'{modelname} time grid per pattern')
     for p in pattern_files.keys():
         # convert time grid to strings
         str_out = hrs_to_tstr(times[p]['all'], ms_timing)
@@ -929,12 +933,11 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
         end_time_str = hrs_to_str(times[p]['end'], filedate)
         files = pattern_files[p]
         # write to files
-        time_out.write(str_vs_bytes('\nPattern: '+p, list_file))
-        time_out.write(str_vs_bytes(''.join(str_out), list_file))
+        time_out.write('\nPattern: '+p)
+        time_out.write(''.join(str_out))
         for i in range(len(files)):
-            list_out.write(str_vs_bytes('\n' + files[i].replace('\\', '/') +
-                           start_time_str[i] + '  ' + end_time_str[i],
-                           list_file))
+            list_out.write('\n' + files[i].replace('\\', '/') +
+                           start_time_str[i] + '  ' + end_time_str[i])
     time_out.close()
     list_out.close()
     print('done.')
@@ -970,6 +973,9 @@ def read_timelist(time_file, list_file, ms_timing=False):
     time_obj = _open(time_file)
     data = time_obj.readlines()
     for line in data[1:]:
+        if isinstance(line, bytes):
+            line = line.decode()
+            print(line)
         if 'Pattern' in line:
             p = line.strip()[9:]
             times[p] = {'start': [], 'end': [], 'all': []}
@@ -984,6 +990,9 @@ def read_timelist(time_file, list_file, ms_timing=False):
     list_obj = _open(list_file)
     data = list_obj.readlines()
     for line in data[1:]:
+        if isinstance(line, bytes):
+            line = line.decode()
+            print(line)
         file, tmp, date_start, tmp, start_time, tmp, date_end, \
             tmp, end_time = line.strip().split()
         files.append(file)
