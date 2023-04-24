@@ -34,6 +34,8 @@ model_varnames = {'den400': ['rho_400km', 'Density at 400 km.',
                   'N2_Density_2': ['N_N2', 'Molecular nitrogen number density',
                                    0, 'GDZ', 'sph', ['time', 'lon', 'lat',
                                                      'height'], '1/m**3'],
+                  'den': ['rho', 'neutral density', 0, 'GDZ', 'sph',
+                          ['time', 'lon', 'lat', 'height'], 'km/m**3'],
                   'u_neutral': ['v_neast_ilev', 'Eastward component of the ' +
                                 'neutral wind velocity', 0, 'GDZ', 'sph',
                                 ['time', 'lon', 'lat', 'ilev'], 'm/s'],
@@ -106,8 +108,7 @@ def MODEL():
     from time import perf_counter
     from glob import glob
     from os.path import basename, isfile
-    from numpy import array, unique, NaN, append, linspace, where, median
-    from numpy import zeros
+    from numpy import array, unique, NaN, append, linspace, where, squeeze
     from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
@@ -339,9 +340,14 @@ def MODEL():
                 setattr(self, '_lon_idx_'+p, lon_ge180+lon_le180)
                 setattr(self, '_lat_'+p,
                         array(cdf_data.variables['lat']))
-                if 'alt' in cdf_data.variables.keys():
-                    setattr(self, '_height_'+p,
-                            array(cdf_data.variables['alt']))  # km
+                if 'alt' or 'hlevs' in cdf_data.variables.keys():
+                    # have only seen files with 'alt' OR 'hlevs', not both
+                    if 'alt' in cdf_data.variables.keys():
+                        setattr(self, '_height_'+p,
+                                array(cdf_data.variables['alt']))  # km
+                    if 'hlevs' in cdf_data.variables.keys():
+                        setattr(self, '_height_'+p,
+                                array(cdf_data.variables['hlevs']))  # km
                     setattr(self, '_heightunits_'+p, 'km')
                 # determine if pressure leve is needed (not included)
                 ilev_check = [True if 'ilev' in var else False for var in
@@ -354,7 +360,7 @@ def MODEL():
                     setattr(self, '_ilev_'+p,
                             linspace(1, grid_length, grid_length))
 
-                    # get median km grid from h0 file
+                    # get median km grid from h0 file, height only in h0 file
                     if 'height' in cdf_data.variables.keys():
                         h0_file = self.pattern_files[p][0][:-18] + 'h0.nc'
                         if isfile(h0_file):
@@ -458,6 +464,8 @@ def MODEL():
                     if fill_value in data:
                         data = where(data == fill_value, NaN, data)
                 cdf_data.close()
+                if 1 in list(data.shape):  # for den var in some gs10 files 
+                    data = squeeze(data)
                 return data.T[lon_idx]
 
             # define and register the interpolators
