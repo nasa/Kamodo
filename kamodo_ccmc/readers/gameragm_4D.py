@@ -51,10 +51,7 @@ def timestr_timestamp(time_str):
 
 def MODEL():
     from kamodo import Kamodo
-    from glob import glob
-    import h5py
-    from netCDF4 import Dataset
-    from os.path import isfile, basename
+    from os.path import basename
     from astropy.time import Time
     from datetime import datetime, timezone
     from numpy import array, NaN, ndarray, zeros, linspace, repeat
@@ -127,9 +124,9 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
-                files = sorted(glob(file_dir+'*.h5'))
+                files = sorted(RU.glob(file_dir+'*.h5'))
                 data_files = [f for f in files if 'Res' not in f]
                 self.filename = ''.join([f+',' for f in data_files])[:-1]
                 # one pattern per run: abcd_00nx_00ny_00nz
@@ -143,7 +140,7 @@ def MODEL():
                 self.times[p] = {'start': [], 'end': [], 'all': []}
 
                 # all times are in each file, so just use first file
-                h5_data = h5py.File(data_files[0])
+                h5_data = RU.h5py(data_files[0])
                 timestep_keys = [key for key in h5_data.keys()
                                  if 'Step' in key]
                 mjd_list = [h5_data[key].attrs['MJD'] for key in
@@ -206,7 +203,7 @@ def MODEL():
 
             # collect variable list (in attributes of datasets)
             p = list(self.pattern_files.keys())[0]  # only one pattern
-            h5_data = h5py.File(self.pattern_files[p][0])
+            h5_data = RU.h5py(self.pattern_files[p][0])
             key_list = [key for key in h5_data.keys() if 'Step' not in key and
                         key not in ['X', 'Y', 'Z']]  # skip coordinates
             step_list = list(h5_data['Step#0'].keys())
@@ -253,7 +250,7 @@ def MODEL():
                                             sample_var)
                 shape = net_indices['net'][1]  # shape of total array
             else:
-                h5_data = h5py.File(self.pattern_files[p][0])
+                h5_data = RU.h5py(self.pattern_files[p][0])
                 shape = list(h5_data['X'].shape)  # shape of total array
                 h5_data.close()
             self._X = linspace(X_min, X_max, endpoint=True, num=shape[0])
@@ -314,13 +311,13 @@ def MODEL():
                     block = 0  # default, but need this value from the interp
                     # read in data from block
                     file = self.pattern_files[key][block]
-                    h5_data = h5py.File(file)
+                    h5_data = RU.h5py(file)
                     data = array(h5_data['Step#'+str(fi)][gvar])
                     h5_data.close()
                     # read in cell centers for requested block
                     center_file = file_dir + basename(file).split('.')[0] +\
                         '_gridcenters.nc'
-                    cdf_data = Dataset(center_file)
+                    cdf_data = RU.Dataset(center_file)
                     X_c = array(cdf_data['X_c'])
                     Y_c = array(cdf_data['Y_c'])
                     Z_c = array(cdf_data['Z_c'])
@@ -358,13 +355,13 @@ def MODEL():
                     block = 0  # default, but need this value from the interp
                     # read in data from block
                     file = self.pattern_files[key][block]
-                    h5_data = h5py.File(file)
+                    h5_data = RU.h5py(file)
                     data = array(h5_data[gvar])
                     h5_data.close()
                     # read in cell centers for requested block
                     center_file = file_dir + basename(file).split('.')[0] +\
                         '_gridcenters.nc'
-                    cdf_data = Dataset(center_file)
+                    cdf_data = RU.Dataset(center_file)
                     X_c = array(cdf_data['X_c'])
                     Y_c = array(cdf_data['Y_c'])
                     Z_c = array(cdf_data['Z_c'])
