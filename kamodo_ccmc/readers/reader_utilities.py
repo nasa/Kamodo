@@ -14,6 +14,7 @@ from os.path import basename, isfile
 from glob import glob as glob_leg
 import s3fs
 from h5netcdf.legacyapi import Dataset as Dataset_leg
+import h5netcdf
 
 
 def Dataset(filename, access='r'):
@@ -24,13 +25,28 @@ def Dataset(filename, access='r'):
         - access: 'r' for read, 'w' for write
     Output: a Dataset object that behaves similarly to netCDF4's Dataset object
     '''
-    if filename[:2] == 's3':
+    if filename[:5] == 's3://':
         s3 = s3fs.S3FileSystem(anon=False)
         fgrab = s3.open(filename, access+'b')
         return Dataset_leg(fgrab)
     else:
         return Dataset_leg(filename, access)
 
+
+def h5py(filename, access='r'):
+    '''A generalized method to open netCDF files on either s3 buckets or on
+    efs/local storage. Works for reading, not tested for writing files.
+    Inputs:
+        - filename: a string containing the full file path and file name
+        - access: 'r' for read, 'w' for write
+    Output: an object that behaves similarly to h5py's objects
+    '''
+    if filename[:5] == 's3://':
+        s3 = s3fs.S3FileSystem(anon=False)
+        fgrab = s3.open(filename, access+'b')
+        return h5netcdf.File(fgrab, mode=access, phony_dims='access')
+    else:
+        return h5netcdf.File(filename, mode=access, phony_dims='access')
 
 
 def glob(file_pattern):
@@ -975,7 +991,6 @@ def read_timelist(time_file, list_file, ms_timing=False):
     for line in data[1:]:
         if isinstance(line, bytes):
             line = line.decode()
-            print(line)
         if 'Pattern' in line:
             p = line.strip()[9:]
             times[p] = {'start': [], 'end': [], 'all': []}
@@ -992,7 +1007,6 @@ def read_timelist(time_file, list_file, ms_timing=False):
     for line in data[1:]:
         if isinstance(line, bytes):
             line = line.decode()
-            print(line)
         file, tmp, date_start, tmp, start_time, tmp, date_end, \
             tmp, end_time = line.strip().split()
         files.append(file)
