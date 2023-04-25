@@ -17,8 +17,7 @@ def MODEL():
 
     from kamodo import Kamodo
     from netCDF4 import Dataset
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array
     from time import perf_counter
     from datetime import datetime, timezone
@@ -85,15 +84,20 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # check for nc files
-                nc_files = sorted(glob(file_dir+'*.nc'))
-                txt_files = sorted(glob(file_dir+'*.txt'))
+                nc_files = sorted(RU.glob(file_dir+'*.nc'))
+                txt_files = sorted(RU.glob(file_dir+'*.txt'))
                 if len(nc_files) == 0:  # perform file conversion if none
                     from kamodo_ccmc.readers.weimer_tocdf import convert_all
                     convert_all(txt_files)
-                    nc_files = sorted(glob(file_dir+'*.nc'))
-                self.filename = ''.join([f+',' for f in txt_files])[:-1]
+                    nc_files = sorted(RU.glob(file_dir+'*.nc'))
+                if len(txt_files) > 0:
+                    self.filename = ''.join([f+',' for f in txt_files])[:-1]
+                else:
+                    cdf_data = Dataset(nc_files[0])
+                    txt_files = cdf_data.file.split(',')
+                    cdf_data.close()
                 p = basename(nc_files[0]).split('.')[0]  # only one nc file
 
                 # datetime object for midnight on date from first text file

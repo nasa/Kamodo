@@ -24,8 +24,8 @@ def Dataset(filename, access='r'):
         - access: 'r' for read, 'w' for write
     Output: a Dataset object that behaves similarly to netCDF4's Dataset object
     '''
-    if filename[:5] == 's3://':
-        s3=s3fs.S3FileSystem(anon=False)
+    if filename[:2] == 's3':
+        s3 = s3fs.S3FileSystem(anon=False)
         fgrab = s3.open(filename, access+'b')
         return Dataset_leg(fgrab)
     else:

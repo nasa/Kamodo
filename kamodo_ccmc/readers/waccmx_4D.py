@@ -409,11 +409,10 @@ ilev_replace = [item.split('_ilev')[0] for item in ilev_list if
 def MODEL():
 
     from kamodo import Kamodo
-    from glob import glob
-    from os.path import isfile, getsize
+    from os.path import getsize
     import psutil
     from netCDF4 import Dataset
-    from numpy import array, NaN, zeros, where, unique, append, linspace
+    from numpy import array, NaN, where, unique, append, linspace
     from numpy import transpose, median
     from time import perf_counter
     from datetime import datetime, timezone
@@ -500,9 +499,9 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
-                files = sorted(glob(file_dir+'*.h?.*.nc'))
+                files = sorted(RU.glob(file_dir+'*.h?.*.nc'))
                 patterns = unique([file[-22:-20] for file in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(
@@ -519,7 +518,7 @@ def MODEL():
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+'*.'+p+'.*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+'*.'+p+'.*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 

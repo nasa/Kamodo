@@ -30,8 +30,7 @@ model_varnames = {'Temp_exo': ['T_exo', 'Exospheric temperature', 0, 'GDZ',
 
 def MODEL():
     from time import perf_counter
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, unique, NaN, append, transpose, where
     from datetime import datetime, timezone
     from netCDF4 import Dataset
@@ -97,10 +96,10 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 t0 = perf_counter()  # begin timer
                 # figure out types of files present (2DTEC, 3DALL, 3DLST, etc)
-                files = sorted(glob(file_dir+'*.nc'))
+                files = sorted(RU.glob(file_dir+'*.nc'))
                 patterns = sorted(unique([basename(f)[:-11] for f in
                                           files]))  # cut off date
                 self.filename = ''.join([f+',' for f in files])[:-1]
@@ -111,7 +110,7 @@ def MODEL():
                 # establish time attributes
                 for p in patterns:  # only one pattern
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 

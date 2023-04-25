@@ -78,9 +78,7 @@ attrs_var = ['imf_By', 'imf_Bz', 'solar_wind_speed']
 
 def MODEL():
     from kamodo import Kamodo
-    from glob import glob
-    import h5py
-    from os.path import isfile
+    import h5netcdf as h5py
     from numpy import array, NaN, unique, append, zeros, diff, sin, cos, insert
     from numpy import flip, concatenate, mean, broadcast_to, ones
     from numpy import transpose
@@ -150,9 +148,9 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
-                files = sorted(glob(file_dir+'*.h5'))
+                files = sorted(RU.glob(file_dir+'*.h5'))
                 patterns = unique([f[-4] for f in files])  # N or S
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(
@@ -161,13 +159,14 @@ def MODEL():
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+'*'+p+'.h5'))
+                    pattern_files = sorted(RU.glob(file_dir+'*'+p+'.h5'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        h5_data = h5py.File(pattern_files[f])
+                        h5_data = h5py.File(pattern_files[f],
+                                            phony_dims='access')
                         tmp_var = [key[:-1] for key in h5_data.keys() if key
                                    not in ['lats', 'lons']]
                         h5_data.close()
@@ -204,7 +203,8 @@ def MODEL():
 
             # collect variable list (in attributes of datasets)
             patterns = list(self.pattern_files.keys())
-            h5_data = h5py.File(self.pattern_files[patterns[0]][0])
+            h5_data = h5py.File(self.pattern_files[patterns[0]][0],
+                                phony_dims='access')
             key_list = list(h5_data[list(h5_data.keys())[0]].attrs.keys())
             key_list.extend(list(h5_data[list(h5_data.keys())[0]].keys()))
             h5_data.close()
@@ -245,13 +245,15 @@ def MODEL():
             # collect and arrange lat grid to be increasing (from neg to pos)
             # add buffer rows for NaN over equator region
             if 'N' in patterns:
-                h5_data = h5py.File(self.pattern_files['N'][0])
+                h5_data = h5py.File(self.pattern_files['N'][0],
+                                    phony_dims='access')
                 lat_N = unique(h5_data['lats'])  # 24 values
                 ldiff = diff(lat_N).min()
                 lat_N = array([lat_N[0]-ldiff, lat_N[0]-ldiff/10.] +
                               list(lat_N) + [90.])
                 if 'S' in patterns:
-                    h5_dataS = h5py.File(self.pattern_files['S'][0])
+                    h5_dataS = h5py.File(self.pattern_files['S'][0],
+                                        phony_dims='access')
                     # reverse order and make negative
                     lat_S = flip(unique(h5_dataS['lats']))*(-1)
                     lat_S = array([-90.] + list(lat_S) + [lat_S[-1]+ldiff/10.,
@@ -262,7 +264,8 @@ def MODEL():
                 else:
                     self._lat = lat_N  # append north pole value
             elif 'S' in patterns:  # N hemisphere file DNE
-                h5_data = h5py.File(self.pattern_files['S'][0])
+                h5_data = h5py.File(self.pattern_files['S'][0],
+                                    phony_dims='access')
                 # reverse order and make negative
                 lat_S = flip(unique(h5_data['lats']))*(-1)
                 ldiff = diff(lat_N).min()
@@ -392,7 +395,7 @@ def MODEL():
                 if gvar in attrs_var:
                     data = []
                     for f in self.pattern_files[ps[0]]:  # N, or S if N DNE
-                        h5_data = h5py.File(f)
+                        h5_data = h5py.File(f, phony_dims='access')
                         data.extend([h5_data[tkey].attrs[gvar] for tkey in
                                      h5_data.keys() if tkey not in
                                      ['lats', 'lons']])  # one float per time
@@ -400,7 +403,7 @@ def MODEL():
                 elif gvar[:-2] == 'int_joule_heat' and gvar[-1].upper() in ps:
                     data, p = [], gvar[-1].upper()
                     for f in self.pattern_files[p]:  # N, or S if N DNE
-                        h5_data = h5py.File(f)
+                        h5_data = h5py.File(f, phony_dims='access')
                         data.extend([h5_data[tkey][gvar[:-2]][0] for tkey in
                                      h5_data.keys() if tkey not in
                                      ['lats', 'lons']])  # one float per time
@@ -416,7 +419,8 @@ def MODEL():
             def func(i):  # i is the file number
                 # get first hemisphere data
                 if 'N' in ps:  # first one is N hemisphere
-                    h5_data = h5py.File(self.pattern_files['N'][i])
+                    h5_data = h5py.File(self.pattern_files['N'][i],
+                                        phony_dims='access')
                     tkeys = [key for key in h5_data.keys() if key not in
                              ['lats', 'lons']]
                     tmp = array([array(h5_data[tkey][gvar]) for tkey in
@@ -432,7 +436,8 @@ def MODEL():
                         data *= -1
                     # add S hemisphere data
                     if len(ps) == 2:
-                        h5_data = h5py.File(self.pattern_files['S'][i])
+                        h5_data = h5py.File(self.pattern_files['S'][i],
+                                            phony_dims='access')
                         tmp = array([array(h5_data[tkey][gvar]) for tkey in
                                      h5_data.keys() if tkey not in
                                      ['lats', 'lons']],
@@ -446,7 +451,8 @@ def MODEL():
                                             NaN_row, axis=2)
                         data = concatenate((south_data, data), axis=2)
                 elif 'S' in ps:  # only S hemisphere data
-                    h5_data = h5py.File(self.pattern_files['S'][i])
+                    h5_data = h5py.File(self.pattern_files['S'][i],
+                                        phony_dims='access')
                     tkeys = [key for key in h5_data.keys() if key not in
                              ['lats', 'lons']]
                     tmp = array([array(h5_data[tkey][gvar]) for tkey in
@@ -462,7 +468,8 @@ def MODEL():
                 # add one time step from the next file if not the last file
                 if i != len(self.pattern_files[ps[0]])-1:
                     if 'N' in ps:  # N hemisphere data is first
-                        h5_data = h5py.File(self.pattern_files['N'][i+1])
+                        h5_data = h5py.File(self.pattern_files['N'][i+1],
+                                            phony_dims='access')
                         time_list = list(h5_data.keys())[:-2]
                         tmp = array(h5_data[time_list[-1]][gvar], dtype=float,
                                     order='F')
@@ -477,7 +484,8 @@ def MODEL():
                             data1 *= -1
                         # add S hemisphere data
                         if len(ps) == 2:
-                            h5_data = h5py.File(self.pattern_files[ps[1]][i+1])
+                            h5_data = h5py.File(self.pattern_files[ps[1]][i+1],
+                                                phony_dims='access')
                             time_list = list(h5_data.keys())[:-2]
                             tmp = array(h5_data[time_list[-1]][gvar],
                                         dtype=float, order='F')
@@ -491,7 +499,8 @@ def MODEL():
                                 axis=1)
                             data1 = concatenate((south_data1, data1), axis=1)
                     elif 'S' in ps:  # only S hemisphere data
-                        h5_data = h5py.File(self.pattern_files['S'][i])
+                        h5_data = h5py.File(self.pattern_files['S'][i],
+                                            phony_dims='access')
                         tmp = array(h5_data[time_list[-1]][gvar], dtype=float,
                                     order='F')
                         h5_data.close()

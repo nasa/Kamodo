@@ -270,8 +270,7 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ',
 def MODEL():
     from numpy import array, NaN, unique, append, where, transpose
     from time import perf_counter
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from datetime import datetime, timezone
     from kamodo import Kamodo
     from netCDF4 import Dataset
@@ -350,9 +349,9 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
-                all_files = sorted(glob(file_dir+'*-plot-*.nc'))
+                all_files = sorted(RU.glob(file_dir+'*-plot-*.nc'))
                 files = [f for f in all_files if 'plasma' not in f]
                 patterns = unique([basename(f)[16:-3] for f in files])
                 # e.g. 'density', 'neutral', 'height'
@@ -367,7 +366,7 @@ def MODEL():
                 # establish time attributes, using 3D time as default
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+'*'+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+'*'+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
@@ -562,7 +561,7 @@ def MODEL():
                 if p == 'density':
                     setattr(self, '_ilev1',
                             array(cdf_data.variables['plev']))
-                    if isfile(file_dir+'CTIPe_km.nc'):  # km_ilev1 from file
+                    if RU._isfile(file_dir+'CTIPe_km.nc'):  # km_ilev1 from file
                         km_data = Dataset(file_dir+'CTIPe_km.nc')
                         setattr(self, '_km_ilev1',
                                 array(km_data.variables['km_ilev1']))
@@ -572,7 +571,7 @@ def MODEL():
                 elif p == 'neutral':
                     setattr(self, '_ilev',
                             array(cdf_data.variables['plev']))
-                    if isfile(file_dir+'CTIPe_km.nc'):  # km_ilev from file
+                    if RU._isfile(file_dir+'CTIPe_km.nc'):  # km_ilev from file
                         km_data = Dataset(file_dir+'CTIPe_km.nc')
                         setattr(self, '_km_ilev',
                                 array(km_data.variables['km_ilev']))
