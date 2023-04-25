@@ -16,7 +16,6 @@ model_varnames = {'PHI': ['Phi', 'Electric potential', 0, 'SM', 'sph',
 def MODEL():
 
     from kamodo import Kamodo
-    from netCDF4 import Dataset
     from os.path import basename
     from numpy import array
     from time import perf_counter
@@ -95,7 +94,7 @@ def MODEL():
                 if len(txt_files) > 0:
                     self.filename = ''.join([f+',' for f in txt_files])[:-1]
                 else:
-                    cdf_data = Dataset(nc_files[0])
+                    cdf_data = RU.Dataset(nc_files[0], filetype='netCDF3')
                     txt_files = cdf_data.file.split(',')
                     cdf_data.close()
                 p = basename(nc_files[0]).split('.')[0]  # only one nc file
@@ -112,7 +111,7 @@ def MODEL():
                 self.times[p] = {'start': [], 'end': [], 'all': []}
 
                 # get times from single nc file
-                cdf_data = Dataset(nc_files[0])
+                cdf_data = RU.Dataset(nc_files[0], filetype='netCDF3')
                 tmp = array(cdf_data.variables['time'])  # hrs since midnit
                 self.times[p]['start'] = array([tmp[0]])
                 self.times[p]['end'] = array([tmp[-1]])
@@ -144,7 +143,7 @@ def MODEL():
 
             # collect variable list (in attributes of datasets)
             p = list(self.pattern_files.keys())[0]  # only one pattern
-            cdf_data = Dataset(self.pattern_files[p][0])
+            cdf_data = RU.Dataset(self.pattern_files[p][0], filetype='netCDF3')
 
             # get coordinates from first file
             self._lat = array(cdf_data.variables['lat'])
@@ -220,7 +219,8 @@ def MODEL():
                     value[0] == varname][0]  # variable name in file
 
             def func(i, fi):  # i = file#, fi = slice#
-                cdf_data = Dataset(self.pattern_files[key][i])
+                cdf_data = RU.Dataset(self.pattern_files[key][i],
+                                      filetype='netCDF3')
                 data = array(cdf_data.variables[gvar][fi])
                 cdf_data.close()
                 return data

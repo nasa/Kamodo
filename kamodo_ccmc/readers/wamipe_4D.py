@@ -108,7 +108,6 @@ def MODEL():
     from time import perf_counter
     from os.path import basename
     from numpy import array, unique, NaN, append, linspace, where, squeeze
-    from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -288,7 +287,8 @@ def MODEL():
             self.err_list, self.var_dict = [], {}
             for p in self.pattern_files.keys():
                 # check var_list for variables not possible in this file set
-                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                cdf_data = RU.Dataset(self.pattern_files[p][0],
+                                      filetype='netCDF3')
                 if len(variables_requested) > 0 and \
                         variables_requested != 'all':
                     gvar_list = [key for key, value in model_varnames.items()
@@ -363,7 +363,7 @@ def MODEL():
                     if 'height' in cdf_data.variables.keys():
                         h0_file = self.pattern_files[p][0][:-18] + 'h0.nc'
                         if RU._isfile(h0_file):
-                            cdf_h = Dataset(h0_file)
+                            cdf_h = RU.Dataset(h0_file, filetype='netCDF3')
                             self._km_ilev = array(cdf_h.variables['km_ilev'])
                             self._km_ilev_max = cdf_h.km_max
                             self._km_ilev_min = cdf_h.km_min
@@ -455,7 +455,7 @@ def MODEL():
                 '''i is the time slice. WAM-IPE has one time slice per file.'''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
                 data = array(cdf_data.variables[gvar])
                 # data wrangling
                 if hasattr(cdf_data.variables[gvar], '_FillValue'):

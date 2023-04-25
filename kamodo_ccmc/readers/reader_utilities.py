@@ -14,10 +14,14 @@ from os.path import basename, isfile
 from glob import glob as glob_leg
 import s3fs
 from h5netcdf.legacyapi import Dataset as Dataset_leg
+from netCDF4 import Dataset as nc3_Dataset  # need for netCDF3 files
 import h5netcdf
+import re
+import io
+import boto3
 
 
-def Dataset(filename, access='r'):
+def Dataset(filename, access='r', filetype='netCDF4'):
     '''A generalized method to open netCDF files on either s3 buckets or on
     efs/local storage. Works for reading, not tested for writing files.
     Inputs:
@@ -25,10 +29,20 @@ def Dataset(filename, access='r'):
         - access: 'r' for read, 'w' for write
     Output: a Dataset object that behaves similarly to netCDF4's Dataset object
     '''
-    if filename[:5] == 's3://':
+    if filename[:5] == 's3://' and filetype == 'netCDF4':
         s3 = s3fs.S3FileSystem(anon=False)
         fgrab = s3.open(filename, access+'b')
         return Dataset_leg(fgrab)
+    elif filename[:5] == 's3://' and filetype == 'netCDF3':  # Sandy Antunes
+        tname = re.sub(r's3://', '', filename)
+        mybucket, mykey = tname.split('/', 1)
+        s3c = boto3.client('s3')
+        obj = s3c.get_object(Bucket=mybucket, Key=mykey)
+        rawdata = obj['Body'].read()
+        bdata = io.BytesIO(rawdata)
+        return nc3_Dataset("in-mem-file", mode=access, memory=bdata.read())
+    elif filetype == 'netCDF3':
+        return nc3_Dataset(filename, access)
     else:
         return Dataset_leg(filename, access)
 

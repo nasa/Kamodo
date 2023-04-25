@@ -411,7 +411,6 @@ def MODEL():
     from kamodo import Kamodo
     from os.path import getsize
     import psutil
-    from netCDF4 import Dataset
     from numpy import array, NaN, where, unique, append, linspace
     from numpy import transpose, median
     from time import perf_counter
@@ -524,7 +523,8 @@ def MODEL():
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        cdf_data = Dataset(pattern_files[f])
+                        cdf_data = RU.Dataset(pattern_files[f],
+                                              filetype='netCDF3')
                         # hours since midnight first file
                         tmp = array(cdf_data.variables['time'])
                         pmt = array(cdf_data.variables['datesec'])
@@ -619,7 +619,8 @@ def MODEL():
             self.variables = {}
             for key in self.pattern_files.keys():
                 # collect dimensions from first file
-                cdf_datah = Dataset(self.pattern_files[key][0])
+                cdf_datah = RU.Dataset(self.pattern_files[key][0],
+                                       filetype='netCDF3')
                 for dim in cdf_datah.dimensions.keys():
                     # deal with dim renaming and skipping
                     if dim == 'ilev':
@@ -654,7 +655,7 @@ def MODEL():
                 if 'h0' in key:
                     km_max, km_min, km = [], [], []
                     for f in self.pattern_files[key]:
-                        cdf_datah0 = Dataset(f)
+                        cdf_datah0 = RU.Dataset(f, filetype='netCDF3')
                         km.append(array(cdf_datah0.variables['km_ilev']))
                         km_max.append(cdf_datah0.km_ilev_max)
                         km_min.append(cdf_datah0.km_ilev_min)
@@ -734,7 +735,8 @@ def MODEL():
                 - hx_files: a list of files for a given day.
             '''
             if h_type in file_dict.keys():
-                cdf_datah = Dataset(file_dict[h_type][0])
+                cdf_datah = RU.Dataset(file_dict[h_type][0],
+                                       filetype='netCDF3')
                 cdf_datah_keys = list(cdf_datah.variables.keys())
                 cdf_datah.close()
                 gvar_listh = self.variable_checks(variables_requested,
@@ -754,7 +756,8 @@ def MODEL():
                     given file type.
             '''
             if h_type in file_dict.keys():
-                cdf_datah = Dataset(file_dict[h_type][0])
+                cdf_datah = RU.Dataset(file_dict[h_type][0],
+                                       filetype='netCDF3')
                 gvar_listh = [key for key, value in model_varnames.items()
                               if key in cdf_datah.variables.keys() and key in
                               g_varkeys_h]
@@ -781,7 +784,7 @@ def MODEL():
             if len(coord_list) == 1:  # convert 1D to array and functionalize
                 data = []
                 for f in self.pattern_files[key]:
-                    cdf_data = Dataset(f)
+                    cdf_data = RU.Dataset(f, filetype='netCDF3')
                     tmp = array(cdf_data.variables[gvar])
                     cdf_data.close()
                     data.extend(tmp)
@@ -811,7 +814,8 @@ def MODEL():
                 # save memory by only retrieving time slices from the files
                 # determine the operation to occur on each time slice
                 def func(i, fi):  # i = file#, fi = slice#
-                    cdf_data = Dataset(self.pattern_files[key][i])
+                    cdf_data = RU.Dataset(self.pattern_files[key][i],
+                                          filetype='netCDF3')
                     tmp = array(cdf_data.variables[gvar][fi])
                     cdf_data.close()
                     # perform data wrangling on time slice
@@ -829,7 +833,8 @@ def MODEL():
                 # determine the operation to occur on each time chunk
                 def func(f):  # file_idx
                     # convert slice number s to index in file
-                    cdf_data = Dataset(self.pattern_files[key][f])
+                    cdf_data = RU.Dataset(self.pattern_files[key][f],
+                                          filetype='netCDF3')
                     tmp = array(cdf_data.variables[gvar])
                     cdf_data.close()
                     # perform data wrangling on time chunk
