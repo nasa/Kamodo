@@ -8,6 +8,7 @@ import numpy as np
 from kamodo import Kamodo, kamodofy
 from scipy.interpolate import interp1d
 from datetime import datetime, timezone
+from kamodo_ccmc.readers.reader_utilities import _open
 
 
 @np.vectorize
@@ -93,7 +94,7 @@ def Functionalize_SFResults(model, results, kamodo_object=None):
 def SFcdf_reader(filename):
     '''Loads the data from a cdf file that was written by the SFdata_tocdf
     routine below into a nested dictionary.'''
-    from netCDF4 import Dataset
+    from kamodo_ccmc.readers.reader_utilities import Dataset
 
     cdf_data = Dataset(filename, 'r')
     cdf_dict = {key: {'units': cdf_data.variables[key].units,
@@ -111,10 +112,10 @@ def SFdata_tocdf(filename, model_filename, model_name, results_dict,
                  results_units, coord_type, coord_grid):
     '''Write satellite flythrough time series data to a netCDF4 file.'''
 
-    from netCDF4 import Dataset
+    from netCDF4 import Dataset as Dataset4
 
     # start new output object
-    data_out = Dataset(filename, 'w', format='NETCDF4')
+    data_out = Dataset4(filename, 'w', format='NETCDF4')
     print(model_filename)
     data_out.modelfile = model_filename
     data_out.model = model_name
@@ -146,7 +147,7 @@ def SFcsv_reader(filename, delimiter=','):
 
     # open file
     from csv import reader
-    read_obj = open(filename, 'r')
+    read_obj = _open(filename, 'r')
     csv_reader = reader(read_obj, delimiter=delimiter)
 
     # sort out header
@@ -201,7 +202,7 @@ def SFdata_tocsv(filename, model_filename, model_name, results_dict,
             time_key = key
             break
 
-    data_out = open(filename, 'w')
+    data_out = open(filename, 'w')  # not using s3 capable version
     if not isinstance(model_filename, list):
         data_out.write(f'#Model files used:, {model_filename}')
     else:
@@ -236,7 +237,7 @@ def SFdata_toascii(filename, model_filename, model_name, results_dict,
             time_key = key
             break
 
-    data_out = open(filename, 'w')
+    data_out = open(filename, 'w')  # not using s3 capable version
     if not isinstance(model_filename, list):
         data_out.write(f'#Model files used:\t {model_filename}')
     else:
