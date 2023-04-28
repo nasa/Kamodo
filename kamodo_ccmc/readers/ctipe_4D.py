@@ -270,11 +270,9 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ',
 def MODEL():
     from numpy import array, NaN, unique, append, where, transpose
     from time import perf_counter
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from datetime import datetime, timezone
     from kamodo import Kamodo
-    from netCDF4 import Dataset
     import kamodo_ccmc.readers.reader_utilities as RU
 
     # main class
@@ -350,9 +348,9 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
-                all_files = sorted(glob(file_dir+'*-plot-*.nc'))
+                all_files = sorted(RU.glob(file_dir+'*-plot-*.nc'))
                 files = [f for f in all_files if 'plasma' not in f]
                 patterns = unique([basename(f)[16:-3] for f in files])
                 # e.g. 'density', 'neutral', 'height'
@@ -367,13 +365,14 @@ def MODEL():
                 # establish time attributes, using 3D time as default
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+'*'+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+'*'+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        cdf_data = Dataset(pattern_files[f])
+                        cdf_data = RU.Dataset(pattern_files[f],
+                                              filetype='netCDF3')
                         tmp = array(cdf_data.variables['time'])  # utc tstamps
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
@@ -450,7 +449,8 @@ def MODEL():
             self.err_list, self.var_dict = [], {}
             for p in self.pattern_files.keys():
                 # check var_list for variables not possible in this file set
-                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                cdf_data = RU.Dataset(self.pattern_files[p][0],
+                                      filetype='netCDF3')
                 if len(variables_requested) > 0 and\
                         variables_requested != 'all':
                     gvar_list = [key for key, value in model_varnames.items()
@@ -550,7 +550,8 @@ def MODEL():
             # get coordinates from first file of each type
             self.variables = {}
             for p in self.pattern_files.keys():
-                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                cdf_data = RU.Dataset(self.pattern_files[p][0],
+                                      filetype='netCDF3')
                 lon = array(cdf_data.variables['lon'])
                 lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
                 lon_ge180 = list(where(lon >= 180)[0])
@@ -562,8 +563,9 @@ def MODEL():
                 if p == 'density':
                     setattr(self, '_ilev1',
                             array(cdf_data.variables['plev']))
-                    if isfile(file_dir+'CTIPe_km.nc'):  # km_ilev1 from file
-                        km_data = Dataset(file_dir+'CTIPe_km.nc')
+                    if RU._isfile(file_dir+'CTIPe_km.nc'):  # km_ilev1 from file
+                        km_data = RU.Dataset(file_dir+'CTIPe_km.nc',
+                                             filetype='netCDF3')
                         setattr(self, '_km_ilev1',
                                 array(km_data.variables['km_ilev1']))
                         setattr(self, '_km_ilev1_max', km_data.km_ilev1_max)
@@ -572,8 +574,9 @@ def MODEL():
                 elif p == 'neutral':
                     setattr(self, '_ilev',
                             array(cdf_data.variables['plev']))
-                    if isfile(file_dir+'CTIPe_km.nc'):  # km_ilev from file
-                        km_data = Dataset(file_dir+'CTIPe_km.nc')
+                    if RU._isfile(file_dir+'CTIPe_km.nc'):  # km_ilev from file
+                        km_data = RU.Dataset(file_dir+'CTIPe_km.nc',
+                                             filetype='netCDF3')
                         setattr(self, '_km_ilev',
                                 array(km_data.variables['km_ilev']))
                         setattr(self, '_km_ilev_max', km_data.km_ilev_max)
@@ -695,7 +698,7 @@ def MODEL():
                 '''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
                 data = array(cdf_data.variables[gvar])
                 if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
                     fill_value = cdf_data.variables[gvar][0].fill_value
@@ -705,7 +708,7 @@ def MODEL():
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
                     next_file = self.pattern_files[key][i+1]
-                    cdf_data = Dataset(next_file)
+                    cdf_data = RU.Dataset(next_file, filetype='netCDF3')
                     data_slice = array(cdf_data.variables[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)

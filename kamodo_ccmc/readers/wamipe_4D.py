@@ -34,6 +34,8 @@ model_varnames = {'den400': ['rho_400km', 'Density at 400 km.',
                   'N2_Density_2': ['N_N2', 'Molecular nitrogen number density',
                                    0, 'GDZ', 'sph', ['time', 'lon', 'lat',
                                                      'height'], '1/m**3'],
+                  'den': ['rho', 'neutral density', 0, 'GDZ', 'sph',
+                          ['time', 'lon', 'lat', 'height'], 'km/m**3'],
                   'u_neutral': ['v_neast_ilev', 'Eastward component of the ' +
                                 'neutral wind velocity', 0, 'GDZ', 'sph',
                                 ['time', 'lon', 'lat', 'ilev'], 'm/s'],
@@ -104,11 +106,8 @@ model_varnames = {'den400': ['rho_400km', 'Density at 400 km.',
 
 def MODEL():
     from time import perf_counter
-    from glob import glob
-    from os.path import basename, isfile
-    from numpy import array, unique, NaN, append, linspace, where, median
-    from numpy import zeros
-    from netCDF4 import Dataset
+    from os.path import basename
+    from numpy import array, unique, NaN, append, linspace, where, squeeze
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -183,25 +182,25 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
-                files = sorted(glob(file_dir+'*.nc'))
+                files = sorted(RU.glob(file_dir+'*.nc'))
                 if len(files) == 0:  # find tar files and untar them
                     print('Decompressing files...this may take a moment.')
                     import tarfile
-                    tar_files = glob(file_dir+'*.tar')
+                    tar_files = RU.glob(file_dir+'*.tar')
                     for file in tar_files:
                         tar = tarfile.open(file)
                         tar.extractall(file_dir)
                         tar.close()
-                    files = sorted(glob(file_dir+'*.nc'))
+                    files = sorted(RU.glob(file_dir+'*.nc'))
 
                 # create h0 file containing km_ilev
                 from kamodo_ccmc.readers.wamipe_tocdf import convert_all
                 tmp = convert_all(file_dir)
 
                 # continue
-                files = sorted(glob(file_dir+'*.nc'))
+                files = sorted(RU.glob(file_dir+'*.nc'))
                 h0_file = [f for f in files if 'h0' in f]
                 if len(h0_file) > 0:
                     files.remove(h0_file[0])
@@ -214,7 +213,7 @@ def MODEL():
                 # establish time attributes from filenames
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     h0_file = [f for f in pattern_files if 'h0' in f]
                     if len(h0_file) > 0:
                         pattern_files.remove(h0_file[0])  # should be only one
@@ -288,7 +287,8 @@ def MODEL():
             self.err_list, self.var_dict = [], {}
             for p in self.pattern_files.keys():
                 # check var_list for variables not possible in this file set
-                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                cdf_data = RU.Dataset(self.pattern_files[p][0],
+                                      filetype='netCDF3')
                 if len(variables_requested) > 0 and \
                         variables_requested != 'all':
                     gvar_list = [key for key, value in model_varnames.items()
@@ -339,11 +339,16 @@ def MODEL():
                 setattr(self, '_lon_idx_'+p, lon_ge180+lon_le180)
                 setattr(self, '_lat_'+p,
                         array(cdf_data.variables['lat']))
-                if 'alt' in cdf_data.variables.keys():
-                    setattr(self, '_height_'+p,
-                            array(cdf_data.variables['alt']))  # km
+                if 'alt' or 'hlevs' in cdf_data.variables.keys():
+                    # have only seen files with 'alt' OR 'hlevs', not both
+                    if 'alt' in cdf_data.variables.keys():
+                        setattr(self, '_height_'+p,
+                                array(cdf_data.variables['alt']))  # km
+                    if 'hlevs' in cdf_data.variables.keys():
+                        setattr(self, '_height_'+p,
+                                array(cdf_data.variables['hlevs']))  # km
                     setattr(self, '_heightunits_'+p, 'km')
-                # determine if pressure leve is needed (not included)
+                # determine if pressure level is needed (not included)
                 ilev_check = [True if 'ilev' in var else False for var in
                               self.varfiles[p]]
                 if sum(ilev_check) > 0:
@@ -354,11 +359,11 @@ def MODEL():
                     setattr(self, '_ilev_'+p,
                             linspace(1, grid_length, grid_length))
 
-                    # get median km grid from h0 file
+                    # get median km grid from h0 file, height only in h0 file
                     if 'height' in cdf_data.variables.keys():
                         h0_file = self.pattern_files[p][0][:-18] + 'h0.nc'
-                        if isfile(h0_file):
-                            cdf_h = Dataset(h0_file)
+                        if RU._isfile(h0_file):
+                            cdf_h = RU.Dataset(h0_file, filetype='netCDF3')
                             self._km_ilev = array(cdf_h.variables['km_ilev'])
                             self._km_ilev_max = cdf_h.km_max
                             self._km_ilev_min = cdf_h.km_min
@@ -450,7 +455,7 @@ def MODEL():
                 '''i is the time slice. WAM-IPE has one time slice per file.'''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
                 data = array(cdf_data.variables[gvar])
                 # data wrangling
                 if hasattr(cdf_data.variables[gvar], '_FillValue'):
@@ -458,6 +463,8 @@ def MODEL():
                     if fill_value in data:
                         data = where(data == fill_value, NaN, data)
                 cdf_data.close()
+                if 1 in list(data.shape):  # for den var in some gs10 files 
+                    data = squeeze(data)
                 return data.T[lon_idx]
 
             # define and register the interpolators

@@ -282,11 +282,9 @@ model_varnames = {'r_Ar': ['mmr_Ar', 'mass mixing ratio of argon/neutrals',
 
 def MODEL():
     from time import perf_counter
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, unique, NaN
     from datetime import datetime, timezone
-    from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -348,13 +346,13 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # determine if calc of 2D variables is necessary
-                total_files = sorted(glob(file_dir+'*.nc'))
+                total_files = sorted(RU.glob(file_dir+'*.nc'))
                 if sum(['2D' in file for file in total_files]) > 0:
                     flag_2D = True  # 2D files found, will not calc 2D vars
                 else:  # try bin files...
-                    bin_files = sorted(glob(file_dir+'2D*.bin'))
+                    bin_files = sorted(RU.glob(file_dir+'2D*.bin'))
                     if len(bin_files) > 0:
                         flag_2D = True
                     else:
@@ -367,7 +365,7 @@ def MODEL():
 
                 t0 = perf_counter()  # begin timer
                 # figure out types of files present (2DTEC, 3DALL, 3DLST, etc)
-                total_files = sorted(glob(file_dir+'*.nc'))
+                total_files = sorted(RU.glob(file_dir+'*.nc'))
                 patterns = sorted(unique([basename(f).split('_t')[0] for f in
                                           total_files]))
                 self.filename = ''.join([f+',' for f in total_files])[:-1]
@@ -375,15 +373,15 @@ def MODEL():
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        cdf_data = Dataset(pattern_files[f])
+                        cdf_data = RU.Dataset(pattern_files[f])
                         # hours since midnight first file
-                        tmp = array(cdf_data.variables['time'])
+                        tmp = array(cdf_data['time'])
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
@@ -393,7 +391,7 @@ def MODEL():
                     self.times[p]['all'] = array(self.times[p]['all'])
 
                 # establish date of first file
-                cdf_data = Dataset(total_files[0], 'r')
+                cdf_data = RU.Dataset(total_files[0], 'r')
                 string_date = cdf_data.filedate
                 cdf_data.close()
                 self.filedate = datetime.strptime(
@@ -434,28 +432,28 @@ def MODEL():
                 pattern_files = self.pattern_files[p]
 
                 # get coordinates from first file
-                cdf_data = Dataset(pattern_files[0], 'r')
-                setattr(self, '_lat_'+p, array(cdf_data.variables['lat']))
-                setattr(self, '_lon_'+p, array(cdf_data.variables['lon']))
+                cdf_data = RU.Dataset(pattern_files[0], 'r')
+                setattr(self, '_lat_'+p, array(cdf_data['lat']))
+                setattr(self, '_lon_'+p, array(cdf_data['lon']))
                 if '2D' not in p:
                     setattr(self, '_height_'+p,
-                            array(cdf_data.variables['height']))
+                            array(cdf_data['height']))
 
                 # check var_list for variables not possible in this file set
                 if len(variables_requested) > 0 and\
                         variables_requested != 'all':
                     gvar_list = [key for key in model_varnames.keys()
-                                 if key in cdf_data.variables.keys() and
+                                 if key in cdf_data.keys() and
                                  model_varnames[key][0] in variables_requested]
                     if len(gvar_list) != len(variables_requested):
                         err_list = [value[0] for key, value in
                                     model_varnames.items()
-                                    if key not in cdf_data.variables.keys() and
+                                    if key not in cdf_data.keys() and
                                     value[0] in variables_requested]
                         self.err_list.extend(err_list)  # add to master list
                 else:
                     gvar_list = [key for key in model_varnames.keys()
-                                 if key in cdf_data.variables.keys()]
+                                 if key in cdf_data.keys()]
                 # store which file these variables came from
                 self.varfiles[p] = [model_varnames[key][0] for
                                     key in gvar_list]
@@ -540,8 +538,8 @@ def MODEL():
                 '''i is the file number.'''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
-                data = array(cdf_data.variables[gvar])
+                cdf_data = RU.Dataset(file)
+                data = array(cdf_data[gvar])
                 cdf_data.close()
                 return data
 

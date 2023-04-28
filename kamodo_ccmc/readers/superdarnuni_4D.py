@@ -1,7 +1,7 @@
 '''
 Written by Rebecca Ringuette, 2021
 '''
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
@@ -27,9 +27,7 @@ model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
 def MODEL():
 
     from kamodo import Kamodo
-    from netCDF4 import Dataset
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, NaN, unique
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
@@ -102,14 +100,14 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # make sure all files are converted
                 from kamodo_ccmc.readers.superdarn_tocdf import \
                     convert_all
                 tmp = convert_all(file_dir, '*uni.txt')
 
                 # continue with converted files
-                files = sorted(glob(file_dir+'*_uni.nc'))
+                files = sorted(RU.glob(file_dir+'*_uni.nc'))
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 patterns = unique([basename(f)[:-20] for f in files])
                 self.filedate = datetime.strptime(
@@ -119,7 +117,7 @@ def MODEL():
                 # establish time attributes from filenames
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*_uni.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*_uni.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
                     if pattern_files[0][-12] == '-':
@@ -146,7 +144,7 @@ def MODEL():
                 return  # return times
             # only one pattern, so simplifying code
             p = list(self.pattern_files.keys())[0]
-            cdf_data = Dataset(self.pattern_files[p][0])
+            cdf_data = RU.Dataset(self.pattern_files[p][0])
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -164,7 +162,7 @@ def MODEL():
             if len(variables_requested) > 0 and variables_requested != 'all':
                 gvar_list = [key for key, value in model_varnames.items()
                              if value[0] in variables_requested and
-                             key in cdf_data.variables.keys()]
+                             key in cdf_data.keys()]
 
                 # check for variables requested but not available
                 if len(gvar_list) != len(variables_requested):
@@ -175,7 +173,7 @@ def MODEL():
                         print('Some requested variables are not available:',
                               err_list)
             else:  # only input variables on the avoid_list if requested
-                gvar_list = [key for key in cdf_data.variables.keys()
+                gvar_list = [key for key in cdf_data.keys()
                              if key in model_varnames.keys()]
                 # returns list of variables included in data files
                 if variables_requested == 'all':
@@ -191,8 +189,8 @@ def MODEL():
                 gvar_list}
 
             # Store coordinate data as class attributes
-            self._lon = array(cdf_data.variables['lon'])  # -180 to 180
-            self._lat = array(cdf_data.variables['lat'])
+            self._lon = array(cdf_data['lon'])  # -180 to 180
+            self._lat = array(cdf_data['lat'])
             cdf_data.close()
 
             # store a few items
@@ -237,8 +235,8 @@ def MODEL():
             if len(coord_list) == 1:  # read in entire time series
                 data = []
                 for f in self.pattern_files[key]:
-                    cdf_data = Dataset(f)
-                    tmp = array(cdf_data.variables[gvar])[0]
+                    cdf_data = RU.Dataset(f)
+                    tmp = array(cdf_data[gvar])[0]
                     cdf_data.close()
                     data.append(tmp)  # one value per file
                 self.variables[varname]['data'] = array(data)
@@ -256,9 +254,9 @@ def MODEL():
                     '''i is the file/time number.'''
                     # get data from file
                     file = self.pattern_files[key][i]
-                    cdf_data = Dataset(file)
-                    data = array(cdf_data.variables[gvar])
-                    lat = array(cdf_data.variables['lat'])
+                    cdf_data = RU.Dataset(file)
+                    data = array(cdf_data[gvar])
+                    lat = array(cdf_data['lat'])
                     cdf_data.close()
                     # data wrangling all done in the file conversion step
                     coord_list = [coord_dict['lon']['data'], lat]

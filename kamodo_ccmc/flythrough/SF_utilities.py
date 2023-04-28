@@ -198,15 +198,10 @@ def File_UTCTimes(model, file_dir):
     preprocessed files if needed.'''
 
     # get times dictionary and datetime filedate object from files
-    list_file = file_dir + model +'_list.txt'
-    time_file = file_dir + model +'_times.txt'
-    if isfile(list_file):
-        times, tmp, filedate, tmp = read_timelist(time_file, list_file)
-    else:
-        reader = MW.Model_Reader(model)
-        ko = reader(file_dir, filetime=True)  # creates any preprocessed files
-        times, filedate = ko.times, ko.filedate
-        del ko
+    reader = MW.Model_Reader(model)
+    ko = reader(file_dir, filetime=True)  # creates any preprocessed files
+    times, filedate = ko.times, ko.filedate
+    del ko
         
     # calculate minimum start time
     start, end = [], []

@@ -48,9 +48,8 @@ def MODEL():
 
     from kamodo import Kamodo
     import spacepy.pybats as sp
-    from glob import glob
     import time
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, NaN, unique, zeros, ravel, ndarray
     from numpy import min, max, floor, log
     from time import perf_counter
@@ -120,13 +119,14 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
-                files = sorted(glob(file_dir+'*.out')) +\
-                    sorted(glob(file_dir+'*.outs'))  # .out or .outs
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
+                files = sorted(RU.glob(file_dir+'*.out')) +\
+                    sorted(RU.glob(file_dir+'*.outs'))  # .out or .outs
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 patterns = unique([basename(f)[:10] for f in files])
                 # get time grid from files
-                dt = sp.IdlFile(files[0]).attrs['time']
+                dt = sp.IdlFile(files[0],
+                                sort_unstructured=False).attrs['time']
                 if dt is not None:  # filedate given not always at midnight
                     self.filedate = datetime.strptime(
                         dt.isoformat()[:10], '%Y-%m-%d').replace(
@@ -137,13 +137,14 @@ def MODEL():
                 # establish time attributes from filenames
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.out')) +\
-                        sorted(glob(file_dir+p+'*.outs'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.out')) +\
+                        sorted(RU.glob(file_dir+p+'*.outs'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times, one file per time step
-                    self.times[p]['start'] = array([(sp.IdlFile(f).attrs[
+                    self.times[p]['start'] = array([(
+                        sp.IdlFile(f, sort_unstructured=False).attrs[
                         'time'].replace(tzinfo=timezone.utc) - self.filedate
                         ).total_seconds()/3600. for f in pattern_files])
                     self.times[p]['end'] = self.times[p]['start'].copy()
@@ -174,9 +175,8 @@ def MODEL():
                     return
 
             # collect variable list
-            mhd = sp.IdlFile(self.pattern_files[p][0])
-            # mhd = sp.IdlFile(self.pattern_files[p][0],
-            #                  sort_unstructured_data=False)
+            mhd = sp.IdlFile(self.pattern_files[p][0],
+                             sort_unstructured=False)  # This fails on s3
             file_variables = [key for key in mhd.keys() if key not in
                               ['grid', 'status', 'x', 'y', 'z']] + ['th']
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -397,7 +397,8 @@ def MODEL():
 
             if len(coord_list) == 1:  # read all the values in
                 self.variables[varname]['data'] = ravel([
-                    sp.IdlFile(f).meta[gvar] for f in self.pattern_files[key]])
+                    sp.IdlFile(f, sort_unstructured=False).meta[gvar]
+                    for f in self.pattern_files[key]])
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],
                     gridded_int, coord_str, interp_flag=0)
@@ -430,7 +431,7 @@ def MODEL():
                     #
                     # Once pull request is implemented in spacepy use keyword:
                     # mhd = sp.IdlFile(self.pattern_files[key][i],
-                    #                  sort_unstructured_data=False)
+                    #                  sort_unstructured=False)
                     x = array(mhd['x'])
                     y = array(mhd['y'])
                     z = array(mhd['z'])
@@ -444,7 +445,8 @@ def MODEL():
                                           self.octree[key][i]['numparents_at_AMRlevel'],
                                           self.octree[key][i]['block_at_AMRlevel'])
                 # get data from file and initialize
-                data = sp.IdlFile(self.pattern_files[key][i])[gvar]  # dmarray
+                data = sp.IdlFile(self.pattern_files[key][i],
+                                  sort_unstructured=False)[gvar]  # dmarray
                 var_data = ffi.new("float[]", list(data))
 
                 # assign custom interpolator: Lutz Rastaetter 2021

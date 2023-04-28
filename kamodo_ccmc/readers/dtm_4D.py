@@ -30,11 +30,9 @@ model_varnames = {'Temp_exo': ['T_exo', 'Exospheric temperature', 0, 'GDZ',
 
 def MODEL():
     from time import perf_counter
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, unique, NaN, append, transpose, where
     from datetime import datetime, timezone
-    from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -97,10 +95,10 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 t0 = perf_counter()  # begin timer
                 # figure out types of files present (2DTEC, 3DALL, 3DLST, etc)
-                files = sorted(glob(file_dir+'*.nc'))
+                files = sorted(RU.glob(file_dir+'*.nc'))
                 patterns = sorted(unique([basename(f)[:-11] for f in
                                           files]))  # cut off date
                 self.filename = ''.join([f+',' for f in files])[:-1]
@@ -111,13 +109,14 @@ def MODEL():
                 # establish time attributes
                 for p in patterns:  # only one pattern
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times, one day per file
                     for f in range(len(pattern_files)):
-                        cdf_data = Dataset(pattern_files[f])
+                        cdf_data = RU.Dataset(pattern_files[f],
+                                              filetype='netCDF3')
                         # minutes since 12am EACH file -> hrs since 12am 1st f
                         tmp = array(cdf_data.variables['time'])/60. + f*24.
                         self.times[p]['start'].append(tmp[0])
@@ -160,7 +159,7 @@ def MODEL():
             # there is only one pattern for DTM, so just save the one grid
             p = list(self.pattern_files.keys())[0]
             pattern_files = self.pattern_files[p]
-            cdf_data = Dataset(pattern_files[0], 'r')
+            cdf_data = RU.Dataset(pattern_files[0], filetype='netCDF3')
 
             # check var_list for variables not possible in this file set
             if len(variables_requested) > 0 and\
@@ -258,7 +257,7 @@ def MODEL():
                 '''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
                 data = array(cdf_data.variables[gvar])
                 if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
                     fill_value = cdf_data.variables[gvar][0].fill_value
@@ -268,7 +267,7 @@ def MODEL():
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
                     next_file = self.pattern_files[key][i+1]
-                    cdf_data = Dataset(next_file)
+                    cdf_data = RU.Dataset(next_file, filetype='netCDF3')
                     data_slice = array(cdf_data.variables[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)

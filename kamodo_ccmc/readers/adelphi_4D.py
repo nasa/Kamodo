@@ -43,9 +43,7 @@ model_varnames = {'PED': ['Sigma_P', 'Pedersen conductance ', 0, 'SM', 'sph',
 def MODEL():
 
     from kamodo import Kamodo
-    from netCDF4 import Dataset
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, unique, append
     from time import perf_counter
     from datetime import datetime, timezone
@@ -115,23 +113,26 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # check for nc files
-                nc_files = sorted(glob(file_dir+'*.nc'))
+                nc_files = sorted(RU.glob(file_dir+'*.nc'))
                 if len(nc_files) == 0:  # perform file conversion if none
                     from kamodo_ccmc.readers.adelphi_tocdf import convert_all
                     self.conversion_test = convert_all(file_dir)
-                    nc_files = sorted(glob(file_dir+'*.nc'))
+                    nc_files = sorted(RU.glob(file_dir+'*.nc'))
                 # check for new files needing conversion by comparing dates
                 nc_dates = unique([basename(f).split('.')[0][-8:] for f in
                                    nc_files])
-                txt_files = sorted(glob(file_dir+'*.txt'))
-                txt_dates = unique([basename(f).split('.')[0][-8:] for f in
-                                    txt_files])
-                if not all(txt_dates == nc_dates):
-                    from kamodo_ccmc.readers.adelphi_tocdf import convert_all
-                    self.conversion_test = convert_all(file_dir)
-                    nc_files = sorted(glob(file_dir+'*.nc'))
+                txt_files = sorted(RU.glob(file_dir+'*.txt'))
+                # only test for conversion if original files are present
+                if len(txt_files) > 0:
+                    txt_dates = unique([basename(f).split('.')[0][-8:] for f in
+                                            txt_files])
+                    if not all(txt_dates == nc_dates):
+                        from kamodo_ccmc.readers.adelphi_tocdf import \
+                            convert_all
+                        self.conversion_test = convert_all(file_dir)
+                        nc_files = sorted(RU.glob(file_dir+'*.nc'))
                 self.filename = ''.join([f+',' for f in nc_files])[:-1]
 
                 # prepare time metadata
@@ -152,8 +153,8 @@ def MODEL():
 
                 # loop through files to get times
                 for i, f in enumerate(nc_files):
-                    cdf_data = Dataset(f)
-                    tmp = array(cdf_data.variables['time'])  # hrs since midnit
+                    cdf_data = RU.Dataset(f)
+                    tmp = array(cdf_data['time'])  # hrs since midnit
                     print(i, f, tmp[0], tmp[-1], len(tmp))
                     self.times[p]['start'].append(tmp[0] + 24.*i)
                     self.times[p]['end'].append(tmp[-1] + 24.*i)
@@ -189,29 +190,29 @@ def MODEL():
 
             # collect variable list (in attributes of datasets)
             p = list(self.pattern_files.keys())[0]  # only one pattern
-            cdf_data = Dataset(self.pattern_files[p][0])
+            cdf_data = RU.Dataset(self.pattern_files[p][0])
 
             # get coordinates from first file
-            self._lat = array(cdf_data.variables['lat'])
-            self._lon = array(cdf_data.variables['lon'])
+            self._lat = array(cdf_data['lat'])
+            self._lon = array(cdf_data['lon'])
 
             # check var_list for variables not possible in this file set
             if len(variables_requested) > 0 and\
                     variables_requested != 'all':
                 gvar_list = [key for key in model_varnames.keys()
-                             if key in cdf_data.variables.keys() and
+                             if key in cdf_data.keys() and
                              model_varnames[key][0] in variables_requested]
                 if len(gvar_list) != len(variables_requested):
                     err_list = [value[0] for key, value in
                                 model_varnames.items()
-                                if key not in cdf_data.variables.keys() and
+                                if key not in cdf_data.keys() and
                                 value[0] in variables_requested]
                     if len(err_list) > 0:
                         print('Some requested variables are not available: ',
                               err_list)
             else:
                 gvar_list = [key for key in model_varnames.keys()
-                             if key in cdf_data.variables.keys()]
+                             if key in cdf_data.keys()]
             # store which file these variables came from
             self.varfiles = [model_varnames[key][0] for key in gvar_list]
             self.gvarfiles = gvar_list
@@ -271,14 +272,14 @@ def MODEL():
                 '''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
-                data = array(cdf_data.variables[gvar])
+                cdf_data = RU.Dataset(file)
+                data = array(cdf_data[gvar])
                 cdf_data.close()
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
                     next_file = self.pattern_files[key][i+1]
-                    cdf_data = Dataset(next_file)
-                    data_slice = array(cdf_data.variables[gvar][0])
+                    cdf_data = RU.Dataset(next_file)
+                    data_slice = array(cdf_data[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
                 # data wrangling done in file converter

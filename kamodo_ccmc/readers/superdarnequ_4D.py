@@ -27,9 +27,7 @@ model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
 def MODEL():
 
     from kamodo import Kamodo
-    from netCDF4 import Dataset
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, NaN, unique, zeros, linspace
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
@@ -106,14 +104,14 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # make sure all files are converted
                 from kamodo_ccmc.readers.superdarn_tocdf import \
                     convert_all
                 tmp = convert_all(file_dir, '*equ.txt')
 
                 # continue with converted files
-                files = sorted(glob(file_dir+'*_equ.nc'))
+                files = sorted(RU.glob(file_dir+'*_equ.nc'))
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 patterns = unique([basename(f)[:-20] for f in files])
                 self.filedate = datetime.strptime(
@@ -123,7 +121,7 @@ def MODEL():
                 # establish time attributes from filenames
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*_equ.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*_equ.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
                     if pattern_files[0][-12] == '-':
@@ -150,7 +148,7 @@ def MODEL():
                 return  # return times as is to prevent infinite recursion
             # only one pattern, so simplifying code
             p = list(self.pattern_files.keys())[0]
-            cdf_data = Dataset(self.pattern_files[p][0])
+            cdf_data = RU.Dataset(self.pattern_files[p][0])
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -166,7 +164,7 @@ def MODEL():
 
             # collect variable list
             sample_groupname = list(cdf_data.groups.keys())[0]
-            file_variables = list(cdf_data.variables.keys()) +\
+            file_variables = list(cdf_data.keys()) +\
                 list(cdf_data.groups[sample_groupname].variables.keys())
             if len(variables_requested) > 0 and variables_requested != 'all':
                 gvar_list = [key for key, value in model_varnames.items()
@@ -193,7 +191,7 @@ def MODEL():
                     return
 
             # retrieve latitude grid
-            self._lat = array(cdf_data.variables['lat'])
+            self._lat = array(cdf_data['lat'])
 
             # store kay for each variable desired
             self.variables = {model_varnames[var][0]: {
@@ -250,8 +248,8 @@ def MODEL():
             if len(coord_list) == 1:  # read in entire time series
                 data = []
                 for f in self.pattern_files[key]:
-                    cdf_data = Dataset(f)
-                    tmp = array(cdf_data.variables[gvar])
+                    cdf_data = RU.Dataset(f)
+                    tmp = array(cdf_data[gvar])
                     cdf_data.close()
                     data.extend(tmp)
                 self.variables[varname]['data'] = array(data)
@@ -274,8 +272,8 @@ def MODEL():
 
             def func(i):  # i is the file/time number
                 # get data from file(s)
-                cdf_data = Dataset(self.pattern_files[key][i])
-                lat = array(cdf_data.variables['lat'])
+                cdf_data = RU.Dataset(self.pattern_files[key][i])
+                lat = array(cdf_data['lat'])
                 lat_keys = [str(lat_val).replace('.', '_').replace('-', 'n')
                             if lat_val < 0 else 'p'+str(lat_val).replace(
                                     '.', '_') for lat_val in lat]

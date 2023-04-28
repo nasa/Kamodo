@@ -72,9 +72,7 @@ left in files, not in kamodo object
 
 def MODEL():
     from numpy import array, unique
-    from glob import glob
     from time import perf_counter
-    from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -137,10 +135,10 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # find unconverted files and convert them
-                nc_files = sorted(glob(file_dir+'*.nc'))
-                tec_files = sorted(glob(file_dir+'*.tec'))
+                nc_files = sorted(RU.glob(file_dir+'*.nc'))
+                tec_files = sorted(RU.glob(file_dir+'*.tec'))
                 if len(nc_files) != len(tec_files) and len(tec_files) > 0:
                     from kamodo_ccmc.readers.swmfie_tocdf import \
                         convert_all
@@ -149,7 +147,7 @@ def MODEL():
                     print('All files already converted.')
 
                 # continue
-                files = sorted(glob(file_dir+'*.nc'))
+                files = sorted(RU.glob(file_dir+'*.nc'))
                 patterns = unique([basename(f)[:-22] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(
@@ -159,7 +157,7 @@ def MODEL():
                 # establish time attributes from filenames
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
@@ -185,7 +183,7 @@ def MODEL():
                 return  # return times as is to prevent infinite recursion
             # only one pattern, so simplifying code
             p = list(self.pattern_files.keys())[0]
-            cdf_data = Dataset(self.pattern_files[p][0])
+            cdf_data = RU.Dataset(self.pattern_files[p][0])
 
             # perform initial check on variables_requested list
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -277,7 +275,7 @@ def MODEL():
                 '''i is the file number.'''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
+                cdf_data = RU.Dataset(file)
                 data = array(cdf_data.variables[gvar])
                 cdf_data.close()
                 # data wrangling all done in the file conversion step

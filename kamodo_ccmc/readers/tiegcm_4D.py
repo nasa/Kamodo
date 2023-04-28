@@ -281,12 +281,10 @@ def year_mtime_tohrs(year, day, hour, minute, filedate):
 
 def MODEL():
     from time import perf_counter
-    from os.path import basename, isfile
-    from glob import glob
+    from os.path import basename
     from numpy import zeros, transpose, array, append, insert, where, unique
     from numpy import NaN, mean, broadcast_to, cos, sin, sum, squeeze
     from numpy import pi as nppi
-    from netCDF4 import Dataset
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
@@ -378,9 +376,9 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames, all one pattern, so doesn't matter
-                raw_files = sorted(glob(file_dir+'*.nc'))
+                raw_files = sorted(RU.glob(file_dir+'*.nc'))
                 # ignore TIEGCM_km.nc, pxxx.nc, and runname_tie_ files
                 # This will not work if TIEGCM is in the runname
                 files = [f for f in raw_files if self.modelname not in
@@ -392,21 +390,19 @@ def MODEL():
                 else:  # e.g. the high altitude outputs
                     patterns = unique([basename(f)[:-22] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
-                print(files)
-                print(patterns)
 
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        cdf_data = Dataset(pattern_files[f])
-                        year = array(cdf_data.variables['year'])
-                        mtime = array(cdf_data.variables['mtime'])
+                        cdf_data = RU.Dataset(pattern_files[f])
+                        year = array(cdf_data['year'])
+                        mtime = array(cdf_data['mtime'])
                         day, hour, minute = mtime.T
                         # datetime object for file date at midnight UTC
                         if f == 0 and p == patterns[0]:
@@ -470,7 +466,7 @@ def MODEL():
             # remove variables requested that are not in the file
             p = list(self.pattern_files.keys())[0]
             pattern_files = self.pattern_files[p]
-            cdf_data = Dataset(pattern_files[0])
+            cdf_data = RU.Dataset(pattern_files[0])
             if len(variables_requested) > 0 and variables_requested != 'all':
                 # add ilev version of variables to the list, adding H_ilev(1)
                 add_ilev = [var+'_ilev' for var in variables_requested if var
@@ -486,14 +482,14 @@ def MODEL():
                              in self.ilev_map.keys()]  # remove replaced items
                 gvar_list = [key for key, value in model_varnames.items()
                              if value[0] in short_var and key in
-                             cdf_data.variables.keys()]  # file variable names
+                             cdf_data.keys()]  # file variable names
 
                 # check for variables requested but not available
                 if len(gvar_list) != len(short_var):
                     err_list = [value[0] for key, value in
                                 model_varnames.items() if value[0] in
                                 short_var and key not in
-                                cdf_data.variables.keys()]
+                                cdf_data.keys()]
                     if len(err_list) > 0:
                         print('Some requested variables are not available: ',
                               err_list)
@@ -551,16 +547,16 @@ def MODEL():
                 print('Files:', self.filename)
 
             # store coordinates
-            lat = array(cdf_data.variables['lat'])  # NOT FULL RANGE IN LAT
+            lat = array(cdf_data['lat'])  # NOT FULL RANGE IN LAT
             lat = insert(lat, 0, -90)  # insert a grid point before -87.5
             self._lat = append(lat, 90.)   # and at the end (after 87.5)
-            lon = array(cdf_data.variables['lon'])  # NOT WRAPPED IN LONGITUDE
+            lon = array(cdf_data['lon'])  # NOT WRAPPED IN LONGITUDE
             self._lon = append(lon, 180.)  # add 180. to end of array
-            self._ilev = array(cdf_data.variables['lev'])
-            self._ilev1 = array(cdf_data.variables['ilev'])
-            self._milev = array(cdf_data.variables['imlev'])
-            self._mlat = array(cdf_data.variables['mlat'])
-            self._mlon = array(cdf_data.variables['mlon'])  # -180 to 180
+            self._ilev = array(cdf_data['lev'])
+            self._ilev1 = array(cdf_data['ilev'])
+            self._milev = array(cdf_data['imlev'])
+            self._mlat = array(cdf_data['mlat'])
+            self._mlon = array(cdf_data['mlon'])  # -180 to 180
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
 
@@ -583,20 +579,20 @@ def MODEL():
             if 'H_ilev' in varname_list:  # height in cm
                 varname_list.remove('H_ilev')
                 varname_list = ['H_ilev'] + varname_list
-                if isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev from file
-                    km_data = Dataset(file_dir+'TIEGCM_km.nc')
+                if RU._isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev from file
+                    km_data = RU.Dataset(file_dir+'TIEGCM_km.nc')
                     if hasattr(km_data, 'km_ilev_max'):
-                        self._km_ilev = array(km_data.variables['km_ilev'])
+                        self._km_ilev = array(km_data['km_ilev'])
                         self._km_ilev_max = km_data.km_ilev_max
                         self._km_ilev_min = km_data.km_ilev_min
                     km_data.close()
             if 'H_ilev1' in varname_list:  # height in cm
                 varname_list.remove('H_ilev1')
                 varname_list = ['H_ilev1'] + varname_list
-                if isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev1 from file
-                    km_data = Dataset(file_dir+'TIEGCM_km.nc')
+                if RU._isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev1 from file
+                    km_data = RU.Dataset(file_dir+'TIEGCM_km.nc')
                     if hasattr(km_data, 'km_ilev1_max'):
-                        self._km_ilev1 = array(km_data.variables['km_ilev1'])
+                        self._km_ilev1 = array(km_data['km_ilev1'])
                         self._km_ilev1_max = km_data.km_ilev1_max
                         self._km_ilev1_min = km_data.km_ilev1_min
                     km_data.close()
@@ -743,14 +739,14 @@ def MODEL():
             def func(i):  # i is the file number
                 # get the data
                 file = self.pattern_files[p][i]
-                cdf_data = Dataset(file)
-                data = array(cdf_data.variables[gvar])
+                cdf_data = RU.Dataset(file)
+                data = array(cdf_data[gvar])
                 cdf_data.close()
                 if data.shape[0] > 1 and file != self.pattern_files[p][-1]:
                     # if not the last file, tack on first time from next
                     next_file = self.pattern_files[p][i+1]
-                    cdf_data = Dataset(next_file)
-                    data_slice = array(cdf_data.variables[gvar][0])
+                    cdf_data = RU.Dataset(next_file)
+                    data_slice = array(cdf_data[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
 

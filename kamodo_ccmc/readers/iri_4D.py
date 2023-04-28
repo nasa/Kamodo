@@ -53,9 +53,7 @@ model_varnames = {'Ne': ['N_e', 'electron number density',
 def MODEL():
 
     from kamodo import Kamodo
-    from netCDF4 import Dataset
-    from glob import glob
-    from os.path import basename, isfile
+    from os.path import basename
     from numpy import array, transpose, NaN, unique
     from numpy import where, append
     from time import perf_counter
@@ -117,22 +115,23 @@ def MODEL():
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if not isfile(list_file) or not isfile(time_file):
+            if not RU._isfile(list_file) or not RU._isfile(time_file):
                 # collect filenames
-                files = sorted(glob(file_dir+'*.nc'))
+                files = sorted(RU.glob(file_dir+'*.nc'))
                 patterns = unique([basename(f)[:-10] for f in files])  # 2D, 3D
                 self.filename = ''.join([f+',' for f in files])[:-1]
 
                 # establish time attributes
                 for p in patterns:
                     # get list of files to loop through later
-                    pattern_files = sorted(glob(file_dir+p+'*.nc'))
+                    pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        cdf_data = Dataset(pattern_files[f])
+                        cdf_data = RU.Dataset(pattern_files[f],
+                                              filetype='netCDF3')
                         tmp = array(cdf_data.variables['time'])/60. + \
                             float(f)*24.  # hrs since midnite 1st file
                         self.times[p]['start'].append(tmp[0])
@@ -174,7 +173,8 @@ def MODEL():
             self.gvarfiles, self.varfiles, self.err_list = {}, {}, []
             for p in self.pattern_files.keys():
                 # check var_list for variables not possible in this file set
-                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                cdf_data = RU.Dataset(self.pattern_files[p][0],
+                                      filetype='netCDF3')
                 if len(variables_requested) > 0 and\
                         variables_requested != 'all':
                     gvar_list = [key for key in model_varnames.keys()
@@ -215,7 +215,8 @@ def MODEL():
             self.variables = {}
             for p in self.pattern_files.keys():
                 # get coordinates from first file of each type
-                cdf_data = Dataset(self.pattern_files[p][0], 'r')
+                cdf_data = RU.Dataset(self.pattern_files[p][0],
+                                      filetype='netCDF3')
                 lon = array(cdf_data.variables['lon'])
                 lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
                 lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
@@ -286,7 +287,7 @@ def MODEL():
                 '''
                 # get data from file
                 file = self.pattern_files[key][i]
-                cdf_data = Dataset(file)
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
                 data = array(cdf_data.variables[gvar])
                 if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
                     fill_value = cdf_data.variables[gvar][0].fill_value
@@ -296,7 +297,7 @@ def MODEL():
                 # if not the last file, tack on first time from next file
                 if file != self.pattern_files[key][-1]:  # interp btwn files
                     next_file = self.pattern_files[key][i+1]
-                    cdf_data = Dataset(next_file)
+                    cdf_data = RU.Dataset(next_file, filetype='netCDF3')
                     data_slice = array(cdf_data.variables[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
