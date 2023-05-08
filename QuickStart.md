@@ -3,7 +3,7 @@ Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with
 
 In your Python environment: 
 1. If you wish to create a new conda environment, use this command (replace Kamodo_env with your own name): 
-> conda create -n Kamodo_env python=3.7  
+> conda create -n Kamodo_env python=3.10  
 > conda activate Kamodo_env  
 2. Install Kamodo from pip:
 > python -m pip install kamodo-ccmc  
