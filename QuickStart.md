@@ -10,6 +10,8 @@ In your Python environment:
 3. Or you can download Kamodo to the current directory: 
 > git clone https://github.com/nasa/Kamodo.git  
 > python -m pip install ./Kamodo  
+4. To work with Kamodo you may also need iPython and/or Jupyter notebooks.  
+> python -m pip install ipython jupyter  
 
 NOTE: Sometimes an error will occur installing the spacepy dependency if numpy is not yet installed. 
 Running 'python -m pip install numpy' then repeating the Kamodo pip install usually resolves it. 
