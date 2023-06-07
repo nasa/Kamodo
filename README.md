@@ -104,10 +104,6 @@ When publishing research which used Kamodo, please provide appropriate credit to
 - Youtube tutorial channel - https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa  
 
 ## The Kamodo team
-**Dr. Rebecca Ringuette**  
-- ORCiD: https://orcid.org/0000-0003-0875-2023  
-- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/rebecca-ringuette/
-
 **Dr. Lutz Rastaetter**  
 - ORCiD: https://orcid.org/0000-0002-7343-4147  
 - NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/lutz-rastaetter/
