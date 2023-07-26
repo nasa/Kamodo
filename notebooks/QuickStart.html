@@ -1160,65 +1160,71 @@ Licensed under the Apache License, Version 2.0.
     init_mathjax();
     </script>
     <!-- End of mathjax configuration --><div class="jupyter-wrapper">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=e75ff371" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="kamodo-quick-start">Kamodo Quick Start<a class="anchor-link" href="#kamodo-quick-start">&#182;</a></h1>
+<h1 id="Kamodo-Quick-Start">Kamodo Quick Start<a class="anchor-link" href="#Kamodo-Quick-Start">&#182;</a></h1>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=06c4ac0a" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="installation-instructions">Installation instructions<a class="anchor-link" href="#installation-instructions">&#182;</a></h2><p>Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.</p>
+<h2 id="Installation-instructions">Installation instructions<a class="anchor-link" href="#Installation-instructions">&#182;</a></h2><p>Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.</p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=3dee593e" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="conda-prompt-commands-to-create-working-environment">Conda prompt commands to create working environment<a class="anchor-link" href="#conda-prompt-commands-to-create-working-environment">&#182;</a></h3><ul>
+<h3 id="Conda-prompt-commands-to-create-working-environment">Conda prompt commands to create working environment<a class="anchor-link" href="#Conda-prompt-commands-to-create-working-environment">&#182;</a></h3><ul>
 <li>Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:</li>
 </ul>
-<blockquote><p>conda create -n Kamodo_env python=3.7</p>
+<blockquote>
+<p>conda create -n Kamodo_env python=3.7</p>
 </blockquote>
 <ul>
 <li>Add the packages needed by the CCMC readers to the desired environment (replace 'Kamodo_env' with your environment name):</li>
 </ul>
-<blockquote><p>conda install -n Kamodo_env -c conda-forge netCDF4 cdflib astropy ipython jupyter h5py sgp4</p>
+<blockquote>
+<p>conda install -n Kamodo_env -c conda-forge netCDF4 cdflib astropy ipython jupyter h5py sgp4</p>
 </blockquote>
 <ul>
-<li>Activate the desired environment. </li>
+<li>Activate the desired environment.</li>
 </ul>
-<blockquote><p>conda activate Kamodo_env</p>
+<blockquote>
+<p>conda activate Kamodo_env</p>
 </blockquote>
 <ul>
 <li>Install remaining dependencies:</li>
 </ul>
-<blockquote><p>python -m pip install --upgrade spacepy<br>
+<blockquote>
+<p>python -m pip install --upgrade spacepy<br />
 python -m pip install hapiclient</p>
 </blockquote>
 <ul>
 <li>Download CCMC Kamodo to the current directory:</li>
 </ul>
-<blockquote><p>git clone <a href="https://github.com/nasa/Kamodo.git">https://github.com/nasa/Kamodo.git</a></p>
+<blockquote>
+<p>git clone <a href="https://github.com/nasa/Kamodo.git">https://github.com/nasa/Kamodo.git</a></p>
 </blockquote>
 <ul>
 <li>Install the CCMC Kamodo package. (Check the directory structure before using this command. The ./Kamodo directory should contain the kamodo_ccmc directory.)</li>
 </ul>
-<blockquote><p>python -m pip install ./Kamodo</p>
+<blockquote>
+<p>python -m pip install ./Kamodo</p>
 </blockquote>
 <p>Note: Developers should install CCMC Kamodo with the -e option</p>
 
@@ -1226,18 +1232,18 @@ python -m pip install hapiclient</p>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=8b3693e3" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="test-install-from-an-ipython-or-notebook-session">Test install from an ipython or notebook session<a class="anchor-link" href="#test-install-from-an-ipython-or-notebook-session">&#182;</a></h3>
+<h3 id="Test-install-from-an-ipython-or-notebook-session">Test install from an ipython or notebook session<a class="anchor-link" href="#Test-install-from-an-ipython-or-notebook-session">&#182;</a></h3>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=d9672e9a" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1279,9 +1285,7 @@ MW.Model_Variables('OpenGGCM_GM')</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1316,31 +1320,31 @@ v_plasmaz : &#39;[&#39;z component of plasma velocity&#39;, 11, &#39;GSE&#39;, &
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=e789c5fe" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="other-testing">Other testing<a class="anchor-link" href="#other-testing">&#182;</a></h3><p>Additional quick tests can be performed by following the "Data Functionalization" tab in this documentation as it does not require access to a dataset to function. Kamodo does not generate model outputs.</p>
+<h3 id="Other-testing">Other testing<a class="anchor-link" href="#Other-testing">&#182;</a></h3><p>Additional quick tests can be performed by following the &quot;Data Functionalization&quot; tab in this documentation as it does not require access to a dataset to function. Kamodo does not generate model outputs.</p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=db98143e" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="plotly-interactive-plots">Plotly interactive plots<a class="anchor-link" href="#plotly-interactive-plots">&#182;</a></h2><p>The default plotting built into Kamodo uses plotly. Plotly (<a href="https://plotly.com/python/">https://plotly.com/python/</a>) is an open-source interactive plotting library supporting a wide range of plotting options. It enables web-based visualizations that can be displayed in Jupyter notebooks, as well as exported to html, png, and pdf. Below is a self contained html file to visualize model output in 3D you can interact with.</p>
+<h2 id="Plotly-interactive-plots">Plotly interactive plots<a class="anchor-link" href="#Plotly-interactive-plots">&#182;</a></h2><p>The default plotting built into Kamodo uses plotly. Plotly (<a href="https://plotly.com/python/">https://plotly.com/python/</a>) is an open-source interactive plotting library supporting a wide range of plotting options. It enables web-based visualizations that can be displayed in Jupyter notebooks, as well as exported to html, png, and pdf. Below is a self contained html file to visualize model output in 3D you can interact with.</p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=e9cbdad4" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1378,9 +1382,7 @@ IFrame(src='Files/GITM_3D_500km.html', width="100%", height="650")</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 

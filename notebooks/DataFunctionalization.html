@@ -1158,31 +1158,31 @@ Licensed under the Apache License, Version 2.0.
     init_mathjax();
     </script>
     <!-- End of mathjax configuration --><div class="jupyter-wrapper">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=28ab81b3" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="data-functionalization">Data Functionalization<a class="anchor-link" href="#data-functionalization">&#182;</a></h1><p>This notebook shows how to use the Functionalize_Dataset function to easily functionalize a given dataset, even if a custom interpolator is desired. See the first cell for details on the function execution.</p>
+<h1 id="Data-Functionalization">Data Functionalization<a class="anchor-link" href="#Data-Functionalization">&#182;</a></h1><p>This notebook shows how to use the Functionalize_Dataset function to easily functionalize a given dataset, even if a custom interpolator is desired. See the first cell for details on the function execution.</p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=9b6a4374" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="how-to-functionalize-data">How to functionalize data<a class="anchor-link" href="#how-to-functionalize-data">&#182;</a></h2><p>The example below shows the creation of the inputs, including example datasets with 7 dimensions. Any number of dimensions can be functionalized.</p>
+<h2 id="How-to-functionalize-data">How to functionalize data<a class="anchor-link" href="#How-to-functionalize-data">&#182;</a></h2><p>The example below shows the creation of the inputs, including example datasets with 7 dimensions. Any number of dimensions can be functionalized.</p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=4e733846" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1220,9 +1220,7 @@ help(Functionalize_Dataset)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1277,7 +1275,7 @@ Functionalize_Dataset(coord_dict, data_dict, kamodo_object=None, coord_str=&#39;
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=f16438bc" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1341,9 +1339,7 @@ kamodo_object</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 
@@ -1362,51 +1358,51 @@ kamodo_object</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=50185ad2" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="generating-a-generic-1d-plot">Generating a generic 1D Plot<a class="anchor-link" href="#generating-a-generic-1d-plot">&#182;</a></h2><p>Plot a 1D slice of all the variables by choosing a slice value in all but one dimension.</p>
+<h2 id="Generating-a-generic-1D-Plot">Generating a generic 1D Plot<a class="anchor-link" href="#Generating-a-generic-1D-Plot">&#182;</a></h2><p>Plot a 1D slice of all the variables by choosing a slice value in all but one dimension.</p>
 <div class="highlight"><pre><span></span><span class="n">kamodo_object</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;Test_7D&#39;</span><span class="p">,</span> <span class="s1">&#39;Good_7D&#39;</span><span class="p">,</span> <span class="n">plot_partial</span><span class="o">=</span><span class="p">{</span>
     <span class="s1">&#39;Test_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">,</span> <span class="s1">&#39;nope&#39;</span><span class="p">:</span> <span class="mf">5.</span><span class="p">},</span>
     <span class="s1">&#39;Good_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">,</span> <span class="s1">&#39;nope&#39;</span><span class="p">:</span> <span class="mf">5.</span><span class="p">}})</span>
 </pre></div>
-<p><img src="Files/DataFunctionalization_1DSlice.png" alt="Screenshot"></p>
+<p><img src="Files/DataFunctionalization_1DSlice.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=404b2263" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="generating-a-generic-2d-plot">Generating a generic 2D Plot<a class="anchor-link" href="#generating-a-generic-2d-plot">&#182;</a></h2><p>Plot a 2D slice of one variable by choosing a slice value in all but two dimensions.</p>
+<h2 id="Generating-a-generic-2D-Plot">Generating a generic 2D Plot<a class="anchor-link" href="#Generating-a-generic-2D-Plot">&#182;</a></h2><p>Plot a 2D slice of one variable by choosing a slice value in all but two dimensions.</p>
 <div class="highlight"><pre><span></span><span class="n">kamodo_object</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;Test_7D&#39;</span><span class="p">,</span> <span class="n">plot_partial</span><span class="o">=</span><span class="p">{</span>
     <span class="s1">&#39;Test_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">}})</span>
 </pre></div>
-<p><img src="Files/DataFunctionalization_2DSlice.png" alt="Screenshot"></p>
+<p><img src="Files/DataFunctionalization_2DSlice.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=37805134" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="adding-new-functionalized-datasets-to-a-kamodo-object">Adding new functionalized datasets to a kamodo object<a class="anchor-link" href="#adding-new-functionalized-datasets-to-a-kamodo-object">&#182;</a></h2>
+<h2 id="Adding-new-functionalized-datasets-to-a-kamodo-object">Adding new functionalized datasets to a kamodo object<a class="anchor-link" href="#Adding-new-functionalized-datasets-to-a-kamodo-object">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=3cf6a9c2" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1452,9 +1448,7 @@ kamodo_object</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 
@@ -1473,7 +1467,7 @@ kamodo_object</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=ffda8016" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1485,13 +1479,13 @@ variable is the same (time in this example).</p>
     <span class="s1">&#39;Test_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">,</span> <span class="s1">&#39;nope&#39;</span><span class="p">:</span> <span class="mf">5.</span><span class="p">,</span> <span class="s1">&#39;nada&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">},</span>
     <span class="s1">&#39;Good_7D&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">20.</span><span class="p">,</span> <span class="s1">&#39;radius&#39;</span><span class="p">:</span> <span class="mf">15.</span><span class="p">,</span> <span class="s1">&#39;nonsense&#39;</span><span class="p">:</span> <span class="mf">11.5</span><span class="p">,</span> <span class="s1">&#39;nope&#39;</span><span class="p">:</span> <span class="mf">5.</span><span class="p">,</span> <span class="s1">&#39;nada&#39;</span><span class="p">:</span> <span class="mf">12.</span><span class="p">}})</span>
 </pre></div>
-<p><img src="Files/DataFunctionalization_1DSliceAll.png" alt="Screenshot"></p>
+<p><img src="Files/DataFunctionalization_1DSliceAll.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=260b0bea" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1569,9 +1563,7 @@ kamodo_object</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[10]:</div>
 
@@ -1590,7 +1582,7 @@ kamodo_object</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=8786b48d" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1599,24 +1591,24 @@ kamodo_object</div>
 <p>Plot a 1D slice of all the variables by choosing a slice value in all but one dimension.</p>
 <div class="highlight"><pre><span></span><span class="n">kamodo_object</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;TestCustomB_3D&#39;</span><span class="p">,</span> <span class="n">plot_partial</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;TestCustomB_3D&#39;</span><span class="p">:{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mf">12.56</span><span class="p">}})</span>
 </pre></div>
-<p><img src="Files/DataFunctionalization_Custom2DSlice.png" alt="Screenshot"></p>
+<p><img src="Files/DataFunctionalization_Custom2DSlice.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=5b523fc1" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="metadata-functions">Metadata functions<a class="anchor-link" href="#metadata-functions">&#182;</a></h2>
+<h2 id="Metadata-functions">Metadata functions<a class="anchor-link" href="#Metadata-functions">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=7d4a2bda" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1654,9 +1646,7 @@ kamodo_object['Test_1D'].meta</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[6]:</div>
 
@@ -1679,7 +1669,7 @@ kamodo_object['Test_1D'].meta</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=9214105d" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1721,9 +1711,7 @@ kamodo_object['Test_1D'].meta</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[7]:</div>
 
@@ -1747,7 +1735,7 @@ kamodo_object['Test_1D'].meta</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=41b22fc3" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1785,9 +1773,7 @@ kamodo_object.detail()</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
 
@@ -1881,7 +1867,7 @@ kamodo_object.detail()</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=6c90b736" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1921,9 +1907,7 @@ MW.Coord_Range(kamodo_object, ['Test_7D'])</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 

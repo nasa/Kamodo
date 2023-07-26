@@ -1158,13 +1158,13 @@ Licensed under the Apache License, Version 2.0.
     init_mathjax();
     </script>
     <!-- End of mathjax configuration --><div class="jupyter-wrapper">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=cadfb350" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="satellite-trajectories">Satellite Trajectories<a class="anchor-link" href="#satellite-trajectories">&#182;</a></h1><p>This notebook tutorial shows how to retrieve or create a trajectory in a variety of methods.</p>
+<h1 id="Satellite-Trajectories">Satellite Trajectories<a class="anchor-link" href="#Satellite-Trajectories">&#182;</a></h1><p>This notebook tutorial shows how to retrieve or create a trajectory in a variety of methods.</p>
 <ol>
 <li>Retrieve a real trajectory through SSCWeb,</li>
 <li>Create a sample trajectory in GDZ spherical coordinates,</li>
@@ -1177,18 +1177,18 @@ Licensed under the Apache License, Version 2.0.
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=697db75a" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="retrieve-a-real-satellite-trajectory-through-sscweb">Retrieve a real satellite trajectory through SSCWeb<a class="anchor-link" href="#retrieve-a-real-satellite-trajectory-through-sscweb">&#182;</a></h2>
+<h2 id="Retrieve-a-real-satellite-trajectory-through-SSCWeb">Retrieve a real satellite trajectory through SSCWeb<a class="anchor-link" href="#Retrieve-a-real-satellite-trajectory-through-SSCWeb">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=precious-motivation" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1228,9 +1228,7 @@ help(SF.SatelliteTrajectory)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1255,9 +1253,7 @@ SatelliteTrajectory(dataset, start_ts, stop_ts, coord_type=&#39;GEO&#39;, verbos
 </pre>
 </div>
 </div>
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1275,7 +1271,7 @@ SatelliteTrajectory(dataset, start_ts, stop_ts, coord_type=&#39;GEO&#39;, verbos
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=built-salmon" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1329,9 +1325,7 @@ for key in traj_dict.keys():
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1353,18 +1347,18 @@ dict_keys([&#39;sat_time&#39;, &#39;c1&#39;, &#39;c2&#39;, &#39;c3&#39;]) GEO-ca
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=07609686" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="create-a-sample-trajectory">Create a sample trajectory<a class="anchor-link" href="#create-a-sample-trajectory">&#182;</a></h2>
+<h2 id="Create-a-sample-trajectory">Create a sample trajectory<a class="anchor-link" href="#Create-a-sample-trajectory">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=55c5621e" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1402,9 +1396,7 @@ help(SF.SampleTrajectory)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1449,7 +1441,7 @@ SampleTrajectory(start_time, stop_time, max_lat=65.0, min_lat=-65.0, lon_perorbi
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=6a13d94a" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1497,9 +1489,7 @@ for key in sample_traj.keys():
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1523,18 +1513,18 @@ dict_keys([&#39;sat_time&#39;, &#39;c1&#39;, &#39;c2&#39;, &#39;c3&#39;]) GDZ-sp
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=56b8fe95" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="create-a-trajectory-from-tles-two-line-elements">Create a trajectory from TLEs (two-line elements)<a class="anchor-link" href="#create-a-trajectory-from-tles-two-line-elements">&#182;</a></h2>
+<h2 id="Create-a-trajectory-from-TLEs-(two-line-elements)">Create a trajectory from TLEs (two-line elements)<a class="anchor-link" href="#Create-a-trajectory-from-TLEs-(two-line-elements)">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=5ec47180" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1572,9 +1562,7 @@ help(SF.TLETrajectory)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1623,7 +1611,7 @@ TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence, method=&#39;forwa
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=52231b9e" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1677,9 +1665,7 @@ for key in tle_dict.keys():
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1700,18 +1686,18 @@ for key in tle_dict.keys():
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=e9fa5e4e" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="load-a-trajectory-from-a-file">Load a trajectory from a file<a class="anchor-link" href="#load-a-trajectory-from-a-file">&#182;</a></h2>
+<h2 id="Load-a-trajectory-from-a-file">Load a trajectory from a file<a class="anchor-link" href="#Load-a-trajectory-from-a-file">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=3a9adcf7" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1747,9 +1733,7 @@ for key in tle_dict.keys():
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1776,7 +1760,7 @@ SF_read(filename)
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=04eda3e6" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1822,9 +1806,7 @@ for key in file_data.keys():
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1850,18 +1832,18 @@ dict_keys([&#39;model_files&#39;, &#39;model_used&#39;, &#39;coord_type&#39;, &#
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=c8dec9ee" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="write-a-trajectory-to-a-file">Write a trajectory to a file<a class="anchor-link" href="#write-a-trajectory-to-a-file">&#182;</a></h2>
+<h2 id="Write-a-trajectory-to-a-file">Write a trajectory to a file<a class="anchor-link" href="#Write-a-trajectory-to-a-file">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=5aa4d0c2" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1897,9 +1879,7 @@ dict_keys([&#39;model_files&#39;, &#39;model_used&#39;, &#39;coord_type&#39;, &#
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1936,7 +1916,7 @@ SF_write(filename, model_filename, model_name, results_dict, results_units, coor
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=f70b0ddd" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1976,9 +1956,7 @@ SF.O.SF_write('./Files/GRACE1_TLEs.csv', '', '', tle_dict, tle_units, 'teme-car'
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[12]:</div>
 

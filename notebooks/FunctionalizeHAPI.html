@@ -1176,31 +1176,31 @@ Licensed under the Apache License, Version 2.0.
     init_mathjax();
     </script>
     <!-- End of mathjax configuration --><div class="jupyter-wrapper">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=b9d5c029" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="functionalizing-hapi-results">Functionalizing HAPI Results<a class="anchor-link" href="#functionalizing-hapi-results">&#182;</a></h1><p>This notebook shows how to easily functionalize the data and meta objects returned by a HAPI call. The simple syntax works both on 1D time series returned by HAPI for multiple variables and for variables of higher dimensionality. The standard SciPy interpolators are applied to the variable datasets by default, or the user can easily supply a custom interpolator for each variable dataset if desired.</p>
+<h1 id="Functionalizing-HAPI-Results">Functionalizing HAPI Results<a class="anchor-link" href="#Functionalizing-HAPI-Results">&#182;</a></h1><p>This notebook shows how to easily functionalize the data and meta objects returned by a HAPI call. The simple syntax works both on 1D time series returned by HAPI for multiple variables and for variables of higher dimensionality. The standard SciPy interpolators are applied to the variable datasets by default, or the user can easily supply a custom interpolator for each variable dataset if desired.</p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=b59c2bc8" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="demonstrate-how-to-functionalize-the-returns-from-a-hapi-call">Demonstrate how to functionalize the returns from a HAPI call<a class="anchor-link" href="#demonstrate-how-to-functionalize-the-returns-from-a-hapi-call">&#182;</a></h2><h3 id="hapi-commands">HAPI commands<a class="anchor-link" href="#hapi-commands">&#182;</a></h3><p>First, retrieve the data and metadata objects from HAPI. Create the default plots to compare later.</p>
+<h2 id="Demonstrate-how-to-functionalize-the-returns-from-a-HAPI-call">Demonstrate how to functionalize the returns from a HAPI call<a class="anchor-link" href="#Demonstrate-how-to-functionalize-the-returns-from-a-HAPI-call">&#182;</a></h2><h3 id="HAPI-commands">HAPI commands<a class="anchor-link" href="#HAPI-commands">&#182;</a></h3><p>First, retrieve the data and metadata objects from HAPI. Create the default plots to compare later.</p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
+<div id="cell-id=7885dc9f" class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1246,7 +1246,7 @@ data, meta = hapi(server, dataset, parameters, start, stop)</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=9a201dcf" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1288,9 +1288,7 @@ hapiplot(data, meta)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1300,9 +1298,7 @@ hapiplot(data, meta)</div>
 </pre>
 </div>
 </div>
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1318,9 +1314,7 @@ class="
 </div>
 
 </div>
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 
@@ -1418,19 +1412,19 @@ class="
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=269ecbc3" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="functionalize-hapi-outputs-with-kamodo">Functionalize HAPI Outputs with Kamodo<a class="anchor-link" href="#functionalize-hapi-outputs-with-kamodo">&#182;</a></h3><p>Next, functionalize the HAPI outputs with a single command.</p>
+<h3 id="Functionalize-HAPI-Outputs-with-Kamodo">Functionalize HAPI Outputs with Kamodo<a class="anchor-link" href="#Functionalize-HAPI-Outputs-with-Kamodo">&#182;</a></h3><p>Next, functionalize the HAPI outputs with a single command.</p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=0afe053e" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1470,9 +1464,7 @@ kamodo_object</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 
@@ -1491,7 +1483,7 @@ kamodo_object</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=3937f69e" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1503,7 +1495,7 @@ kamodo_object</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=cf746ee0" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1541,9 +1533,7 @@ print(var_list)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1560,7 +1550,7 @@ print(var_list)</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=06692da9" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1572,7 +1562,7 @@ print(var_list)</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=3c466d38" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1581,13 +1571,13 @@ print(var_list)</div>
 <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">kamodo_ccmc.tools.plotfunctions</span> <span class="kn">import</span> <span class="n">toColor</span><span class="p">,</span> <span class="n">toLog10</span>
 <span class="n">toLog10</span><span class="p">(</span><span class="n">toColor</span><span class="p">(</span><span class="n">kamodo_object</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">var_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">colorscale</span><span class="o">=</span><span class="s2">&quot;Viridis&quot;</span><span class="p">))</span>
 </pre></div>
-<p><img src="Files/functionalizeHAPI_magspec_1.png" alt="Screenshot"></p>
+<p><img src="Files/functionalizeHAPI_magspec_1.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=7ecb931c" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1597,19 +1587,19 @@ print(var_list)</div>
 <div class="highlight"><pre><span></span><span class="n">kamodo_object</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">var_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">plot_partial</span><span class="o">=</span><span class="p">{</span><span class="n">var_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="p">{</span><span class="s1">&#39;UTC_time&#39;</span><span class="p">:</span> <span class="mf">1.301251e9</span><span class="p">}}</span>
                   <span class="p">)</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>  <span class="c1"># Add .update_xaxes(type=&quot;log&quot;) to change to log-log</span>
 </pre></div>
-<p><img src="Files/functionalizeHAPI_magspec_2.png" alt="Screenshot"></p>
+<p><img src="Files/functionalizeHAPI_magspec_2.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=2b86ac71" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="interpolation-with-kamodo">Interpolation with Kamodo<a class="anchor-link" href="#interpolation-with-kamodo">&#182;</a></h3><p>Kamodo also enables easy interpolation. This is an important feature for comparing datasets on different time grids and with different temporal (and spatial) resolutions.</p>
+<h3 id="Interpolation-with-Kamodo">Interpolation with Kamodo<a class="anchor-link" href="#Interpolation-with-Kamodo">&#182;</a></h3><p>Kamodo also enables easy interpolation. This is an important feature for comparing datasets on different time grids and with different temporal (and spatial) resolutions.</p>
 <p>The next block demonstrates how to perform interpolation for a single time value in the range of the dataset. Then, an interpolation onto a finer time grid is demonstrated in the second block below, followed by an interpolation onto a regular frequency grid of the same range of the dataset at a single time value in the third block. Finally, an interpolation onto new time and frequency grids concludes the section.</p>
 <p>There is more than one coordinate for this function, so the coordinates must be named in the interpolation calls below. If a value or values are not given for a particular coordinate, then the default coordinate grid for each unspecified coordinate is used for the interpolation. See the examples below for more details.</p>
 
@@ -1617,7 +1607,7 @@ print(var_list)</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=a978d11a" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1665,9 +1655,7 @@ kamodo_object[var_list[0]](UTC_time=sample_datetime)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1677,9 +1665,7 @@ kamodo_object[var_list[0]](UTC_time=sample_datetime)</div>
 </pre>
 </div>
 </div>
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[7]:</div>
 
@@ -1706,7 +1692,7 @@ kamodo_object[var_list[0]](UTC_time=sample_datetime)</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=41c67882" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1752,9 +1738,7 @@ kamodo_object[var_list[0]](UTC_time=time_grid)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
 
@@ -1814,7 +1798,7 @@ kamodo_object[var_list[0]](UTC_time=time_grid)</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=98249fca" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1864,9 +1848,7 @@ print(defaults['yTags'].min(), defaults['yTags'].max())</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1891,7 +1873,7 @@ print(defaults['yTags'].min(), defaults['yTags'].max())</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=8f7240f8" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1933,9 +1915,7 @@ kamodo_object[var_list[0]](UTC_time=sample_datetime, yTags=freq_grid)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[10]:</div>
 
@@ -1956,7 +1936,7 @@ kamodo_object[var_list[0]](UTC_time=sample_datetime, yTags=freq_grid)</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=6be4f30d" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1998,9 +1978,7 @@ data.shape, data[0]</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[11]:</div>
 
@@ -2022,7 +2000,7 @@ data.shape, data[0]</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=348e8eb9" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2064,9 +2042,7 @@ data.shape, data[0]</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[12]:</div>
 
@@ -2088,21 +2064,21 @@ data.shape, data[0]</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=0546e2fb" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="including-a-custom-interpolator">Including a custom interpolator<a class="anchor-link" href="#including-a-custom-interpolator">&#182;</a></h2><p>The above section described how to functionalize and then interact with the given data and meta objects returned by HAPI. The method shown used Kamodo's standard interpolation methods behind the scenes (SciPy's interp1d for 1D data and SciPy's RegularGridInterpolator for multi-dimensional data). Now, this notebook demonstrates how to functionalize a given dataset when a custom interpolation method is required. In this case, a pair of 1D variables is used in the demonstration, but the same logic applies for higher dimensions.</p>
+<h2 id="Including-a-custom-interpolator">Including a custom interpolator<a class="anchor-link" href="#Including-a-custom-interpolator">&#182;</a></h2><p>The above section described how to functionalize and then interact with the given data and meta objects returned by HAPI. The method shown used Kamodo's standard interpolation methods behind the scenes (SciPy's interp1d for 1D data and SciPy's RegularGridInterpolator for multi-dimensional data). Now, this notebook demonstrates how to functionalize a given dataset when a custom interpolation method is required. In this case, a pair of 1D variables is used in the demonstration, but the same logic applies for higher dimensions.</p>
 <p>The first block of code below retrieves the data and meta objects from HAPI. These objects are then used to generate the default plots (second block), functionalize the data (third block), and generate the interactive plots possible through Kamodo (fourth block). Then, two examples are given demonstrating how to include a custom interpolator in the functionalization process.</p>
-<h3 id="hapi-call-for-multiple-variables">HAPI Call for Multiple Variables<a class="anchor-link" href="#hapi-call-for-multiple-variables">&#182;</a></h3><p>Retrieve two 1D variables from HAPI and generate the plots for later comparison.</p>
+<h3 id="HAPI-Call-for-Multiple-Variables">HAPI Call for Multiple Variables<a class="anchor-link" href="#HAPI-Call-for-Multiple-Variables">&#182;</a></h3><p>Retrieve two 1D variables from HAPI and generate the plots for later comparison.</p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
+<div id="cell-id=4d73ae1b" class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2148,7 +2124,7 @@ data1, meta1 = hapi(server1, dataset1, parameters1, start1, stop1)</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=0bda2e24" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2184,9 +2160,7 @@ data1, meta1 = hapi(server1, dataset1, parameters1, start1, stop1)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -2202,9 +2176,7 @@ class="
 </div>
 
 </div>
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -2220,9 +2192,7 @@ class="
 </div>
 
 </div>
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[14]:</div>
 
@@ -2273,19 +2243,19 @@ class="
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=f3875740" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="functionalize-hapi-outputs-with-kamodo">Functionalize HAPI Outputs with Kamodo<a class="anchor-link" href="#functionalize-hapi-outputs-with-kamodo">&#182;</a></h3><p>Next, functionalize the HAPI outputs with a single command. The next block also retrieves a list of the variable names for easy reference. The typical Kamodo plots are generated for comparison and are interactive in the tutorial version of this notebook when the notebook is live. Notice that the default SciPy interpolator for 1D variables (interp1d) is used.</p>
+<h3 id="Functionalize-HAPI-Outputs-with-Kamodo">Functionalize HAPI Outputs with Kamodo<a class="anchor-link" href="#Functionalize-HAPI-Outputs-with-Kamodo">&#182;</a></h3><p>Next, functionalize the HAPI outputs with a single command. The next block also retrieves a list of the variable names for easy reference. The typical Kamodo plots are generated for comparison and are interactive in the tutorial version of this notebook when the notebook is live. Notice that the default SciPy interpolator for 1D variables (interp1d) is used.</p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=d1b45e0e" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2325,9 +2295,7 @@ kamodo_object1</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[15]:</div>
 
@@ -2346,7 +2314,7 @@ kamodo_object1</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=14080b9b" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2355,24 +2323,24 @@ kamodo_object1</div>
 <p>Plot the data in Kamodo.</p>
 <div class="highlight"><pre><span></span><span class="n">kamodo_object1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">var_list1</span><span class="p">)</span>
 </pre></div>
-<p><img src="Files/functionalizeHAPI_KP1.png" alt="Screenshot"></p>
+<p><img src="Files/functionalizeHAPI_KP1.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=018d0f22" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="function-documentation">Function Documentation<a class="anchor-link" href="#function-documentation">&#182;</a></h3>
+<h3 id="Function-Documentation">Function Documentation<a class="anchor-link" href="#Function-Documentation">&#182;</a></h3>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=93bdc112" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2408,9 +2376,7 @@ kamodo_object1</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -2487,7 +2453,7 @@ functionalize_hapi(data, meta, custom_interp=None, coord_str=&#39;&#39;)
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=a1b1161f" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2499,18 +2465,18 @@ functionalize_hapi(data, meta, custom_interp=None, coord_str=&#39;&#39;)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=dd411048" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="a-single-custom-interpolator-for-all-variables">A Single Custom Interpolator for All Variables<a class="anchor-link" href="#a-single-custom-interpolator-for-all-variables">&#182;</a></h3>
+<h3 id="A-Single-Custom-Interpolator-for-All-Variables">A Single Custom Interpolator for All Variables<a class="anchor-link" href="#A-Single-Custom-Interpolator-for-All-Variables">&#182;</a></h3>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=83224644" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2574,9 +2540,7 @@ kamodo_object_custom</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[18]:</div>
 
@@ -2595,18 +2559,18 @@ kamodo_object_custom</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=bef776c7" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="different-custom-interpolators-for-each-variable">Different Custom Interpolators for Each Variable<a class="anchor-link" href="#different-custom-interpolators-for-each-variable">&#182;</a></h3>
+<h3 id="Different-Custom-Interpolators-for-Each-Variable">Different Custom Interpolators for Each Variable<a class="anchor-link" href="#Different-Custom-Interpolators-for-Each-Variable">&#182;</a></h3>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=d14baa3d" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2692,9 +2656,7 @@ kamodo_object_custom2</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[19]:</div>
 
@@ -2713,18 +2675,18 @@ kamodo_object_custom2</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=fdbfe4a7" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="using-custom-and-default-interpolators">Using Custom and Default Interpolators<a class="anchor-link" href="#using-custom-and-default-interpolators">&#182;</a></h3>
+<h3 id="Using-Custom-and-Default-Interpolators">Using Custom and Default Interpolators<a class="anchor-link" href="#Using-Custom-and-Default-Interpolators">&#182;</a></h3>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=e4577acf" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2764,9 +2726,7 @@ kamodo_object_custom3</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[20]:</div>
 
@@ -2785,18 +2745,18 @@ kamodo_object_custom3</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=d4dd27dd" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="comparing-interpolation-results">Comparing Interpolation Results<a class="anchor-link" href="#comparing-interpolation-results">&#182;</a></h3>
+<h3 id="Comparing-Interpolation-Results">Comparing Interpolation Results<a class="anchor-link" href="#Comparing-Interpolation-Results">&#182;</a></h3>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=08e9936e" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2808,7 +2768,7 @@ kamodo_object_custom3</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=f70771ad" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2864,9 +2824,7 @@ for var in var_list1:
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 

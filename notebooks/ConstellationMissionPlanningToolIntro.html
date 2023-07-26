@@ -1154,30 +1154,30 @@ Licensed under the Apache License, Version 2.0.
     init_mathjax();
     </script>
     <!-- End of mathjax configuration --><div class="jupyter-wrapper">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=9cede150" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="constellation-mission-planning-tool">Constellation Mission Planning Tool<a class="anchor-link" href="#constellation-mission-planning-tool">&#182;</a></h1><p>This notebook tutorial shows how to fly a constellation of satellites through model data, focusing on spherical coordinate examples as an introduction. Trajectories can be obtained either from the test GDC trajectory file or the flythrough trajectory functions as shown here. See the Satellite Trajectory section for examples on trajectory options, and the Choosing Models and Variables section for more information on choosing models and variables. This functionality is not available from the command line. More complex workflow examples are included in the notebooks directory on the main level.</p>
+<h1 id="Constellation-Mission-Planning-Tool">Constellation Mission Planning Tool<a class="anchor-link" href="#Constellation-Mission-Planning-Tool">&#182;</a></h1><p>This notebook tutorial shows how to fly a constellation of satellites through model data, focusing on spherical coordinate examples as an introduction. Trajectories can be obtained either from the test GDC trajectory file or the flythrough trajectory functions as shown here. See the Satellite Trajectory section for examples on trajectory options, and the Choosing Models and Variables section for more information on choosing models and variables. This functionality is not available from the command line. More complex workflow examples are included in the notebooks directory on the main level.</p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=a01d429c" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="preparing-to-run">Preparing to run<a class="anchor-link" href="#preparing-to-run">&#182;</a></h2>
+<h2 id="Preparing-to-run">Preparing to run<a class="anchor-link" href="#Preparing-to-run">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
+<div id="cell-id=94350b4c" class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1221,7 +1221,7 @@ end_utcts = dt.datetime(2015, 3, 17, 6).replace(tzinfo=dt.timezone.utc).timestam
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=e8e45ffa" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1265,9 +1265,7 @@ traj_dict, coord_type = SF.SatelliteTrajectory('grace1', start_utcts, end_utcts,
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1278,9 +1276,7 @@ traj_dict, coord_type = SF.SatelliteTrajectory('grace1', start_utcts, end_utcts,
 </pre>
 </div>
 </div>
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1297,7 +1293,7 @@ traj_dict, coord_type = SF.SatelliteTrajectory('grace1', start_utcts, end_utcts,
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=d1a8d8fb" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1343,9 +1339,7 @@ print(c1.min(), c1.max(), c2.min(), c2.max(), c3.min(), c3.max())</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1362,7 +1356,7 @@ print(c1.min(), c1.max(), c2.min(), c2.max(), c3.min(), c3.max())</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=1fcb0b2c" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1400,9 +1394,7 @@ MW.Variable_Search('', model, file_dir)</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1440,7 +1432,7 @@ TEC : &#39;[&#39;vertical total electron content (height integrated from bottom 
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=b2264669" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1480,9 +1472,7 @@ RECON.__doc__.split('\n')</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[5]:</div>
 
@@ -1612,7 +1602,7 @@ RECON.__doc__.split('\n')</div>
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
+<div id="cell-id=honey-geography" class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1674,18 +1664,18 @@ d1, d2 = 1800., 0.001  # time (in s) and height (in R_E) resolution of sampling 
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=aeb4d3b0" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="execution">Execution<a class="anchor-link" href="#execution">&#182;</a></h2>
+<h2 id="Execution">Execution<a class="anchor-link" href="#Execution">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=august-senator" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1735,9 +1725,7 @@ recon = RECON(model, variable_name, file_dir, traj_dict['sat_time'], c1, c2, c3,
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1766,9 +1754,7 @@ Time slice index 18 added from file.
 </pre>
 </div>
 </div>
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1781,9 +1767,7 @@ C:\Users\rringuet\Anaconda3\envs\Kamodo_Jan2023\lib\site-packages\scipy\interpol
 </pre>
 </div>
 </div>
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
@@ -1849,7 +1833,7 @@ Reconstruction program complete in 39.31747 s.
 
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=macro-aspect" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1893,9 +1877,7 @@ recon</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
 
@@ -1914,18 +1896,18 @@ recon</div>
 
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=4ef55bc3" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="comparing-the-results">Comparing the results<a class="anchor-link" href="#comparing-the-results">&#182;</a></h2>
+<h2 id="Comparing-the-results">Comparing the results<a class="anchor-link" href="#Comparing-the-results">&#182;</a></h2>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=7703f041" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1935,13 +1917,13 @@ recon</div>
 <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">kamodo_ccmc.tools.plotfunctions</span> <span class="kn">import</span> <span class="n">toColor</span>
 <span class="n">toColor</span><span class="p">(</span><span class="n">recon</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">rho_n</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">Lon</span><span class="o">=</span><span class="n">recon</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">Lat</span><span class="o">=</span><span class="n">recon</span><span class="o">.</span><span class="n">y</span><span class="p">)),</span> <span class="n">colorscale</span><span class="o">=</span><span class="s1">&#39;Viridis&#39;</span><span class="p">)</span>
 </pre></div>
-<p><img src="Files/Constellation_rhon.png" alt="Screenshot"></p>
+<p><img src="Files/Constellation_rhon.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=4324ca0c" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1949,28 +1931,28 @@ recon</div>
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <div class="highlight"><pre><span></span><span class="n">toColor</span><span class="p">(</span><span class="n">recon</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">rho_n_model</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">Lon</span><span class="o">=</span><span class="n">recon</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">Lat</span><span class="o">=</span><span class="n">recon</span><span class="o">.</span><span class="n">y</span><span class="p">)),</span> <span class="n">colorscale</span><span class="o">=</span><span class="s2">&quot;Viridis&quot;</span><span class="p">)</span>
 </pre></div>
-<p><img src="Files/Constellation_rhonmodel.png" alt="Screenshot"></p>
+<p><img src="Files/Constellation_rhonmodel.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div id="cell-id=72d805d4" class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<p>Show the percent difference between the two. A percent difference of zero is an exact match. How well the reconstructed plot matches the model plot not only depends on the constellation arrangement, but also on the reconstruction method chosen. The 'AvgMod<em>...' options typically result in the better matches, but are not physically representative of what the constellation will 'see' in real data because the two non-reconstructed dimensions are ignored in the input satellite trajectory (e.g. an average value for both height and time are used instead of the full range for a Lon-Lat reconstruction). The unmodified options ('Unmod</em>...') are thus recommended as the more physical comparison because the full set of input trajectory values are used.</p>
+<p>Show the percent difference between the two. A percent difference of zero is an exact match. How well the reconstructed plot matches the model plot not only depends on the constellation arrangement, but also on the reconstruction method chosen. The 'AvgMod_...' options typically result in the better matches, but are not physically representative of what the constellation will 'see' in real data because the two non-reconstructed dimensions are ignored in the input satellite trajectory (e.g. an average value for both height and time are used instead of the full range for a Lon-Lat reconstruction). The unmodified options ('Unmod_...') are thus recommended as the more physical comparison because the full set of input trajectory values are used.</p>
 <div class="highlight"><pre><span></span><span class="n">toColor</span><span class="p">(</span><span class="n">recon</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">PercentDiff</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">Lon</span><span class="o">=</span><span class="n">recon</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">Lat</span><span class="o">=</span><span class="n">recon</span><span class="o">.</span><span class="n">y</span><span class="p">)),</span> <span class="n">colorscale</span><span class="o">=</span><span class="s2">&quot;Viridis&quot;</span><span class="p">)</span>
 </pre></div>
-<p><img src="Files/Constellation_PercentDiff.png" alt="Screenshot"></p>
+<p><img src="Files/Constellation_PercentDiff.png" alt="Screenshot" /></p>
 
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div id="cell-id=adverse-sleeve" class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2030,9 +2012,7 @@ plt.ylabel('Frequency')</div>
 
 
 <div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[12]:</div>
 
@@ -2044,9 +2024,7 @@ plt.ylabel('Frequency')</div>
 </div>
 
 </div>
-
 <div class="jp-OutputArea-child">
-
     
     <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 
