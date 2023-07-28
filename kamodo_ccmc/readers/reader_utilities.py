@@ -966,8 +966,12 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
         time_out.write('\nPattern: '+p)
         time_out.write(''.join(str_out))
         for i in range(len(files)):
-            list_out.write('\n' + files[i].replace('\\', '/') +
+            # modified to remove full path from files
+            filesplits = files[i].replace('\\', '/').split("/")
+            list_out.write('\n' + filesplits[-1] +
                            start_time_str[i] + '  ' + end_time_str[i])
+            #list_out.write('\n' + files[i].replace('\\', '/') +
+            #               start_time_str[i] + '  ' + end_time_str[i])
     time_out.close()
     list_out.close()
     print('done.')
@@ -1015,7 +1019,14 @@ def read_timelist(time_file, list_file, ms_timing=False):
         times[p]['all'] = tstr_to_hrs(times[p]['all'], ms_timing)
 
     # get filenames, dates and times from list file
+    # full path no longer in list_file, determine and add to files
     files, start_date_times, end_date_times = [], [], []
+    filesplits = list_file.split("/")
+    filesplits.pop()
+    filepre = ""
+    for s in filesplits:
+        filepre = filepre + s + '/'
+
     list_obj = _open(list_file)
     data = list_obj.readlines()
     for line in data[1:]:
@@ -1023,7 +1034,12 @@ def read_timelist(time_file, list_file, ms_timing=False):
             line = line.decode()
         file, tmp, date_start, tmp, start_time, tmp, date_end, \
             tmp, end_time = line.strip().split()
-        files.append(file)
+        filesplits = file.split("/")
+        if len(filesplits) > 1:
+            file2 = filepre + filesplits[-1]
+        else:
+            file2 = filepre + file
+        files.append(file2)
         start_date_times.append(date_start+' '+start_time)
         end_date_times.append(date_end+' '+end_time)
     list_obj.close()
