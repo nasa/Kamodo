@@ -22,6 +22,24 @@ Kamodo is an official NASA open-source python package built upon the functionali
 
 ...all while keeping the developed software open-source and freely available. The Kamodo team also supports the heliophysics community by pursuing interoperability with commonly-used python packages, collaborating with community members to add model outputs and new functionalities, and remaining involved with community events (e.g. conferences, challenges, and research support). As the library of supported model outputs types expands and new model-agnostic tools are added, Kamodo will become a staple software package in the heliophysics community to transform current workflows into a more efficient and productive process. We are building the next generation of capability with Kamodo. Join us!
 
+## Kamodo currently supports:
+- ADELPHI: AMPERE-Derived ELectrodynamic Properties of the High-latitude Ionosphere, https://doi.org/10.1029/2020SW002677  
+- AMGeO: Assimilative Mapping of Geospace Observations, https://doi.org/10.5281/zenodo.3564914  
+- CTIPe: Coupled Thermosphere Ionosphere Plasmasphere Electrodynamics Model, https://doi.org/10.1029/2007SW000364  
+- DTM: The Drag Temperature Model, https://doi.org/10.1051/swsc/2015001  
+- GITM: Global Ionosphere Thermosphere Model, https://doi.org/10.1016/j.jastp.2006.01.008  
+- IRI: International Reference Ionosphere Model, https://doi.org/10.5194/ars-16-1-2018  
+- OpenGGCM_GM: The Open Geospace General Circulation Model - GM outputs only, https://doi.org/10.1023/A:1014228230714  
+- SuperDARN_uni: SuperDARN uniform grid output ,https://doi.org/10.1029/2010JA016017  
+- SuperDARN_equ: SuperDARN equal area grid output, https://doi.org/10.1029/2010JA016017  
+- SWMF_IE: Space Weather Modeling Framework - IE outputs, https://doi.org/10.1029/2006SW000272  
+- SWMF_GM: Space Weather Modeling Framework - GM outputs, https://doi.org/10.1029/2006SW000272  
+- TIEGCM: Thermosphere Ionosphere Electrodynamics General Circulation Model, https://doi.org/10.1029/2012GM001297  
+- WACCMX: Whole Atmosphere Community Climate Model With Thermosphere and Ionosphere Extension, https://doi.org/10.1002/2017MS001232  
+- WAMIPE: The coupled Whole Atmosphere Model - Ionosphere Plasmasphere Model, https://doi.org/10.1002/2015GL067312 and https://doi.org/10.1029/2022SW003193  
+- Weimer: Weimer Ionosphere model, https://doi.org/10.1029/2005JA011270  
+- It also supports any data available through the HAPI interface.
+
 ## Kamodo Installation Instructions   
 Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.  
 
