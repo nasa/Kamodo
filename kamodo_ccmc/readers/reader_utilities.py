@@ -5,7 +5,7 @@ Created on Thu May 13 18:28:18 2021
 """
 from kamodo import kamodofy, gridify
 from numpy import NaN, vectorize, append, array, meshgrid, ravel, diff
-from numpy import unique, zeros, ndarray, floor, float32, all, insert
+from numpy import unique, zeros, ndarray, floor, float32, all, insert, where
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -20,6 +20,62 @@ import re
 import io
 import boto3
 
+def _fileheader(filename):
+    if filename[:5] == 's3://':
+        tname = re.sub(r's3://', '', filename)
+        mybucket, mykey = tname.split('/', 1)
+        s3c = boto3.client('s3')
+        obj = s3c.get_object(Bucket=mybucket, Key=mykey)
+        rawdata = obj['Body'].read()
+        bdata = io.BytesIO(rawdata)
+        fileheader = mbdata.read(2048)  #agic.from_buffer(bdata.read(2048))
+    else:
+        f = open(filename,'rb')
+        fdata = f.read(2048)
+        f.close()
+        fileheader = fdata # magic.from_file(filename)
+    return(fileheader)
+
+def netcdf_type(filename):
+    ''' identify files by header strings for NetCDF3 or HDF5 format, see
+        https://docs.unidata.ucar.edu/netcdf-c/current/file_format_specifications.html and
+        https://web.ics.purdue.edu/~aai/HDF5/html/H5.format.html and
+    '''
+    filetype = _fileheader(filename)
+
+    netcdf_id1=bytearray([67,68,70,1])  # 'CDF1' - 32-bit offsets 
+    netcdf_id2=bytearray([67,68,70,2])  # 'CDF2' - 64-bit offsets
+    if filetype[0:4] == netcdf_id1 or filetype[0:4] == netcdf_id2:
+        return("netCDF3")
+
+    hdf5_id=bytearray([137,72,68,70,13,10,26,10]) # '\211HDF\r\n\032\n' the string can be found at position 0, 512, 1024, ...
+    if (filetype[0:8] == hdf5_id
+        or filetype[512+0:512+8] == hdf5_id
+        or filetype[1024+0:1024+8] == hdf5_id
+        or filetype[1536+0:1536+8] == hdf5_id):
+        return("netCDF4")
+
+    return(None)  # not a recognized netCDF3 or netCDF4 (HDF5) file    
+
+def hdf_type(filename):
+    ''' identify files by header strings for HDF4 and HDF5 format, see
+        https://web.ics.purdue.edu/~aai/HDF5/html/H5.format.html and
+        https://support.hdfgroup.org/release4/doc/DS.pdf
+    '''
+    filetype = _fileheader(filename)
+
+    hdf5_id=bytearray([137,72,68,70,13,10,26,10]) # '\211HDF\r\n\032\n' the string can be found at position 0, 512, 1024, ...
+    if (filetype[0:8] == hdf5_id
+        or filetype[512+0:512+8] == hdf5_id
+        or filetype[1024+0:1024+8] == hdf5_id
+        or filetype[1536+0:1536+8] == hdf5_id):
+        return("hdf5")
+
+    hdf4_id = bytearray([14,3,19,1])  #     0x0E 0x03 0x13 0x01
+    if filetype[0:8] == hdf4_id:
+        return('hdf4')
+
+    return(None)  # not a recognized HDF-5 (netCDF4) or HDF-4 file    
 
 def Dataset(filename, access='r', filetype='netCDF4'):
     '''A generalized method to open netCDF files on either s3 buckets or on
@@ -78,7 +134,7 @@ def glob(file_pattern):
 
 
 def _open(filename, access='r'):
-    '''Alternate method to open files for both s3 and efs/locatl storage.'''
+    '''Alternate method to open files for both s3 and efs/local storage.'''
     if filename[:5] == 's3://':
         s3 = s3fs.S3FileSystem(anon=False)
         return s3.open(filename, access+'b')
@@ -989,6 +1045,7 @@ def read_timelist(time_file, list_file, ms_timing=False):
                 file pattern.
             ['end'] - the end time for each of the files of the given file
                 pattern.
+            ['start_index'] - the 
             All times are stored as the number of hours since midnight of the
                 first file of all the files in the given directory.
         pattern_files - a dictionary with keys indicating the file patterns.
@@ -1011,7 +1068,7 @@ def read_timelist(time_file, list_file, ms_timing=False):
             line = line.decode()
         if 'Pattern' in line:
             p = line.strip()[9:]
-            times[p] = {'start': [], 'end': [], 'all': []}
+            times[p] = {'start': [], 'end': [], 'all': [],'start_index': []}
         else:
             times[p]['all'].append(line.strip())
     time_obj.close()
@@ -1053,6 +1110,9 @@ def read_timelist(time_file, list_file, ms_timing=False):
         end_times = [t for f, t in zip(files, end_date_times)
                      if p in f]
         times[p]['end'] = str_to_hrs(end_times, filedate)
+        times[p]['start_index'] = [(where(times[p]['start'][i] == times[p]['all']))[0][0] for i in range(len(times[p]['start']))]
+        times[p]['start_index'].append(len(times[p]['all']))  # add start_index for the next file as if it were there
+                                       
     filename = ''.join([f+',' for f in files])[:-1]
 
     return times, pattern_files, filedate, filename
