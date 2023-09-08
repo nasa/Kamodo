@@ -60,6 +60,9 @@ def MODEL():
     from datetime import datetime, timedelta, timezone
     import kamodo_ccmc.readers.reader_utilities as RU
 
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log, exp
+    
     class MODEL(Kamodo):
         '''IRI model data reader.
 
@@ -303,9 +306,9 @@ def MODEL():
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
                 coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
-                time_index_start = self.times[p]['start_index'][i]
-                time_index_end = self.times[p]['start_index'][i+1]+1
-                times_file = self.times[p]['all'][time_index_start:time_index_end]
+                time_index_start = self.times[key]['start_index'][i]
+                time_index_end = self.times[key]['start_index'][i+1]+1
+                times_file = self.times[key]['all'][time_index_start:time_index_end]
                 coord_dict_data[0] = array(times_file)
         
                 if fill_value is not None:  # if defined, replace with NaN
