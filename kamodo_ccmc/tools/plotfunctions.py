@@ -1,6 +1,7 @@
 def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
-            cutInside=-1., returnGrid=False, enhanceHover=False, newTitle='',
-            cText='', llText='', llText2=''):
+            cutInside=-1., returnGrid=False, enhanceHover=False,
+            enhanceHover1D=False, newTitle='',
+            cText='', llText='', llText2='', crange='', xtic='', ytic=''):
     '''
     Function to modify a plotly figure object in multiple ways.
 
@@ -18,6 +19,9 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
       cText       String to use for colorbar label
       llText      String to add to lower left of plot
       llText2     String to add just above llText
+      crange      Two position array with min/max contour values, [cmin,cmax]
+      xtic        X axis tick spacing
+      ytic        Y axis tick spacing
     '''
 
     import re
@@ -67,6 +71,11 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
         else:
             fig.update_traces(colorscale=colorscale)
 
+    if crange != '':
+        cmin = float(crange[0])
+        cmax = float(crange[1])
+        fig.update_traces(zmin=cmin, zmax=cmax)
+
     if cutInside > 0.:
         xx = fig.data[0]['x']
         yy = fig.data[0]['y']
@@ -91,23 +100,60 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
             "<extra></extra>"
         )
 
+    if enhanceHover1D:
+        xvar = re.sub(' +', ' ',
+                      fig.layout.xaxis.title.text.strip('$').strip())
+        yvar = re.sub(' +', ' ',
+                      fig.layout.yaxis.title.text.strip('$').strip())
+        fig.update_traces(
+            hovertemplate=xvar + ": %{x:.3f} <br>" +
+            yvar + ": %{y:.4g} <br>" +
+            "<extra></extra>"
+        )
+
     if newTitle != '':
         fig.layout.title.text = newTitle
 
     if cText != '':
         fig.update_traces(colorbar=dict(title=cText, tickformat=".3g"))
 
-    if llText != '' or llText != '':
+    if llText != '' or llText2 != '':
+        if fig['data'][0]['type'] == 'surface':
+            # A 3D plot needs different positions for text labels
+            xs = 6
+            ys1 = -23
+            ys2 = -8
+        else:
+            xs = -70
+            ys1 = -44
+            ys2 = -28
+        # BUG: fig sometimes needs this twice to get set properly
         fig.update_layout(
             annotations=[
                 dict(text=llText, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
-                     xshift=-70, yshift=-44, xref="paper", yref="paper",
+                     xshift=xs, yshift=ys1, xref="paper", yref="paper",
                      font=dict(size=12, family="sans serif", color="#000000")),
                 dict(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
-                     xshift=-70, yshift=-28, xref="paper", yref="paper",
+                     xshift=xs, yshift=ys2, xref="paper", yref="paper",
                      font=dict(size=12, family="sans serif", color="#000000"))
             ],
         )
+        fig.update_layout(
+            annotations=[
+                dict(text=llText, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                     xshift=xs, yshift=ys1, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000")),
+                dict(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                     xshift=xs, yshift=ys2, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000"))
+            ],
+        )
+
+    if xtic != '':
+        fig.update_layout(xaxis = dict(tick0 = 0., dtick = xtic))
+
+    if ytic != '':
+        fig.update_layout(yaxis = dict(tick0 = 0., dtick = ytic))
 
     return fig
 
@@ -201,7 +247,8 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
 
 def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
                title='Plot Title', colorscale='Viridis', crange='',
-               opacity=0.70, axis=True, debug=0):
+               opacity=0.70, axis=True, debug=0, showshore=True,
+               useCo='',useCot=''):
     """
     Takes a gridified 2D lon/lat figure and creates new plots
     in 3D and for chosen coordinate systems.
@@ -215,15 +262,27 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     from kamodo_ccmc.tools.shoreline import shoreline
 
-    # Get current coordinate system and type. Create string for labels
-    tmp = list(MW.Model_Variables(model, return_dict=True).values())[0][2:4]
-    co = tmp[0]
-    cot = tmp[1]
+    if useCo != '' and useCot != '':
+        co = useCo
+        cot = useCot
+    else:
+        # Get current coordinate system and type. Create string for labels
+        tmp = list(MW.Model_Variables(model, return_dict=True).values())[0][2:4]
+        co = tmp[0]
+        cot = tmp[1]
+    if cot != 'sph':
+        print('ERROR, coordinate is not spherical! Returning ...')
+        return
 
     # Pull out lon, lat, values and min/max from passed in figure
     lon = figIn.data[0]['x']
     lat = figIn.data[0]['y']
     val = figIn.data[0]['z']
+    if len(lon) == len(lat):
+        # Pad duplicate values to end of arrays to avoid array sizes bug
+        lat = np.append(lat, lat[-1])
+        aaa = np.array([val[-1,:]])
+        val = np.append(val, aaa, axis=0)
     val2 = np.reshape(val, (len(lat), len(lon)))
     varn = figIn.data[0]['colorbar']['title']['text']
     cmin = np.min(val)
@@ -249,7 +308,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     ilon = np.linspace(-180, 180, 181)
     # ilat = np.linspace(-90, 90, 91)
 
-    # Convert incoming coordinates into plot coordinages (cartesian)
+    # Convert incoming coordinates into plot coordinates (cartesian)
     if co == 'GDZ':
         # GDZ does not convert into other coordinates well, first go to GEO-car
         xx, yy, zz, units = ConvertCoord(full_t, full_x, full_y, full_z,
@@ -380,10 +439,11 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
                     showlegend=False, showscale=False, hoverinfo='skip')
 
     # Shoreline (land/water boundaries)
-    pos = shoreline(rscale=1.001, coord=plotCoord, utcts=plotts)
-    fig.add_scatter3d(mode='lines', x=pos[:, 0], y=pos[:, 1], z=pos[:, 2],
-                      line=dict(width=2, color='white'),
-                      showlegend=False, hoverinfo='skip')
+    if showshore:
+        pos = shoreline(rscale=1.001, coord=plotCoord, utcts=plotts)
+        fig.add_scatter3d(mode='lines', x=pos[:, 0], y=pos[:, 1], z=pos[:, 2],
+                          line=dict(width=2, color='white'),
+                          showlegend=False, hoverinfo='skip')
 
     return fig
 
@@ -939,7 +999,7 @@ def swmfgm3D(ko, var, time=0., title='',
 
 def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
                 title='', lowerlabel='', showgrid=False, showibs=False,
-                log10=False):
+                log10=False, vectorMag=False):
     '''
     Function to create a slice for any point and normal and interpolate
       from Kamodo object onto that grid. Returns a full 3D plotly figure.
@@ -959,9 +1019,17 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
     import kamodo_ccmc.flythrough.model_wrapper as MW
 
     # Set interpolator and variable labels
-    interp = getattr(ko, var)
-    varu = ko.variables[var]['units']
-    varlabel = var+" ["+varu+"]"
+    if vectorMag:
+        interpX = getattr(ko, var+'_x')
+        interpY = getattr(ko, var+'_y')
+        interpZ = getattr(ko, var+'_z')
+        varu = ko.variables[var+'_x']['units']
+        varlabel = var+" ["+varu+"]"
+        var = var+'_x'
+    else:
+        interp = getattr(ko, var)
+        varu = ko.variables[var]['units']
+        varlabel = var+" ["+varu+"]"
 
     # Compute values from pos, normal values
     uvec = normal/np.linalg.norm(normal)  # unit normal vector
@@ -1051,7 +1119,13 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
     grid[:, 1] = gx2.reshape(-1)
     grid[:, 2] = gy2.reshape(-1)
     grid[:, 3] = gz2.reshape(-1)
-    value = interp(grid)
+    if vectorMag:
+        valueX = interpX(grid)
+        valueY = interpY(grid)
+        valueZ = interpZ(grid)
+        value = np.sqrt(valueX**2 + valueY**2 + valueZ**2)
+    else:
+        value = interp(grid)
     if log10:
         value[value <= 0.] = np.nan
         value = np.log10(value)
