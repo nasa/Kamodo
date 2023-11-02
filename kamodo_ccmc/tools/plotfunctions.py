@@ -1,5 +1,6 @@
 def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
-            cutInside=-1., returnGrid=False, enhanceHover=False, newTitle=''):
+            cutInside=-1., returnGrid=False, enhanceHover=False, newTitle='',
+            cText='', llText='', llText2=''):
     '''
     Function to modify a plotly figure object in multiple ways.
 
@@ -11,7 +12,12 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
       colorscale  Set the desired colorscale for the plot
                   NOTE: appending '_r' to colorscale reverses it, ie RdBu_r
       cutInside   Make values inside a radius of cutInside NaNs
-      returnGrid  Take the plot and return a new grid only plotly object
+      returnGrid  Take the plot and return a new grid only plotly object (beta)
+      enhanceHover Logical, if true update the hover information
+      newTitle    String to use for new plot title
+      cText       String to use for colorbar label
+      llText      String to add to lower left of plot
+      llText2     String to add just above llText
     '''
 
     import re
@@ -87,6 +93,21 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
 
     if newTitle != '':
         fig.layout.title.text = newTitle
+
+    if cText != '':
+        fig.update_traces(colorbar=dict(title=cText, tickformat=".3g"))
+
+    if llText != '' or llText != '':
+        fig.update_layout(
+            annotations=[
+                dict(text=llText, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                     xshift=-70, yshift=-44, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000")),
+                dict(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                     xshift=-70, yshift=-28, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000"))
+            ],
+        )
 
     return fig
 
