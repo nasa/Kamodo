@@ -519,7 +519,7 @@ def MODEL():
                     # get list of files to loop through later
                     pattern_files = sorted(RU.glob(file_dir+'*.'+p+'.*.nc'))
                     self.pattern_files[p] = pattern_files
-                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    self.times[p] = {'start': [], 'end': [], 'all': [], 'start_index': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
@@ -531,11 +531,14 @@ def MODEL():
                         if f == 0:
                             int_time = int(tmp[0])  # date of first file
                         net = (tmp-int_time).astype(int)*24. + pmt/3600.  # hrs
+                        self.times[p]['start_index'].append(len(self.times[p]['all']))
                         self.times[p]['start'].append(net[0])
                         self.times[p]['end'].append(net[-1])
                         self.times[p]['all'].extend(net)
                         cdf_data.close()
+                    self.times[p]['start_index'].append(len(self.times[p]['all']))
                     # adjust all to be arrays
+                    self.times[p]['start_index'] = array(self.times[p]['start_index'])
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
@@ -823,11 +826,28 @@ def MODEL():
                     data = tmp.T[lon_idx]
                     return data
 
+                def func_custom(i, fi):  # i = file#, fi = slice#
+                    cdf_data = RU.Dataset(self.pattern_files[key][i],
+                                          filetype='netCDF3')
+                    tmp = log(array(cdf_data.variables[gvar][fi]))
+                    cdf_data.close()
+                    # perform data wrangling on time slice
+                    # (ilev,) lat/mlat, lon/mlon -> lon/mlon, lat/mlat, (ilev)
+                    data = tmp.T[lon_idx]
+
+                    #return data
+                
                 # functionalize the 3D or 4D dataset, series of time slices
-                self = RU.Functionalize_Dataset(
-                    self, coord_dict, varname, self.variables[varname],
-                    gridded_int, coord_str, interp_flag=3, func=func,
-                    times_dict=self.times[key])
+                if varname[0:3] == "rho" or varname[0:3] == "mmr" or varname[0:2] == "N_":
+                    self = RU.Functionalize_Dataset(
+                        self, coord_dict, varname, self.variables[varname],
+                        gridded_int, coord_str, interp_flag=3, func=func_custom, func_default='custom',
+                        times_dict=self.times[key])
+                else:
+                    self = RU.Functionalize_Dataset(
+                        self, coord_dict, varname, self.variables[varname],
+                        gridded_int, coord_str, interp_flag=3, func=func,
+                        times_dict=self.times[key])
             else:  # only using this approach if there is enough memory
                 # also using for H_ilev to speed up function composition
                 # determine the operation to occur on each time chunk

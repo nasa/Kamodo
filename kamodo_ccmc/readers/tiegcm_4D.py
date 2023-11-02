@@ -288,6 +288,9 @@ def MODEL():
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log, exp
+    
     class MODEL(Kamodo):
         '''TIEGCM model data reader.
 
@@ -396,11 +399,13 @@ def MODEL():
                     # get list of files to loop through later
                     pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
-                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    self.times[p] = {'start': [], 'end': [], 'all': [], 'start_index': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        cdf_data = RU.Dataset(pattern_files[f])
+                        print(pattern_files[f])
+                        ncdf_filetype = RU.netcdf_type(pattern_files[f])
+                        cdf_data = RU.Dataset(pattern_files[f],filetype=ncdf_filetype)
                         year = array(cdf_data['year'])
                         mtime = array(cdf_data['mtime'])
                         day, hour, minute = mtime.T
@@ -410,9 +415,13 @@ def MODEL():
                         time = year_mtime_tohrs(year, day, hour, minute,
                                                 self.filedate)
                         cdf_data.close()
+                        self.times[p]['start_index'].append(len(self.times[p]['all']))
                         self.times[p]['start'].append(time[0])
                         self.times[p]['end'].append(time[-1])
                         self.times[p]['all'].extend(time)
+                    self.times[p]['start_index'].append(len(self.times[p]['all'])-1)
+
+                    self.times[p]['start_index'] = array(self.times[p]['start_index'])
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
@@ -466,7 +475,9 @@ def MODEL():
             # remove variables requested that are not in the file
             p = list(self.pattern_files.keys())[0]
             pattern_files = self.pattern_files[p]
-            cdf_data = RU.Dataset(pattern_files[0])
+            ncdf_filetype = RU.netcdf_type(pattern_files[0])
+            print('file type: ',ncdf_filetype)
+            cdf_data = RU.Dataset(pattern_files[0],filetype=ncdf_filetype)
             if len(variables_requested) > 0 and variables_requested != 'all':
                 # add ilev version of variables to the list, adding H_ilev(1)
                 add_ilev = [var+'_ilev' for var in variables_requested if var
@@ -482,14 +493,14 @@ def MODEL():
                              in self.ilev_map.keys()]  # remove replaced items
                 gvar_list = [key for key, value in model_varnames.items()
                              if value[0] in short_var and key in
-                             cdf_data.keys()]  # file variable names
+                             cdf_data.variables.keys()]  # file variable names
 
                 # check for variables requested but not available
                 if len(gvar_list) != len(short_var):
                     err_list = [value[0] for key, value in
                                 model_varnames.items() if value[0] in
                                 short_var and key not in
-                                cdf_data.keys()]
+                                cdf_data.variables.keys()]
                     if len(err_list) > 0:
                         print('Some requested variables are not available: ',
                               err_list)
@@ -580,7 +591,7 @@ def MODEL():
                 varname_list.remove('H_ilev')
                 varname_list = ['H_ilev'] + varname_list
                 if RU._isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev from file
-                    km_data = RU.Dataset(file_dir+'TIEGCM_km.nc')
+                    km_data = RU.Dataset(file_dir+'TIEGCM_km.nc') # ,filetype='netCDF3')
                     if hasattr(km_data, 'km_ilev_max'):
                         self._km_ilev = array(km_data['km_ilev'])
                         self._km_ilev_max = km_data.km_ilev_max
@@ -590,7 +601,7 @@ def MODEL():
                 varname_list.remove('H_ilev1')
                 varname_list = ['H_ilev1'] + varname_list
                 if RU._isfile(file_dir+'TIEGCM_km.nc'):  # km_ilev1 from file
-                    km_data = RU.Dataset(file_dir+'TIEGCM_km.nc')
+                    km_data = RU.Dataset(file_dir+'TIEGCM_km.nc')  #,filetype='netCDF3')
                     if hasattr(km_data, 'km_ilev1_max'):
                         self._km_ilev1 = array(km_data['km_ilev1'])
                         self._km_ilev1_max = km_data.km_ilev1_max
@@ -739,13 +750,14 @@ def MODEL():
             def func(i):  # i is the file number
                 # get the data
                 file = self.pattern_files[p][i]
-                cdf_data = RU.Dataset(file)
+                ncdf_filetype = RU.netcdf_type(file)
+                cdf_data = RU.Dataset(file,filetype=ncdf_filetype)
                 data = array(cdf_data[gvar])
                 cdf_data.close()
                 if data.shape[0] > 1 and file != self.pattern_files[p][-1]:
                     # if not the last file, tack on first time from next
                     next_file = self.pattern_files[p][i+1]
-                    cdf_data = RU.Dataset(next_file)
+                    cdf_data = RU.Dataset(next_file,filetype=ncdf_filetype)
                     data_slice = array(cdf_data[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
@@ -787,6 +799,87 @@ def MODEL():
                 else:
                     return variable
 
+            # define data retrieval and wrangling logic
+            # keep in mind that high-alt files have one time step per file
+            # normal files have multiple time steps per file
+            # func_custom returns interpolator i log space (for variable names starting with "rho" or "N_")
+            def func_custom(i):  # i is the file number
+                # get the data
+                file = self.pattern_files[p][i]
+                ncdf_filetype = RU.netcdf_type(file)
+                cdf_data = RU.Dataset(file,filetype=ncdf_filetype)
+                data = array(cdf_data[gvar])
+                cdf_data.close()
+                if data.shape[0] > 1 and file != self.pattern_files[p][-1]:
+                    # if not the last file, tack on first time from next
+                    next_file = self.pattern_files[p][i+1]
+                    cdf_data = RU.Dataset(next_file,filetype=ncdf_filetype)
+                    data_slice = array(cdf_data[gvar][0])
+                    cdf_data.close()
+                    data = append(data, [data_slice], axis=0)
+
+                # wrangle the data
+                if len(data.shape) == 3:
+                    # (t,lat,lon) -> (t,lon,lat)
+                    variable = transpose(data, (0, 2, 1))
+                    out = self.wrap_3Dlatlon(varname, variable)
+                    if out.shape[0] == 1:  # high-alt data has one time
+                        return squeeze(out)
+                    else:
+                        return out
+                # 4D specific logic from here on down
+                # (t,h,lat,lon) -> (t,lon,lat,h)
+                variable = transpose(data, (0, 3, 2, 1))
+
+                coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
+                time_index_start = self.times[p]['start_index'][i]
+                time_index_end = self.times[p]['start_index'][i+1]+1
+                times_file = self.times[p]['all'][time_index_start:time_index_end]
+                coord_dict_data[0] = array(times_file)
+        
+                if 'lat' in coord_list:
+                    out = log(self.wrap_4Dlatlon(varname, variable))
+                    if out.shape[0] == 1:  # high-alt data has one time
+                        rgi = rgiND(coord_dict_data[1:], squeeze(out), bounds_error=False,fill_value=NaN)
+                        def interp3d_custom(xvec):
+                            return exp(rgi(xvec))                    
+                        return interp3d_custom
+                        #return squeeze(out)
+                    else:
+                        rgi = rgiND(coord_dict_data, out, bounds_error=False,fill_value=NaN)
+                        def interp4d_custom(xvec):
+                            return exp(rgi(xvec))
+                        return interp4d_custom
+                        #return out
+                # otherwise, look for undefined top rows and remove them
+                # they need to be removed to avoid interpolation problems
+                # only occurs in mlon/mlat/milev dependent variables (H_imlev)
+                top_idx = -1
+                top_shape = list(variable[:, :, :, top_idx].shape)
+                top_size = top_shape[0] * top_shape[1] * top_shape[2]  # 3D arr
+                idx_top = where(variable[:, :, :, top_idx] > 1e+35)[0]
+                while top_size == len(idx_top):  # replace undefined top row(s)
+                    if verbose:
+                        print('All values at max milev are 1e+36 for ' +
+                              f'{varname}. Slicing off top array.')
+                    variable[:, :, :, top_idx] = NaN
+                    top_idx -= 1
+                    idx_top = where(variable[:, :, :, top_idx] > 1e+35)[0]
+
+                log_data = log(variable)
+            
+                if variable.shape[0] == 1:  # high-alt data has one time
+                    rgi = rgiND(coord_dict_data[1:], squeeze(log_data), bounds_error=False,fill_value=NaN)
+                    def interp3d_custom(xvec):
+                        return exp(rgi(xvec))                    
+                    return interp3d_custom
+                else:
+                    rgi = rgiND(coord_dict_data, log_data, bounds_error=False,fill_value=NaN)
+                    def interp4d_custom(xvec):
+                        return exp(rgi(xvec))
+                    return interp4d_custom
+                
+                
             # determine interpolation method based on file structuring
             if len(self.times[p]['all']) > len(self.times[p]['start']):
                 # time chunking method
@@ -797,10 +890,17 @@ def MODEL():
 
             # need H functions to be gridded regardless of gridded_int value
             h_grid = True if varname in ['H_ilev', 'H_ilev1'] else gridded_int
-            self = RU.Functionalize_Dataset(
-                self, coord_dict, varname, self.variables[varname],
-                h_grid, coord_str, interp_flag=interp_flag, func=func,
-                times_dict=self.times[p])
+
+            if varname[0:3] == "rho" or varname[0:2] == "N_":
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    h_grid, coord_str, interp_flag=interp_flag, func=func_custom, func_default='custom',
+                    times_dict=self.times[p])
+            else:
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    h_grid, coord_str, interp_flag=interp_flag, func=func,
+                    times_dict=self.times[p])
 
             # perform H_ilev/H_ilev1 substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:

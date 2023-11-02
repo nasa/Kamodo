@@ -111,6 +111,9 @@ def MODEL():
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log, exp
+    
     class MODEL(Kamodo):
         '''WAM-IPE model data reader.
 
@@ -451,6 +454,28 @@ def MODEL():
                          model_varnames.items() if value[0] == varname][0]
 
             # define operations for each variable when given the key
+            def func_custom(i):
+                '''i is the time slice. WAM-IPE has one time slice per file.
+                returns interpolation function using log(data) for densities'''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
+                data = array(cdf_data.variables[gvar])
+                # Data wrangling
+                if hasattr(cdf_data.variables[gvar], '_FillValue'):
+                    fill_value = cdf_data.variables[gvar]._FillValue
+                    if fill_value in data:
+                        data = where(data == fill_value, NaN, data)
+                cdf_data.close()
+                data = log(data)
+                if 1 in list(data.shape):  # for den var in some gs10 files 
+                    data = squeeze(data)
+                coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
+                rgi = rgiND(coord_dict_data[1:], data.T[lon_idx], bounds_error=False,fill_value=NaN)
+                def interp3d_custom(xvec):
+                    return exp(rgi(xvec))                    
+                return interp3d_custom
+
             def func(i):
                 '''i is the time slice. WAM-IPE has one time slice per file.'''
                 # get data from file
@@ -466,14 +491,21 @@ def MODEL():
                 if 1 in list(data.shape):  # for den var in some gs10 files 
                     data = squeeze(data)
                 return data.T[lon_idx]
-
+            
             # define and register the interpolators
             # need H functions to be gridded regardless of gridded_int value
             if varname == 'H_ilev':
                 gridded_int = True
-            self = RU.Functionalize_Dataset(
-                self, coord_dict, varname, self.variables[varname],
-                gridded_int, coord_str, interp_flag=1, func=func)
+
+            if varname == "rho" or varname[0:2] == "N_": # exclude 2D rho_400km at only one height
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+#                    gridded_int, coord_str, interp_flag=1, func=func_custom)
+                    gridded_int, coord_str, interp_flag=1, func=func_custom, func_default='custom')
+            else:
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=1, func=func)
 
             # create pressure level -> km function once per ilev type
             if (varname == 'H_ilev' or 'ilev' in coord_list) and (
