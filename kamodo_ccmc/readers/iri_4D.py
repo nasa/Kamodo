@@ -60,6 +60,9 @@ def MODEL():
     from datetime import datetime, timedelta, timezone
     import kamodo_ccmc.readers.reader_utilities as RU
 
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log, exp
+    
     class MODEL(Kamodo):
         '''IRI model data reader.
 
@@ -281,6 +284,47 @@ def MODEL():
                          model_varnames.items() if value[0] == varname][0]
 
             # define operations for each variable when given the key
+            def func_custom(i):
+                '''key is the file pattern, start_idxs is a list of one or two
+                indices matching the file start times in self.start_times[key].
+                '''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
+                data = array(cdf_data.variables[gvar])
+                if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
+                    fill_value = cdf_data.variables[gvar][0].fill_value
+                else:
+                    fill_value = None
+                cdf_data.close()
+                # if not the last file, tack on first time from next file
+                if file != self.pattern_files[key][-1]:  # interp btwn files
+                    next_file = self.pattern_files[key][i+1]
+                    cdf_data = RU.Dataset(next_file, filetype='netCDF3')
+                    data_slice = array(cdf_data.variables[gvar][0])
+                    cdf_data.close()
+                    data = append(data, [data_slice], axis=0)
+                # data wrangling
+                coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
+                time_index_start = self.times[key]['start_index'][i]
+                time_index_end = self.times[key]['start_index'][i+1]+1
+                times_file = self.times[key]['all'][time_index_start:time_index_end]
+                coord_dict_data[0] = array(times_file)
+        
+                if fill_value is not None:  # if defined, replace with NaN
+                    data = where(data != fill_value, data, NaN)
+                if len(data.shape) == 3:
+                    # time, lat, lon -> time, lon, lat
+                    log_variable = log(transpose(data, (0, 2, 1)))
+                elif len(data.shape) == 4:
+                    # time, height, lat, lon -> time, lon, lat, height
+                    log_variable = log(transpose(data, (0, 3, 2, 1)))
+                #return variable[:, lon_idx]
+                rgi = rgiND(coord_dict_data, log_variable, bounds_error=False,fill_value=NaN)
+                def interp4d_custom(xvec):
+                    return exp(rgi(xvec))
+                return interp4d_custom
+            
             def func(i):
                 '''key is the file pattern, start_idxs is a list of one or two
                 indices matching the file start times in self.start_times[key].
@@ -311,11 +355,18 @@ def MODEL():
                     # time, height, lat, lon -> time, lon, lat, height
                     variable = transpose(data, (0, 3, 2, 1))
                 return variable[:, lon_idx]
-
+            
             # functionalize the variable data (time chunked interpolation)
-            self = RU.Functionalize_Dataset(
-                self, coord_dict, varname, self.variables[varname],
-                gridded_int, coord_str, interp_flag=2, func=func,
-                times_dict=self.times[key])
+            if varname[0:3] == "rho" or varname[0:2] == "N_":
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=2, func=func_custom, func_default='custom',
+                    times_dict=self.times[key])
+            else:
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=2, func=func,
+                    times_dict=self.times[key])                
             return
+            
     return MODEL

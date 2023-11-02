@@ -268,12 +268,15 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ',
 
 
 def MODEL():
-    from numpy import array, NaN, unique, append, where, transpose
+    from numpy import array, NaN, unique, append, where, transpose, squeeze
     from time import perf_counter
     from os.path import basename
     from datetime import datetime, timezone
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
+
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log,exp
 
     # main class
     class MODEL(Kamodo):
@@ -367,17 +370,21 @@ def MODEL():
                     # get list of files to loop through later
                     pattern_files = sorted(RU.glob(file_dir+'*'+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
-                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    self.times[p] = {'start': [], 'end': [], 'all': [], 'start_index': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
                         cdf_data = RU.Dataset(pattern_files[f],
                                               filetype='netCDF3')
                         tmp = array(cdf_data.variables['time'])  # utc tstamps
+                        self.times[p]['start_index'].append(len(self.times[p]['all']))
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
                         cdf_data.close()
+                    self.times[p]['start_index'].append(len(self.times[p]['all'])-1)
+
+                    self.times[p]['start_index'] = array(self.times[p]['start_index'])
                     # convert timestamps to be hrs since midnight of 1st file
                     self.times[p]['start'] = (array(self.times[p]['start']) -
                                               filedate_ts)/3600.
@@ -555,7 +562,7 @@ def MODEL():
                 lon = array(cdf_data.variables['lon'])
                 lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
                 lon_ge180 = list(where(lon >= 180)[0])
-                tmp = append(lon, 360.) - 180.  # now -180. to +180.
+                tmp = append(lon, 360.) - 180.  # now -180. to +180. -- this works as expected for a grid with 0 and 180 as grid positions
                 setattr(self, '_lon_'+p, tmp)
                 setattr(self, '_lon_idx_'+p, lon_ge180+lon_le180)
                 setattr(self, '_lat_'+p,
@@ -695,6 +702,7 @@ def MODEL():
             def func(i):
                 '''key is the file pattern, start_idxs is a list of one or two
                 indices matching the file start times in self.start_times[key].
+                Standard interpolation.
                 '''
                 # get data from file
                 file = self.pattern_files[key][i]
@@ -723,14 +731,65 @@ def MODEL():
                     variable = transpose(data, (0, 3, 2, 1))
                 return variable[:, lon_idx]
 
+            def func_custom(i): 
+                '''key is the file pattern, start_idxs is a list of one or two
+                indices matching the file start times in self.start_times[key].
+                this version returns costom interpolator in log space for densities that vary logarithmically with altitude
+                '''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
+                data = array(cdf_data.variables[gvar])
+                if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
+                    fill_value = cdf_data.variables[gvar][0].fill_value
+                else:
+                    fill_value = None
+                cdf_data.close()
+                # if not the last file, tack on first time from next file
+                if file != self.pattern_files[key][-1]:  # interp btwn files
+                    next_file = self.pattern_files[key][i+1]
+                    cdf_data = RU.Dataset(next_file, filetype='netCDF3')
+                    data_slice = array(cdf_data.variables[gvar][0])
+                    cdf_data.close()
+                    data = append(data, [data_slice], axis=0)
+                # data wrangling
+                if fill_value is not None:  # if defined, replace with NaN
+                    data = where(data != fill_value, data, NaN)
+                if len(data.shape) == 3 and 'Elon' not in coord_dict.keys():
+                    variable = transpose(data, (0, 2, 1))
+                elif 'Elon' in coord_dict.keys():
+                    variable = data  # already correct dimension order
+                elif len(data.shape) == 4:
+                    variable = transpose(data, (0, 3, 2, 1))
+                # interpolation in log space needs to be implemented here for variable names containing "N_" or "rho"
+                log_data = log(variable[:, lon_idx])
+                coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
+                time_index_start = self.times[key]['start_index'][i]
+                time_index_end = self.times[key]['start_index'][i+1]+1
+                times_file = self.times[key]['all'][time_index_start:time_index_end]  # self.times[key]['all'][0:97] for first day
+                coord_dict_data[0] = array(times_file)
+                for i in range(len(coord_dict_data)):
+                    print(coord_dict_data[i].shape)
+                    print(log_data.shape)
+                rgi = rgiND(coord_dict_data, log_data, bounds_error=False,fill_value=NaN)
+                def custom_interp(xvec):
+                    return exp(rgi(xvec))
+                return custom_interp
+            
             # define and register the interpolators, pull 3D data into arrays
             # need H functions to be gridded regardless of gridded_int value
             if varname in ['H_ilev', 'H_ilev1']:
                 gridded_int = True
-            self = RU.Functionalize_Dataset(
-                self, coord_dict, varname, self.variables[varname],
-                gridded_int, coord_str, interp_flag=2, func=func,
-                times_dict=self.times[key])
+            if varname[0:3] == "rho" or varname[0:2] == "N_":
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=2, func=func_custom, func_default='custom',
+                    times_dict=self.times[key])
+            else:
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=2, func=func,
+                    times_dict=self.times[key])
 
             # perform substitution if needed
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
