@@ -1,7 +1,7 @@
 def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
             cutInside=-1., returnGrid=False, enhanceHover=False,
-            enhanceHover1D=False, newTitle='',
-            cText='', llText='', llText2='', crange='', xtic='', ytic=''):
+            enhanceHover1D=False, newTitle='', cText='',
+            llText='', llText2='', coText='', crange='', xtic='', ytic=''):
     '''
     Function to modify a plotly figure object in multiple ways.
 
@@ -19,6 +19,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
       cText       String to use for colorbar label
       llText      String to add to lower left of plot
       llText2     String to add just above llText
+      coText      String to add coordinate system to lower right of plot
       crange      Two position array with min/max contour values, [cmin,cmax]
       xtic        X axis tick spacing
       ytic        Y axis tick spacing
@@ -117,7 +118,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
     if cText != '':
         fig.update_traces(colorbar=dict(title=cText, tickformat=".3g"))
 
-    if llText != '' or llText2 != '':
+    if llText != '' or llText2 != '' or coText != '':
         if fig['data'][0]['type'] == 'surface':
             # A 3D plot needs different positions for text labels
             xs = 6
@@ -135,7 +136,10 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
                      font=dict(size=12, family="sans serif", color="#000000")),
                 dict(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                      xshift=xs, yshift=ys2, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000"))
+                     font=dict(size=12, family="sans serif", color="#000000")),
+                dict(text=coText, x=1.0, y=0.0, ax=0, ay=0, xanchor="right",
+                     xshift=-6, yshift=ys1, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000")),
             ],
         )
         fig.update_layout(
@@ -145,7 +149,10 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
                      font=dict(size=12, family="sans serif", color="#000000")),
                 dict(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                      xshift=xs, yshift=ys2, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000"))
+                     font=dict(size=12, family="sans serif", color="#000000")),
+                dict(text=coText, x=1.0, y=0.0, ax=0, ay=0, xanchor="right",
+                     xshift=-6, yshift=ys1, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000")),
             ],
         )
 
@@ -262,6 +269,8 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     from kamodo_ccmc.tools.shoreline import shoreline
 
+    if plotCoord == 'GDZ':
+        plotCoord = 'GEO';
     if useCo != '' and useCot != '':
         co = useCo
         cot = useCot
