@@ -8,3 +8,7 @@ mkdocs-jupyter
 mknotebooks
 python-markdown-math
 markdown_include
+s3fs
+h5netcdf
+netCDF4
+boto3
