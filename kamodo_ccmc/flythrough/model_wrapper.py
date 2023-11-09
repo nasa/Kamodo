@@ -44,7 +44,9 @@ model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
                         'https://doi.org/10.1002/2015GL067312 and ' +
                         'https://doi.org/10.1029/2022SW003193',
               'Weimer': 'Weimer Ionosphere model ' +
-                        'https://doi.org/10.1029/2005JA011270'
+                        'https://doi.org/10.1029/2005JA011270',
+              'VERB-3D': 'VERB 3D model ' +
+                        'http://dx.doi.org/10.1029/2008SW000452'
               }
 
 
@@ -127,6 +129,10 @@ def Choose_Model(model=''):
 
     elif model == 'Weimer':
         import kamodo_ccmc.readers.weimer_4D as module
+        return module
+
+    elif model == 'VERB-3D':
+        import kamodo_ccmc.readers.verb3d_4D as module
         return module
 
     else:
