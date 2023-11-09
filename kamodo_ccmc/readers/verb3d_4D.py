@@ -25,6 +25,9 @@ model_varnames = {'PSD': ['PSD_{lea}', 'Phase Space Density in (L, E, A)', 0, 'L
 
 def MODEL():
     from kamodo import Kamodo
+    import numpy as np
+    import os
+    import kamodo_ccmc.readers.reader_utilities as RU
 
     # main class
     class MODEL(Kamodo):
@@ -73,13 +76,12 @@ def MODEL():
             super(MODEL, self).__init__()
             self.modelname = 'VERB-3D'
 
-        #
-
-
-    # TODO: plt to common format conversion
-    # if you need more than a few lines of code to access the data stored in the file,
-    # then a file conversion routine is likely needed.
-    # If it takes longer to read in the data from the current file format than from a cdf or h5 file,
-    # then the file conversion step should be developed.
+            # first, check for file list, create if DNE
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if not RU._isfile(list_file) or not RU._isfile(time_file) or 1:
+                from kamodo_ccmc.readers.verb3d_tocdf import convert_all
+                self.conversion_test = convert_all(file_dir)
 
     return MODEL
