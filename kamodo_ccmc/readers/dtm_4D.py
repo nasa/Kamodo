@@ -50,6 +50,9 @@ def MODEL():
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log, exp
+    
     class MODEL(Kamodo):
         '''DTM model data reader.
 
