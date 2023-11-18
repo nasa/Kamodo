@@ -5,15 +5,15 @@
 # model_varnames = {'Name in file': ['LaTeX representation', 'Description', integer, 'Coordinate system',
 #                            'Coordinate grid', [Coordinate list], 'Units'],
 
-model_varnames = {'PSD': ['PSD_{lea}', 'Phase Space Density in (L, E, A)', 0, 'LEA',
+model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E, A)', 0, 'LEA',
                           'car', ['time', 'L', 'Energy', 'Alpha'], '1/(s*cm**2*keV*sr*MeV**2)'],
-                  'PSD_2': ['PSD_{lmk}', 'Phase Space Density in (L, \\mu, K)', 0, 'LEA',
+                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, \\mu, K)', 0, 'LEA',
                             'car', ['time', 'L', 'Mu', 'K'], '1/(s*cm**2*keV*sr*MeV**2)'],
                   'L': ['L', 'L-shell', 1, 'LEA',
                         'car', ['L', 'Energy', 'Alpha'], ''],
-                  'L_2': ['L', 'L-shell', 1, 'LEA',
+                  'L_2': ['L_lmk', 'L-shell', 1, 'LEA',
                           'car', ['L', 'Mu', 'K'], ''],
-                  'E': ['E', 'Energy', 1, 'LEA',
+                  'E': ['Energy', 'Energy', 1, 'LEA',
                              'car', ['L', 'Energy', 'Alpha'], 'MeV'],
                   'Alpha': ['Alpha', 'Pitch angle', 1, 'LEA',
                             'car', ['L', 'Energy', 'Alpha'], 'deg'],
@@ -207,7 +207,10 @@ def MODEL():
             #               'K': {'units': 'R_E/G**0.5', 'data': K}}
             # var_dict = {'PSD': {'units': '(c/cm/MeV)**3', 'data': PSD}}
 
-            grid_variabels = model_varnames[varname][5]
+            gvar = [key for key, value in model_varnames.items() if
+                    value[0] == varname][0]  # variable name in file
+
+            grid_variabels = model_varnames[gvar][5]
             coord_dict = {}
 
             # Handle time
@@ -216,11 +219,14 @@ def MODEL():
                 coord_dict = {'time': {'units': 'hr',
                                        'data': self.times[key]['all']}}
 
-            for coord in grid_variabels:
-                if coord != 'time':
-                    coord_dict.update({coord: {'units': model_varnames[coord][6], 'data': getattr(self, coord)}})
+            # Find corresponding name for the coordinates based on Latex name
+            # TODO: this can create ambiguity if latex variables are the same
+            gvar_variabels = [gvar for gvar, items in model_varnames.items() if items[0] in grid_variabels]
 
-            variable_name = model_varnames[varname][0]
+            for coord in gvar_variabels:
+                    coord_dict.update({coord: {'units': model_varnames[coord][6], 'data': getattr(self, "_" + coord)}})
+
+            # variable_name = model_varnames[gvar][0]
             coord_str = ''
 
             def func(i, fi):  # i = file#, fi = slice#
@@ -230,7 +236,7 @@ def MODEL():
                 pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
 
                 with RU.Dataset(self.pattern_files[key][i]) as cdf_data:
-                    data = array(cdf_data.variables[varname][fi])
+                    data = array(cdf_data.variables[gvar][fi])
                 return data
 
             # functionalize the 3D or 4D dataset, series of time slices
@@ -253,10 +259,14 @@ def MODEL():
             if 'time' in grid_variables:
                 grid_variables.remove('time')
 
+            # Find corresponding name for the coordinates based on Latex name
+            # TODO: this can create ambiguity if latex variables are the same
+            gvar_variabels = [gvar for gvar, items in model_varnames.items() if items[0] in grid_variables]
+
             # Find what patterns to load
             patterns_to_load = set()
             for key, value in self.gvarfiles_full.items():
-                if any(item in grid_variables for item in value):
+                if any(item in gvar_variabels for item in value):
                     patterns_to_load.add(key)
 
             # Load grids
@@ -268,8 +278,8 @@ def MODEL():
 
                 with RU.Dataset(pattern_files[0], 'r') as cdf_data:
                     for var in self.gvarfiles_full[p]:
-                        if var in grid_variables:
+                        if var in gvar_variabels:
                             # TODO: consider adding leading _ to avoid naming problems
-                            setattr(self, var, array(cdf_data.variables[var]))
+                            setattr(self, "_" + var, array(cdf_data.variables[var]))
 
     return MODEL
