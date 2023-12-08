@@ -122,12 +122,12 @@ def MODEL():
             self.patterns = list(self.pattern_files.keys())
 
             for p in self.patterns:
-                pattern_files = self.pattern_files[p]
+                _pattern_files = self.pattern_files[p]
 
                 # Kamodo RU.create_timelist discards file path for no reason
-                pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
+                _pattern_files = [os.path.join(file_dir, 'Output', file) for file in _pattern_files]
 
-                with RU.Dataset(pattern_files[0], 'r') as cdf_data:
+                with RU.Dataset(_pattern_files[0], 'r') as cdf_data:
                     # check var_list for variables not possible in this file set
                     self.gvarfiles_full.update({p: [k for k in cdf_data.variables.keys()]})
 
