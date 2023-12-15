@@ -81,6 +81,9 @@ def MODEL():
             self.modelname = 'VERB-3D'
             t0 = perf_counter()
 
+            # Kamodo does handle windows path correctly. Changing to paths to replacing \\ with /
+            file_dir = file_dir.replace('\\', '/')
+
             # Check time and list files, and generate them if needed
             time_file, list_file = self.time_list_files(file_dir)
 
@@ -114,7 +117,7 @@ def MODEL():
                 _pattern_files = self.pattern_files[p]
 
                 # Kamodo RU.create_timelist discards file path for no reason
-                _pattern_files = [os.path.join(file_dir, 'Output', file) for file in _pattern_files]
+                # _pattern_files = [os.path.join(file_dir, 'Output', file) for file in _pattern_files]
 
                 with RU.Dataset(_pattern_files[0], 'r') as cdf_data:
                     # check var_list for variables not possible in this file set
@@ -207,7 +210,7 @@ def MODEL():
                 pattern_files = self.pattern_files[key]
 
                 # Kamodo RU.create_timelist discards file path for no reason
-                pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
+                # pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
 
                 with RU.Dataset(self.pattern_files[key][i]) as cdf_data:
                     data = array(cdf_data.variables[gvar][fi])
@@ -248,7 +251,7 @@ def MODEL():
                 pattern_files = self.pattern_files[p]
 
                 # Kamodo RU.create_timelist discards file path for no reason
-                pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
+                # pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
 
                 with RU.Dataset(pattern_files[0], 'r') as cdf_data:
                     for var in self.gvarfiles_full[p]:

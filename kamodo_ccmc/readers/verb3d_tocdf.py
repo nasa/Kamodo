@@ -16,7 +16,7 @@ def get_start_date(file_dir):
     date_start = datetime(1, 1, 1)
 
     # Determine if there is a file that contains userinput
-    database_filename = os.path.join(file_dir, 'DatabaseInfo1')
+    database_filename = os.path.join(file_dir, '..', 'DatabaseInfo1')
     if RU._isfile(database_filename):
 
         # Define the regex pattern for the date and time
@@ -35,8 +35,10 @@ def get_start_date(file_dir):
 def convert_all(file_dir):
     '''Converting all plt files to netCDF4.'''
 
-    perp_grid_filename = os.path.join(file_dir, 'Output', 'perp_grid.plt')
-    psd_filename = os.path.join(file_dir, 'Output', 'OutPSD.dat')
+    # perp_grid_filename = os.path.join(file_dir, 'Output', 'perp_grid.plt')
+    # psd_filename = os.path.join(file_dir, 'Output', 'OutPSD.dat')
+    perp_grid_filename = os.path.join(file_dir, 'perp_grid.plt')
+    psd_filename = os.path.join(file_dir, 'OutPSD.dat')
 
     # check for files existence
     if not RU._isfile(perp_grid_filename) or not RU._isfile(psd_filename):
@@ -56,7 +58,8 @@ def convert_all(file_dir):
             'Alpha': grid[2]['arr'],
             'pc': grid[3]['arr']}
 
-    cdf_filename = os.path.join(file_dir, 'Output', 'perp_grid.nc')
+    # cdf_filename = os.path.join(file_dir, 'Output', 'perp_grid.nc')
+    cdf_filename = os.path.join(file_dir, 'perp_grid.nc')
     var_shape = grid[0]['arr'].shape
     grid_file = [cdf_filename]
     with Dataset(cdf_filename, 'w', format='NETCDF4') as ncfile:
@@ -77,7 +80,8 @@ def convert_all(file_dir):
 
     nc_files = []
     for t in range(psd_size[0]):
-        cdf_filename = os.path.join(file_dir, 'Output', f'OutPSD{t}.nc')
+        # cdf_filename = os.path.join(file_dir, 'Output', f'OutPSD{t}.nc')
+        cdf_filename = os.path.join(file_dir, f'OutPSD{t}.nc')
         nc_files.append(cdf_filename)
         with Dataset(cdf_filename, 'w', format='NETCDF4') as ncfile:
             # Create dimensions
