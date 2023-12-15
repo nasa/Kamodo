@@ -303,3 +303,30 @@ def MODEL():
             return time_file, list_file
 
     return MODEL
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class ModelVariable:
+    var: str
+    desc: str
+    i: int
+    sys: str
+    grid: str
+    coord: list
+    units: str
+
+
+class ModelVariables():
+    def __init__(self, model_varnames):
+        self.vars = {}
+        self.keys = {}
+
+        for key, v in model_varnames.items():
+            self.vars[key] = ModelVariable(v[0], v[1], v[2], v[3], v[4], v[5], v[6])
+            self.keys[v[0]] = key
+
+
+_model_vars = ModelVariables(model_varnames)
