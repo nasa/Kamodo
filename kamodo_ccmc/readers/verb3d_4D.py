@@ -14,7 +14,7 @@ model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E, A)', 0, 'LEA
                   'L_2': ['L_lmk', 'L-shell', 1, 'LEA',
                           'car', ['L', 'Mu', 'K'], ''],
                   'E': ['Energy', 'Energy', 1, 'LEA',
-                             'car', ['L', 'Energy', 'Alpha'], 'MeV'],
+                        'car', ['L', 'Energy', 'Alpha'], 'MeV'],
                   'Alpha': ['Alpha', 'Pitch angle', 1, 'LEA',
                             'car', ['L', 'Energy', 'Alpha'], 'deg'],
                   'Mu': ['Mu', '1st adiabatic invariant \\mu', 1, 'LMK',
@@ -46,15 +46,15 @@ def MODEL():
                     (default)
                 - If 'all', the reader returns the model_varnames dictionary
                     above for only the variables present in the given files.
-            # filetime = boolean (default = False)
-            #     - If False, the script fully executes.
-            #     - If True, the script only executes far enough to determine the
-            #         time values associated with the chosen data.
-            # printfiles = boolean (default = False)
-            #     - If False, the filenames associated with the data retrieved
-            #         ARE NOT printed.
-            #     - If True, the filenames associated with the data retrieved ARE
-            #         printed.
+            filetime = boolean (default = False)
+                - If False, the script fully executes.
+                - If True, the script only executes far enough to determine the
+                    time values associated with the chosen data.
+            printfiles = boolean (default = False)
+                - If False, the filenames associated with the data retrieved
+                    ARE NOT printed.
+                - If True, the filenames associated with the data retrieved ARE
+                    printed.
             # gridded_int = boolean (default = True)
             #     - If True, the variables chosen are functionalized in both the
             #         standard method and a gridded method.
@@ -81,45 +81,34 @@ def MODEL():
             self.modelname = 'VERB-3D'
             t0 = perf_counter()
 
-            # For debug purpose
-            FORCE_LOAD = False
-
-            # first, check for file list, create if DNE
-            list_file = file_dir + self.modelname + '_list.txt'
-            time_file = file_dir + self.modelname + '_times.txt'
-            self.times, self.pattern_files = {}, {}
-            if FORCE_LOAD or not RU._isfile(list_file) or not RU._isfile(time_file):
-                from kamodo_ccmc.readers.verb3d_tocdf import convert_all
-                self.conversion_test = convert_all(file_dir)
+            # Check time and list files, and generate them if needed
+            time_file, list_file = self.time_list_files(file_dir)
 
             # read in data and time grids from file list
             self.times, self.pattern_files, self.filedate, self.filename = \
                 RU.read_timelist(time_file, list_file)
 
-            # return time info
+            # List of patterns
+            self.patterns = list(self.pattern_files.keys())
+
+            # return time info. This behavior is used by the File_Times.
             if filetime:
                 return
 
             # perform initial check on variables_requested list
-            if len(variables_requested) > 0 and variables_requested != 'all':
-                test_list = [value[0] for key, value in model_varnames.items()]
-                err_list = [item for item in variables_requested if item not in test_list]
-                if len(err_list) > 0:
-                    print('Variable name(s) not recognized:', err_list)
-                for item in err_list:
-                    variables_requested.remove(item)
+            if variables_requested != 'all' and len(variables_requested) > 0:
+                self._variable_requested_check(variables_requested)
                 if len(variables_requested) == 0:
                     return
 
             # store variables
-            self.missing_value = NaN
-            self.varfiles = {}  # store which variable came from which file
+            # missing_value = NaN
+            varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.gvarfiles_full = {}  # All {patterns: [variables], ...}
-            self.err_list = []
-            self.var_dict = {}
+            err_list = []
 
-            self.patterns = list(self.pattern_files.keys())
+            self.var_dict = {}  # This could be unused....
 
             for p in self.patterns:
                 _pattern_files = self.pattern_files[p]
@@ -134,52 +123,33 @@ def MODEL():
                     # TODO: Check this condition
                     if len(variables_requested) > 0 and \
                             variables_requested != 'all':
-                        gvar_list = [key for key in model_varnames.keys()
+                        _gvar_list = [key for key in model_varnames.keys()
                                      if key in cdf_data.variables.keys() and
                                      model_varnames[key][0] in variables_requested]
-                        if len(gvar_list) != len(variables_requested):
-                            err_list = [value[0] for key, value in
+                        if len(_gvar_list) != len(variables_requested):
+                            _err_list = [value[0] for key, value in
                                         model_varnames.items()
                                         if key not in cdf_data.variables.keys() and
                                         value[0] in variables_requested]
-                            self.err_list.extend(err_list)  # add to master list
+                            err_list.extend(_err_list)  # add to master list
                     else:
-                        gvar_list = [key for key in model_varnames.keys()
+                        _gvar_list = [key for key in model_varnames.keys()
                                      if key in cdf_data.variables.keys()]
 
                 # store which file these variables came from
-                self.varfiles[p] = [model_varnames[key][0] for key in gvar_list]
-                self.gvarfiles[p] = gvar_list
+                varfiles[p] = [model_varnames[key][0] for key in _gvar_list]
+                self.gvarfiles[p] = _gvar_list
 
-                # print message if variables not found
-                if len(self.err_list) > 0:
-                    print('Some requested variables are not available: ',
-                          self.err_list)
+                self.print_err_list(err_list)
 
-            # collect all possible variables in set of files and return
             if variables_requested == 'all':
-                for p in self.patterns:
-                    var_list = self.varfiles[p]
-
-                    self.var_dict.update({value[0]: value[0:] for key, value in
-                                          model_varnames.items() if value[0] in
-                                          var_list})
+                # collect all possible variables in set of files and return
+                self._update_var_dict(varfiles)
                 return
 
-            # option to print files
-            if printfiles:
-                print(f'{len(self.filename)} Files:')
-                files = self.filename.split(',')
-                for f in files:
-                    print(f)
+            self._print_files(printfiles)
 
-            # initialize storage structure
-            self.variables = {}
-            for p in self.patterns:
-                variables = {model_varnames[gvar][0]: {
-                    'units': model_varnames[gvar][-1],
-                    'data': p} for gvar in self.gvarfiles[p]}
-                self.variables.update(variables)
+            self._create_variables()
 
             # Load required grid variables
             self.load_grid(file_dir)
@@ -194,9 +164,13 @@ def MODEL():
             if verbose:
                 print(f'Took {perf_counter() - t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
-            if verbose:
                 print(f'Took a total of {perf_counter() - t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
+
+        def print_err_list(self, err_list):
+            # if variables not found
+            if len(err_list) > 0:
+                print(f'requested variables are not available: {err_list}')
 
         def register_variable(self, varname, gridded_int, file_dir):
             """Registers an interpolator with proper signature"""
@@ -224,7 +198,7 @@ def MODEL():
             gvar_variabels = [gvar for gvar, items in model_varnames.items() if items[0] in grid_variabels]
 
             for coord in gvar_variabels:
-                    coord_dict.update({coord: {'units': model_varnames[coord][6], 'data': getattr(self, "_" + coord)}})
+                coord_dict.update({coord: {'units': model_varnames[coord][6], 'data': getattr(self, "_" + coord)}})
 
             # variable_name = model_varnames[gvar][0]
             coord_str = ''
@@ -281,5 +255,51 @@ def MODEL():
                         if var in gvar_variabels:
                             # TODO: consider adding leading _ to avoid naming problems
                             setattr(self, "_" + var, array(cdf_data.variables[var]))
+
+        def _update_var_dict(self, varfiles):
+            for p in self.patterns:
+                var_list = varfiles[p]
+
+                self.var_dict.update({value[0]: value[0:] for key, value in
+                                      model_varnames.items() if value[0] in
+                                      var_list})
+
+        def _create_variables(self):
+            # initialize storage structure
+            self.variables = {}
+            for p in self.patterns:
+                variables = {model_varnames[gvar][0]: {
+                    'units': model_varnames[gvar][-1],
+                    'data': p} for gvar in self.gvarfiles[p]}
+                self.variables.update(variables)
+
+        def _print_files(self, printfiles):
+            # option to print files
+            if printfiles:
+                print(f'{len(self.filename)} Files:')
+                files = self.filename.split(',')
+                for f in files:
+                    print(f)
+
+        def _variable_requested_check(self, variables_requested):
+            # TODO: Write with dataclass
+            test_list = [value[0] for key, value in model_varnames.items()]
+            err_list = [item for item in variables_requested if item not in test_list]
+            if len(err_list) > 0:
+                print('Variable name(s) not recognized:', err_list)
+            for item in err_list:
+                variables_requested.remove(item)
+
+        def time_list_files(self, file_dir):
+            # For debug purpose
+            FORCE_LOAD = False
+            # first, check for file list, create if DNE
+            list_file = file_dir + self.modelname + '_list.txt'
+            time_file = file_dir + self.modelname + '_times.txt'
+            self.times, self.pattern_files = {}, {}
+            if FORCE_LOAD or not RU._isfile(list_file) or not RU._isfile(time_file):
+                from kamodo_ccmc.readers.verb3d_tocdf import convert_all
+                self.conversion_test = convert_all(file_dir)
+            return time_file, list_file
 
     return MODEL
