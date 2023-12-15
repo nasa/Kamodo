@@ -263,18 +263,18 @@ def MODEL():
             for p in self.patterns:
                 var_list = varfiles[p]
 
-                self.var_dict.update({value[0]: value[0:] for key, value in
-                                      model_varnames.items() if value[0] in
-                                      var_list})
+                self.var_dict.update({var: _model_vars.model_var_by_name(var).to_list()
+                                      for var in _model_vars.latex_variables()
+                                      if var in var_list})
 
         def _create_variables(self):
             # initialize storage structure
             self.variables = {}
             for p in self.patterns:
-                variables = {model_varnames[gvar][0]: {
-                    'units': model_varnames[gvar][-1],
-                    'data': p} for gvar in self.gvarfiles[p]}
-                self.variables.update(variables)
+                var = {_model_vars.vars[key].var: {
+                    'units': _model_vars.vars[key].units,
+                    'data': p} for key in self.gvarfiles[p]}
+                self.variables.update(var)
 
         def _print_files(self, printfiles):
             # option to print files
@@ -285,9 +285,7 @@ def MODEL():
                     print(f)
 
         def _variable_requested_check(self, variables_requested):
-            # TODO: Write with dataclass
-            test_list = [value[0] for key, value in model_varnames.items()]
-            err_list = [item for item in variables_requested if item not in test_list]
+            err_list = [item for item in variables_requested if item not in _model_vars.latex_variables()]
             if len(err_list) > 0:
                 print('Variable name(s) not recognized:', err_list)
             for item in err_list:
@@ -321,8 +319,11 @@ class ModelVariable:
     coord: list
     units: str
 
+    def to_list(self):
+        return [self.var, self.desc, self.i, self.sys, self.grid, self.coord, self.units]
 
-class ModelVariables():
+
+class ModelVariables:
     def __init__(self, model_varnames):
         self.vars = {}
         self.keys = {}
@@ -331,5 +332,14 @@ class ModelVariables():
             self.vars[key] = ModelVariable(v[0], v[1], v[2], v[3], v[4], v[5], v[6])
             self.keys[v[0]] = key
 
+    def latex_variables(self):
+        return [v.var for v in self.vars.values()]
+
+    def file_variables(self):
+        return [k for k in self.vars.keys()]
+
+    def model_var_by_name(self, name):
+        key = self.keys[name]
+        return self.vars[key]
 
 _model_vars = ModelVariables(model_varnames)
