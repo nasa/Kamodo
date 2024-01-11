@@ -1008,7 +1008,7 @@ def swmfgm3D(ko, var, time=0., title='',
 
 def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
                 title='', lowerlabel='', showgrid=False, showibs=False,
-                log10=False, vectorMag=False):
+                showE=False, log10=False, vectorMag=False):
     '''
     Function to create a slice for any point and normal and interpolate
       from Kamodo object onto that grid. Returns a full 3D plotly figure.
@@ -1188,6 +1188,21 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
         ez = +2.5*(np.sin(elat_mg*np.pi/180.))
         colorse = np.zeros(shape=ex.shape)
         # colorse[ex<0.]=1  # Option to make day side a lighter color
+        colorscalee = ['rgb(99,99,99)', 'rgb(0,0,0)']
+        fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                        cmin=0, cmax=1, colorscale=colorscalee,
+                        showlegend=False, showscale=False, hoverinfo='skip')
+
+    # Create Earth sphere
+    if showE:
+        elon = np.linspace(-180, 180, 181)
+        elat = np.linspace(-90, 90, 91)
+        elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+        ex = -1.*(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+        ey = -1.*(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+        ez = +1.*(np.sin(elat_mg*np.pi/180.))
+        colorse = np.zeros(shape=ex.shape)
+        colorse[ex<0.]=1  # Option to make day side a lighter color
         colorscalee = ['rgb(99,99,99)', 'rgb(0,0,0)']
         fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
                         cmin=0, cmax=1, colorscale=colorscalee,
