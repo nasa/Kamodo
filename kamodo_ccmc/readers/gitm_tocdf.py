@@ -168,7 +168,8 @@ gitm_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear', ''],
                  'Rad CoolingFlux': ['CoolingFlux_Rad', 'linear', 'W/m**2'],
                  'CO2 CoolingFlux': ['CoolingFlux_CO2', 'linear', 'W/m**2'],
                  'O CoolingFlux': ['CoolingFlux_O', 'linear', 'W/m**2'],
-                 'HeatFlux_PhotoElectron2': ['Heatflux_PhotoElectron2', 'linear', 'W/m**2']}
+                 'HeatFlux_PhotoElectron2': ['Heatflux_PhotoElectron2', 'linear', 'W/m**2'],
+                 'Parallel Current': ['J_para', 'linear', 'A/m**2']}
 
 # if not always one value, deal with this in kamodo wrapper
 name_dict = {"Altitude": "Altitude", "Ar Mixing Ratio": "Argon Mixing Ratio",
@@ -261,7 +262,8 @@ name_dict = {"Altitude": "Altitude", "Ar Mixing Ratio": "Argon Mixing Ratio",
              'Altintradcooling (w/m2)': 'Rad CoolingFlux',
              'Altintco2cooling (w/m2)': 'CO2 CoolingFlux',
              'Altintocooling (w/m2)': 'O CoolingFlux',
-             'HeatFlux_PhotoElectron': 'HeatFlux_PhotoElectron2'}
+             'HeatFlux_PhotoElectron': 'HeatFlux_PhotoElectron2',
+             'Jpara': 'Parallel Current'}
 
 unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              "CH4 Mixing Ratio": "", "Conduction": "W/m/K",
@@ -333,7 +335,8 @@ unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              'Altintradcooling (w/m2)': 'W/m**2',
              'Altintco2cooling (w/m2)': 'W/m**2',
              'Altintocooling (w/m2)': 'W/m**2',
-             'HeatFlux_PhotoElectron': 'W/m**2'}
+             'HeatFlux_PhotoElectron': 'W/m**2',
+             'Jpara': 'A/m**2'}
 
 scale_dict = {"Altitude": "linear", "Ar Mixing Ratio": "linear",
               "Ar": "exponential", "CH4 Mixing Ratio": "linear",
@@ -407,7 +410,8 @@ scale_dict = {"Altitude": "linear", "Ar Mixing Ratio": "linear",
               'Altintradcooling (w/m2)': 'linear',
               'Altintco2cooling (w/m2)': 'linear',
               'Altintocooling (w/m2)': 'linear',
-              'HeatFlux_PhotoElectron': 'linear'}
+              'HeatFlux_PhotoElectron': 'linear',
+              'Jpara': 'linear'}
 
 
 def _read(varlist, attrs, newfile=True):
