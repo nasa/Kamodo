@@ -168,7 +168,6 @@ def create_interp(coord_data, data_dict, func=None, func_default='data'):
             given.
     Output: an interpolator created with the given dataset and coordinates.
     '''
-
     # determine the number of coordinates, create the interpolator
     coord_list = [value for key, value in coord_data.items()]  # list of arrays
     n_coords = len(coord_data.keys())
@@ -187,7 +186,13 @@ def create_interp(coord_data, data_dict, func=None, func_default='data'):
             return rgi(xvec)
         return interp
     elif func_default == 'custom':
-        return func  # returns the custom interpolator
+        def interp(xvec):
+            # for GAMERA-GM (the first model using this feature)
+            # the custom function func(), when called, returns a function
+            # that then accepts the positions (xvec)
+            return (func())(xvec) 
+        return interp  
+        # return func  # returns the custom interpolator
 
 
 def create_funcsig(coord_data, coord_str, bounds):
@@ -222,7 +227,6 @@ def create_funcsig(coord_data, coord_str, bounds):
             coord_name = 'rvec_'+coord_str+str(n_coords)+'D'
         else:
             coord_name = 'xvec_'+coord_str+str(n_coords)+'D'
-    # e.g. 'xvec_SMcar4D' or 'rvecGEOsph3D'
     param_xvec = forge.FParameter(
         name=coord_name, interface_name='xvec',
         kind=forge.FParameter.POSITIONAL_OR_KEYWORD,
@@ -976,7 +980,7 @@ def tstr_to_hrs(time_str, ms_timing=False):
 
 
 def create_timelist(list_file, time_file, modelname, times, pattern_files,
-                    filedate, ms_timing=False):
+                    filedate, ms_timing=False,num_files_per_set=1):
     '''Used by all the readers to create the time_file and list_file files.
     Inputs:
         list_file - the name of the file, including the file directory, to
@@ -1003,7 +1007,6 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
             Default is False.
     Returns nothing.
     '''
-
     # create time list file if DNE
     print('Creating the time files...', end="")
     list_out = _open(list_file, 'w')
@@ -1020,14 +1023,12 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
         files = pattern_files[p]
         # write to files
         time_out.write('\nPattern: '+p)
-        time_out.write(''.join(str_out))
-        for i in range(len(files)):
+        time_out.write(''.join([''.join(str_element) for str_element in str_out]))
+        for i in range(int(len(files)/num_files_per_set)):
             # modified to remove full path from files
-            filesplits = files[i].replace('\\', '/').split("/")
+            filesplits = files[i*num_files_per_set].replace('\\', '/').split("/")
             list_out.write('\n' + filesplits[-1] +
                            start_time_str[i] + '  ' + end_time_str[i])
-            #list_out.write('\n' + files[i].replace('\\', '/') +
-            #               start_time_str[i] + '  ' + end_time_str[i])
     time_out.close()
     list_out.close()
     print('done.')
