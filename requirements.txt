@@ -8,3 +8,16 @@ mkdocs-jupyter
 mknotebooks
 python-markdown-math
 markdown_include
+kamodo
+nbformat
+netCDF4
+cdflib
+astropy
+h5py
+sgp4
+hapiclient
+spacepy
+s3fs<0.5.0
+boto3
+h5netcdf
+psutil
