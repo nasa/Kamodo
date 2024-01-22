@@ -1,0 +1,20 @@
+Build library:
+
+1) load python environment supporting Kamodo 
+2) run
+  python interpolate_tri2d_extension_build.py
+  to make _interpolate_tri2d.cpython-*.so shared library file.
+
+Developed on Mac OS Ventura 13.6.5 on M1 hardware 
+using 
+   python 3.10 and
+   gcc-mp-12 installed via MacPorts.
+
+January 2024.
+
+
+We plan to develop a setup.py for the whole kamodo_ccmc package that builds the library for any OS and architecture automatically or ahead of time as part of a binary distribution.
+
+
+
+ 
