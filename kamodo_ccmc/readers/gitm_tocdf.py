@@ -162,7 +162,14 @@ gitm_varnames = {'Argon Mixing Ratio': ['r_Ar', 'linear', ''],
                  'HeatFlux_Joule': ['phi_qJoule', 'linear', 'W/m**2'],
                  'HeatFlux': ['phi_q', 'linear', 'W/m**2'],
                  'HeatFlux_EUV': ['phi_qEUV', 'linear', 'W/m**2'],
-                 'NO CoolingFlux': ['phi_qNOCooling', 'linear', 'W/m**2']}
+                 'NO CoolingFlux': ['phi_qNOCooling', 'linear', 'W/m**2'],
+                 'HeatFlux_PhotoElectron': ['HeatFlux_PhotoElectron', 'linear', 'W/m**2'],
+                 'HeatFlux_Chamical': ['HeatFlux_Chamical', 'linear', 'W/m**2'],
+                 'Rad CoolingFlux': ['CoolingFlux_Rad', 'linear', 'W/m**2'],
+                 'CO2 CoolingFlux': ['CoolingFlux_CO2', 'linear', 'W/m**2'],
+                 'O CoolingFlux': ['CoolingFlux_O', 'linear', 'W/m**2'],
+                 'HeatFlux_PhotoElectron2': ['Heatflux_PhotoElectron2', 'linear', 'W/m**2'],
+                 'Parallel Current': ['J_para', 'linear', 'A/m**2']}
 
 # if not always one value, deal with this in kamodo wrapper
 name_dict = {"Altitude": "Altitude", "Ar Mixing Ratio": "Argon Mixing Ratio",
@@ -249,7 +256,14 @@ name_dict = {"Altitude": "Altitude", "Ar Mixing Ratio": "Argon Mixing Ratio",
              'AltIntJouleHeating (W/m2)': 'HeatFlux_Joule',
              'AltIntHeatingTransfer (W/m2)': 'HeatFlux',
              'AltIntEuvHeating (W/m2)': 'HeatFlux_EUV',
-             'AltIntNOCooling (W/m2)': 'NO CoolingFlux'}
+             'AltIntNOCooling (W/m2)': 'NO CoolingFlux',
+             'Altintphotoelectronheating (w/m2)': 'HeatFlux_PhotoElectron',
+             'Altintchamicalheating (w/m2)': 'HeatFlux_Chamical',
+             'Altintradcooling (w/m2)': 'Rad CoolingFlux',
+             'Altintco2cooling (w/m2)': 'CO2 CoolingFlux',
+             'Altintocooling (w/m2)': 'O CoolingFlux',
+             'HeatFlux_PhotoElectron': 'HeatFlux_PhotoElectron2',
+             'Jpara': 'Parallel Current'}
 
 unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              "CH4 Mixing Ratio": "", "Conduction": "W/m/K",
@@ -315,7 +329,14 @@ unit_dict = {"Altitude": "m", "Ar Mixing Ratio": "", "Ar": "kg/m**3",
              'AltIntJouleHeating (W/m2)': 'W/m**2',
              'AltIntHeatingTransfer (W/m2)': 'W/m**2',
              'AltIntEuvHeating (W/m2)': 'W/m**2',
-             'AltIntNOCooling (W/m2)': 'W/m**2'}
+             'AltIntNOCooling (W/m2)': 'W/m**2',
+             'Altintphotoelectronheating (w/m2)': 'W/m**2',
+             'Altintchamicalheating (w/m2)': 'W/m**2',
+             'Altintradcooling (w/m2)': 'W/m**2',
+             'Altintco2cooling (w/m2)': 'W/m**2',
+             'Altintocooling (w/m2)': 'W/m**2',
+             'HeatFlux_PhotoElectron': 'W/m**2',
+             'Jpara': 'A/m**2'}
 
 scale_dict = {"Altitude": "linear", "Ar Mixing Ratio": "linear",
               "Ar": "exponential", "CH4 Mixing Ratio": "linear",
@@ -383,7 +404,14 @@ scale_dict = {"Altitude": "linear", "Ar Mixing Ratio": "linear",
               'AltIntJouleHeating (W/m2)': 'linear',
               'AltIntHeatingTransfer (W/m2)': 'linear',
               'AltIntEuvHeating (W/m2)': 'linear',
-              'AltIntNOCooling (W/m2)': 'linear'}
+              'AltIntNOCooling (W/m2)': 'linear',
+              'Altintphotoelectronheating (w/m2)': 'linear',
+              'Altintchamicalheating (w/m2)': 'linear',
+              'Altintradcooling (w/m2)': 'linear',
+              'Altintco2cooling (w/m2)': 'linear',
+              'Altintocooling (w/m2)': 'linear',
+              'HeatFlux_PhotoElectron': 'linear',
+              'Jpara': 'linear'}
 
 
 def _read(varlist, attrs, newfile=True):
