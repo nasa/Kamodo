@@ -40,7 +40,10 @@ model_varnames = {'b1x': ['B_1x', 'x component of the deviation from the ' +
                   'th': ['theta_Btilt', 'Dipole tilt angle: positive for the' +
                          ' northern hemisphere dipole axis tilting towards ' +
                          'the Sun in northern hemisphere summer', 0, 'GSM',
-                         'car', ['time'], 'radians']}
+                         'car', ['time'], 'radians'],
+                  'status': ['status',
+                         'Classification of magnetic fieldlines', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], '']}
 
 
 # coordinates stored as x, y, z in earth radii.
@@ -178,7 +181,7 @@ def MODEL():
             mhd = sp.IdlFile(self.pattern_files[p][0],
                              sort_unstructured=False)  # This fails on s3
             file_variables = [key for key in mhd.keys() if key not in
-                              ['grid', 'status', 'x', 'y', 'z']] + ['th']
+                              ['grid', 'x', 'y', 'z']] + ['th']
             if len(variables_requested) > 0 and variables_requested != 'all':
                 gvar_list = [key for key, value in model_varnames.items()
                              if value[0] in variables_requested and
