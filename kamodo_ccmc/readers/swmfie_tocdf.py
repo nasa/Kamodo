@@ -8,26 +8,40 @@ import numpy as np
 from time import perf_counter
 from os.path import basename, isfile
 from netCDF4 import Dataset
+import re
 
 swmfie_varnames = {"X": ['x', 'km'], "Y": ['y', 'km'], "Z": ['z', 'km'],
                    # coordinates are ignored
                    "Theta": ['theta', "deg"], "Psi": ['psi', "deg"],
                    "Btilt_theta": ['theta_Btilt', "deg"],
                    "Btilt_psi": ['psi_Btilt', "deg"],
-                   "SigmaH": ['Sigma_H', "S"], "SigmaP": ['Sigma_P', "S"],
-                   "E-Flux": ['Phi_E', "W/m**2"], "Ave-E": ['E_avg', 'eV'],
-                   "JR": ["j_R", "mA/m**2"], "PHI": ["Phi", "kV"],
-                   "Ex": ["E_x", "mV/m"], "Ey": ["E_y", "mV/m"],
+                   "SigmaH": ['Sigma_H', "S"],
+                   "SigmaP": ['Sigma_P', "S"],
+                   "E-Flux": ['Phi_E', "W/m**2"],
+                   "Ave-E": ['E_avg', 'eV'],
+                   "JR": ["j_R", "mA/m**2"],
+                   "PHI": ["Phi", "kV"],
+                   "Phi": ["Phi", "kV"],
+                   "Jr": ["j_R", "mA/m**2"],
+                   "Ex": ["E_x", "mV/m"],
+                   "Ey": ["E_y", "mV/m"],
                    "Ez": ["E_z", "mV/m"],
-                   "Jx": ["j_x", "mA/m**2"], "Jy": ["j_y", "mA/m**2"],
+                   "Jx": ["j_x", "mA/m**2"],
+                   "Jy": ["j_y", "mA/m**2"],
                    "Jz": ["j_z", "mA/m**2"],
-                   "Ux": ['v_x', "km/s"], "Uy": ['v_y', "km/s"],
+                   "Ux": ['v_x', "km/s"],
+                   "Uy": ['v_y', "km/s"],
                    "Uz": ['v_z', "km/s"],
                    "JouleHeat": ['Q_Joule', "mW/m**2"],
                    "IonNumFlux": ['Phi_nion', "1/cm**2/s"],
                    "RT 1/B": ['Binv_RT', "1/T"],
                    "RT Rho": ['rho_RT', "amu/cm**3"],
                    "RT P": ['P_RT', "Pa"],
+                   "RT_1/B": ['Binv_RT', "1/T"],
+                   "RT_Rho": ['rho_RT', "amu/cm**3"],
+                   "RT_P": ['P_RT', "Pa"],
+                   "conjugate_dLat": ['dLat_star', "deg"],
+                   "conjugate_dLon": ['dlon_star', "deg"],
                    "conjugate dLat": ['dLat_star', "deg"],
                    "conjugate dLon": ['dlon_star', "deg"]}
 
@@ -48,27 +62,131 @@ def convert_all(file_dir):
           f'{file_dir} to netCDF.')
     ftic, nfiles = perf_counter(), 0
     files = sorted(glob(file_dir + '*.tec'))  # want YYYYMMDD
+    files_idl = sorted(glob(file_dir + '*.idl'))  # want YYYYMMDD
+    files.extend(files_idl)
     if len(files) == 0:
         print('No original files found.')
         return
 
     # convert and return
     for file in files:
-        if not isfile(file.replace('.tec', '.nc')):
+        cdf_file = _cdf_filename(file)
+
+        if not isfile(cdf_file):
             coords, variables, var_units, theta_Btilt, psi_Btilt = \
                 _read_SWMFIE(file, verbose=True)
             cdf_filename = _toCDF(file, coords, variables, var_units,
                                   theta_Btilt, psi_Btilt)
             nfiles += 1
             print(cdf_filename, ' converted.')
+
     print(f'{nfiles} files in {file_dir} now converted into ' +
           f'netCDF4 files in {perf_counter()-ftic:.6f}s.')
     return None
 
+def _read_SWMFIE_IDL_header(filename):
+    '''parse header of an 'IDL-formatted' output file '''
 
+    file_object = open(filename, 'r')
+    file_contents = file_object.readlines()
+    file_object.close()
+    
+    # sort info with TITLE keywordin VARIABLE_LIST
+
+    variable_list = []
+    title = None
+    time = None
+    BtiltDeg = None
+    N1 = None
+    i = None
+    j = None
+    f = None
+    N2 = None
+    run_type1 = 'NORTHERN HEMISPHERE'
+    run_type2 = 'SOUTHERN HEMISPHERE'
+    ndata_lines = None
+    skip1 = None
+    skip2 = None
+    begin_south = False
+
+    iline = 0
+    while(not begin_south and iline < len(file_contents)):
+        if 'NORTHERN HEMISPHERE' in file_contents[iline]:
+            skip1 = iline
+
+        if 'SOUTHERN HEMISPHERE' in file_contents[iline]:
+            begin_south = True
+            skip2 = iline
+
+        if file_contents[iline].find('TITLE') == 0:
+            title =  file_contents[iline+1].strip()
+            iline = iline+1
+
+        if file_contents[iline].find('NUMERICAL VALUES') == 0:
+            nvar,NVARS = file_contents[iline+1].strip().split(' ')
+            i,nTHETA = file_contents[iline+2].strip().split(' ')
+            j,nPHI = file_contents[iline+3].strip().split(' ')
+            iline = iline+3
+            
+        if file_contents[iline].find('VARIABLE LIST') == 0:
+            ivar = 0
+            iline+=1
+            line = file_contents[iline] 
+            while( line.strip() != ""):
+                #print(line.strip().split('[')[0].strip().replace('RT ','RT_').split(' '))
+                ivar_f,variable = line.strip().split('[')[0].strip().replace('RT ','RT_').replace('conjugate ','conjugate_').split(' ')
+                variable_list.append(variable)
+                iline+=1
+                line = file_contents[iline] 
+
+        if file_contents[iline].find('TIME') == 0:
+            time_tokens=[]
+            iline+=1
+            for itime in range(7):
+                #print(file_contents[iline+itime].strip().split(' '))
+                time_token,time_string = file_contents[iline+itime].strip().split(' ')
+                time_tokens.append(int(time_token))
+
+            year,month,day,hour,minute,second,ms = time_tokens
+            # dts = '{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}.{:03d}'.format(year,month,day,hour,minute,second,ms)
+            dts = '{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}'.format(year,month,day,hour,minute,second)
+            iline+=7
+
+        if file_contents[iline].find('DIPOLE TILT') == 0:
+            BTiltXZ,btiltname = file_contents[iline+1].strip().split(' ')
+            BTiltYZ,btiltname = file_contents[iline+2].strip().split(' ')
+            BtiltDeg = [ BTiltXZ ,  BTiltYZ]
+            iline+=2
+            
+        iline+=1
+
+    # determine how many lines constitute one data list
+    data_lines = file_contents[skip1+1:]
+    num_test = [len(line) for line in data_lines]  # list of lengths of lines
+    ndata_lines = np.diff(np.where(np.array(num_test) == num_test[0])[0])[0] 
+
+    # determine column positon of the coordinates theta and psi in the data
+    var_psi_test = [var == 'Psi' for var in variable_list]
+    pos_psi = np.where(np.array(var_psi_test,dtype=int) == 1)[0][0]
+    var_theta_test = [var == 'Theta' for var in variable_list]
+    pos_theta = np.where(np.array(var_theta_test,dtype=int) == 1)[0][0] 
+    
+    del file_contents
+
+    header = {'title': title, 'time': dts, 'BtiltDeg': BtiltDeg,
+              'variable_list': variable_list, 'run_type1': run_type1, 'N1': N1,
+              'run_type2': run_type2, 'N2': N2, 'i': i, 'j': j, 'f': f,
+              'skip1': skip1, 'skip2': skip2, 'ndata_lines': ndata_lines,
+              'pos_theta':pos_theta,'pos_psi':pos_psi}
+    return header
+    
+    
 def read_SWMFIE_header(filename):
-    '''parse header for a representative file'''
-
+    '''parse header of file'''
+    if filename[-4:] == '.idl':
+       header = _read_SWMFIE_IDL_header(filename)
+       return header
+   
     # get file data
     file_object = open(filename, 'r')
     file_contents = file_object.read()
@@ -109,6 +227,12 @@ def read_SWMFIE_header(filename):
     line_test = [f in c for c in file_contents.split('\n')]
     skip1, skip2 = np.where(np.array(line_test, dtype=int) == 1)[0]
 
+    # determine column positon of the coordinates theta and psi in the data
+    var_psi_test = [var == 'Psi' for var in variable_list]
+    pos_psi = np.where(np.array(var_psi_test,dtype=int) == 1)[0][0]
+    var_theta_test = [var == 'Theta' for var in variable_list]
+    pos_theta = np.where(np.array(var_theta_test,dtype=int) == 1)[0][0]
+
     # determine how many lines constitute one data list
     data_lines = file_contents.split('\n')[skip1+1:]
     num_test = [len(line) for line in data_lines]  # list of lengths of lines
@@ -119,7 +243,8 @@ def read_SWMFIE_header(filename):
     header = {'title': title, 'time': dts, 'BtiltDeg': BtiltDeg,
               'variable_list': variable_list, 'run_type1': run_type1, 'N1': N1,
               'run_type2': run_type2, 'N2': N2, 'i': i, 'j': j, 'f': f,
-              'skip1': skip1, 'skip2': skip2, 'ndata_lines': ndata_lines}
+              'skip1': skip1, 'skip2': skip2, 'ndata_lines': ndata_lines,
+              'pos_theta':pos_theta,'pos_psi':pos_psi}
     return header
 
 
@@ -132,11 +257,16 @@ def read_SWMFIE_data(filename, header):
     file_object.close()
 
     # Get theta_Btilt value from file
-    title_line = file_contents[0].replace('\n',
-                                          ',').replace('"',
-                                                       '').strip().strip(',')
-    theta_Btilt = float(title_line.split(',')[-1].strip().split()[1])
+#    title_line = file_contents[0].replace('\n',
+#                                          ',').replace('"',
+#                                                       '').strip().strip(',')
+#    theta_Btilt = float(title_line.split(',')[-1].strip().split()[1])
+    theta_Btilt = header['BtiltDeg'][0]
 
+    pos_theta = header['pos_theta']
+    pos_psi = header['pos_psi']
+
+    print('pos_theta,pos_psi: ',pos_theta,pos_psi)
     # collect data into an array, one for each run_type
     file_data1 = file_contents[header['skip1']+1:header['skip2']-1]
     data1 = np.array([''.join(file_data1[i:i+header['ndata_lines']]).
@@ -151,7 +281,7 @@ def read_SWMFIE_data(filename, header):
 
     # determine correct dimension sizes from theta and psi (3 and 4)
     # combine data and return in dict
-    nLatA, nLon = np.unique(data1[:, 3]).size, np.unique(data1[:, 4]).size
+    nLatA, nLon = np.unique(data1[:, pos_theta]).size, np.unique(data1[:, pos_psi]).size
     data = np.concatenate((np.reshape(data1, (nLon, nLatA,
                                               len(header['variable_list']))),
                            np.reshape(data2, (nLon, nLatA,
@@ -175,12 +305,14 @@ def _read_SWMFIE(file, verbose=False):
 
     # get list of variables possible in these files using first file
     file_header = read_SWMFIE_header(file)
+        
     file_varlist = file_header['variable_list']
     gvar_list = [swmfie_varnames[key][0] for key in file_varlist if key not in
                  ['X', 'Y', 'Z', 'Theta', 'Psi', 'Btilt_theta', 'Btilt_psi']]
     # avoid returning coordinates stored elsewhere (or ignored)
 
     # collect coordinates and intialize data storage from first file
+    header = read_SWMFIE_header(file)
     data, Btilt = read_SWMFIE_data(file, file_header)
     lon, lat0 = np.unique(data['psi']), np.unique(data['theta'])-90.
     lon_ge180 = list(np.where((lon >= 180.) & (lon < 360.))[0])
@@ -224,12 +356,29 @@ def _read_SWMFIE(file, verbose=False):
     return coords, variables, var_units, theta_Btilt, psi_Btilt
 # removed files from return statement
 
+def _cdf_filename(filename):
+    ''' translate a file name to a properly darte-stamped NetCDF file name:
+        for example i_eYYYYMMDD_hhmmss_mmm.tex will turn into i_eYYYYMMDD_hhmmss_mmm.nc but
+                    itYYMMDD_hhmmss_mmm.idl should turn into it20YYMMDD_hhmmss_mmm.nc
+                    This assumes that 4-digit year numbers converted from 2-digit year numbers should start with 20.
+    '''
+    import re
 
+    def insert_20(m):
+        inner_word = list(m.group(2))
+        return m.group(1) + "20" + m.group(2)
+
+    cdf_filename = re.sub('(\w)([\d]{6}_[\d]{6})',insert_20,filename)
+    cdf_filename = re.sub('(.tec|.idl)','.nc',cdf_filename)
+
+    return cdf_filename
+            
+    
 def _toCDF(file, coords, variables, var_units, theta_Btilt, psi_Btilt):
     '''Write data to a netCDF4 file.'''
 
     # start new wrapped output object
-    cdf_filename = file.replace('.tec', '.nc')
+    cdf_filename = _cdf_filename(file)
     data_out = Dataset(cdf_filename, 'w', format='NETCDF4')
     data_out.file = file
     data_out.model = 'SWMF_IE'
