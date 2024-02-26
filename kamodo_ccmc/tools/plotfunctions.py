@@ -1226,3 +1226,178 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
     )
 
     return fig
+
+def SatPosFig(satid, plotDT, coord='GSM', prevHR=6, showE=True):
+    '''
+    Function to create a simple plotly figure from a satellite ID via SSCWeb HAPI
+    
+    Arguments:
+      satid   ID of the satellite from
+              https://hapi-server.org/servers/SSCWeb/hapi/catalog
+      coord   coordinate system of positions (TOD, J2K, GEO, GM, GSE, GSM, SM)
+      plotDT  datetime of desired plot time
+      prevHR  number of hours to show positions previous to plot time
+    '''
+    import numpy as np
+    import plotly.graph_objects as go
+    from kamodo_ccmc.readers.hapi import HAPI
+    from kamodo_ccmc.readers.hapi import hapi_get_dataset_title
+    from datetime import datetime, timedelta
+
+    # Set values to get data from the HAPI server
+    server = 'https://hapi-server.org/servers/SSCWeb/hapi'
+    dataset = satid
+    parameters = 'X_'+coord+',Y_'+coord+',Z_'+coord
+    start = (plotDT + timedelta(hours=-(1+prevHR))).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    stop  = (plotDT + timedelta(hours=+1)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    ko_sat = HAPI(server, dataset, parameters, start, stop, register_components=True)
+    satname = hapi_get_dataset_title(server, satid)
+    sat_vars = [*ko_sat.variables]
+
+    # array of times, going back prevHR hours with Npts total points
+    Npts = 61
+    delt = np.linspace(0., -3600.*prevHR, Npts)
+
+    # set array of marker size
+    deg = np.linspace(0., np.pi/2., Npts)
+    msize = 2.+4*(np.cos(deg)**2)
+    msize[0] = 10.
+
+    # timestamps to interpolate positions
+    tss=(plotDT.timestamp() + delt)
+    xx = ko_sat.variables[sat_vars[0]]['interpolator'](tss)
+    yy = ko_sat.variables[sat_vars[1]]['interpolator'](tss)
+    zz = ko_sat.variables[sat_vars[2]]['interpolator'](tss)
+
+    # datetime strings for hover labels
+    timestrings = [datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S UT") for t in tss]
+
+    ucolor = "#d6d622"
+    fig = go.Figure()
+    fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines+markers',
+        line=dict(color=ucolor, width=2),
+        marker=dict(color=ucolor, size=msize, line=dict(color=ucolor, width=1),),
+        name=satname, showlegend=True))
+    fig.update_traces(
+        customdata = timestrings,
+        hovertemplate=coord + " Coordinates:<br>" +
+        "X [R_E]: %{x:.5g}<br>" +
+        "Y [R_E]: %{y:.5g}<br>" +
+        "Z [R_E]: %{z:.5g}<br>" + "%{customdata}" +
+        "<extra>" + satname + "</extra>",
+    )
+
+    # Create Earth sphere
+    if showE:
+        elon = np.linspace(-180, 180, 181)
+        elat = np.linspace(-90, 90, 91)
+        elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+        ex = -1.*(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+        ey = -1.*(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+        ez = +1.*(np.sin(elat_mg*np.pi/180.))
+        colorse = np.zeros(shape=ex.shape)
+        colorse[ex<0.]=1  # Option to make day side a lighter color
+        colorscalee = ['rgb(199,199,199)', 'rgb(0,0,0)']
+        fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                        cmin=0, cmax=1, colorscale=colorscalee,
+                        showlegend=False, showscale=False, hoverinfo='skip')
+
+    fig.update_layout(scene_aspectmode='data',
+        title='Plot of '+satname+' at '+timestrings[0]+' and '+str(prevHR)+' hour previous.')
+    
+    return fig
+
+def fixFigOrigin(fig):
+    '''
+    Simple function that takes a passed in 3D plotly figure object
+    and computes a new camera center near the origin (0,0,0) by examining
+    the x, y, and z values of the data blocks, returning an updated figure.
+    '''
+    minX, maxX, minY, maxY, minZ, maxZ = 0., 0., 0., 0., 0., 0.
+    for i in range(len(fig.data)):
+        if len(fig.data[i]['x'].shape) == 1:
+            minX = min(minX, min(v for v in fig.data[i]['x'] if v is not None))
+            minY = min(minY, min(v for v in fig.data[i]['y'] if v is not None))
+            minZ = min(minZ, min(v for v in fig.data[i]['z'] if v is not None))
+            maxX = max(maxX, max(v for v in fig.data[i]['x'] if v is not None))
+            maxY = max(maxY, max(v for v in fig.data[i]['y'] if v is not None))
+            maxZ = max(maxZ, max(v for v in fig.data[i]['z'] if v is not None))
+    aveX = (minX + maxX)/2.
+    aveY = (minY + maxY)/2.
+    aveZ = (minZ + maxZ)/2.
+    newX = 0.7*(0. - aveX)/(maxX - aveX)
+    newY = 0.7*(0. - aveY)/(maxY - aveY)
+    newZ = 0.7*(0. - aveZ)/(maxZ - aveZ)
+    camera = dict(center=dict(x=newX, y=newY, z=newZ))
+    fig.update_layout(scene_camera=camera)
+
+    return fig
+
+def B3Dfig(fullfile, showE = True):
+    '''
+    Function to take a specially generated file of last closed fieldline traces
+      and generate a plotly figure of it. This can be displayed as is or added
+      to other figures.
+    
+    Arguments:
+      fullfile:  The full file path to the file with fieldline extractions
+      showE:     A logical for showing an Earth sphere in the figure
+    '''
+    import numpy as np
+    import pandas as pd
+    import plotly.graph_objects as go
+
+    file = fullfile.split('/')[-1]
+    try:
+        tmpD=pd.read_csv(fullfile, delimiter=r"\s+", header=None,
+			 comment='#', skiprows=0).to_numpy()
+    except FileNotFoundError:
+        print('ERROR, no file found.')
+        return None
+
+    # The precomputed fieldlines file has 29 lines with 41 points each, FIXED size
+    tmpD3=tmpD.reshape(29,41,3)
+    # Placing a None between lines keeps them separated so we can use
+    #   one trace to plot them all.
+    vnone = np.full((29,1,3), None)
+    newD = np.hstack((tmpD3,vnone)).reshape(29*42,3)
+    # Make the figure
+    fig = go.Figure()
+    fig.add_trace(go.Scatter3d(x=newD[:,0], y=newD[:,1], z=newD[:,2], mode='lines',
+        line=dict(color="#a1a1a1", width=2), hoverinfo='skip', name='Last Closed B'))
+
+    # Create Earth sphere
+    if showE:
+        elon = np.linspace(-180, 180, 181)
+        elat = np.linspace(-90, 90, 91)
+        elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+        ex = -1.*(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+        ey = -1.*(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+        ez = +1.*(np.sin(elat_mg*np.pi/180.))
+        colorse = np.zeros(shape=ex.shape)
+        colorse[ex<0.]=1  # Option to make day side a lighter color
+        colorscalee = ['rgb(199,199,199)', 'rgb(0,0,0)']
+        fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                        cmin=0, cmax=1, colorscale=colorscalee,
+                        showlegend=False, showscale=False, hoverinfo='skip')
+
+    # Add hidden plot ranges (may need to adjust later)
+    xx = np.full((3), None)
+    yy = np.full((3), None)
+    zz = np.full((3), None)
+    xx[0], xx[2] = -75.,  15.
+    yy[0], yy[2] =  25., -25.
+    zz[0], zz[2] = -20.,  20.
+    fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='markers',
+        marker=dict(color="black", size=1), showlegend=False, hoverinfo='skip' ))
+
+    # Set 3D view
+    camera = dict(
+        up=dict(x=0, y=0, z=1),
+        eye=dict(x=1.1, y=0.85, z=0.25)
+    )
+    fig.update_layout(title=file, scene_camera=camera)
+    fig.update_layout(scene_aspectmode='data')
+
+    return fig
+
