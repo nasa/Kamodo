@@ -5,22 +5,20 @@
 # model_varnames = {'Name in file': ['LaTeX representation', 'Description', integer, 'Coordinate system',
 #                            'Coordinate grid', [Coordinate list], 'Units'],
 
-model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E, Alpha)', 0, 'LEA',
-                          'car', ['time', 'L', 'E', 'Alpha'], '1/(s*cm**2*keV*sr*MeV**2)'],
-                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, mu, K)', 0, 'LEA',
-                            'car', ['time', 'L', 'Mu', 'K'], '1/(s*cm**2*keV*sr*MeV**2)'],
+model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_eq)', 0, 'LEA',
+                          'car', ['time', 'L', 'E_e', 'alpha_eq'], '1/(s*cm**2*keV*sr*MeV**2)'],
                   'L': ['L', 'L-shell', 1, 'LEA',
-                        'car', ['L', 'E', 'Alpha'], ''],
-                  'L_2': ['L_lmk', 'L-shell', 1, 'LEA',
-                          'car', ['L', 'Mu', 'K'], ''],
+                        'car', ['L', 'E_e', 'alpha_eq'], ''],
                   'E': ['E_e', 'Electron energy', 1, 'LEA',
-                         'car', ['L', 'E', 'Alpha'], 'MeV'],
+                        'car', ['L', 'E_e', 'alpha_eq'], 'MeV'],
                   'Alpha': ['alpha_eq', 'Equatorial pitch angle', 1, 'LEA',
-                            'car', ['L', 'E', 'Alpha'], 'deg'],
-                  'Mu': ['Mu', '1st adiabatic invariant mu', 1, 'LMK',
-                         'car', ['L', 'Mu', 'K'], 'MeV/G'],
+                            'car', ['L', 'E_e', 'alpha_eq'], 'deg'],
+                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L_lmk, mu, K)', 0, 'LMK',
+                            'car', ['time', 'L', 'mu', 'K'], '1/(s*cm**2*keV*sr*MeV**2)'],
+                  'Mu': ['mu', '1st adiabatic invariant mu', 1, 'LMK',
+                         'car', ['L', 'mu', 'K'], 'MeV/G'],
                   'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
-                        'car', ['L', 'Mu', 'K'], 'GR_E**1/2']
+                        'car', ['L', 'mu', 'K'], 'GR_E**1/2']
                   }
 
 
@@ -232,7 +230,7 @@ def MODEL():
             gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
             for coord in gvar_grid:
-                coord_dict.update({coord: {'units': _model_vars.vars[coord].units, 'data': getattr(self, self._grid_prefix + coord)}})
+                coord_dict.update({_model_vars.vars[coord].var : {'units': _model_vars.vars[coord].units, 'data': getattr(self, self._grid_prefix + coord)}})
 
             # variable_name = model_varnames[gvar][0]
             coord_str = ''
