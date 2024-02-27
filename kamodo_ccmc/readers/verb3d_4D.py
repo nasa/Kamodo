@@ -5,19 +5,19 @@
 # model_varnames = {'Name in file': ['LaTeX representation', 'Description', integer, 'Coordinate system',
 #                            'Coordinate grid', [Coordinate list], 'Units'],
 
-model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E, A)', 0, 'LEA',
-                          'car', ['time', 'L', 'Energy', 'Alpha'], '1/(s*cm**2*keV*sr*MeV**2)'],
-                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, \\mu, K)', 0, 'LEA',
+model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E, Alpha)', 0, 'LEA',
+                          'car', ['time', 'L', 'E', 'Alpha'], '1/(s*cm**2*keV*sr*MeV**2)'],
+                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, mu, K)', 0, 'LEA',
                             'car', ['time', 'L', 'Mu', 'K'], '1/(s*cm**2*keV*sr*MeV**2)'],
                   'L': ['L', 'L-shell', 1, 'LEA',
-                        'car', ['L', 'Energy', 'Alpha'], ''],
+                        'car', ['L', 'E', 'Alpha'], ''],
                   'L_2': ['L_lmk', 'L-shell', 1, 'LEA',
                           'car', ['L', 'Mu', 'K'], ''],
-                  'E': ['Energy', 'Energy', 1, 'LEA',
-                        'car', ['L', 'Energy', 'Alpha'], 'MeV'],
-                  'Alpha': ['Alpha', 'Pitch angle', 1, 'LEA',
-                            'car', ['L', 'Energy', 'Alpha'], 'deg'],
-                  'Mu': ['Mu', '1st adiabatic invariant \\mu', 1, 'LMK',
+                  'E': ['E_e', 'Electron energy', 1, 'LEA',
+                         'car', ['L', 'E', 'Alpha'], 'MeV'],
+                  'Alpha': ['alpha_eq', 'Equatorial pitch angle', 1, 'LEA',
+                            'car', ['L', 'E', 'Alpha'], 'deg'],
+                  'Mu': ['Mu', '1st adiabatic invariant mu', 1, 'LMK',
                          'car', ['L', 'Mu', 'K'], 'MeV/G'],
                   'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
                         'car', ['L', 'Mu', 'K'], 'GR_E**1/2']
@@ -74,11 +74,15 @@ def MODEL():
             -
         '''
 
+        # Static properties of this mode class
+        modelname = 'VERB-3D'
+        _grid_prefix = '_grid'
+
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
                      printfiles=False, **kwargs):
             super(MODEL, self).__init__()
-            self.modelname = 'VERB-3D'
+
             t0 = perf_counter()
 
             # Kamodo does handle windows path correctly. Changing to paths to replacing \\ with /
@@ -228,7 +232,7 @@ def MODEL():
             gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
             for coord in gvar_grid:
-                coord_dict.update({coord: {'units': _model_vars.vars[coord].units, 'data': getattr(self, "_" + coord)}})
+                coord_dict.update({coord: {'units': _model_vars.vars[coord].units, 'data': getattr(self, self._grid_prefix + coord)}})
 
             # variable_name = model_varnames[gvar][0]
             coord_str = ''
@@ -257,15 +261,16 @@ def MODEL():
             variables = [v for gvars in self.gvarfiles.values() for v in gvars]
 
             # Determine the grid variables
-            grid_variables = set(item for v in variables for item in model_varnames[v][5])
+            grid_variables = set(item for v in variables for item in _model_vars.vars[v].coord)
 
             # Exclude time
             if 'time' in grid_variables:
                 grid_variables.remove('time')
 
             # Find corresponding name for the coordinates based on Latex name
-            # TODO: this can create ambiguity if latex variables are the same
-            gvar_variabels = [gvar for gvar, items in model_varnames.items() if items[0] in grid_variables]
+            # gvar_variabels = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
+            # gvar_variabels = [gvar for gvar, items in model_varnames.items() if items[0] in grid_variables]
+            gvar_variabels = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
             # Find what patterns to load
             patterns_to_load = set()
@@ -283,8 +288,7 @@ def MODEL():
                 with RU.Dataset(pattern_files[0], 'r') as cdf_data:
                     for var in self.gvarfiles_full[p]:
                         if var in gvar_variabels:
-                            # TODO: consider adding leading _ to avoid naming problems
-                            setattr(self, "_" + var, array(cdf_data.variables[var]))
+                            setattr(self, self._grid_prefix + var, array(cdf_data.variables[var]))
 
         def _update_var_dict(self, varfiles):
             for p in self.patterns:
@@ -402,9 +406,9 @@ class ModelVariables:
         elif cdf_keys is None:
             return [self.keys[v] for v in variables_requested if v in self.keys]
         elif variables_requested is None:
-            return [k for k in self.keys.keys() if k in cdf_keys]
+            return [v for v in self.keys.values() if v in cdf_keys]
         else:
-            return list(self.keys.keys())
+            return list(self.keys.values())
 
     def model_var_by_name(self, name):
         """ Get model variable by its name """
