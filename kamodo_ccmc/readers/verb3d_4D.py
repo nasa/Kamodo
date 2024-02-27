@@ -294,7 +294,7 @@ def MODEL():
             for p in self.patterns:
                 var_list = varfiles[p]
 
-                self.var_dict.update({var: _model_vars.model_var_by_name(var).to_list()
+                self.var_dict.update({var: _model_vars.model_var_by_name(var).to_list()[1:]
                                       for var in _model_vars.latex_variables()
                                       if var in var_list})
 
