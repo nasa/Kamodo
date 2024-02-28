@@ -253,7 +253,7 @@ def MODEL():
             # variable_name = model_varnames[gvar][0]
             coord_str = ''
 
-            def func(i):  # i = file#, fi = slice#
+            def func_near(i):  # i = file#, fi = slice#
                 pattern_files = self.pattern_files[pattern_key]
 
                 # Kamodo RU.create_timelist discards file path for no reason
@@ -261,14 +261,19 @@ def MODEL():
 
                 with RU.Dataset(self.pattern_files[pattern_key][i]) as cdf_data:
                     data = array(cdf_data.variables[gvar])
-                return data
 
+                # Using nearest interpolator
+                def nearest_xvec(xvec):
+                    data_point = self._nearest_xvec_data(xvec, data)
+                    return data_point
+
+                return nearest_xvec
 
             # functionalize the 3D or 4D dataset, series of time slices
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
-                gridded_int, coord_str, interp_flag=1, func=func,
-                times_dict=self.times[pattern_key])
+                gridded_int, coord_str, interp_flag=1, func=func_near,
+                times_dict=self.times[pattern_key], func_default='custom')
             return
 
         def register_grid_variable(self, varname, gridded_int, file_dir):
@@ -309,21 +314,12 @@ def MODEL():
                 # Get index of a grid
                 data = getattr(self, self._grid_prefix + gvar)
 
-                # Define nearest interpolator
-                def nearest(xvec):
+                # Using nearest interpolator
+                def nearest_xvec(xvec):
+                    data_point = self._nearest_xvec_data(xvec, data)
+                    return data_point
 
-                    L, E, A = xvec
-
-                    # TODO: Work with grid based on the grid which assigned to the variable
-                    L_idx = _nearest_index(self._gridL[:, 0, 0], L)
-                    A_idx = _nearest_index(self._gridAlpha[L_idx, 0, :], A)
-                    E_idx = _nearest_index(self._gridE[L_idx, :, A_idx], E)
-
-                    # TODO: Add verification that indexes are within the range of the grid
-
-                    return data[L_idx, E_idx, A_idx]
-
-                return nearest
+                return nearest_xvec
 
             # functionalize the 3D or 4D dataset, series of time slices
             self = RU.Functionalize_Dataset(
@@ -427,7 +423,18 @@ def MODEL():
                 self.conversion_test = convert_all(file_dir)
             return time_file, list_file
 
-    # get nearest index (probably can be defined as a private method of this class
+        def _nearest_xvec_data(self, xvec, data):
+            L, E, A = xvec
+
+            # TODO: Work with grid based on the grid which assigned to the variable
+            L_idx = _nearest_index(self._gridL[:, 0, 0], L)
+            A_idx = _nearest_index(self._gridAlpha[L_idx, 0, :], A)
+            E_idx = _nearest_index(self._gridE[L_idx, :, A_idx], E)
+
+            # TODO: Add verification that indexes are within the range of the grid
+            return data[L_idx, E_idx, A_idx]
+
+    # get nearest index
     def _nearest_index(arr, val):
         idx = np.abs(arr - val).argmin()
         return idx
