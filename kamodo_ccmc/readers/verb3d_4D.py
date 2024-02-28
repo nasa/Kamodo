@@ -29,6 +29,7 @@ def MODEL():
     import os
     import kamodo_ccmc.readers.reader_utilities as RU
     from time import perf_counter
+    from dataclasses import dataclass
 
     # main class
     class MODEL(Kamodo):
@@ -431,70 +432,65 @@ def MODEL():
         idx = np.abs(arr - val).argmin()
         return idx
 
+    @dataclass
+    class ModelVariable:
+        """ Class of the Model Variables. This cals replaces the list of kamodo variable"""
+
+        var: str  # LaTeX representation
+        desc: str  # Description
+        i: int  # integer
+        sys: str  # Coordinate system
+        grid: str  # Coordinate grid
+        coord: list  # [Coordinate list]
+        units: str  # Units
+
+        def to_list(self):
+            return [self.var, self.desc, self.i, self.sys, self.grid, self.coord, self.units]
+
+    class ModelVariables:
+        """ Class which service the model variables"""
+
+        def __init__(self, model_varnames):
+            self.vars = {}  # ModelVariable
+            self.keys = {}  # Name in file according to the variable name
+
+            for key, v in model_varnames.items():
+                self.vars[key] = ModelVariable(v[0], v[1], v[2], v[3], v[4], v[5], v[6])
+                self.keys[v[0]] = key
+
+        def latex_variables(self, variables_requested=None):
+            """
+            List of latex formatted variables
+            If requested_variable is specified, return only matching variables
+            """
+            if variables_requested is None:
+                return [v.var for v in self.vars.values()]
+            else:
+                return [v.var for v in self.vars.values() if variables_requested in v.var]
+
+        def file_variables(self, variables_requested=None, cdf_keys=None):
+            """
+            List of files variables
+            If requested_variable is specified, return only matching variables
+            If cdf_key is specified, return matching variables that correspond to cdf_keys
+            If only cdf_key is specified, return all variables that correspond to cdf_keys
+            """
+
+            if cdf_keys and variables_requested:
+                return [self.keys[v] for v in variables_requested
+                        if v in self.keys and self.keys[v] in cdf_keys]
+            elif cdf_keys is None:
+                return [self.keys[v] for v in variables_requested if v in self.keys]
+            elif variables_requested is None:
+                return [v for v in self.keys.values() if v in cdf_keys]
+            else:
+                return list(self.keys.values())
+
+        def model_var_by_name(self, name):
+            """ Get model variable by its name """
+            key = self.keys[name]
+            return self.vars[key]
+
+    _model_vars = ModelVariables(model_varnames)
+
     return MODEL
-
-
-from dataclasses import dataclass
-
-@dataclass
-class ModelVariable:
-    """ Class of the Model Variables. This cals replaces the list of kamodo variable"""
-
-    var: str  # LaTeX representation
-    desc: str  # Description
-    i: int  # integer
-    sys: str  # Coordinate system
-    grid: str  # Coordinate grid
-    coord: list  # [Coordinate list]
-    units: str  # Units
-
-    def to_list(self):
-        return [self.var, self.desc, self.i, self.sys, self.grid, self.coord, self.units]
-
-
-class ModelVariables:
-    """ Class which service the model variables"""
-
-    def __init__(self, model_varnames):
-        self.vars = {}  # ModelVariable
-        self.keys = {}  # Name in file according to the variable name
-
-        for key, v in model_varnames.items():
-            self.vars[key] = ModelVariable(v[0], v[1], v[2], v[3], v[4], v[5], v[6])
-            self.keys[v[0]] = key
-
-    def latex_variables(self, variables_requested=None):
-        """
-        List of latex formatted variables
-        If requested_variable is specified, return only matching variables
-        """
-        if variables_requested is None:
-            return [v.var for v in self.vars.values()]
-        else:
-            return [v.var for v in self.vars.values() if variables_requested in v.var]
-
-    def file_variables(self, variables_requested=None, cdf_keys=None):
-        """
-        List of files variables
-        If requested_variable is specified, return only matching variables
-        If cdf_key is specified, return matching variables that correspond to cdf_keys
-        If only cdf_key is specified, return all variables that correspond to cdf_keys
-        """
-
-        if cdf_keys and variables_requested:
-            return [self.keys[v] for v in variables_requested
-                    if v in self.keys and self.keys[v] in cdf_keys]
-        elif cdf_keys is None:
-            return [self.keys[v] for v in variables_requested if v in self.keys]
-        elif variables_requested is None:
-            return [v for v in self.keys.values() if v in cdf_keys]
-        else:
-            return list(self.keys.values())
-
-    def model_var_by_name(self, name):
-        """ Get model variable by its name """
-        key = self.keys[name]
-        return self.vars[key]
-
-
-_model_vars = ModelVariables(model_varnames)
