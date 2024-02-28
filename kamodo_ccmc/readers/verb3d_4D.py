@@ -181,7 +181,14 @@ def MODEL():
             # store original list b/c gridded interpolators change keys list
             varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
-                self.register_variable(varname, gridded_int, file_dir)
+                # Register PSD variables
+                if 'PSD' in varname:
+                    self.register_PSD_variable(varname, gridded_int, file_dir)
+                # If this is not a PSD variable, it is a grid variable.
+                # Grid is handled diffrently
+                else:
+                    self.register_grid_variable(varname, gridded_int, file_dir)
+
 
             if verbose:
                 print(f'Took {perf_counter() - t_reg:.5f}s to register ' +
@@ -201,7 +208,7 @@ def MODEL():
                 if len(err_list) > 0:
                     print(f'requested variables are not available: {err_list}')
 
-        def register_variable(self, varname, gridded_int, file_dir):
+        def register_PSD_variable(self, varname, gridded_int, file_dir):
             """Registers an interpolator with proper signature"""
 
             # coord_dict = {'time': {'units': 'hr', 'data': time},
@@ -229,27 +236,99 @@ def MODEL():
             # Find corresponding name for the coordinates based on Latex name
             gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
-            for coord in gvar_grid:
-                coord_dict.update({_model_vars.vars[coord].var : {'units': _model_vars.vars[coord].units, 'data': getattr(self, self._grid_prefix + coord)}})
+            # for coord in gvar_grid:
+            #     coord_dict.update({_model_vars.vars[coord].var:
+            #                            {'units': _model_vars.vars[coord].units,
+            #                             'data': getattr(self, self._grid_prefix + coord)}})
+
+            coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+                                'data': self._gridL[:, 0, 0]},
+                          'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
+                                       'data': self._gridAlpha[0, 0, :]},
+                          'E_e': {'units': _model_vars.vars['E'].units,
+                                  'data': self._gridE[0, :, 0]}
+                          })
 
             # variable_name = model_varnames[gvar][0]
             coord_str = ''
 
-            def func(i, fi):  # i = file#, fi = slice#
+            def func(i):  # i = file#, fi = slice#
                 pattern_files = self.pattern_files[pattern_key]
 
                 # Kamodo RU.create_timelist discards file path for no reason
                 # pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
 
                 with RU.Dataset(self.pattern_files[pattern_key][i]) as cdf_data:
-                    data = array(cdf_data.variables[gvar][fi])
+                    data = array(cdf_data.variables[gvar])
                 return data
+
 
             # functionalize the 3D or 4D dataset, series of time slices
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
-                gridded_int, coord_str, interp_flag=3, func=func,
+                gridded_int, coord_str, interp_flag=1, func=func,
                 times_dict=self.times[pattern_key])
+            return
+
+        def register_grid_variable(self, varname, gridded_int, file_dir):
+            """Registers an interpolator with proper signature"""
+
+            coord_dict = {}
+
+            # File pattern of this varname
+            pattern_key = self.variables[varname]['data']
+
+            # Name of the variable in the file
+            gvar = _model_vars.keys[varname]
+
+            # List of coordinates
+            grid_variables = _model_vars.vars[gvar].coord
+
+            # Find corresponding name for the coordinates based on Latex name
+            gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
+
+            for coord in gvar_grid:
+                coord_dict.update({_model_vars.vars[coord].var:
+                                       {'units': _model_vars.vars[coord].units,
+                                        'data': getattr(self, self._grid_prefix + coord)}})
+
+            # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+            #                          'data': self._gridL[:, 0, 0]},
+            #                    'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
+            #                                 'data': self._gridAlpha[0, 0, :]},
+            #                    'E_e': {'units': _model_vars.vars['E'].units,
+            #                            'data': self._gridE[0, :, 0]}
+            #                    })
+
+            # variable_name = model_varnames[gvar][0]
+            coord_str = ''
+
+            def func_near():  # xvec - interpolator input ?
+
+                # Get index of a grid
+                data = getattr(self, self._grid_prefix + gvar)
+
+                # Define nearest interpolator
+                def nearest(xvec):
+
+                    L, E, A = xvec
+
+                    # TODO: Work with grid based on the grid which assigned to the variable
+                    L_idx = _nearest_index(self._gridL[:, 0, 0], L)
+                    A_idx = _nearest_index(self._gridAlpha[L_idx, 0, :], A)
+                    E_idx = _nearest_index(self._gridE[L_idx, :, A_idx], E)
+
+                    # TODO: Add verification that indexes are within the range of the grid
+
+                    return data[L_idx, E_idx, A_idx]
+
+                return nearest
+
+            # functionalize the 3D or 4D dataset, series of time slices
+            self = RU.Functionalize_Dataset(
+                self, coord_dict, varname, self.variables[varname],
+                gridded_int=False, coord_str=coord_str, interp_flag=0, func=func_near(),
+                times_dict=None, func_default='custom')
             return
 
         def load_grid(self, file_dir):
@@ -347,11 +426,15 @@ def MODEL():
                 self.conversion_test = convert_all(file_dir)
             return time_file, list_file
 
+    # get nearest index (probably can be defined as a private method of this class
+    def _nearest_index(arr, val):
+        idx = np.abs(arr - val).argmin()
+        return idx
+
     return MODEL
 
 
 from dataclasses import dataclass
-
 
 @dataclass
 class ModelVariable:
