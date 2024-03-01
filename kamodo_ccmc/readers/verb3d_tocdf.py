@@ -105,9 +105,10 @@ def convert_all(file_dir):
     pattern_files = {'OutPSD': nc_files, 'perp_grid': grid_file}
     times_list = list(time * 24)  # Convert to number of hours
     times_end = times_list
-    if len(times_list) > 1:
-        times_end = times_list[1:]
-        times_end.append(times_end[-1] + times_list[-1] - times_list[-2])
+
+    # if len(times_list) > 1:
+    #     times_end = times_list[1:]
+    #     times_end.append(times_end[-1] + times_list[-1] - times_list[-2])
 
     # All times are stored as the number of hours since midnight of the
     # first file of all the files in the given directory.
