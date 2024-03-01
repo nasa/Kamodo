@@ -44,7 +44,19 @@ model_varnames = {'b1x': ['B1_x', 'x component of the deviation from the ' +
                          'car', ['time'], 'radians'],
                   'status': ['status',
                          'Classification of magnetic fieldlines', 0, 'GSM', 'car',
-                         ['time', 'X', 'Y', 'Z'], '']}
+                         ['time', 'X', 'Y', 'Z'], ''],
+                  'theta1': ['BfootNlat',
+                         'Magnetic fieldline footpoint North (latitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg'],
+                  'theta2': ['BfootSlat',
+                         'Magnetic fieldline footpoint South (latitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg'],
+                  'phi1': ['BfootNlon',
+                         'Magnetic fieldline footpoint North (longitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg'],
+                  'phi2': ['BfootSlon',
+                         'Magnetic fieldline footpoint South (longitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg']}
 
 # Alternate variable names in model output, dimensioned and dimensionless
 alt_varnames = {'N_p': ['rho', 'Rho'],
@@ -522,6 +534,9 @@ def MODEL():
                                   sort_unstructured=False)[gvar]  # dmarray
                 if gvar in scale_varnames:
                     data = data*scale_varnames[gvar]
+                if gvar in ['theta1', 'theta2', 'phi1', 'phi2']:
+                    dmask = data < -99.
+                    data[dmask] = None
                 var_data = ffi.new("float[]", list(data))
 
                 # assign custom interpolator: Lutz Rastaetter 2021
