@@ -424,15 +424,27 @@ def MODEL():
             return time_file, list_file
 
         def _nearest_xvec_data(self, xvec, data):
-            L, E, A = xvec
+            # TODO: Understand how gridded intrepolant takes xvec
 
-            # TODO: Work with grid based on the grid which assigned to the variable
-            L_idx = _nearest_index(self._gridL[:, 0, 0], L)
-            A_idx = _nearest_index(self._gridAlpha[L_idx, 0, :], A)
-            E_idx = _nearest_index(self._gridE[L_idx, :, A_idx], E)
+            if not isinstance(xvec, np.ndarray):
+                xvec = np.array(xvec)  # convert to numpy array
+
+            xvec = np.atleast_2d(xvec)  # Make sure we can iterate over the array
+
+            d1 = []
+
+            for vec in xvec:
+                L, E, A = vec
+
+                # TODO: Work with grid based on the grid which assigned to the variable
+                L_idx = _nearest_index(self._gridL[:, 0, 0], L)
+                A_idx = _nearest_index(self._gridAlpha[L_idx, 0, :], A)
+                E_idx = _nearest_index(self._gridE[L_idx, :, A_idx], E)
+
+                d1.append(data[L_idx, E_idx, A_idx])
 
             # TODO: Add verification that indexes are within the range of the grid
-            return data[L_idx, E_idx, A_idx]
+            return d1
 
     # get nearest index
     def _nearest_index(arr, val):
