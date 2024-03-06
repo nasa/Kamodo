@@ -237,18 +237,18 @@ def MODEL():
             # Find corresponding name for the coordinates based on Latex name
             gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
-            # for coord in gvar_grid:
-            #     coord_dict.update({_model_vars.vars[coord].var:
-            #                            {'units': _model_vars.vars[coord].units,
-            #                             'data': getattr(self, self._grid_prefix + coord)}})
+            for coord in gvar_grid:
+                coord_dict.update({_model_vars.vars[coord].var:
+                                       {'units': _model_vars.vars[coord].units,
+                                        'data': getattr(self, self._grid_prefix + coord)}})
 
-            coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
-                                'data': self._gridL[:, 0, 0]},
-                          'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
-                                       'data': self._gridAlpha[0, 0, :]},
-                          'E_e': {'units': _model_vars.vars['E'].units,
-                                  'data': self._gridE[0, :, 0]}
-                          })
+            # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+            #                          'data': self._gridL[:, 0, 0]},
+            #                    'E_e': {'units': _model_vars.vars['E'].units,
+            #                            'data': self._gridE[0, :, 0]},
+            #                    'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
+            #                                 'data': self._gridAlpha[0, 0, :]},
+            #                    })
 
             # variable_name = model_varnames[gvar][0]
             coord_str = ''
