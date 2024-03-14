@@ -1227,16 +1227,18 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
 
     return fig
 
-def SatPosFig(satid, plotDT, coord='GSM', prevHR=6, showE=True):
+def SatPosFig(satid, plotDT, coord='GSM', prevHR=6, Npts=61, showE=True):
     '''
     Function to create a simple plotly figure from a satellite ID via SSCWeb HAPI
     
     Arguments:
       satid   ID of the satellite from
               https://hapi-server.org/servers/SSCWeb/hapi/catalog
-      coord   coordinate system of positions (TOD, J2K, GEO, GM, GSE, GSM, SM)
       plotDT  datetime of desired plot time
+      coord   coordinate system of positions (TOD, J2K, GEO, GM, GSE, GSM, SM)
       prevHR  number of hours to show positions previous to plot time
+      Npts    number of points to spread over prevHR time perios
+      showE   logical for showing a sphere to represent Earth
     '''
     import numpy as np
     import plotly.graph_objects as go
@@ -1255,7 +1257,6 @@ def SatPosFig(satid, plotDT, coord='GSM', prevHR=6, showE=True):
     sat_vars = [*ko_sat.variables]
 
     # array of times, going back prevHR hours with Npts total points
-    Npts = 61
     delt = np.linspace(0., -3600.*prevHR, Npts)
 
     # set array of marker size
@@ -1270,7 +1271,7 @@ def SatPosFig(satid, plotDT, coord='GSM', prevHR=6, showE=True):
     zz = ko_sat.variables[sat_vars[2]]['interpolator'](tss)
 
     # datetime strings for hover labels
-    timestrings = [datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S UT") for t in tss]
+    timestrings = [datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S UTC") for t in tss]
 
     ucolor = "#d6d622"
     fig = go.Figure()
