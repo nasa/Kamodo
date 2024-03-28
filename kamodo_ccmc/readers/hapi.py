@@ -56,6 +56,14 @@ def hapi_get_date_range(server, dataset):
     end_date = info['stopDate']
     return start_date, end_date
 
+def hapi_get_dataset_title(server, dataset):
+    '''Query for dataset title from catalog listing'''
+    query = '{}/catalog'.format(server)
+    response = urllib.request.urlopen(query)
+    data = json.loads(response.read())
+    for i in range(len(data['catalog'])):
+        if data['catalog'][i]['id'] == dataset: return data['catalog'][i]['title']
+
 class HAPI(Kamodo):
     def __init__(self, server, dataset, parameters = None, start = None, stop = None,
                 register_components=True,

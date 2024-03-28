@@ -156,7 +156,7 @@ def Model_Variables(model, file_dir=None, return_dict=False):
     Inputs:
         model: A string or integer associated with the desired model.
         file_dir: A string giving the full file path for the chosen directory.
-            The default value is None, meaning that tall of the variables
+            The default value is None, meaning that all of the variables
             possible for the chosen model will be returned/printed. Setting
             file_dir to a file path will restrict the out to only the variables
             found in the output files in the given directory.
