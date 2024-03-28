@@ -1,5 +1,6 @@
 '''
 Written by Rebecca Ringuette, 2022
+Expanded to more output perameters by Lutz Rastaetter, 2024
 '''
 
 # variable name in file: [standardized variable name, descriptive term, units]
@@ -234,6 +235,7 @@ def MODEL():
             else:
                 gvar_list = [key for key in model_varnames.keys()
                              if key in cdf_data.variables.keys()]
+
             # store which file these variables came from
             self.varfiles = [model_varnames[key][0] for key in gvar_list]
             self.gvarfiles = gvar_list
@@ -244,7 +246,6 @@ def MODEL():
                 self.var_dict = {value[0]: value[1:] for key, value in
                                  model_varnames.items() if value[0] in
                                  self.varfiles}
-                return
 
             # store mapping for each variable desired
             self.variables = {model_varnames[gvar][0]: {
