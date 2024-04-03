@@ -20,6 +20,8 @@ model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
                       'https://doi.org/10.1016/j.jastp.2006.01.008',
               'IRI': 'International Reference Ionosphere Model ' +
                      'https://doi.org/10.5194/ars-16-1-2018',
+              'Ovation-Prime': 'OVATION Prime - an ionospheric empirical precipitation model driven by solar wind input data ' +
+                               'https://doi.org/10.1002/2014SW001056',
               'OpenGGCM_GM': 'The Open Geospace General Circulation Model - ' +
                              'Global Magnetosphere outputs only ' +
                              'https://doi.org/10.1023/A:1014228230714',
@@ -87,6 +89,10 @@ def Choose_Model(model=''):
 
     elif model == 'TIEGCM':
         import kamodo_ccmc.readers.tiegcm_4D as module
+        return module
+
+    elif model == 'Ovation-Prime':
+        import kamodo_ccmc.readers.ovationprime_4D as module
         return module
 
     elif model == 'OpenGGCM_GM':
