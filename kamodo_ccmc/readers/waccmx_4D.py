@@ -412,7 +412,7 @@ def MODEL():
     from os.path import getsize
     import psutil
     from numpy import array, NaN, where, unique, append, linspace
-    from numpy import transpose, median
+    from numpy import transpose, median, log
     from time import perf_counter
     from datetime import datetime, timezone
     import kamodo_ccmc.readers.reader_utilities as RU
