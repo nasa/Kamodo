@@ -1,3 +1,15 @@
+'''
+Kamodo time conversion functions in this file:
+
+ timeDTtoSTR
+ timeDTtoISO
+ timeDTtoTS
+ timeISOtoDT
+ timeTStoDT
+ timeTStoSTR
+ timeKOtoTS
+'''
+
 def timeDTtoSTR(inDT):
     '''
     UTC time conversion from datetime to formatted string
