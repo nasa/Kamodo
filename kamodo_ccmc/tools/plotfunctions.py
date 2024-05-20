@@ -1,6 +1,10 @@
 '''
 Plot Functions:
 '''
+colorset = ['#00B7FF', '#004DFF', '#00FFFF', '#826400', '#580041', '#FF00FF', 
+            '#00FF00', '#C500FF', '#B4FFD7', '#FFCA00', '#969600', '#B4A2FF',
+            '#C20078', '#0000C1', '#FF8B00', '#FFC8FF', '#666666', '#FF0000',
+            '#CCCCCC', '#009E8F', '#D7A870', '#8200FF', '#960000', '#006F00']
 
 ### ====================================================================================== ###
 def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
@@ -2114,9 +2118,9 @@ def BlinesFig(fullfile, showE = True):
     typ = contents['type']
     typset = set(typ)
     colors = ["#a1a1a1", "#e1a1a1", "#a1e1a1", "#a1a1e1"]
-    k = 0
+    k = 23
     for j in typset:
-        label = j
+        label = 'B '+j
         x3 = np.array([None])
         y3 = np.array([None])
         z3 = np.array([None])
@@ -2132,9 +2136,9 @@ def BlinesFig(fullfile, showE = True):
                 y3 = np.concatenate([y3, y2, [None]])
                 z3 = np.concatenate([z3, z2, [None]])
         fig.add_trace(go.Scatter3d(x=x3, y=y3, z=z3, mode='lines',
-                                   line=dict(color=colors[k], width=2), 
+                                   line=dict(color=colorset[k], width=3), 
                                    hoverinfo='skip', name=label))
-        k += 1
+        k -= 1
 
     # Create Earth sphere
     if showE:
