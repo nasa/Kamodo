@@ -1292,7 +1292,7 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     fig = go.Figure()
     fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines+markers',
         line=dict(color=color, width=2),
-        marker=dict(color=color, size=msize),
+        marker=dict(color=color, size=msize, line=dict(color=color, width=1)),
         name=satname, showlegend=True))
     fig.update_traces(
         customdata = timestrings,
