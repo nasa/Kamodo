@@ -1273,6 +1273,8 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     stop  = (plotDT + timedelta(hours=+(1+padHR))).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     ko_sat = HAPI(server, dataset, parameters, start, stop, register_components=True)
     satname = hapi_get_dataset_title(server, satid)
+    tmp = satname.split("(")
+    satname = tmp[0].strip()
     sat_vars = [*ko_sat.variables]
 
     # array of times, +/- padHR hours with 2*nPts+1 total points
@@ -1644,7 +1646,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
         cmin = float(crange[0])
         cmax = float(crange[1])
         fig.update_traces(cmin=cmin, cmax=cmax)
-    fig.update_traces(colorbar=dict(lenmode='fraction', len=0.5, y=0.3))
+    fig.update_traces(colorbar=dict(lenmode='fraction', len=0.4, y=0.2))
     xlabel = 'X [' + xunits + ']'
     ylabel = 'Y [' + xunits + ']'
     zlabel = 'Z [' + xunits + ']'
