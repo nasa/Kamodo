@@ -33,6 +33,8 @@ services:
     build: 
       context: ../../..
       dockerfile: dockerfiles/dockerfile_tsyganenko
+      #context: .
+      #dockerfile: dockerfile_tsyganenko
     volumes:
       - .:/tsyganenko
       - kp_data:/data/kp/
