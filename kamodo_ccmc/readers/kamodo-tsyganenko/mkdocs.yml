@@ -1,0 +1,41 @@
+# Project information
+site_name: !ENV [SITE_NAME, "kamodo-tsyganenko"]
+
+# Repository
+repo_name: kamodo-tsyganenko
+repo_url: https://github.com/EnsembleGovServices/kamodo-tsyganenko
+edit_uri: ""
+
+nav:
+  - Home: index.md
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+
+use_directory_urls: false
+
+plugins:
+  - search
+
+markdown_extensions:
+  - toc:
+      permalink: "#"
+  - codehilite
+  - admonition
+  - markdown_include.include:
+      base_path: docs
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences

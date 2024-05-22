@@ -1,0 +1,9 @@
+PyGeopack==1.2.5
+mkdocs
+python-markdown-math
+markdown-include
+pygments
+mkdocs-material
+jupyter
+jupytext
+notebook==6.4.*

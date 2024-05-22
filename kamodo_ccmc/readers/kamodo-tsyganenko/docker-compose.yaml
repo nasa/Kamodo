@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  docs:
+    image: ensemble/tsyganenko
+    # platform: ${PLATFORM}
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/tsyganenko
+    container_name: kamodo-tsyganenko-docs
+    environment:
+      SITE_NAME: Kamodo-Tsyganenko
+    command:
+      - mkdocs
+      - serve
+      - -a
+      - 0.0.0.0:8001
+
+  initialize:
+    image: ensemble/tsyganenko
+    command:
+      - python
+      - /tsyganenko/scripts/initialize_pygeopack.py
+    volumes:
+      - .:/tsyganenko
+      - kp_data:/data/kp/
+      - omni_data:/data/omni/
+      - geopack_data:/data/geopack/
+
+  tsyganenko:
+    image: ensemble/tsyganenko
+    build: 
+      context: ../../..
+      dockerfile: dockerfiles/dockerfile_tsyganenko
+    volumes:
+      - .:/tsyganenko
+      - kp_data:/data/kp/
+      - omni_data:/data/omni/
+      - geopack_data:/data/geopack/
+    ports:
+      - "8888:8888"
+    command:
+      - jupyter
+      - notebook
+      - /tsyganenko
+      - --port=8888
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+
+volumes:
+  kp_data:
+  omni_data:
+  geopack_data:
