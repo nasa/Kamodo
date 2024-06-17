@@ -1,0 +1,33 @@
+FROM  condaforge/miniforge3:latest
+LABEL maintainer "Asher Pembroke <apembroke@gmail.com>"
+
+# Update and install build-essential and curl
+RUN DEBIAN_FRONTEND="noninteractive" apt-get update && apt-get install -y \
+    gfortran \
+    build-essential \
+    curl
+
+WORKDIR /
+
+# kamodo-core
+RUN git clone https://github.com/asherp/kamodo-core.git
+RUN pip install /kamodo-core
+
+# where to store data
+RUN mkdir -p /data/kp /data/omni /data/geopack
+
+# Set environment variables
+ENV KPDATA_PATH=/data/kp \
+    OMNIDATA_PATH=/data/omni \
+    GEOPACK_PATH=/data/geopack
+
+WORKDIR /tsyganenko
+
+RUN pip install --upgrade pip setuptools wheel
+
+COPY kamodo_ccmc/readers/kamodo-tsyganenko/requirements.txt .
+
+RUN pip install -r requirements.txt
+
+COPY . .
+
