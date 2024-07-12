@@ -1331,7 +1331,7 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     return fig
 
 ### ====================================================================================== ###
-def fixFigOrigin(fig):
+def fixFigOrigin(fig, setX='', setY='', setZ=''):
     '''
     Simple function that takes a passed in 3D plotly figure object
     and computes a new camera center near the origin (0,0,0) by examining
@@ -1352,6 +1352,9 @@ def fixFigOrigin(fig):
     newX = 0.7*(0. - aveX)/(maxX - aveX)
     newY = 0.7*(0. - aveY)/(maxY - aveY)
     newZ = 0.7*(0. - aveZ)/(maxZ - aveZ)
+    if setX != '': newX = float(setX)
+    if setY != '': newY = float(setY)
+    if setZ != '': newZ = float(setZ)
     camera = dict(center=dict(x=newX, y=newY, z=newZ))
     fig.update_layout(scene_camera=camera)
 
@@ -1511,6 +1514,10 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     zrange[0] = max(z1, zrange[0])
     zrange[1] = min(z2, zrange[1])
 
+    plotTS = ko.filedate.timestamp() + timeHrs*3600.
+    plotDT = datetime.utcfromtimestamp(plotTS)
+    plotDateStr = plotDT.strftime("%Y-%m-%d %H:%M:%S UT")
+
     # Compute base 1D grid values  ====================================== Grid
     # Compute max radius of range box
     xm = max(abs(xrange[0]),abs(xrange[1]))
@@ -1641,7 +1648,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
             x=grid[:, 1], y=grid[:, 2], z=grid[:, 3], i=iv, j=jv, k=kv,
             colorbar_title=varlabel, colorscale=colorscale,
             intensity=value, intensitymode='vertex',
-            name='cont', showscale=True
+            name='Slice at '+plotDateStr, showscale=True, showlegend=True
         )
     ])
     if crange != '':
@@ -1660,6 +1667,14 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
                       varlabel + ": %{intensity:.4g}<br>" +
         "<extra></extra>"
     )
+    # add invisible trace to keep view consistent
+    ix = [xrange[0], None, xrange[1]]
+    iy = [yrange[0], None, yrange[1]]
+    iz = [zrange[0], None, zrange[1]]
+    sz = [0.1, 0.1, 0.1]
+    fig.add_scatter3d(x=np.array(ix), y=np.array(iy), z=np.array(iz), mode='markers',
+        marker=dict(size=1, color='red', opacity=0.10),
+        showlegend=False, hoverinfo='skip', name='FixedRange' )
     # Add grid points
     if showgrid:
         fig.add_scatter3d(name='grid',
@@ -1683,13 +1698,15 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
 
     # Magnetopause surface
     if showMP:
-        fig2,success = gmGetSurfacePlot(ko=ko,timeHrs=timeHrs,wireframe=wireframe,what='MP')
+        fig2,success = gmGetSurfacePlot(ko=ko,timeHrs=timeHrs,wireframe=wireframe,
+            what='MP',traceTime=False)
         if success:
             fig.add_trace(fig2.data[0])
 
     # Bow shock surface
     if showBS:
-        fig2,success = gmGetSurfacePlot(ko=ko,timeHrs=timeHrs,wireframe=wireframe,what='BS')
+        fig2,success = gmGetSurfacePlot(ko=ko,timeHrs=timeHrs,wireframe=wireframe,
+            what='BS',traceTime=False)
         if success:
             fig.add_trace(fig2.data[0])
 
@@ -1701,9 +1718,6 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     lrText1 = coord+' Coordinates'
     lrText2 = 'Min = '+"{:.4e}".format(vmin)
     lrText3 = 'Max = '+"{:.4e}".format(vmax)
-    plotTS = ko.filedate.timestamp() + timeHrs*3600.
-    plotDT = datetime.utcfromtimestamp(plotTS)
-    plotDateStr = plotDT.strftime("%Y-%m-%d %H:%M:%S UT")
     fig.update_layout(
         scene_aspectmode='data',
         title=dict(text=plotDateStr,
@@ -1733,7 +1747,8 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     return fig
 
 ### ====================================================================================== ###
-def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS', sfile=''):
+def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
+                     traceTime=True, sfile=''):
     '''
     Function to get bow shock location in a plotly figure.
 
@@ -1742,6 +1757,7 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
     wireframe:     logical to set wireframe or opaque surface for returned plot
     Gridsize:     surface grid size, default is 21x21 grid of points
     what:         string with what to retrieve from: BS, MP
+    traceTime:    logical to add time to trace label
     sfile:        string of relative directory path to read surface file
     '''
     import os
@@ -1775,7 +1791,10 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
         elif what == 'CS':
             color, name = '#223344', 'Tail Current Sheet'
             return None,False
-        name2 = name+'<br>'+DateStr
+        if traceTime:
+            name2 = name+'<br>'+DateStr
+        else:
+            name2 = name
     else:
         print('ERROR, unknown surface in gmGetSurfacePlot.')
         return None,False
