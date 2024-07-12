@@ -1431,7 +1431,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
                   lowerlabel='', colorscale='RdBu',
                   showgrid=False, gdeg=2., showE=False, log10=False, 
                   showMP=True, showBS=True, wireframe=False, crange='', 
-                  xrange=[-70., 30.], yrange=[-30., 30.], zrange=[-30, 30]):
+                  xrange=[-999., 999.], yrange=[-999., 999.], zrange=[-999., 999.]):
     '''
     Function to create a slice for any point and normal and interpolate
       from Kamodo object onto that grid. Returns a full 3D plotly figure.
@@ -1455,6 +1455,8 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     xrange:       2 value array for min/max extent of X values in slice
     yrange:       2 value array for min/max extent of Y values in slice
     zrange:       2 value array for min/max extent of Z values in slice
+      -note: xyz range values default as large values that will trim to
+             actual model ranges. User can set small ranges.
     '''
     import numpy as np
     import plotly.graph_objs as go
@@ -1767,9 +1769,9 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
             titleStr = p[0]+' Surface for '+DateStr
             what = p[0]
         if what == 'MP':
-            color, name = '#1fc2bc', 'Magnetopause'
+            color, name = '#0000c1', 'Magnetopause'
         elif what == 'BS':
-            color, name = '#ff0000', 'Bow Shock'
+            color, name = '#00ff00', 'Bow Shock'
         elif what == 'CS':
             color, name = '#223344', 'Tail Current Sheet'
             return None,False
@@ -1811,7 +1813,7 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
                 kv.append(ix+1 +  iy   *Tpts)
         fig2 = go.Figure(data=[go.Mesh3d(name=name2, flatshading=True, 
             x=x.reshape(-1), y=y.reshape(-1), z=z.reshape(-1), i=iv, j=jv, k=kv, 
-            color=color, opacity=0.20, hoverinfo='skip', showlegend=True, showscale=False,
+            color=color, opacity=0.40, hoverinfo='skip', showlegend=True, showscale=False,
         )])
 
     # put an Earth sphere on plot
