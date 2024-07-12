@@ -1518,6 +1518,11 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     plotDT = datetime.utcfromtimestamp(plotTS)
     plotDateStr = plotDT.strftime("%Y-%m-%d %H:%M:%S UT")
 
+    sliceDir = ''
+    if normal[0] == 1: sliceDir = 'X '
+    if normal[1] == 1: sliceDir = 'Y '
+    if normal[2] == 1: sliceDir = 'Z ' 
+
     # Compute base 1D grid values  ====================================== Grid
     # Compute max radius of range box
     xm = max(abs(xrange[0]),abs(xrange[1]))
@@ -1648,7 +1653,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
             x=grid[:, 1], y=grid[:, 2], z=grid[:, 3], i=iv, j=jv, k=kv,
             colorbar_title=varlabel, colorscale=colorscale,
             intensity=value, intensitymode='vertex',
-            name='Slice at '+plotDateStr, showscale=True, showlegend=True
+            name=sliceDir+'Slice at '+plotDateStr, showscale=True, showlegend=True
         )
     ])
     if crange != '':
