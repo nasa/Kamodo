@@ -30,6 +30,8 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
     from time import perf_counter
     from dataclasses import dataclass
+    import rbamlib
+    from scipy.interpolate import LinearNDInterpolator
 
     # main class
     class MODEL(Kamodo):
@@ -250,7 +252,17 @@ def MODEL():
             #                                 'data': self._gridAlpha[0, 0, :]},
             #                    })
 
-            # variable_name = model_varnames[gvar][0]
+            coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+                                     'data': self._gridL[:, 0, 0]},  # L is the same
+                               'E_e': {'units': _model_vars.vars['E'].units,
+                                       'data': np.sort(np.unique(np.concatenate((
+                                           self._gridE[0, :, 0], self._gridE[-1, :, 0]))))[::2]},  # Energy changes in L
+                               'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
+                                            'data': np.sort(np.unique(np.concatenate((
+                                                self._gridAlpha[0, 0, :], self._gridAlpha[-1, 0, :]))))[::2]},  # Alpha changes in L
+                               })
+
+
             coord_str = ''
 
             def func_near(i):  # i = file#, fi = slice#
@@ -265,6 +277,11 @@ def MODEL():
                 # Using nearest interpolator
                 def nearest_xvec(xvec):
                     data_point = self._nearest_xvec_data(xvec, data)
+                    return data_point
+
+                # Using interpolator
+                def interp_xvec(xvec):
+                    data_point = self._interp_xvec_data(xvec, data)
                     return data_point
 
                 return nearest_xvec
@@ -444,6 +461,117 @@ def MODEL():
                 d1.append(data[L_idx, E_idx, A_idx])
 
             # TODO: Add verification that indexes are within the range of the grid
+            return d1
+
+        def _interp_xvec_data(self, xvec, data):
+            if not isinstance(xvec, np.ndarray):
+                xvec = np.array(xvec)  # convert to numpy array
+
+            d1 = []
+
+            xvec = np.atleast_2d(xvec)  # Make sure we can iterate over the array
+            L, E, A = xvec[:, 0], xvec[:, 1], xvec[:, 2]
+
+            #  Dima's interpolation starts here  #
+
+            LS = np.unique(self._gridL)
+            maxLS = max(LS)
+            nl = self._gridL.shape[0]
+
+            new_L = L
+            new_epc = E
+            new_alpha = A
+            nobs = new_L.size
+            iskip = False
+
+            if np.all(np.isnan(
+                    new_L * new_epc * new_alpha)):  # skip interpolation for sat points if at least one coord is NAN
+                iskip = True
+
+            else:  # mask sat points if at least one of 3-D coord is NaN
+                indnan = np.isnan(new_L * new_epc * new_alpha)
+                new_L[indnan] = np.nan
+                new_epc[indnan] = np.nan
+                new_alpha[indnan] = np.nan
+
+            Lmax = np.nanmax(new_L)
+            Lmin = np.nanmin(new_L)
+            limax = np.argmin(np.abs(LS - Lmax))
+            limin = np.argmin(np.abs(LS - Lmin))
+
+            if LS[limax] <= Lmax:
+                limax += 1
+                if limax > nl - 1:
+                    limax = nl - 1
+
+            if LS[limin] >= Lmin:
+                limin -= 1
+                if limin < 0:
+                    limin = 0
+
+            if Lmax > maxLS and Lmin > maxLS:
+                iskip = True
+
+            Lmin = LS[limin]
+            Lmax = LS[limax]
+
+            if not iskip:
+                Amax = np.nanmax(new_alpha)
+                Amin = np.nanmin(new_alpha)
+                Emax = np.nanmax(new_epc)
+                Emin = np.nanmin(new_epc)
+
+                Psi_tt = np.array([])
+                Lit = np.array([])
+                Eit = np.array([])
+                Ait = np.array([])
+
+                for l in range(limin, limax + 1):
+                    aas = np.unique(self._gridAlpha[l, :, :])
+                    es = np.unique(self._gridE[l, :, :])
+
+                    asn = aas.size
+                    esn = es.size
+                    # print(f"l={l}; asn={asn}, esn={esn}")
+
+                    aimax = np.argmin(np.abs(aas - Amax))
+                    aimin = np.argmin(np.abs(aas - Amin))
+                    eimax = np.argmin(np.abs(es - Emax))
+                    eimin = np.argmin(np.abs(es - Emin))
+
+                    eimin1 = max(eimin - 1, 0)
+                    eimax1 = min(eimax + 1, esn - 1)
+
+                    aimin1 = max(aimin - 1, 0)
+                    aimax1 = min(aimax + 1, asn - 1)
+                    Psi_t = np.log10(data[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
+
+                    Li = self._gridL[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
+                    Ei = np.log10(self._gridE[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
+                    Ai = self._gridAlpha[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
+                    Ait = np.append(Ait, Ai.ravel())
+                    Eit = np.append(Eit, Ei.ravel())
+                    Lit = np.append(Lit, Li.ravel())
+                    Psi_tt = np.append(Psi_tt, Psi_t.ravel())
+
+                print(f" nobs={nobs}; npts= {len(Psi_tt)}")
+                X = new_L
+                Y = np.log10(new_epc)
+                Z = new_alpha
+                x = Lit
+                y = Eit
+                z = Ait
+                v = Psi_tt
+                interp = LinearNDInterpolator(list(zip(x, y, z)), v)
+                PSD_interp = interp(X, Y, Z)
+                # new_pc = rbamlib.conv.en2pc(new_epc)
+                # Flux_interp = 10 ** PSD_interp * new_pc * new_pc
+                # d1 = Flux_interp
+                d1 = 10 ** PSD_interp
+
+            else:
+                d1 = np.full(nobs, np.NaN)
+
             return d1
 
     # get nearest index
