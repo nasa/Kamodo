@@ -61,7 +61,7 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
 
     from scipy.interpolate import RegularGridInterpolator as rgiND
-    from numpy import log, exp
+    from numpy import log, exp, delete
     
     class MODEL(Kamodo):
         '''IRI model data reader.
@@ -137,6 +137,11 @@ def MODEL():
                                               filetype='netCDF3')
                         tmp = array(cdf_data.variables['time'])/60. + \
                             float(f)*24.  # hrs since midnite 1st file
+                        ## NOTE: This assumes sequential days of data!
+                        # check for repeated time values and adjust if needed
+                        if f > 0:
+                            if tmp[0] == self.times[p]['end'][-1]:
+                                tmp[0] += 0.000001
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
