@@ -1431,7 +1431,7 @@ def B3Dfig(fullfile, showE = True):
 
 ### ====================================================================================== ###
 def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
-                  lowerlabel='', colorscale='RdBu',
+                  lowerlabel='', colorscale='RdBu', addTraceTime=False,
                   showgrid=False, gdeg=2., showE=False, log10=False, 
                   showMP=True, showBS=True, wireframe=False, crange='', 
                   xrange=[-999., 999.], yrange=[-999., 999.], zrange=[-999., 999.]):
@@ -1447,6 +1447,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     pos, normal:  position and normal vector for slice plane
     lowerlabel:   string text to label plot lower left
     colorscale:   string name of Python colorscale, ie. Viridis, Cividis, RdBu
+    addTraceTime: logical to add time string to trace label
     showgrid:     logical to show dots at grid locations
     gdeg:         slice grid degree resolution, default is 2.
     showE:        logical to show a sphere at R=1
@@ -1648,12 +1649,15 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
             kv.append(ix+1+ iy   *len(dg))
 
     # Build resulting plot
+    traceTime = ''
+    if addTraceTime:
+        traceTime = ' at '+plotDateStr
     fig = go.Figure(data=[
         go.Mesh3d(
             x=grid[:, 1], y=grid[:, 2], z=grid[:, 3], i=iv, j=jv, k=kv,
             colorbar_title=varlabel, colorscale=colorscale,
             intensity=value, intensitymode='vertex',
-            name=sliceDir+'Slice at '+plotDateStr, showscale=True, showlegend=True
+            name=sliceDir+'Slice'+traceTime, showscale=True, showlegend=True
         )
     ])
     if crange != '':
@@ -2165,7 +2169,7 @@ def BlinesFig(fullfile, showE = True):
                 z3 = np.concatenate([z3, z2, [None]])
         fig.add_trace(go.Scatter3d(x=x3, y=y3, z=z3, mode='lines',
                                    line=dict(color=colorset[k], width=3), 
-                                   hoverinfo='skip', name=label))
+                                   hoverinfo='skip', name=label, showlegend=True))
         k -= 1
 
     # Create Earth sphere
