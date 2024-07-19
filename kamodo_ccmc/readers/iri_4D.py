@@ -139,9 +139,6 @@ def MODEL():
                             float(f)*24.  # hrs since midnite 1st file
                         ## NOTE: This assumes sequential days of data!
                         # check for repeated time values and adjust if needed
-                        if f > 0:
-                            if tmp[0] == self.times[p]['end'][-1]:
-                                tmp[0] += 0.000001
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
@@ -162,6 +159,17 @@ def MODEL():
             else:  # read in data and time grids from file list
                 self.times, self.pattern_files, self.filedate, self.filename =\
                     RU.read_timelist(time_file, list_file)
+            # check for repeated time values in array
+            #   new IRI version writes midnight at end of files,
+            #   when it is already the first record of the next file
+            # fix is to check for duplicates and add 0.0001 to time
+            for p in self.pattern_files.keys():
+                for i in range(len(self.times[p]['all'])-1):
+                    if self.times[p]['all'][i] == self.times[p]['all'][i+1]:
+                        self.times[p]['all'][i+1] += .0001
+                        for j in range(len(self.times[p]['start'])):
+                            if self.times[p]['start'][j] == self.times[p]['all'][i]:
+                                self.times[p]['start'][j] += .0001
             if filetime:
                 return  # return times only
 
