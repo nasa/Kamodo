@@ -1,24 +1,32 @@
 """
 @author: xandrd
 """
+import numpy as np
 
 # model_varnames = {'Name in file': ['LaTeX representation', 'Description', integer, 'Coordinate system',
 #                            'Coordinate grid', [Coordinate list], 'Units'],
 
-model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_eq)', 0, 'LEA',
-                          'car', ['time', 'L', 'E_e', 'alpha_eq'], '1/(s*cm**2*keV*sr*MeV**2)'],
+# It is easier to same PC, Mu, K as grid variable than calculate it within Kamodo.
+# As for PSD_2 -> not sure yet... I should try to use PSD and PSD_2 as the same key for the latex variable. No copy.
+
+model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)', 0, 'LEA',
+                          'car', ['time', 'L', 'E_e', 'alpha_e'], '(c/MeV/cm)**3'],
+                  'Flux': ['flux_lea', 'Electron flux (L, E_e, alpha_e)', 0, 'LEA',
+                          'car', ['time', 'L', 'E_e', 'alpha_e'], '1/(s*cm**2*keV*sr)'],
                   'L': ['L', 'L-shell', 1, 'LEA',
-                        'car', ['L', 'E_e', 'alpha_eq'], ''],
+                        'car', ['L', 'E_e', 'alpha_e'], ''],
                   'E': ['E_e', 'Electron energy', 1, 'LEA',
-                        'car', ['L', 'E_e', 'alpha_eq'], 'MeV'],
-                  'Alpha': ['alpha_eq', 'Equatorial pitch angle', 1, 'LEA',
-                            'car', ['L', 'E_e', 'alpha_eq'], 'deg'],
-                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L_lmk, mu, K)', 0, 'LMK',
-                            'car', ['time', 'L', 'mu', 'K'], '1/(s*cm**2*keV*sr*MeV**2)'],
+                        'car', ['L', 'E_e', 'alpha_e'], 'MeV'],
+                  'Alpha': ['alpha_e', 'Equatorial pitch angle', 1, 'LEA',
+                            'car', ['L', 'E_e', 'alpha_e'], 'deg'],
+                  'pc': ['pc', 'Momentum times speed of light', 1, 'LEA',
+                          'car', ['L', 'E_e', 'alpha_e'], 'MeV'],
+                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, mu, K)', 0, 'LMK',
+                            'car', ['time', 'L', 'mu', 'K'], '(c/MeV/cm)**3'],
                   'Mu': ['mu', '1st adiabatic invariant mu', 1, 'LMK',
-                         'car', ['L', 'mu', 'K'], 'MeV/G'],
+                         'car', ['L', 'mu', 'K'], 'MeV/G'], # Kamodo should also not handle units of G...
                   'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
-                        'car', ['L', 'mu', 'K'], 'GR_E**1/2']
+                        'car', ['L', 'mu', 'K'], '10**-4*T*(m/m)**1/2']  # Kamodo cannot handle units of G * R_E^1/2
                   }
 
 
@@ -56,15 +64,15 @@ def MODEL():
                     ARE NOT printed.
                 - If True, the filenames associated with the data retrieved ARE
                     printed.
-            # gridded_int = boolean (default = True)
-            #     - If True, the variables chosen are functionalized in both the
-            #         standard method and a gridded method.
-            #     - If False, the variables chosen are functionalized in only the
-            #         standard method.
-            # verbose = boolean (False)
-            #     - If False, script execution and the underlying Kamodo
-            #         execution is quiet except for specified messages.
-            #     - If True, be prepared for a plethora of messages.
+            gridded_int = boolean (default = True)
+                - If True, the variables chosen are functionalized in both the
+                    standard method and a gridded method.
+                - If False, the variables chosen are functionalized in only the
+                    standard method.
+            verbose = boolean (False)
+                - If False, script execution and the underlying Kamodo
+                    execution is quiet except for specified messages.
+                - If True, be prepared for a plethora of messages.
         All inputs are described in further detail in
             KamodoOnboardingInstructions.pdf.
 
@@ -77,7 +85,15 @@ def MODEL():
 
         # Static properties of this mode class
         modelname = 'VERB-3D'
+
+        # Prefix for grid variables
         _grid_prefix = '_grid'
+
+        # Forcing to recompute all nc files
+        _force_convert_all = False
+
+        # Interpolation method for PSD and flux functionalization
+        _interpolation_method = 'nearest'
 
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
@@ -86,7 +102,7 @@ def MODEL():
 
             t0 = perf_counter()
 
-            # Kamodo does handle windows path correctly. Changing to paths to replacing \\ with /
+            # Kamodo does not handle windows path correctly. Changing to paths to replacing \\ with /
             file_dir = file_dir.replace('\\', '/')
 
             # Check time and list files, and generate them if needed
@@ -123,6 +139,7 @@ def MODEL():
 
             self.var_dict = {}  # This could be unused....
 
+            # TODO: This needs to be wrapped in the function
             for p in self.patterns:
                 # Get the file for the current pattern
                 _pattern_files = self.pattern_files[p]
@@ -179,19 +196,26 @@ def MODEL():
             # Load required grid variables
             self.load_grid(file_dir)
 
+            # Load static variables like pc, that do not need to be loaded from nc files
+            self.load_static(file_dir)
+
+            # calculate virtual variables
+            # self.calc_virtual_variables()
+
             # register interpolators for each variable
             t_reg = perf_counter()
             # store original list b/c gridded interpolators change keys list
             varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
                 # Register PSD variables
-                if 'PSD' in varname:
-                    self.register_PSD_variable(varname, gridded_int, file_dir)
+                if varname in ['PSD_lmk', 'PSD_lea', 'flux_lea']:
+                    self.register_ncfile_variable(varname, gridded_int, file_dir)
                 # If this is not a PSD variable, it is a grid variable.
-                # Grid is handled diffrently
+                # Grid and static variables handled diffrently
                 else:
                     self.register_grid_variable(varname, gridded_int, file_dir)
 
+                # TODO: Add Handling PSD_lmk
 
             if verbose:
                 print(f'Took {perf_counter() - t_reg:.5f}s to register ' +
@@ -211,7 +235,7 @@ def MODEL():
                 if len(err_list) > 0:
                     print(f'requested variables are not available: {err_list}')
 
-        def register_PSD_variable(self, varname, gridded_int, file_dir):
+        def register_ncfile_variable(self, varname, gridded_int, file_dir):
             """Registers an interpolator with proper signature"""
 
             # coord_dict = {'time': {'units': 'hr', 'data': time},
@@ -239,28 +263,67 @@ def MODEL():
             # Find corresponding name for the coordinates based on Latex name
             gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
-            for coord in gvar_grid:
-                coord_dict.update({_model_vars.vars[coord].var:
-                                       {'units': _model_vars.vars[coord].units,
-                                        'data': getattr(self, self._grid_prefix + coord)}})
-
+            # for coord in gvar_grid:
+            # coord_dict.update({_model_vars.vars[coord].var:
+            #                            {'units': _model_vars.vars[coord].units,
+            #                             'data': getattr(self, self._grid_prefix + coord)}})
             # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
             #                          'data': self._gridL[:, 0, 0]},
             #                    'E_e': {'units': _model_vars.vars['E'].units,
-            #                            'data': self._gridE[0, :, 0]},
-            #                    'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
-            #                                 'data': self._gridAlpha[0, 0, :]},
+            #                            'data': self._gridE[-1, :, 0]},
+            #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
+            #                                 'data': self._gridAlpha[-1, 0, :]},
+            #                    })
+            # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+            #                          'data': self._gridL[:, 0, 0]},  # L is the same
+            #                    'E_e': {'units': _model_vars.vars['E'].units,
+            #                            'data': np.sort(np.unique(np.concatenate((
+            #                                self._gridE[0, :, 0], self._gridE[-1, :, 0]))))},  # Energy changes in L
+            #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
+            #                                 'data': np.sort(np.unique(np.concatenate((
+            #                                     self._gridAlpha[0, 0, :], self._gridAlpha[-1, 0, :]))))},  # Alpha changes in L
             #                    })
 
-            coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
-                                     'data': self._gridL[:, 0, 0]},  # L is the same
-                               'E_e': {'units': _model_vars.vars['E'].units,
-                                       'data': np.sort(np.unique(np.concatenate((
-                                           self._gridE[0, :, 0], self._gridE[-1, :, 0]))))[::2]},  # Energy changes in L
-                               'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
-                                            'data': np.sort(np.unique(np.concatenate((
-                                                self._gridAlpha[0, 0, :], self._gridAlpha[-1, 0, :]))))[::2]},  # Alpha changes in L
-                               })
+            grid = 'LEA'
+
+            if all(var in grid_variables for var in ['L', 'E_e', 'alpha_e']):
+                npoints = np.max(self._gridL.shape)*2
+                unique_en = np.sort(np.unique(self._gridE.flatten()))
+                unique_A = np.sort(np.unique(self._gridAlpha.flatten()))
+                idx_en = np.linspace(0, len(unique_en)-1, min([len(unique_en), npoints])).astype(int)
+                idx_A = np.linspace(0, len(unique_A) - 1, min([len(unique_A), npoints])).astype(int)
+                coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+                                         'data': self._gridL[:, 0, 0]},  # L is the same
+                                   'E_e': {'units': _model_vars.vars['E'].units,
+                                           'data': unique_en[idx_en]},
+                                   'alpha_e': {'units': _model_vars.vars['Alpha'].units,
+                                                'data': unique_A[idx_A]},
+                                   })
+
+                # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+                #                          'data': self._gridL[:, 0, 0]},  # L is the same
+                #                    'E_e': {'units': _model_vars.vars['E'].units,
+                #                            'data': np.sort(np.unique(np.concatenate((
+                #                                self._gridE[0, :, 0], self._gridE[-1, :, 0]))))[::2]},  # Energy changes in L
+                #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
+                #                                 'data': np.sort(np.unique(np.concatenate((
+                #                                     self._gridAlpha[0, 0, :], self._gridAlpha[-1, 0, :]))))[::2]},  # Alpha changes in L
+                #                    })
+            elif all(var in grid_variables for var in ['L', 'mu', 'K']):
+                npoints = np.max(self._gridL.shape)*2
+                unique_mu = np.sort(np.unique(self._gridMu.flatten()))
+                unique_K = np.sort(np.unique(self._gridK.flatten()))
+                idx_mu = np.linspace(0, len(unique_mu)-1, min([len(unique_mu), npoints])).astype(int)
+                idx_K = np.linspace(0, len(unique_K) - 1, min([len(unique_K), npoints])).astype(int)
+
+                coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
+                                         'data': self._gridL[:, 0, 0]},  # L is the same
+                                   'mu': {'units': _model_vars.vars['Mu'].units,
+                                           'data': unique_mu[idx_mu]},
+                                   'K': {'units': _model_vars.vars['K'].units,
+                                         'data': unique_K[idx_K]},
+                                   })
+                grid = 'LMK'
 
 
             coord_str = ''
@@ -276,7 +339,11 @@ def MODEL():
 
                 # Using nearest interpolator
                 def nearest_xvec(xvec):
-                    data_point = self._nearest_xvec_data(xvec, data)
+                    # TODO: Change to just return no data_point
+                    if grid == 'LEA':
+                        data_point = self._nearest_xvec_data_LEA(xvec, data)
+                    elif grid == 'LMK':
+                        data_point = self._nearest_xvec_data_LMK(xvec, data)
                     return data_point
 
                 # Using interpolator
@@ -284,7 +351,10 @@ def MODEL():
                     data_point = self._interp_xvec_data(xvec, data)
                     return data_point
 
-                return nearest_xvec
+                if self._interpolation_method == 'nearest':
+                    return nearest_xvec
+                else:
+                    return interp_xvec
 
             # functionalize the 3D or 4D dataset, series of time slices
             self = RU.Functionalize_Dataset(
@@ -307,17 +377,24 @@ def MODEL():
             # List of coordinates
             grid_variables = _model_vars.vars[gvar].coord
 
+            if all(var in grid_variables for var in ['L', 'E_e', 'alpha_e']):
+                grid = 'LEA'
+            elif all(var in grid_variables for var in ['L', 'mu', 'K']):
+                grid = 'LMK'
+
             # Find corresponding name for the coordinates based on Latex name
             gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
+
 
             for coord in gvar_grid:
                 coord_dict.update({_model_vars.vars[coord].var:
                                        {'units': _model_vars.vars[coord].units,
                                         'data': getattr(self, self._grid_prefix + coord)}})
 
+
             # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
             #                          'data': self._gridL[:, 0, 0]},
-            #                    'alpha_eq': {'units': _model_vars.vars['Alpha'].units,
+            #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
             #                                 'data': self._gridAlpha[0, 0, :]},
             #                    'E_e': {'units': _model_vars.vars['E'].units,
             #                            'data': self._gridE[0, :, 0]}
@@ -333,7 +410,11 @@ def MODEL():
 
                 # Using nearest interpolator
                 def nearest_xvec(xvec):
-                    data_point = self._nearest_xvec_data(xvec, data)
+                    # TODO: Change to just return no data_point
+                    if grid == 'LEA':
+                        data_point = self._nearest_xvec_data_LEA(xvec, data)
+                    elif grid == 'LMK':
+                        data_point = self._nearest_xvec_data_LMK(xvec, data)
                     return data_point
 
                 return nearest_xvec
@@ -375,6 +456,31 @@ def MODEL():
 
                 # Kamodo RU.create_timelist discards file path for no reason
                 # pattern_files = [os.path.join(file_dir, 'Output', file) for file in pattern_files]
+
+                with RU.Dataset(pattern_files[0], 'r') as cdf_data:
+                    for var in self.gvarfiles_full[p]:
+                        if var in gvar_variabels:
+                            setattr(self, self._grid_prefix + var, array(cdf_data.variables[var]))
+
+        def load_static(self, file_dir):
+            """Load static variables data according to the requested variables"""
+
+            # Determine the requested variables
+            variables = [v for gvars in self.gvarfiles.values() for v in gvars]
+
+            # Find corresponding static variable name based on Latex name
+            static_variables = ['pc']
+            gvar_variabels = [_model_vars.keys[v] for v in variables if v in static_variables]
+
+            # Find what patterns to load
+            patterns_to_load = set()
+            for key, value in self.gvarfiles_full.items():
+                if any(item in gvar_variabels for item in value):
+                    patterns_to_load.add(key)
+
+            # Load static variables
+            for p in patterns_to_load:
+                pattern_files = self.pattern_files[p]
 
                 with RU.Dataset(pattern_files[0], 'r') as cdf_data:
                     for var in self.gvarfiles_full[p]:
@@ -427,20 +533,18 @@ def MODEL():
             Creates dataset files.
             """
 
-            # For debug purpose
-            FORCE_LOAD = False
 
             # first, check for file list, create if DNE
             list_file = file_dir + self.modelname + '_list.txt'
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
-            if FORCE_LOAD or not RU._isfile(list_file) or not RU._isfile(time_file):
+            if self._force_convert_all or not RU._isfile(list_file) or not RU._isfile(time_file):
                 from kamodo_ccmc.readers.verb3d_tocdf import convert_all
                 # TODO: Do we need self.conversion_test?
                 self.conversion_test = convert_all(file_dir)
             return time_file, list_file
 
-        def _nearest_xvec_data(self, xvec, data):
+        def _nearest_xvec_data_LEA(self, xvec, data):
             # TODO: Understand how gridded intrepolant takes xvec
 
             if not isinstance(xvec, np.ndarray):
@@ -453,12 +557,33 @@ def MODEL():
             for vec in xvec:
                 L, E, A = vec
 
-                # TODO: Work with grid based on the grid which assigned to the variable
                 L_idx = _nearest_index(self._gridL[:, 0, 0], L)
                 A_idx = _nearest_index(self._gridAlpha[L_idx, 0, :], A)
                 E_idx = _nearest_index(self._gridE[L_idx, :, A_idx], E)
 
                 d1.append(data[L_idx, E_idx, A_idx])
+
+            # TODO: Add verification that indexes are within the range of the grid
+            return d1
+
+        def _nearest_xvec_data_LMK(self, xvec, data):
+            # TODO: Understand how gridded intrepolant takes xvec
+
+            if not isinstance(xvec, np.ndarray):
+                xvec = np.array(xvec)  # convert to numpy array
+
+            xvec = np.atleast_2d(xvec)  # Make sure we can iterate over the array
+
+            d1 = []
+
+            for vec in xvec:
+                L, Mu, K = vec
+
+                L_idx = _nearest_index(self._gridL[:, 0, 0], L)
+                K_idx = _nearest_index(self._gridK[L_idx, 0, :], K)
+                Mu_idx = _nearest_index(self._gridMu[L_idx, :, K_idx], Mu)
+
+                d1.append(data[L_idx, Mu_idx, K_idx])
 
             # TODO: Add verification that indexes are within the range of the grid
             return d1
@@ -594,6 +719,7 @@ def MODEL():
         def to_list(self):
             return [self.var, self.desc, self.i, self.sys, self.grid, self.coord, self.units]
 
+    # TODO: change the class so different LaTeX variables can correspond to the same key in file
     class ModelVariables:
         """ Class which service the model variables"""
 
