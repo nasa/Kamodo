@@ -14,7 +14,7 @@ def get_start_date(file_dir):
     '''Return the start date based on the information from DatabaseInfo1'''
 
     # Default date_start
-    date_start = datetime(1, 1, 1)
+    date_start = datetime(1970, 1, 1)
 
     # Determine if there is a file that contains userinput
     database_filename = os.path.join(file_dir, '..', 'DatabaseInfo1')

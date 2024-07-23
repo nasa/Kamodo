@@ -5,6 +5,7 @@ from unittest.mock import patch
 from io import StringIO
 import os
 import numpy as np
+from datetime import datetime, timezone
 
 import kamodo_ccmc.flythrough.model_wrapper as MW
 
@@ -13,8 +14,6 @@ class TestVerb01BasicSetup(unittest.TestCase):
 
     # Static model name
     model = 'VERB-3D'
-
-
 
     @patch('sys.stdout', new_callable=StringIO)
     def test00_Choose_Model_Global(self, mock_stdout):
@@ -34,7 +33,6 @@ class TestVerb01BasicSetup(unittest.TestCase):
         """ Confirming the model existence """
         model = MW.Model_Reader(self.model)
         self.assertEqual(model.modelname, self.model, "Model class does not have correct modelname property")
-
 
     @patch('sys.stdout', new_callable=StringIO)
     def test01_Variable_Search_Global(self, mock_stdout):
@@ -186,8 +184,83 @@ class FakeDataGenerator:
 # def File_Times(model, file_dir, print_output=True):
 # def File_List(model, file_dir, print_output=False):
 class TestVerb03DatasetGeneration(TestCase):
-    def setUp(self):
-        pass
+
+    output_dir = FakeDataGenerator.output_dir
+    output_path = output_dir + '/'  # because Kamodo cannot work without slash
+    model = 'VERB-3D'
+
+    teardown = False
+
+    @classmethod
+    def setUpClass(cls):
+        if os.path.exists(FakeDataGenerator.output_dir) and cls.teardown:
+            raise unittest.SkipTest("Test cannot be done because the folder 'output' already exists.")
+        FakeDataGenerator.setup_fake_data()
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.teardown:
+            FakeDataGenerator.teardown_fake_data()
+
+    def setUp(cls):
+        """ Cleanup data folder before"""
+        files_to_check = [
+            os.path.join(cls.output_dir, cls.model + '_list.txt'),
+            os.path.join(cls.output_dir, cls.model + '_times.txt')
+        ]
+        nc_extension = '.nc'
+
+        # Remove specific files
+        for file_path in files_to_check:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+
+        # Remove .nc files
+        for file_name in os.listdir(cls.output_dir):
+            if file_name.endswith(nc_extension):
+                os.remove(os.path.join(cls.output_dir, file_name))
+
+        # Verify files are removed
+        for file_path in files_to_check:
+            if os.path.isfile(file_path):
+                raise unittest.SkipTest(f"{file_path} was not removed")
+
+        # list_file = os.path.join(cls.output_dir, cls.model + '_list.txt')
+        # times_file = os.path.join(cls.output_dir, cls.model + '_times.txt')
+        # if os.path.isfile(list_file):
+        #     os.remove(list_file)
+        # if os.path.isfile(times_file):
+        #     os.remove(times_file)
+        # for file_name in os.listdir(cls.output_path):
+        #     if file_name.endswith('.nc'):
+        #         file_path = os.path.join(cls.output_path, file_name)
+        #         os.remove(file_path)
+        #
+        # if os.path.isfile(list_file) or os.path.isfile(times_file):
+        #     raise unittest.SkipTest("List and times files were not removed")
+
+    def test01_Generate(self):
+        # get times dictionary and datetime filedate object from files
+        reader = MW.Model_Reader(self.model)
+        ko = reader(self.output_path, filetime=True)  # creates any preprocessed files
+        list_file = os.path.join(self.output_dir, self.model + '_list.txt')
+        times_file = os.path.join(self.output_dir, self.model + '_times.txt')
+
+        self.assertTrue(os.path.isfile(list_file), 'List file is not created')
+        self.assertTrue(os.path.isfile(times_file), 'Times file is not created')
+
+
+    def test02_File_Times(self):
+
+        # 1970 - is default datetime
+        expected_start_time = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
+        expected_end_time = datetime(1970, 1, 5, 0, 0, tzinfo=timezone.utc)
+
+        result = MW.File_Times(self.model, self.output_path, print_output=False)
+
+        self.assertEqual(result, (expected_start_time, expected_end_time))
+
+
 
 # TODO: Make this class all about testing the actual data?
 class TestVerb03DatasetCheck(TestCase):
