@@ -59,8 +59,8 @@ def convert_all(file_dir):
     # Kamodo data design rely on concept that all variables that are available by the model should be stored in the files
     # Below we calculate additional variables and store them in the corresponding nc files
     # Create virtual variables
-    mu = rbamlib.conv.en2mu(data['E'], data['L'], data['Alpha'])
-    K = rbamlib.conv.Lal2K(data['L'], data['Alpha'])
+    mu = rbamlib.conv.en2mu(data['E'], data['L'], np.deg2rad(data['Alpha']))
+    K = rbamlib.conv.Lal2K(data['L'], np.deg2rad(data['Alpha']))
     data['Mu'] = mu
     data['K'] = K
 

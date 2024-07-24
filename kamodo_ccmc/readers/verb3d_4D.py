@@ -26,7 +26,7 @@ model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)',
                   'Mu': ['mu', '1st adiabatic invariant mu', 1, 'LMK',
                          'car', ['L', 'mu', 'K'], 'MeV/G'], # Kamodo should also not handle units of G...
                   'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
-                        'car', ['L', 'mu', 'K'], '10**-4*T*(m/m)**1/2']  # Kamodo cannot handle units of G * R_E^1/2
+                        'car', ['L', 'mu', 'K'], '10**-4*T*(km/6371*km)**1/2']  # Kamodo cannot handle units of G * R_E^1/2
                   }
 
 
