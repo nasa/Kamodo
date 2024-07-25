@@ -79,8 +79,8 @@ class FakeDataGenerator:
                 5]),  # K - setup based on A
         E=Node([-2., 2., 4]),
         M=Node([np.float32(rbamlib.conv.en2mu(10 ** -2, 1, np.deg2rad(round(np.rad2deg(0.1), 5)))),
-                np.float32(rbamlib.conv.en2mu(10 ** 2, 4, np.deg2rad(round(np.rad2deg(np.pi/2 - 0.1), 5)))),
-                4])   # Mu - setup based on E
+                np.float32(rbamlib.conv.en2mu(10 ** 2, 4, np.deg2rad(round(np.rad2deg(np.pi / 2 - 0.1), 5)))),
+                4])  # Mu - setup based on E
     )
 
     # Emulation of min mu obtain from PLT files and nc files:
@@ -606,9 +606,10 @@ class TestVerb03DatasetCheck(TestCase):
         # Generate random grid values
         xvec_lea = FakeDataGenerator.grid_lea_rand(xvec=True)
         #xvec_lmk = FakeDataGenerator.grid_lmk_rand(xvec=True)
-        xvec_lmk0 = FakeDataGenerator.grid_lmk(0)[1::]  # lmk grid can be compared on the nodes because grid is very irregular
+        xvec_lmk0 = FakeDataGenerator.grid_lmk(0)[
+                    1::]  # lmk grid can be compared on the nodes because grid is very irregular
         xvec_lmk1 = FakeDataGenerator.grid_lmk(1)[1::]
-        xvec_lmk_mu_max = [xvec_lmk1[0], xvec_lmk1[1], xvec_lmk0[2]] # Mu is maxed when K is min
+        xvec_lmk_mu_max = [xvec_lmk1[0], xvec_lmk1[1], xvec_lmk0[2]]  # Mu is maxed when K is min
         xvec_lmk_K_max = [xvec_lmk0[0], xvec_lmk0[1], xvec_lmk1[2]]  # K is maxed when K is mu and L are min
 
         # Create the reader object
@@ -621,23 +622,17 @@ class TestVerb03DatasetCheck(TestCase):
             self.assertAlmostEqual(result[0], expected_value, places=4, msg=f"Error in {variable_name}")
 
         # Perform the assertions
-        assert_grid_value(ko.L, [FakeDataGenerator.grid.L.max, xvec_lea[1], xvec_lea[2]], FakeDataGenerator.grid.L.max, 'L')
-        assert_grid_value(ko.E_e, [xvec_lea[0], 10**FakeDataGenerator.grid.E.max, xvec_lea[2]], 10**FakeDataGenerator.grid.E.max, 'E_e')
-        assert_grid_value(ko.alpha_e, [xvec_lea[0], xvec_lea[1], FakeDataGenerator.grid.A.max], FakeDataGenerator.grid.A.max, 'alpha_e')
+        assert_grid_value(ko.L, [FakeDataGenerator.grid.L.max, xvec_lea[1], xvec_lea[2]], FakeDataGenerator.grid.L.max,
+                          'L')
+        assert_grid_value(ko.E_e, [xvec_lea[0], 10 ** FakeDataGenerator.grid.E.max, xvec_lea[2]],
+                          10 ** FakeDataGenerator.grid.E.max, 'E_e')
+        assert_grid_value(ko.alpha_e, [xvec_lea[0], xvec_lea[1], FakeDataGenerator.grid.A.max],
+                          FakeDataGenerator.grid.A.max, 'alpha_e')
         assert_grid_value(ko.mu, xvec_lmk_mu_max, xvec_lmk_mu_max[1], 'mu')
         assert_grid_value(ko.K, xvec_lmk_K_max, xvec_lmk_K_max[2], 'K')
 
         #assert_grid_value(ko.mu, [xvec_lmk[0], FakeDataGenerator.grid.M.max, xvec_lmk[2]], FakeDataGenerator.grid.M.max, 'mu')
         #assert_grid_value(ko.K, [xvec_lmk[0], xvec_lmk[1], FakeDataGenerator.grid.K.max], FakeDataGenerator.grid.K.max, 'K')
-
-
-class TestDebug(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        FakeDataGenerator.setup_fake_data()
-
-    def test01pass(selfs):
-        pass
 
 
 # TODO: Make this class checking the output. use plotpy generator to control the output somehow.
@@ -677,7 +672,8 @@ class TestVerb04plot(unittest.TestCase):
         for var in self.tvar_list:
             fig_var = var + '_ijk'
             if '_lea' in fig_var:
-                fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'time': time, 'E_e': E_e, 'alpha_e': alpha_e}})
+                fig = self.kamodo_object.plot(fig_var,
+                                              plot_partial={fig_var: {'time': time, 'E_e': E_e, 'alpha_e': alpha_e}})
             else:
                 fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'time': time, 'mu': mu, 'K': K}})
             res = fig.to_dict()
@@ -727,7 +723,7 @@ class TestVerb04plot(unittest.TestCase):
         self._test_2d_slice(time, L)
 
     def _test_time_line(self, L, E_e, alpha_e, mu, K):
-        expected_T = FakeDataGenerator.grid.T.linspace()*24
+        expected_T = FakeDataGenerator.grid.T.linspace() * 24
         for var in self.tvar_list:
             fig_var = var + '_ijk'
             if '_lea' in fig_var:
@@ -737,7 +733,8 @@ class TestVerb04plot(unittest.TestCase):
             res = fig.to_dict()
             self.assertEqual(res['data'][0]['meta'], 'line', f'Not a line plot of {fig_var}')
             self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
-            self.assertEqual(res['layout']['xaxis']['title']['text'], '$time [h]$', f'Unexpected time axis name for {fig_var}')
+            self.assertIn('time', res['layout']['xaxis']['title']['text'],
+                             f'Unexpected time axis name for {fig_var}')
 
     def test03_time_line_interpolated(self):
         tvec = FakeDataGenerator.grid_lea_rand()
@@ -765,7 +762,8 @@ class TestVerb04plot(unittest.TestCase):
             # self.assertIn(fig_var, res['data'][0]['name'], f'Incorrect name of {fig_var}') # The name is in colorbar, but I am not sure why time plot is different from other 2d plots
             self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
             self.assertCountEqual(res['data'][0]['y'], expected_L, f'Incorrect L axis {fig_var}')
-            self.assertEqual(res['layout']['xaxis']['title']['text'], '$time [h]$', f'Unexpected time axis name for {fig_var}')
+            self.assertIn('time', res['layout']['xaxis']['title']['text'],
+                             f'Unexpected time axis name for {fig_var}')  # Changed assertion to IN because time text is not consistent in Kamodo
 
     def test04_Lvtime_interpolated(self):
         tvec = FakeDataGenerator.grid_lea_rand()
@@ -776,6 +774,18 @@ class TestVerb04plot(unittest.TestCase):
         K = tvec[3]
 
         self._test_2d_Lvtime(E_e, alpha_e, mu, K)
+
+
+@unittest.skip("This class is designed for debug purposes only")
+class TestDebug(TestCase):
+    """ This class is to create FakeVERB data folder. This is not an actual test """
+
+    @classmethod
+    def setUpClass(cls):
+        FakeDataGenerator.setup_fake_data()
+
+    def test01pass(selfs):
+        pass
 
 
 if __name__ == '__main__':
