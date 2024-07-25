@@ -606,11 +606,14 @@ class TestVerb03DatasetCheck(TestCase):
         # Generate random grid values
         xvec_lea = FakeDataGenerator.grid_lea_rand(xvec=True)
         #xvec_lmk = FakeDataGenerator.grid_lmk_rand(xvec=True)
-        xvec_lmk0 = FakeDataGenerator.grid_lmk(0)[
-                    1::]  # lmk grid can be compared on the nodes because grid is very irregular
-        xvec_lmk1 = FakeDataGenerator.grid_lmk(1)[1::]
-        xvec_lmk_mu_max = [xvec_lmk1[0], xvec_lmk1[1], xvec_lmk0[2]]  # Mu is maxed when K is min
-        xvec_lmk_K_max = [xvec_lmk0[0], xvec_lmk0[1], xvec_lmk1[2]]  # K is maxed when K is mu and L are min
+
+        # Generate lmk grid values
+        lmk_grid_0 = FakeDataGenerator.grid_lmk(0)[1:]
+        lmk_grid_1 = FakeDataGenerator.grid_lmk(1)[1:]
+
+        # Create specific lmk vectors for mu and K
+        xvec_lmk_mu_max = [lmk_grid_1[0], lmk_grid_1[1], lmk_grid_0[2]]  # Mu is maxed when K is min
+        xvec_lmk_K_max = [lmk_grid_0[0], lmk_grid_0[1], lmk_grid_1[2]]  # K is maxed when mu and L are min
 
         # Create the reader object
         ko = self.reader(self.output_path, variables_requested=self.xvar_list)
@@ -681,24 +684,14 @@ class TestVerb04plot(unittest.TestCase):
             self.assertCountEqual(res['data'][0]['x'], expected_L, f'Incorrect x-axis (L)')
 
     def test01_L_line(self):
-        grid = FakeDataGenerator.grid_lea(0)  # testing on the first point of the grid
-        time = grid[0]
-        E_e = grid[2]
-        alpha_e = grid[3]
-        grid = FakeDataGenerator.grid_lmk(0)  # testing on the first point of the grid
-        mu = grid[2]
-        K = grid[3]
+        time, _, E_e, alpha_e = FakeDataGenerator.grid_lea_rand()
+        _, _, mu, K = FakeDataGenerator.grid_lmk_rand()
 
         self._test_L_line(time, E_e, alpha_e, mu, K)
 
     def test01_L_line_interpolated(self):
-        tvec = FakeDataGenerator.grid_lea_rand()
-        time = tvec[0]
-        E_e = tvec[2]
-        alpha_e = tvec[3]
-        tvec = FakeDataGenerator.grid_lmk_rand()
-        mu = tvec[2]
-        K = tvec[3]
+        time, _, E_e, alpha_e = FakeDataGenerator.grid_lea_rand()
+        _, _, mu, K = FakeDataGenerator.grid_lmk_rand()
 
         self._test_L_line(time, E_e, alpha_e, mu, K)
 
@@ -737,13 +730,8 @@ class TestVerb04plot(unittest.TestCase):
                              f'Unexpected time axis name for {fig_var}')
 
     def test03_time_line_interpolated(self):
-        tvec = FakeDataGenerator.grid_lea_rand()
-        L = tvec[1]
-        E_e = tvec[2]
-        alpha_e = tvec[3]
-        tvec = FakeDataGenerator.grid_lmk_rand()
-        mu = tvec[2]
-        K = tvec[3]
+        _, L, E_e, alpha_e = FakeDataGenerator.grid_lea_rand()
+        _, _, mu, K = FakeDataGenerator.grid_lmk_rand()
 
         self._test_time_line(L, E_e, alpha_e, mu, K)
 
@@ -766,12 +754,8 @@ class TestVerb04plot(unittest.TestCase):
                              f'Unexpected time axis name for {fig_var}')  # Changed assertion to IN because time text is not consistent in Kamodo
 
     def test04_Lvtime_interpolated(self):
-        tvec = FakeDataGenerator.grid_lea_rand()
-        E_e = tvec[2]
-        alpha_e = tvec[3]
-        tvec = FakeDataGenerator.grid_lmk_rand()
-        mu = tvec[2]
-        K = tvec[3]
+        _, _, E_e, alpha_e = FakeDataGenerator.grid_lea_rand()
+        _, _, mu, K = FakeDataGenerator.grid_lmk_rand()
 
         self._test_2d_Lvtime(E_e, alpha_e, mu, K)
 
