@@ -72,13 +72,25 @@ class FakeDataGenerator:
 
     grid = Grid(
         T=Node([0., 4., 5]),
-        L=Node([1., 4., 3]),
+        L=Node([1., 4., 4]),  # Kamodo cannot plot anything correctly unless grid has minimum 4 points
         A=Node([np.rad2deg(0.1), np.rad2deg(np.pi / 2 - 0.1), 5]),
-        K=Node([rbamlib.conv.Lal2K(4, np.pi / 2 - 0.1), rbamlib.conv.Lal2K(1, 0.1), 5]),  # K - setup based on A
+        K=Node([np.float32(rbamlib.conv.Lal2K(4, np.deg2rad(round(np.rad2deg(np.pi / 2 - 0.1), 5)))),
+                np.float32(rbamlib.conv.Lal2K(1, np.deg2rad(round(np.rad2deg(0.1), 6)))),
+                5]),  # K - setup based on A
         E=Node([-2., 2., 4]),
-        M=Node([rbamlib.conv.en2mu(10 ** -2, 1, 0.1), rbamlib.conv.en2mu(10 ** 2, 4, np.pi / 2 - 0.1), 4]),
-        # Mu - setup based on E
+        M=Node([np.float32(rbamlib.conv.en2mu(10 ** -2, 1, np.deg2rad(round(np.rad2deg(0.1), 5)))),
+                np.float32(rbamlib.conv.en2mu(10 ** 2, 4, np.deg2rad(round(np.rad2deg(np.pi/2 - 0.1), 5)))),
+                4])   # Mu - setup based on E
     )
+
+    # Emulation of min mu obtain from PLT files and nc files:
+    # np.float32(rbamlib.conv.en2mu(10 ** -2, 1, np.deg2rad(round(np.rad2deg(0.1), 5))))
+    # Emulation of max mu obtain from PLT files and nc files:
+    # np.float32(rbamlib.conv.en2mu(10 ** 2, 4, np.deg2rad(round(np.rad2deg(np.pi/2 - 0.1), 5))))
+    # Emulation of min K obtain from PLT files and nc files:
+    # np.float32(rbamlib.conv.Lal2K(4, np.deg2rad(round(np.rad2deg(np.pi / 2 - 0.1), 5))))
+    # Emulation of max K obtain from PLT files and nc files:
+    # np.float32(rbamlib.conv.Lal2K(1, np.deg2rad(round(np.rad2deg(0.1), 6))))
 
     @staticmethod
     def generate_fake_out1d(file_path):
@@ -151,7 +163,29 @@ class FakeDataGenerator:
                 FakeDataGenerator.grid.K[idx]]
 
     @staticmethod
+    def grid_lea_rand(xvec=False):
+        tvec_grid = [FakeDataGenerator.grid_lea(0), FakeDataGenerator.grid_lea(1)]
+        return FakeDataGenerator._grid_rand(tvec_grid, xvec)
+
+    @staticmethod
+    def grid_lmk_rand(xvec=False):
+        tvec_grid = [FakeDataGenerator.grid_lmk(0), FakeDataGenerator.grid_lmk(1)]
+        return FakeDataGenerator._grid_rand(tvec_grid, xvec)
+
+    @staticmethod
+    def _grid_rand(tvec_grid, xvec=False):
+        tvec = list((np.array(tvec_grid[0]) + (np.array(tvec_grid[1]) - np.array(tvec_grid[0])) * np.random.random()))
+
+        if xvec:
+            return tvec[1::]
+        else:
+            return tvec
+
+    @staticmethod
     def setup_fake_data():
+        # Setup random seed (old style) for constancy of the tests
+        np.random.seed(31415)
+
         if os.path.exists(FakeDataGenerator.output_dir) and FakeDataGenerator.teardown:
             raise unittest.SkipTest("Test cannot be done because the folder 'output' already exists.")
         elif not os.path.exists(FakeDataGenerator.output_dir) or FakeDataGenerator.overwrite:
@@ -475,8 +509,7 @@ class TestVerb03DatasetCheck(TestCase):
     def test07_valid_PSD_lea_ijk(self):
 
         ko = self.reader(self.output_path, variables_requested='PSD_lea')
-        tvec_grid = [FakeDataGenerator.grid_lea(0), FakeDataGenerator.grid_lea(1)]
-        tvec = list((np.array(tvec_grid[0]) + (np.array(tvec_grid[1]) - np.array(tvec_grid[0])) / 10))
+        tvec = FakeDataGenerator.grid_lea_rand()
 
         val_psd_lea = ko.PSD_lea(tvec)
         self.assertFalse(isnan(val_psd_lea))
@@ -488,12 +521,10 @@ class TestVerb03DatasetCheck(TestCase):
 
     def test08_valid_interpolator(self):
         # Confirm that the interpolator works for each testing variable and type
-        tvec_grid = [FakeDataGenerator.grid_lea(0), FakeDataGenerator.grid_lea(1)]
-        tvec = list((np.array(tvec_grid[0]) + (np.array(tvec_grid[1]) - np.array(tvec_grid[0])) / 10))
+        tvec = FakeDataGenerator.grid_lea_rand()
         xvec = tvec[1::]
 
-        tvec_grid_lmk = [FakeDataGenerator.grid_lmk(0), FakeDataGenerator.grid_lmk(1)]
-        tvec_lmk = list((np.array(tvec_grid_lmk[0]) + (np.array(tvec_grid_lmk[1]) - np.array(tvec_grid_lmk[0])) / 10))
+        tvec_lmk = FakeDataGenerator.grid_lmk_rand()
         xvec_lmk = tvec_lmk[1::]
 
         xvar_list = self.xvar_list
@@ -519,8 +550,7 @@ class TestVerb03DatasetCheck(TestCase):
                 self.assertFalse(np.isnan(ko_var(tvec)).any(), f'{var} is nan')
 
     def test09_valid_ijk_time_slice(self):
-        tvec_grid = [FakeDataGenerator.grid_lea(0), FakeDataGenerator.grid_lea(1)]
-        tvec = list((np.array(tvec_grid[0]) + (np.array(tvec_grid[1]) - np.array(tvec_grid[0])) / 10))
+        tvec = FakeDataGenerator.grid_lea_rand()
 
         ko = self.reader(self.output_path, variables_requested=self.tvar_list)
         for var in self.tvar_list:
@@ -529,8 +559,7 @@ class TestVerb03DatasetCheck(TestCase):
 
     def test09_valid_ijk_L_slice(self):
         """ Test only for lea"""
-        tvec_grid = [FakeDataGenerator.grid_lea(0), FakeDataGenerator.grid_lea(1)]
-        tvec = list((np.array(tvec_grid[0]) + (np.array(tvec_grid[1]) - np.array(tvec_grid[0])) / 10))
+        tvec = FakeDataGenerator.grid_lea_rand()
 
         ko = self.reader(self.output_path, variables_requested=['E_e', 'alpha_e', 'mu', 'K'])
         E_e = np.random.choice(ko.E_e())
@@ -572,6 +601,43 @@ class TestVerb03DatasetCheck(TestCase):
         expected_filedate = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
         ko = self.reader(self.output_path, variables_requested='PSD_lea')
         self.assertEqual(ko.filedate, expected_filedate)
+
+    def test12_valid_grid_value(self):
+        # Generate random grid values
+        xvec_lea = FakeDataGenerator.grid_lea_rand(xvec=True)
+        #xvec_lmk = FakeDataGenerator.grid_lmk_rand(xvec=True)
+        xvec_lmk0 = FakeDataGenerator.grid_lmk(0)[1::]  # lmk grid can be compared on the nodes because grid is very irregular
+        xvec_lmk1 = FakeDataGenerator.grid_lmk(1)[1::]
+        xvec_lmk_mu_max = [xvec_lmk1[0], xvec_lmk1[1], xvec_lmk0[2]] # Mu is maxed when K is min
+        xvec_lmk_K_max = [xvec_lmk0[0], xvec_lmk0[1], xvec_lmk1[2]]  # K is maxed when K is mu and L are min
+
+        # Create the reader object
+        ko = self.reader(self.output_path, variables_requested=self.xvar_list)
+
+        # Helper function to avoid repetition
+        def assert_grid_value(func, input_values, expected_value, variable_name):
+            result = func(input_values)
+            self.assertFalse(np.isnan(result).any(), f"NaN found in result for {variable_name}")
+            self.assertAlmostEqual(result[0], expected_value, places=4, msg=f"Error in {variable_name}")
+
+        # Perform the assertions
+        assert_grid_value(ko.L, [FakeDataGenerator.grid.L.max, xvec_lea[1], xvec_lea[2]], FakeDataGenerator.grid.L.max, 'L')
+        assert_grid_value(ko.E_e, [xvec_lea[0], 10**FakeDataGenerator.grid.E.max, xvec_lea[2]], 10**FakeDataGenerator.grid.E.max, 'E_e')
+        assert_grid_value(ko.alpha_e, [xvec_lea[0], xvec_lea[1], FakeDataGenerator.grid.A.max], FakeDataGenerator.grid.A.max, 'alpha_e')
+        assert_grid_value(ko.mu, xvec_lmk_mu_max, xvec_lmk_mu_max[1], 'mu')
+        assert_grid_value(ko.K, xvec_lmk_K_max, xvec_lmk_K_max[2], 'K')
+
+        #assert_grid_value(ko.mu, [xvec_lmk[0], FakeDataGenerator.grid.M.max, xvec_lmk[2]], FakeDataGenerator.grid.M.max, 'mu')
+        #assert_grid_value(ko.K, [xvec_lmk[0], xvec_lmk[1], FakeDataGenerator.grid.K.max], FakeDataGenerator.grid.K.max, 'K')
+
+
+class TestDebug(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        FakeDataGenerator.setup_fake_data()
+
+    def test01pass(selfs):
+        pass
 
 
 # TODO: Make this class checking the output. use plotpy generator to control the output somehow.
