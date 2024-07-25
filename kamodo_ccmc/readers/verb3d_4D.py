@@ -30,6 +30,58 @@ model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)',
                   }
 
 
+# == This block is needed only for DEBUG purpose ==
+# model_varnames_W = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E, Alpha)', 0, 'LEA',
+#                           'car', ['time', 'L', 'W', 'Alpha'], '1/(s*cm**2*keV*sr*MeV**2)'],
+#                   'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, mu, K)', 0, 'LEA',
+#                             'car', ['time', 'L', 'Mu', 'K'], '1/(s*cm**2*keV*sr*MeV**2)'],
+#                   'L': ['L', 'L-shell', 1, 'LEA',
+#                         'car', ['L', 'W', 'Alpha'], ''],
+#                   'L_2': ['L_lmk', 'L-shell', 1, 'LEA',
+#                           'car', ['L', 'Mu', 'K'], ''],
+#                   'E': ['W', 'Energy', 1, 'LEA',
+#                          'car', ['L', 'W', 'Alpha'], 'MeV'],
+#                   'Alpha': ['Alpha', 'Pitch angle', 1, 'LEA',
+#                             'car', ['L', 'W', 'Alpha'], 'deg'],
+#                   'Mu': ['Mu', '1st adiabatic invariant mu', 1, 'LMK',
+#                          'car', ['L', 'Mu', 'K'], 'MeV/G'],
+#                   'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
+#                         'car', ['L', 'Mu', 'K'], 'GR_E**1/2']
+#                   }
+#
+#
+# model_varnames_Energy = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E, Alpha)', 0, 'LEA',
+#                           'car', ['time', 'L', 'Energy', 'Alpha'], '1/(s*cm**2*keV*sr*MeV**2)'],
+#                   'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, mu, K)', 0, 'LEA',
+#                             'car', ['time', 'L', 'Mu', 'K'], '1/(s*cm**2*keV*sr*MeV**2)'],
+#                   'L': ['L', 'L-shell', 1, 'LEA',
+#                         'car', ['L', 'Energy', 'Alpha'], ''],
+#                   'L_2': ['L_lmk', 'L-shell', 1, 'LEA',
+#                           'car', ['L', 'Mu', 'K'], ''],
+#                   'E': ['Energy', 'Energy', 1, 'LEA',
+#                          'car', ['L', 'Energy', 'Alpha'], 'MeV'],
+#                   'Alpha': ['Alpha', 'Pitch angle', 1, 'LEA',
+#                             'car', ['L', 'Energy', 'Alpha'], 'deg'],
+#                   'Mu': ['Mu', '1st adiabatic invariant mu', 1, 'LMK',
+#                          'car', ['L', 'Mu', 'K'], 'MeV/G'],
+#                   'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
+#                         'car', ['L', 'Mu', 'K'], 'GR_E**1/2']
+#                   }
+#
+#
+# # To programmatically enable this condition
+# import os
+# if os.getenv('model_varnames_W'):
+#     model_varnames = model_varnames_W
+#     print('model_varnames_W set')
+#     os.unsetenv('model_varnames_W')
+#
+# if os.getenv('model_varnames_Energy'):
+#     model_varnames = model_varnames_Energy
+#     print('model_varnames_Energy set')
+#     os.unsetenv('model_varnames_Energy')
+# ==========================================
+
 def MODEL():
     from kamodo import Kamodo
     import numpy as np
@@ -180,6 +232,11 @@ def MODEL():
                 # varfiles[p] = [model_varnames[key][0] for key in _gvar_list]
                 varfiles[p] = [_model_vars.vars[v].var for v in _gvar_list]
                 self.gvarfiles[p] = _gvar_list
+
+            # Include virtual variable keys. These variables are computed on fly or the same as other variables (e.g., PSD, PSD_2)
+            # This does not really work as needed
+            # virtual_varlist = {'PC', 'PSD_2', 'Mu', 'K'}
+            # varfiles['virtual'] = [_model_vars.vars[v].var for v in virtual_varlist]
 
             # Identify and print the errors
             self.print_err_list(variables_requested, varfiles)
