@@ -641,7 +641,142 @@ class TestDebug(TestCase):
 
 
 # TODO: Make this class checking the output. use plotpy generator to control the output somehow.
-# class TestVerb04plot(unittest.TestCase):
+class TestVerb04plot(unittest.TestCase):
+    """ Testing plotting capability. However, this test only checked the content that will be plotted by plotly. The actual plots are not generated."""
+    model = 'VERB-3D'
+    output_dir = FakeDataGenerator.output_dir
+    output_path = output_dir + '/'  # because Kamodo cannot work without slash
+
+    xvar_list = ['L', 'E_e', 'alpha_e', 'mu', 'K']
+    tvar_list = ['PSD_lea', 'PSD_lmk', 'flux_lea']
+    variables_requested = xvar_list + tvar_list
+
+    @classmethod
+    def setUpClass(cls):
+        FakeDataGenerator.setup_fake_data()
+        # Generate model files
+        cls.reader = MW.Model_Reader(cls.model)
+        cls.reader(cls.output_path, filetime=True)  # creates any preprocessed files
+
+        list_file = os.path.join(cls.output_dir, cls.model + '_list.txt')
+        times_file = os.path.join(cls.output_dir, cls.model + '_times.txt')
+
+        if not os.path.isfile(list_file) and not os.path.isfile(times_file):
+            raise unittest.SkipTest("Test cannot be done because the dataset was not created successfully.")
+
+        # This tests class uses the same Kamodo Object
+        cls.kamodo_object = cls.reader(cls.output_path, variables_requested=cls.variables_requested)
+
+    @classmethod
+    def tearDownClass(cls):
+        FakeDataGenerator.teardown_fake_data()
+
+    def _test_L_line(self, time, E_e, alpha_e, mu, K):
+        expected_L = FakeDataGenerator.grid.L.linspace()
+
+        for var in self.tvar_list:
+            fig_var = var + '_ijk'
+            if '_lea' in fig_var:
+                fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'time': time, 'E_e': E_e, 'alpha_e': alpha_e}})
+            else:
+                fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'time': time, 'mu': mu, 'K': K}})
+            res = fig.to_dict()
+            self.assertEqual(res['data'][0]['meta'], 'line', f'Not a line plot of {fig_var}')
+            self.assertCountEqual(res['data'][0]['x'], expected_L, f'Incorrect x-axis (L)')
+
+    def test01_L_line(self):
+        grid = FakeDataGenerator.grid_lea(0)  # testing on the first point of the grid
+        time = grid[0]
+        E_e = grid[2]
+        alpha_e = grid[3]
+        grid = FakeDataGenerator.grid_lmk(0)  # testing on the first point of the grid
+        mu = grid[2]
+        K = grid[3]
+
+        self._test_L_line(time, E_e, alpha_e, mu, K)
+
+    def test01_L_line_interpolated(self):
+        tvec = FakeDataGenerator.grid_lea_rand()
+        time = tvec[0]
+        E_e = tvec[2]
+        alpha_e = tvec[3]
+        tvec = FakeDataGenerator.grid_lmk_rand()
+        mu = tvec[2]
+        K = tvec[3]
+
+        self._test_L_line(time, E_e, alpha_e, mu, K)
+
+    def _test_2d_slice(self, time, L):
+        for var in self.tvar_list:
+            fig_var = var + '_ijk'
+            fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'time': time, 'L': L}})
+            res = fig.to_dict()
+            self.assertCountEqual(res['data'][0]['meta'], '2d-grid', f'Not a 2D plot of {fig_var}')
+
+    def test02_2d_slice(self):
+        time = FakeDataGenerator.grid.T.min
+        L = FakeDataGenerator.grid.L.min
+
+        self._test_2d_slice(time, L)
+
+    def test02_2d_slice_interpolated(self):
+        tvec = FakeDataGenerator.grid_lea_rand()
+        time = tvec[0]
+        L = tvec[1]
+
+        self._test_2d_slice(time, L)
+
+    def _test_time_line(self, L, E_e, alpha_e, mu, K):
+        expected_T = FakeDataGenerator.grid.T.linspace()*24
+        for var in self.tvar_list:
+            fig_var = var + '_ijk'
+            if '_lea' in fig_var:
+                fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'L': L, 'E_e': E_e, 'alpha_e': alpha_e}})
+            else:
+                fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'L': L, 'mu': mu, 'K': K}})
+            res = fig.to_dict()
+            self.assertEqual(res['data'][0]['meta'], 'line', f'Not a line plot of {fig_var}')
+            self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
+            self.assertEqual(res['layout']['xaxis']['title']['text'], '$time [h]$', f'Unexpected time axis name for {fig_var}')
+
+    def test03_time_line_interpolated(self):
+        tvec = FakeDataGenerator.grid_lea_rand()
+        L = tvec[1]
+        E_e = tvec[2]
+        alpha_e = tvec[3]
+        tvec = FakeDataGenerator.grid_lmk_rand()
+        mu = tvec[2]
+        K = tvec[3]
+
+        self._test_time_line(L, E_e, alpha_e, mu, K)
+
+    def _test_2d_Lvtime(self, E_e, alpha_e, mu, K):
+        expected_T = FakeDataGenerator.grid.T.linspace() * 24
+        expected_L = FakeDataGenerator.grid.L.linspace()
+
+        for var in self.tvar_list:
+            fig_var = var + '_ijk'
+            if '_lea' in fig_var:
+                fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'E_e': E_e, 'alpha_e': alpha_e}})
+            else:
+                fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'mu': mu, 'K': K}})
+            res = fig.to_dict()
+            self.assertEqual(res['data'][0]['meta'], '2d-grid', f'Not a 2D plot of {fig_var}')
+            # self.assertIn(fig_var, res['data'][0]['name'], f'Incorrect name of {fig_var}') # The name is in colorbar, but I am not sure why time plot is different from other 2d plots
+            self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
+            self.assertCountEqual(res['data'][0]['y'], expected_L, f'Incorrect L axis {fig_var}')
+            self.assertEqual(res['layout']['xaxis']['title']['text'], '$time [h]$', f'Unexpected time axis name for {fig_var}')
+
+    def test04_Lvtime_interpolated(self):
+        tvec = FakeDataGenerator.grid_lea_rand()
+        E_e = tvec[2]
+        alpha_e = tvec[3]
+        tvec = FakeDataGenerator.grid_lmk_rand()
+        mu = tvec[2]
+        K = tvec[3]
+
+        self._test_2d_Lvtime(E_e, alpha_e, mu, K)
+
 
 if __name__ == '__main__':
     unittest.main()
