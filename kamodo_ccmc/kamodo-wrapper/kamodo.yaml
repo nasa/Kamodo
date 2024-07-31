@@ -1,0 +1,7 @@
+models:
+  mymodel:
+    class: kamodo_example.MyModel
+    params:
+      filename: myfile.dat
+module_paths:
+  - .
