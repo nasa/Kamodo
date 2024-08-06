@@ -33,7 +33,7 @@ model_varnames = {'Temp_exo': ['T_exo', 'Exospheric temperature', 0, 'GDZ',
 ```
 
 ### Keys
-The dictionary object in Python is similar to a list in other languages and is indicated by curly brackets. The 'keys' of the dictionary are typically strings or integers and are followed by colons. In the model_varnames dictionary, the keys are the strings indicating the names of the variables as represented in the data files and are casesensitive. For data saved in netCDF files, a list of these keys can be obtained by the following code:
+The dictionary object in Python is similar to a list in other languages and is indicated by curly brackets. The 'keys' of the dictionary are typically strings or integers and are followed by colons. In the model_varnames dictionary, the keys are the strings indicating the names of the variables as represented in the data files and are case-sensitive. For data saved in netCDF files, a list of these keys can be obtained by the following code:
 ```py
 from netCDF4 import Dataset
 cdf_data = Dataset(file)
@@ -42,7 +42,7 @@ cdf_data.variables.keys()
 Similar methods can be used in other file formats. Collaboration with model developers is typically essential for data stored in binary or compressed binary file formats.
 
 ### Variables
-The keys in the model_varnames dictionary are followed by a list of items. The first item is the LaTeX representation of the item following the syntax rules of Kamodo (see https://ensemblegovservices.github.io/kamodocore/notebooks/Syntax/). The representation of variables in Kamodo is somewhat standardized across model outputs in alignment with the typical representation of the variable in literature. For example, density is always indicated as rho with a subscript indicating which density type it is.
+The keys in the model_varnames dictionary are followed by a list of items. The first item is the LaTeX representation of the item following the syntax rules of Kamodo (see https://nasa.github.io/Kamodo-core/notebooks/Syntax.html). The representation of variables in Kamodo is somewhat standardized across model outputs in alignment with the typical representation of the variable in literature. For example, density is always indicated as rho with a subscript indicating which density type it is.
 
 The second item in the list is a string containing the full description of the variable, which is included to be clear on what the variable represents. In some cases, this is long enough to split over multiple lines to be compatiable with PEP8 formatting standards.  
 
