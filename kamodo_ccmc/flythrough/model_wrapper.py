@@ -410,6 +410,11 @@ def coord_units(coord_type, coord_grid):
         else:
             return {'utc_time': 's', 'net_idx': '', 'c1': 'deg', 'c2': 'deg',
                     'c3': 'R_E'}
+    elif coord_grid == 'rb':
+        if coord_type == 'LEA':
+            return {'utc_time': 's', 'net_idx': '', 'c1': '', 'c2': 'MeV', 'c3': 'deg'}
+        elif coord_type == 'LMK':
+            return {'utc_time': 's', 'net_idx': '', 'c1': '', 'c2': 'MeV/G', 'c3': '10**-4*T*(km/6371*km)**1/2'}
 
 
 def coord_names(coord_type, coord_grid):

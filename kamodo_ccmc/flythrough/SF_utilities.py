@@ -50,7 +50,7 @@ def Model_FlyAway(reader, file_dir, variable_list, sat_time, c1, c2, c3,
     z_dependencies = {key: [var for var in value if var in newvar_list]
                       for key, value in z_dependencies.items()}
     # e.g. {'3D': a list of variables, '4D': a list of variables}
-    # used as a mapping of coordinate types to variables
+    # used as a mapping of coordinate types- to variables
 
     # create satellite tracks of types needed based on vertical dependencies
     sat_track = sat_tracks(sat_time, c1, c2, c3, z_dependencies,
@@ -93,6 +93,9 @@ def coordinate_systems(model, sat_time, c1, c2, c3, variable_list, coord_type,
     if len(var_coord_strs) != 1 or var_coord_strs[0] != (coord_type + ',' +
                                                          coord_grid):
         # then coordinate conversion needed
+        if coord_type in ['LEA', 'LMK']:
+            raise ValueError(f'The {coord_type} coordinate system cannot be converted.')
+
         new_coords = {coord_name: [[key for key, value in var_dict.items()
                                     if (value[2].split('_')[0]+','+value[3] ==
                                         coord_name) and key in variable_list]]
@@ -163,7 +166,7 @@ def Model_SatelliteFlythrough(model, file_dir, variable_list, sat_time, c1, c2,
     if len(idx) < len(sat_time):
         print(f'{len(sat_time)-len(idx)} times are not in model output files' +
               ' and are excluded from the flythrough.')
-    
+
     # perform coordinate conversions and sort variables by coordinate systems
     coord_dict = coordinate_systems(model, sat_time[idx], c1[idx], c2[idx],
                                     c3[idx], variable_list, coord_type,
