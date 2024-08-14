@@ -37,7 +37,7 @@ class FakeDataGenerator:
     output_dir = "output"
     output_path = output_dir + '/'  # because Kamodo cannot work without slash
     teardown = True  # perform teardown at the end. If folder exist - do nothing.
-    overwrite = True  # Overwrite created dataset
+    overwrite = True  # Overwrite created dataset, TODO: Fix, it does not work yet
 
     @dataclass
     class Node:
@@ -74,12 +74,13 @@ class FakeDataGenerator:
         T=Node([0., 4., 5]),
         L=Node([1., 4., 4]),  # Kamodo cannot plot anything correctly unless grid has minimum 4 points
         A=Node([np.rad2deg(0.1), np.rad2deg(np.pi / 2 - 0.1), 5]),
+        # A=Node([0.1, np.pi / 2 - 0.1, 5]),  # VERB code actually saves the grid in radians, not in degrees!
         K=Node([np.float32(rbamlib.conv.Lal2K(4, np.deg2rad(round(np.rad2deg(np.pi / 2 - 0.1), 5)))),
                 np.float32(rbamlib.conv.Lal2K(1, np.deg2rad(round(np.rad2deg(0.1), 6)))),
                 5]),  # K - setup based on A
         E=Node([-2., 2., 4]),
-        M=Node([np.float32(rbamlib.conv.en2mu(10 ** -2, 1, np.deg2rad(round(np.rad2deg(0.1), 5)))),
-                np.float32(rbamlib.conv.en2mu(10 ** 2, 4, np.deg2rad(round(np.rad2deg(np.pi / 2 - 0.1), 5)))),
+        M=Node([np.float32(rbamlib.conv.en2mu(10 ** -2, 1, np.deg2rad(round(np.rad2deg(0.1), 4)))),
+                np.float32(rbamlib.conv.en2mu(10 ** 2, 4, np.deg2rad(round(np.rad2deg(np.pi / 2 - 0.1), 4)))),
                 4])  # Mu - setup based on E
     )
 
@@ -127,7 +128,7 @@ class FakeDataGenerator:
         header = f'VARIABLES = "L, Earth radius", "Energy, MeV", "Pitch-angle, deg", "pc"\nZONE T="Grid"  I={grid.A.n}, J={grid.E.n}, K={grid.L.n}\n'
         L_values = grid.L.linspace()
         E_values = 10. ** grid.E.linspace()
-        A_values = grid.A.linspace()
+        A_values = np.deg2rad(grid.A.linspace())   # VERB code actually saves the grid in radians, not in degrees!
         pc_values = np.random.random((grid.L.n, grid.E.n, grid.A.n))
 
         with open(file_path, 'w') as file:
@@ -169,7 +170,21 @@ class FakeDataGenerator:
 
     @staticmethod
     def grid_lmk_rand(xvec=False):
-        tvec_grid = [FakeDataGenerator.grid_lmk(0), FakeDataGenerator.grid_lmk(1)]
+        # LMK grid is a bit tricky. We need to find min and max of the mu and K that fit all L
+        l_min, l_max, _ = FakeDataGenerator.grid.L
+        t_min, t_max, _ = FakeDataGenerator.grid.T
+        e_min, e_max, _ = FakeDataGenerator.grid.E
+
+        # angles in radians
+        angle_rad_0 = FakeDataGenerator.grid.A[0]
+        angle_rad_1 = FakeDataGenerator.grid.A[1]
+
+        k_min = np.float32(rbamlib.conv.Lal2K(l_min, np.deg2rad(round(angle_rad_1, 5))))
+        k_max = np.float32(rbamlib.conv.Lal2K(l_max, np.deg2rad(round(angle_rad_0, 5))))
+        m_min = np.float32(rbamlib.conv.en2mu(10 ** e_min, l_max, np.deg2rad(round(angle_rad_1, 4))))
+        m_max = np.float32(rbamlib.conv.en2mu(10 ** e_max, l_min, np.deg2rad(round(angle_rad_0, 4))))
+
+        tvec_grid = [[t_min, l_min, m_min, k_min], [t_max, l_max, m_max, k_max]]
         return FakeDataGenerator._grid_rand(tvec_grid, xvec)
 
     @staticmethod
@@ -395,6 +410,7 @@ class TestVerb02DatasetGeneration(TestCase):
 
 class TestVerb03DatasetCheck(TestCase):
     """ This class is advanced test with fake dataset. """
+    # TODO: Add tests for interpolation between time and grid points
 
     model = 'VERB-3D'
     output_dir = FakeDataGenerator.output_dir
@@ -551,11 +567,15 @@ class TestVerb03DatasetCheck(TestCase):
 
     def test09_valid_ijk_time_slice(self):
         tvec = FakeDataGenerator.grid_lea_rand()
+        tvec_lmk = FakeDataGenerator.grid_lmk_rand()
 
         ko = self.reader(self.output_path, variables_requested=self.tvar_list)
         for var in self.tvar_list:
-            val = ko[var + '_ijk'](time=tvec[0])
-            self.assertFalse(np.isnan(val).any())
+            if '_lmk' in var:
+                val = ko[var + '_ijk'](time=tvec_lmk[0])
+            else:
+                val = ko[var + '_ijk'](time=tvec[0])
+            self.assertFalse(np.isnan(val).any(), f'{var} is nan')
 
     def test09_valid_ijk_L_slice(self):
         """ Test only for lea"""

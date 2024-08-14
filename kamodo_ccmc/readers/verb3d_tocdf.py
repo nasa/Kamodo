@@ -33,7 +33,7 @@ def get_start_date(file_dir):
     return date_start
 
 
-def convert_all(file_dir):
+def convert_all(file_dir, start_date=None):
     '''Converting all plt files to netCDF4.'''
 
     # perp_grid_filename = os.path.join(file_dir, 'Output', 'perp_grid.plt')
@@ -46,21 +46,22 @@ def convert_all(file_dir):
         return False
 
     # Get the start date
-    start_date = get_start_date(file_dir)
+    if not start_date:
+        start_date = get_start_date(file_dir)
 
     # Work with grid
     grid = pyverbplt.load_plt(perp_grid_filename, squeeze=True)
 
     data = {'L': grid[0]['arr'],
             'E': grid[1]['arr'],
-            'Alpha': grid[2]['arr'],
+            'Alpha': np.rad2deg(grid[2]['arr']),
             'pc': grid[3]['arr']}
 
     # Kamodo data design rely on concept that all variables that are available by the model should be stored in the files
     # Below we calculate additional variables and store them in the corresponding nc files
     # Create virtual variables
-    mu = rbamlib.conv.en2mu(data['E'], data['L'], np.deg2rad(data['Alpha']))
-    K = rbamlib.conv.Lal2K(data['L'], np.deg2rad(data['Alpha']))
+    mu = rbamlib.conv.en2mu(data['E'], data['L'], grid[2]['arr'])
+    K = rbamlib.conv.Lal2K(data['L'], grid[2]['arr'])
     data['Mu'] = mu
     data['K'] = K
 
@@ -87,7 +88,7 @@ def convert_all(file_dir):
     nc_psd_files = []
     nc_psdlmk_files = []
     reshaped_pc = np.expand_dims(grid[3]['arr'], axis=0)
-    units_constant = 1/3e7 # (c/MeV/cm)^3 after that
+    units_constant = 1 / 3e7  # (c/MeV/cm)^3 after that
 
     for t in range(psd_size[0]):
         # PSD
@@ -106,7 +107,7 @@ def convert_all(file_dir):
 
             # Add flux
             flux_var = ncfile.createVariable('Flux', np.float32, ('L', 'E', 'Alpha'))
-            flux_var[:] = psd['arr'][t, :, :, :] * reshaped_pc**2
+            flux_var[:] = psd['arr'][t, :, :, :] * reshaped_pc ** 2
 
             # Time is number of days from zero - start of the simulation, directly from zone
             time_var = ncfile.createVariable('time', np.float32, ('time'))
