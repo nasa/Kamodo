@@ -1,5 +1,6 @@
 '''
 Written by Rebecca Ringuette, 2021
+Added custom interpolator by Lutz Rastaetter, 2022
 '''
 from datetime import datetime, timezone
 import numpy as np
@@ -185,8 +186,7 @@ def MODEL():
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 patterns = unique([basename(f)[:10] for f in files])
                 # get time grid from files
-                dt = sp.IdlFile(files[0],
-                                sort_unstructured=False).attrs['time']
+                dt = sp.IdlFile(files[0]).attrs['time']
                 if dt is not None:  # filedate given not always at midnight
                     self.filedate = datetime.strptime(
                         dt.isoformat()[:10], '%Y-%m-%d').replace(
@@ -204,7 +204,7 @@ def MODEL():
 
                     # loop through to get times, one file per time step
                     self.times[p]['start'] = array([(
-                        sp.IdlFile(f, sort_unstructured=False).attrs[
+                        sp.IdlFile(f).attrs[
                         'time'].replace(tzinfo=timezone.utc) - self.filedate
                         ).total_seconds()/3600. for f in pattern_files])
                     self.times[p]['end'] = self.times[p]['start'].copy()
@@ -235,8 +235,7 @@ def MODEL():
                     return
 
             # collect variable list
-            mhd = sp.IdlFile(self.pattern_files[p][0],
-                             sort_unstructured=False)  # This fails on s3
+            mhd = sp.IdlFile(self.pattern_files[p][0])  # This fails on s3
             file_variables = [key for key in mhd.keys() if key not in
                               ['grid', 'x', 'y', 'z']] + ['th']
             if len(variables_requested) > 0 and variables_requested != 'all':
@@ -482,7 +481,7 @@ def MODEL():
 
             if len(coord_list) == 1:  # read all the values in
                 self.variables[varname]['data'] = ravel([
-                    sp.IdlFile(f, sort_unstructured=False).meta[gvar]
+                    sp.IdlFile(f).meta[gvar]
                     for f in self.pattern_files[key]])
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],
@@ -496,11 +495,10 @@ def MODEL():
 
             # all of data is time + 3D spatial
             def func(i):  # i is the file/time number
+                mhd = sp.IdlFile(self.pattern_files[key][i])
                 # initialize octree instance for file if not already done
                 if i not in self.octree[key].keys():
                     # files is closed after read in spacepy.pybats.IdlFile
-                    mhd = sp.IdlFile(self.pattern_files[key][i],
-                                     sort_unstructured=False)
                     # pull request pending to implement sort_unstructured_data
                     # lib/site-packages/spacepy/pybats/__init__.py needs to be
                     # modified in your installation to not sort unstructured
@@ -530,10 +528,11 @@ def MODEL():
                                           self.octree[key][i]['numparents_at_AMRlevel'],
                                           self.octree[key][i]['block_at_AMRlevel'])
                 # get data from file and initialize
-                data = sp.IdlFile(self.pattern_files[key][i],
-                                  sort_unstructured=False)[gvar]  # dmarray
-                if gvar in scale_varnames:
-                    data = data*scale_varnames[gvar]
+                data = mhd[gvar]
+
+                if 'normalized variables' in mhd.meta['header']:
+                    if gvar in scale_varnames:
+                        data = data*scale_varnames[gvar]
                 if gvar in ['theta1', 'theta2', 'phi1', 'phi2']:
                     dmask = data < -99.
                     data[dmask] = None
