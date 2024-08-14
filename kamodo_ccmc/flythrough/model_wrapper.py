@@ -479,7 +479,7 @@ def Coord_Range(kamodo_object, var_names, print_output=True,
                 cunits = kamodo_object[var].meta['arg_units']
                 return_d[var] = {key: [defaults[key].min(),
                                        defaults[key].max(),
-                                       cunits[key.split('_')[0]]]
+                                       cunits[key.split('_ijk')[0]]]
                                  for key in key_list}
                 
             else:
