@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from math import isnan
 from dataclasses import dataclass, field
 from typing import List
+import time
 
 # LatexFormatter as some point is used to get LaTeX string out of Kamodo object
 # We simply apply this formater to check if the LaTeX is returned.
@@ -17,6 +18,8 @@ from IPython.core.formatters import LatexFormatter
 
 import rbamlib
 import kamodo_ccmc.flythrough.model_wrapper as MW
+from kamodo_ccmc.flythrough import SatelliteFlythrough as SF
+import spacepy.toolbox as sptb
 
 
 # Supporting functions
@@ -97,12 +100,15 @@ class FakeDataGenerator:
     # np.float32(rbamlib.conv.Lal2K(1, np.deg2rad(round(np.rad2deg(0.1), 6))))
 
     @staticmethod
-    def generate_fake_out1d(file_path):
+    def generate_fake_out1d(file_path, random_data=True):
         header = 'Variables = "time", "Kp", "Boundary_fluxes", "Lpp", "tau", "DCT_Daa WT_CHORUS_DAY_2016", "DCT_Daa WT_CHORUS_NIGHT_2016", "DCT_Dpp WT_CHORUS_DAY_2016", "DCT_Dpp WT_CHORUS_NIGHT_2016", "DCT_Dpa WT_CHORUS_DAY_2016", "DCT_Dpa WT_CHORUS_NIGHT_2016", "DCT_DaaLpp WT_HISS_2016", "DCT_DppLpp WT_HISS_2016", "DCT_DpaLpp WT_HISS_2016"\n'
         zone = 'ZONE T="1d-output"\n'
         grid = FakeDataGenerator.grid
         time_steps = grid.T.linspace()
-        data = np.random.random((grid.T.n, 13))
+        if random_data:
+            data = np.random.random((grid.T.n, 13))
+        else:
+            data = np.zeros((grid.T.n, 13))
 
         with open(file_path, 'w') as file:
             file.write(header)
@@ -111,28 +117,52 @@ class FakeDataGenerator:
                 file.write(f'{time}\t' + '\t'.join(map(str, data[i])) + '\n')
 
     @staticmethod
-    def generate_fake_outpsd(file_path):
+    def generate_fake_outpsd(file_path, random_data=True):
         header = 'VARIABLES = "Phase_Space_Density"\n'
         grid = FakeDataGenerator.grid
         time_steps = grid.T.linspace()
         data_shape = [grid.L.n, grid.E.n, grid.A.n]
 
+        L_profile, A_profile, E_profile, data = None, None, None, None
+        if not random_data:
+            # Assuming grid.L.n, grid.E.n, grid.A.n are already defined and grid.L, grid.E, grid.A have linspace() methods
+            L_values = grid.L.linspace()
+            E_values = 10. ** grid.E.linspace()
+            A_values = np.deg2rad(grid.A.linspace())
+
+            # Create 3D arrays for each coordinate using meshgrid
+            L_grid, E_grid, A_grid = np.meshgrid(L_values, E_values, A_values, indexing='ij')
+
+            # Create monotonic profile according to the grid
+            L_profile = 1 / (1 + np.exp(L_grid - 1))
+            A_profile = np.sin(A_grid)
+            E_profile = (E_grid / 1.) ** -3
+
         with open(file_path, 'w') as file:
             file.write(header)
             for t in time_steps:
                 file.write(f'ZONE T="{t}" I={data_shape[2]}, J={data_shape[1]}, K={data_shape[0]}\n')
-                data = np.random.random(np.prod(data_shape))
-                for value in data:
+                if random_data:
+                    data = np.random.random(np.prod(data_shape))
+                else:
+                    # Make profile increasing with time, a very basic approach
+                    data = L_profile * A_profile * E_profile + 0.1 * t
+                for value in data.ravel():
                     file.write(f'{value:e}\n')
 
     @staticmethod
-    def generate_fake_perp_grid(file_path):
+    def generate_fake_perp_grid(file_path, random_data=True):
         grid = FakeDataGenerator.grid
         header = f'VARIABLES = "L, Earth radius", "Energy, MeV", "Pitch-angle, deg", "pc"\nZONE T="Grid"  I={grid.A.n}, J={grid.E.n}, K={grid.L.n}\n'
         L_values = grid.L.linspace()
         E_values = 10. ** grid.E.linspace()
         A_values = np.deg2rad(grid.A.linspace())  # VERB code actually saves the grid in radians, not in degrees!
-        pc_values = np.random.random((grid.L.n, grid.E.n, grid.A.n))
+        if random_data:
+            pc_values = np.random.random((grid.L.n, grid.E.n, grid.A.n))
+        else:
+            # Create 3D arrays for each coordinate using meshgrid
+            _, E_grid, _ = np.meshgrid(L_values, E_values, A_values, indexing='ij')
+            pc_values = rbamlib.conv.en2pc(E_grid)
 
         with open(file_path, 'w') as file:
             file.write(header)
@@ -715,7 +745,7 @@ class TestVerb03DatasetCheck(TestCase):
         mu = select_value_within_bounds(ko._gridMu, m_min, m_max)
         return L, E_e, alpha_e, mu, K
 
-# TODO: Make this class checking the output. use plotpy generator to control the output somehow.
+
 class TestVerb04plot(unittest.TestCase):
     """ Testing plotting capability. However, this test only checked the content that will be plotted by plotly. The actual plots are not generated."""
     model = 'VERB-3D'
@@ -835,6 +865,68 @@ class TestVerb04plot(unittest.TestCase):
         _, _, mu, K = FakeDataGenerator.grid_lmk_rand()
 
         self._test_2d_Lvtime(E_e, alpha_e, mu, K)
+
+
+class TestVerb05flyby(unittest.TestCase):
+    """ Testing flyby."""
+    model = 'VERB-3D'
+    output_dir = FakeDataGenerator.output_dir
+    output_path = output_dir + '/'  # because Kamodo cannot work without slash
+
+    tvar_list = ['PSD_lea', 'PSD_lmk', 'flux_lea']
+    #variables_requested = xvar_list + tvar_list
+    variables_requested = tvar_list
+
+    @classmethod
+    def setUpClass(cls):
+        # Leapseconds
+        sptb.update(leapsecs=True)
+
+        FakeDataGenerator.setup_fake_data(random_data=False)
+        # Generate model files
+        cls.reader = MW.Model_Reader(cls.model)
+        cls.reader(cls.output_path, filetime=True)  # creates any preprocessed files
+
+        list_file = os.path.join(cls.output_dir, cls.model + '_list.txt')
+        times_file = os.path.join(cls.output_dir, cls.model + '_times.txt')
+
+        if not os.path.isfile(list_file) and not os.path.isfile(times_file):
+            raise unittest.SkipTest("Test cannot be done because the dataset was not created successfully.")
+
+        # This tests class uses the same Kamodo Object
+        cls.kamodo_object = cls.reader(cls.output_path, variables_requested=cls.variables_requested)
+
+    @classmethod
+    def tearDownClass(cls):
+        FakeDataGenerator.teardown_fake_data()
+
+    def test01_singlePoint_flux_lea(self):
+        tvec = FakeDataGenerator.grid_lea_rand()
+        sat_time_ts, Lstar, ech, a_eq = tvec
+        var = self.variables_requested[2] # flux_lea
+        results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                     [sat_time_ts], [Lstar], [ech], [a_eq],
+                                     coord_sys='LEA-rb', verbose=False)
+        self.assertFalse(np.isnan(results[var]), f'Result is nan')
+
+    def test01_singlePoint(self):
+        tvec = FakeDataGenerator.grid_lea_rand()
+        tvec_lmk = FakeDataGenerator.grid_lmk_rand()
+        sat_time_ts, Lstar, ech, a_eq = tvec
+        sat_time_ts, Lstar, mu, K = tvec_lmk
+
+        for var in self.tvar_list:
+            if '_lea' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             [sat_time_ts], [Lstar], [ech], [a_eq],
+                                             coord_sys='LEA-rb', verbose=False)
+                self.assertFalse(np.isnan(results[var]), f'Result of {var} is nan')
+            if '_lmk' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             [sat_time_ts], [Lstar], [mu], [K],
+                                             coord_sys='LMK-rb', verbose=False)
+                self.assertFalse(np.isnan(results[var]), f'Result of {var} is nan')
+
 
 
 @unittest.skip("This class is designed for debug purposes only")
