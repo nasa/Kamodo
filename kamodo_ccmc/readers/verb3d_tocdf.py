@@ -140,10 +140,6 @@ def convert_all(file_dir, start_date=None):
     times_list = list(time * 24)  # Convert to number of hours
     times_end = times_list
 
-    # if len(times_list) > 1:
-    #     times_end = times_list[1:]
-    #     times_end.append(times_end[-1] + times_list[-1] - times_list[-2])
-
     # All times are stored as the number of hours since midnight of the
     # first file of all the files in the given directory.
     times = {'OutPSD_Flux': {'start': times_list, 'end': times_end, 'all': times_list},

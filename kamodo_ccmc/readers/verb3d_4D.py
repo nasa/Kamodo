@@ -6,9 +6,7 @@ import numpy as np
 # model_varnames = {'Name in file': ['LaTeX representation', 'Description', integer, 'Coordinate system',
 #                            'Coordinate grid', [Coordinate list], 'Units'],
 
-# It is easier to same PC, Mu, K as grid variable than calculate it within Kamodo.
-# As for PSD_2 -> not sure yet... I should try to use PSD and PSD_2 as the same key for the latex variable. No copy.
-
+# It is easier to use pc, Mu, K as grid variables than calculate it within Kamodo.
 model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)', 0, 'LEA',
                           'rb', ['time', 'L', 'E_e', 'alpha_e'], '(c/MeV/cm)**3'],
                   'Flux': ['flux_lea', 'Electron flux (L, E_e, alpha_e)', 0, 'LEA',
@@ -30,7 +28,6 @@ model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)',
                   # Kamodo cannot handle units of G * R_E^1/2
                   }
 
-
 def MODEL():
     from kamodo import Kamodo
     import numpy as np
@@ -39,7 +36,6 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
     from time import perf_counter
     from dataclasses import dataclass
-    import rbamlib
     from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
     from scipy.spatial import cKDTree
 
@@ -170,27 +166,10 @@ def MODEL():
                         # list of file variables in cdf
                         _gvar_list = _model_vars.file_variables(cdf_keys=cdf_data.variables.keys())
 
-                    #     if len(_gvar_list) != len(variables_requested):
-                    #         # Get list of variables not found in this file set
-                    #
-                    #         _err_list = [value[0] for key, value in
-                    #                      model_varnames.items()
-                    #                      if key not in cdf_data.variables.keys() and
-                    #                      value[0] in variables_requested]
-                    #         err_list.extend(_err_list)  # add to master list
-                    # else:
-                    #     _gvar_list = [key for key in model_varnames.keys()
-                    #                   if key in cdf_data.variables.keys()]
-
                 # store which file these variables came from
                 # varfiles[p] = [model_varnames[key][0] for key in _gvar_list]
                 varfiles[p] = [_model_vars.vars[v].var for v in _gvar_list]
                 self.gvarfiles[p] = _gvar_list
-
-            # Include virtual variable keys. These variables are computed on fly or the same as other variables (e.g., PSD, PSD_2)
-            # This does not really work as needed
-            # virtual_varlist = {'PC', 'PSD_2', 'Mu', 'K'}
-            # varfiles['virtual'] = [_model_vars.vars[v].var for v in virtual_varlist]
 
             # Identify and print the errors
             self.print_err_list(variables_requested, varfiles)
@@ -210,9 +189,6 @@ def MODEL():
             # Load static variables like pc, that do not need to be loaded from nc files
             self.load_static(file_dir)
 
-            # calculate virtual variables
-            # self.calc_virtual_variables()
-
             # register interpolators for each variable
             t_reg = perf_counter()
             # store original list b/c gridded interpolators change keys list
@@ -225,8 +201,6 @@ def MODEL():
                 # Grid and static variables handled diffrently
                 else:
                     self.register_grid_variable(varname, gridded_int, file_dir)
-
-                # TODO: Add Handling PSD_lmk
 
             if verbose:
                 print(f'Took {perf_counter() - t_reg:.5f}s to register ' +
@@ -274,27 +248,6 @@ def MODEL():
             # Find corresponding name for the coordinates based on Latex name
             gvar_grid = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
-            # for coord in gvar_grid:
-            # coord_dict.update({_model_vars.vars[coord].var:
-            #                            {'units': _model_vars.vars[coord].units,
-            #                             'data': getattr(self, self._grid_prefix + coord)}})
-            # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
-            #                          'data': self._gridL[:, 0, 0]},
-            #                    'E_e': {'units': _model_vars.vars['E'].units,
-            #                            'data': self._gridE[-1, :, 0]},
-            #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
-            #                                 'data': self._gridAlpha[-1, 0, :]},
-            #                    })
-            # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
-            #                          'data': self._gridL[:, 0, 0]},  # L is the same
-            #                    'E_e': {'units': _model_vars.vars['E'].units,
-            #                            'data': np.sort(np.unique(np.concatenate((
-            #                                self._gridE[0, :, 0], self._gridE[-1, :, 0]))))},  # Energy changes in L
-            #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
-            #                                 'data': np.sort(np.unique(np.concatenate((
-            #                                     self._gridAlpha[0, 0, :], self._gridAlpha[-1, 0, :]))))},  # Alpha changes in L
-            #                    })
-
             grid = 'LEA'
 
             if all(var in grid_variables for var in ['L', 'E_e', 'alpha_e']):
@@ -311,15 +264,6 @@ def MODEL():
                                                'data': unique_A[idx_A]},
                                    })
 
-                # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
-                #                          'data': self._gridL[:, 0, 0]},  # L is the same
-                #                    'E_e': {'units': _model_vars.vars['E'].units,
-                #                            'data': np.sort(np.unique(np.concatenate((
-                #                                self._gridE[0, :, 0], self._gridE[-1, :, 0]))))[::2]},  # Energy changes in L
-                #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
-                #                                 'data': np.sort(np.unique(np.concatenate((
-                #                                     self._gridAlpha[0, 0, :], self._gridAlpha[-1, 0, :]))))[::2]},  # Alpha changes in L
-                #                    })
             elif all(var in grid_variables for var in ['L', 'mu', 'K']):
                 npoints = np.max(self._gridL.shape) * 2
                 unique_mu = np.sort(np.unique(self._gridMu.flatten()))
@@ -403,14 +347,6 @@ def MODEL():
                                        {'units': _model_vars.vars[coord].units,
                                         'data': getattr(self, self._grid_prefix + coord)}})
 
-            # coord_dict.update({'L': {'units': _model_vars.vars['L'].units,
-            #                          'data': self._gridL[:, 0, 0]},
-            #                    'alpha_e': {'units': _model_vars.vars['Alpha'].units,
-            #                                 'data': self._gridAlpha[0, 0, :]},
-            #                    'E_e': {'units': _model_vars.vars['E'].units,
-            #                            'data': self._gridE[0, :, 0]}
-            #                    })
-
             # variable_name = model_varnames[gvar][0]
             coord_str = ''
 
@@ -451,8 +387,6 @@ def MODEL():
                 grid_variables.remove('time')
 
             # Find corresponding name for the coordinates based on Latex name
-            # gvar_variabels = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
-            # gvar_variabels = [gvar for gvar, items in model_varnames.items() if items[0] in grid_variables]
             gvar_variabels = [_model_vars.keys[v] for v in grid_variables if v in _model_vars.keys]
 
             # Find what patterns to load
@@ -598,242 +532,6 @@ def MODEL():
             # TODO: Add verification that indexes are within the range of the grid
             return d1
 
-        # def _interp_xvec_data_LEA(self, xvec, data):
-        #     if not isinstance(xvec, np.ndarray):
-        #         xvec = np.array(xvec)  # convert to numpy array
-        #
-        #     xvec = np.atleast_2d(xvec)  # Make sure we can iterate over the array
-        #     L, E, A = xvec[:, 0], xvec[:, 1], xvec[:, 2]
-        #
-        #     #  Dima's interpolation starts here  #
-        #     LS = np.sort(np.unique(self._gridL))
-        #     maxLS = max(LS)
-        #     minLS = min(LS)
-        #     nl = self._gridL.shape[0]
-        #
-        #     new_L = L
-        #     new_epc = E
-        #     new_alpha = A
-        #     nobs = new_L.size
-        #     iskip = False
-        #
-        #     nan_check = np.isnan(new_L * new_epc * new_alpha)
-        #
-        #     if np.all(nan_check):  # skip interpolation
-        #         iskip = True
-        #
-        #     else:  # mask sat points if at least one of 3-D coord is NaN
-        #         new_L[nan_check] = np.nan
-        #         new_epc[nan_check] = np.nan
-        #         new_alpha[nan_check] = np.nan
-        #
-        #         Lmax = np.nanmax(new_L)
-        #         Lmin = np.nanmin(new_L)
-        #         limax = np.argmin(np.abs(LS - Lmax))
-        #         limin = np.argmin(np.abs(LS - Lmin))
-        #
-        #         if LS[limax] <= Lmax:
-        #             limax += 1
-        #             if limax > nl - 1:
-        #                 limax = nl - 1
-        #
-        #         if LS[limin] >= Lmin:
-        #             limin -= 1
-        #             if limin < 0:
-        #                 limin = 0
-        #
-        #         if Lmax > maxLS and Lmin > maxLS:
-        #             iskip = True
-        #
-        #         if Lmin < minLS and Lmax < minLS:
-        #             iskip = True
-        #
-        #     if not iskip:
-        #         Amax = np.nanmax(new_alpha)
-        #         Amin = np.nanmin(new_alpha)
-        #         Emax = np.nanmax(new_epc)
-        #         Emin = np.nanmin(new_epc)
-        #
-        #         Psi_tt = np.array([])
-        #         Lit = np.array([])
-        #         Eit = np.array([])
-        #         Ait = np.array([])
-        #
-        #         for l in range(limin, limax + 1):
-        #             aas = np.sort(np.unique(self._gridAlpha[l, :, :]))
-        #             es = np.sort(np.unique(self._gridE[l, :, :]))
-        #
-        #             asn = aas.size
-        #             esn = es.size
-        #
-        #             aimax = np.argmin(np.abs(aas - Amax))
-        #             aimin = np.argmin(np.abs(aas - Amin))
-        #             eimax = np.argmin(np.abs(es - Emax))
-        #             eimin = np.argmin(np.abs(es - Emin))
-        #
-        #             eimin1 = max(eimin - 1, 0)
-        #             eimax1 = min(eimax + 1, esn - 1)
-        #
-        #             aimin1 = max(aimin - 1, 0)
-        #             aimax1 = min(aimax + 1, asn - 1)
-        #             Psi_t = np.log10(data[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
-        #
-        #             Li = self._gridL[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
-        #             Ei = np.log10(self._gridE[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
-        #             Ai = self._gridAlpha[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
-        #             Ait = np.append(Ait, Ai.ravel())
-        #             Eit = np.append(Eit, Ei.ravel())
-        #             Lit = np.append(Lit, Li.ravel())
-        #             Psi_tt = np.append(Psi_tt, Psi_t.ravel())
-        #
-        #         print(f" nobs={nobs}; npts= {len(Psi_tt)}")
-        #         X = new_L
-        #         Y = np.log10(new_epc)
-        #         Z = new_alpha
-        #         x = Lit
-        #         y = Eit
-        #         z = Ait
-        #         v = Psi_tt
-        #         interp = LinearNDInterpolator(list(zip(x, y, z)), v)
-        #         PSD_interp = interp(X, Y, Z)
-        #
-        #         # LinearNDInterpolator does not work very well at the edges.
-        #         # If nans are found nearest interpolation will be applied
-        #         idx = np.isnan(PSD_interp)
-        #         if np.any(idx):
-        #             interp_near = NearestNDInterpolator(list(zip(x, y, z)), v)
-        #             idx_non_nan = ~np.any(np.isnan([X, Y, Z]), 0)
-        #             if np.any(idx_non_nan):
-        #                 PSD_interp[idx_non_nan] = interp_near(X[idx_non_nan], Y[idx_non_nan], Z[idx_non_nan])
-        #
-        #         d1 = 10 ** PSD_interp
-        #
-        #     else:
-        #         d1 = np.full(nobs, np.NaN)
-        #
-        #     return d1
-        #
-        # def _interp_xvec_data_LMK(self, xvec, data):
-        #     if not isinstance(xvec, np.ndarray):
-        #         xvec = np.array(xvec)  # convert to numpy array
-        #
-        #     d1 = []
-        #
-        #     xvec = np.atleast_2d(xvec)  # Make sure we can iterate over the array
-        #     L, M, K = xvec[:, 0], xvec[:, 1], xvec[:, 2]
-        #
-        #     #  Dima's interpolation starts here  #
-        #
-        #     LS = np.sort(np.unique(self._gridL))
-        #     maxLS = max(LS)
-        #     nl = self._gridL.shape[0]
-        #
-        #     new_L = L
-        #     new_M = M
-        #     new_K = K
-        #     nobs = new_L.size
-        #     iskip = False
-        #
-        #     nan_check = np.isnan(new_L * new_M * new_K)
-        #
-        #     if np.all(nan_check):  # skip interpolation
-        #         iskip = True
-        #
-        #     else:  # mask sat points if at least one of 3-D coord is NaN
-        #         new_L[nan_check] = np.nan
-        #         new_M[nan_check] = np.nan
-        #         new_K[nan_check] = np.nan
-        #
-        #         Lmax = np.nanmax(new_L)
-        #         Lmin = np.nanmin(new_L)
-        #         limax = np.argmin(np.abs(LS - Lmax))
-        #         limin = np.argmin(np.abs(LS - Lmin))
-        #
-        #         if LS[limax] <= Lmax:
-        #             limax += 1
-        #             if limax > nl - 1:
-        #                 limax = nl - 1
-        #
-        #         if LS[limin] >= Lmin:
-        #             limin -= 1
-        #             if limin < 0:
-        #                 limin = 0
-        #
-        #         if Lmax > maxLS and Lmin > maxLS:
-        #             iskip = True
-        #
-        #     if not iskip:
-        #         Kmax = np.nanmax(new_K)
-        #         Kmin = np.nanmin(new_K)
-        #         Mmax = np.nanmax(new_M)
-        #         Mmin = np.nanmin(new_M)
-        #
-        #         Psi_tt = np.array([])
-        #         Lit = np.array([])
-        #         Eit = np.array([])
-        #         Ait = np.array([])
-        #
-        #         for l in range(limin, limax + 1):
-        #             aas = np.sort(np.unique(self._gridK[l, :, :]))[::-1]
-        #             asn = aas.size
-        #             aimax = np.argmin(np.abs(aas - Kmax))  # Most left point (min index)
-        #             aimin = np.argmin(np.abs(aas - Kmin))  # Most right points (max index)
-        #
-        #             es = np.sort(np.unique(self._gridMu[l, :, aimin]))
-        #             eimax = np.argmin(np.abs(es - Mmax))
-        #
-        #             es = np.sort(np.unique(self._gridMu[l, :, aimax]))
-        #             eimin = np.argmin(np.abs(es - Mmin))
-        #
-        #             esn = es.size
-        #
-        #             eimin1 = max(eimin - 1, 0)
-        #             eimax1 = min(eimax + 1, esn - 1)
-        #
-        #             aimin1 = max(aimax - 1, 0)
-        #             aimax1 = min(aimin + 1, asn - 1)
-        #             Psi_t = np.log10(data[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
-        #
-        #             Li = self._gridL[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
-        #             Ei = np.log10(self._gridMu[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
-        #             Ai = self._gridK[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
-        #             Ait = np.append(Ait, Ai.ravel())
-        #             Eit = np.append(Eit, Ei.ravel())
-        #             Lit = np.append(Lit, Li.ravel())
-        #             Psi_tt = np.append(Psi_tt, Psi_t.ravel())
-        #
-        #         print(f" nobs={nobs}; npts= {len(Psi_tt)}")
-        #         X = new_L
-        #         Y = np.log10(new_M)
-        #         Z = new_K
-        #         x = Lit
-        #         y = Eit
-        #         z = Ait
-        #         v = Psi_tt
-        #         interp = LinearNDInterpolator(list(zip(x, y, z)), v)
-        #         PSD_interp = interp(X, Y, Z)
-        #
-        #         # LinearNDInterpolator does not work very well at the edges.
-        #         # If nans are found nearest interpolation will be applied
-        #         idx = np.isnan(PSD_interp)
-        #         if np.any(idx):
-        #             # TODO: limit to edge cases
-        #             interp_near = NearestNDInterpolator(list(zip(x, y, z)), v)
-        #             idx_non_nan = ~np.any(np.isnan([X, Y, Z]), 0)
-        #             if np.any(idx_non_nan):
-        #                 PSD_interp[idx_non_nan] = interp_near(X[idx_non_nan], Y[idx_non_nan], Z[idx_non_nan])
-        #
-        #         # new_pc = rbamlib.conv.en2pc(new_epc)
-        #         # Flux_interp = 10 ** PSD_interp * new_pc * new_pc
-        #         # d1 = Flux_interp
-        #         d1 = 10 ** PSD_interp
-        #
-        #     else:
-        #         d1 = np.full(nobs, np.NaN)
-        #
-        #     return d1
-
-
         def _intrep_xvec_data_prepare(self, xvec):
             if not isinstance(xvec, np.ndarray):
                 xvec = np.array(xvec)
@@ -898,40 +596,6 @@ def MODEL():
 
         def _interp_xvec_data_LEA(self, xvec, data):
 
-            # if not isinstance(xvec, np.ndarray):
-            #     xvec = np.array(xvec)
-            #
-            # xvec = np.atleast_2d(xvec)  # Ensure we can iterate over the array
-            # L, E, A = xvec[:, 0], xvec[:, 1], xvec[:, 2]
-            #
-            # # Extract grid data
-            # L_grid_sorted = np.sort(np.unique(self._gridL))
-            # min_L_grid, max_L_grid = np.min(L_grid_sorted), np.max(L_grid_sorted)
-            # num_L_grid = self._gridL.shape[0]
-            #
-            # nobs = L.size
-            #
-            # # Check for NaN values
-            # nan_check = np.isnan(L) | np.isnan(E) | np.isnan(A)
-            # if np.all(nan_check):
-            #     return np.full(nobs, np.NaN)
-            #
-            # # Handle NaN points in the input data
-            # L[nan_check] = np.nan
-            # E[nan_check] = np.nan
-            # A[nan_check] = np.nan
-            #
-            # # Determine interpolation limits in the L grid
-            # Lmin, Lmax = np.nanmin(L), np.nanmax(L)
-            # limax = np.argmin(np.abs(L_grid_sorted - Lmax))
-            # limin = np.argmin(np.abs(L_grid_sorted - Lmin))
-            #
-            # limin = max(limin - 1, 0)
-            # limax = min(limax + 1, num_L_grid - 1)
-            #
-            # if (Lmax > max_L_grid and Lmin > max_L_grid) or (Lmax < min_L_grid and Lmin < min_L_grid):
-            #     return np.full(nobs, np.NaN)
-
             L, E, A, output, limin, limax = self._intrep_xvec_data_prepare(xvec)
             if output is not None:
                 return output
@@ -968,55 +632,12 @@ def MODEL():
                 Yi = np.log10(self._gridE[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
                 Zi = self._gridAlpha[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
 
-                # PSDit_list = np.log10(data[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
-                # Lit_list = self._gridL[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
-                # Yit_list = np.log10(self._gridE[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1])
-                # Zit_list = self._gridAlpha[l, eimin1:eimax1 + 1, aimin1:aimax1 + 1]
-                #
-                # # Accumulate grid points and Psi values
-                # Zit = np.hstack((Zit, Ai.ravel()))
-                # Yit = np.hstack((Yit, Ei.ravel()))
-                # Lit = np.hstack((Lit, Li.ravel()))
-                # PSDit = np.hstack((PSDit, Psi_t.ravel()))
                 Xit, Yit, Zit, PSDit =  self._intrep_stack_hstack(Xit, Xi, Yit, Yi, Zit, Zi, PSDit, PSDi)
 
             # Perform interpolation using the common interpolation logic
             return self._interpolate(L, np.log10(E), A, Xit, Yit, Zit, PSDit)
 
         def _interp_xvec_data_LMK(self, xvec, data):
-            # if not isinstance(xvec, np.ndarray):
-            #     xvec = np.array(xvec)
-            #
-            # xvec = np.atleast_2d(xvec)  # Ensure we can iterate over the array
-            # L, M, K = xvec[:, 0], xvec[:, 1], xvec[:, 2]
-            #
-            # # Extract grid data
-            # L_grid_sorted = np.sort(np.unique(self._gridL))
-            # min_L_grid, max_L_grid = np.min(L_grid_sorted), np.max(L_grid_sorted)
-            # num_L_grid = self._gridL.shape[0]
-            #
-            # nobs = L.size
-            #
-            # # Check for NaN values
-            # nan_check = np.isnan(L) | np.isnan(M) | np.isnan(K)
-            # if np.all(nan_check):
-            #     return np.full(nobs, np.NaN)
-            #
-            # # Handle NaN points in the input data
-            # L[nan_check] = np.nan
-            # M[nan_check] = np.nan
-            # K[nan_check] = np.nan
-            #
-            # # Determine interpolation limits in the L grid
-            # Lmin, Lmax = np.nanmin(L), np.nanmax(L)
-            # limax = np.argmin(np.abs(L_grid_sorted - Lmax))
-            # limin = np.argmin(np.abs(L_grid_sorted - Lmin))
-            #
-            # limin = max(limin - 1, 0)
-            # limax = min(limax + 1, num_L_grid - 1)
-            #
-            # if (Lmax > max_L_grid and Lmin > max_L_grid) or (Lmax < min_L_grid and Lmin < min_L_grid):
-            #     return np.full(nobs, np.NaN)
 
             L, M, K, output, limin, limax = self._intrep_xvec_data_prepare(xvec)
             if output is not None:
@@ -1039,8 +660,6 @@ def MODEL():
 
                 M_values_min = self._gridMu[l, :, Kimax]  # Lowest Mu at highest K
                 M_values_max = self._gridMu[l, :, Kimin]  # Highest Mu at lowest K
-                #M_values_min = self._gridMu[l, :, Kimin]  # Lowest Mu at highest K
-                #M_values_max = self._gridMu[l, :, Kimax]  # Highest Mu at lowest K
                 Mimax = np.argmin(np.abs(M_values_max - M_max))
                 Mimin = np.argmin(np.abs(M_values_min - M_min))
                 num_M = M_values_min.size
@@ -1059,11 +678,7 @@ def MODEL():
                 Yi = np.log10(self._gridMu[l, Mimin1:Mimax1+1, Kimax1:Kimin1+1])
                 Zi = self._gridK[l, Mimin1:Mimax1+1, Kimax1:Kimin1+1]
 
-                # # Accumulate grid points and Psi values
-                # Ait = np.hstack((Ait, Ki.ravel()))
-                # Eit = np.hstack((Eit, Mi.ravel()))
-                # Lit = np.hstack((Lit, Li.ravel()))
-                # Psi_tt = np.hstack((Psi_tt, Psi_t.ravel()))
+                # Accumulate grid points and PSDit values
                 Xit, Yit, Zit, PSDit = self._intrep_stack_hstack(Xit, Xi, Yit, Yi, Zit, Zi, PSDit, PSDi)
 
             # Perform interpolation using the common interpolation logic
