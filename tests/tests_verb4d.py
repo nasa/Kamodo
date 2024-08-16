@@ -128,7 +128,7 @@ class FakeDataGenerator:
         header = f'VARIABLES = "L, Earth radius", "Energy, MeV", "Pitch-angle, deg", "pc"\nZONE T="Grid"  I={grid.A.n}, J={grid.E.n}, K={grid.L.n}\n'
         L_values = grid.L.linspace()
         E_values = 10. ** grid.E.linspace()
-        A_values = np.deg2rad(grid.A.linspace())   # VERB code actually saves the grid in radians, not in degrees!
+        A_values = np.deg2rad(grid.A.linspace())  # VERB code actually saves the grid in radians, not in degrees!
         pc_values = np.random.random((grid.L.n, grid.E.n, grid.A.n))
 
         with open(file_path, 'w') as file:
@@ -503,7 +503,6 @@ class TestVerb03DatasetCheck(TestCase):
     def test05_Coord_Grid_ijk(self):
         """ Testing Coord_Grid only for ijk variables"""
         ko = self.reader(self.output_path)
-        # TODO: make this list based on the gridded kamodo variables
         ijk_variables = ['PSD_lmk_ijk', 'PSD_lea_ijk', 'flux_lea_ijk']
         expected_grid = FakeDataGenerator.grid_lea_dict()
 
@@ -575,40 +574,58 @@ class TestVerb03DatasetCheck(TestCase):
         ko = self.reader(self.output_path, variables_requested=self.tvar_list)
         for var in self.tvar_list:
             if '_lmk' in var:
+                # This can result in nan since _ijk on _lmk grid can be outside the grid
                 val = ko[var + '_ijk'](time=tvec_lmk[0])
+                self.assertFalse(np.isnan(val).all(), f'All {var} are nans')
+                self.assertFalse(np.sum(np.isnan(val)) > np.sum(~np.isnan(val)),
+                                 f'More NaN values in {var} that expected')
             else:
                 val = ko[var + '_ijk'](time=tvec[0])
-            self.assertFalse(np.isnan(val).any(), f'{var} is nan')
+                self.assertFalse(np.isnan(val).any(), f'{var} is nan')
 
     def test09_valid_ijk_L_slice(self):
-        """ Test only for lea"""
         tvec = FakeDataGenerator.grid_lea_rand()
 
-        ko = self.reader(self.output_path, variables_requested=['E_e', 'alpha_e', 'mu', 'K'])
-        E_e = np.random.choice(ko.E_e())
-        alpha_e = np.random.choice(ko.alpha_e())
-        mu = np.random.choice(ko.mu())
-        K = np.random.choice(ko.K())
+        # This chose is incorrect
+        # E_e = np.random.choice(ko.E_e())
+        # alpha_e = np.random.choice(ko.alpha_e())
+        # mu = np.random.choice(ko.mu())
+        # K = np.random.choice(ko.K())
+
+        _, E_e, alpha_e, mu, K = self._random_grid_points()
 
         ko = self.reader(self.output_path, variables_requested=self.tvar_list)
         for var in self.tvar_list:
             if '_lea' in var:
                 val = ko[var + '_ijk'](time=tvec[0], E_e=E_e, alpha_e=alpha_e)
-                self.assertFalse(np.isnan(val).any())
+                self.assertFalse(np.isnan(val).any(), f'{var} is nan, E_e {E_e}, alpha_e {alpha_e}')
                 self.assertTrue(len(val), FakeDataGenerator.grid.L.n)
             if '_lmk' in var:
                 val = ko[var + '_ijk'](time=tvec[0], mu=mu, K=K)
-                self.assertFalse(np.isnan(val).any())
+                self.assertFalse(np.isnan(val).any(), f'{var} is nan: mu {mu}, K {K}')
                 self.assertTrue(len(val), FakeDataGenerator.grid.L.n)
+
+    @unittest.skip("Skipping this test, it is incorrect")
+    def test09_valid_PSD_lmk_L_edje(self):
+        """ Test only for lea"""
+        tvec = FakeDataGenerator.grid_lea_rand()
+        ko = self.reader(self.output_path, variables_requested=self.tvar_list)
+        mu = FakeDataGenerator.grid.M[1]
+        K = FakeDataGenerator.grid.K[1]
+        val = ko['PSD_lmk' + '_ijk'](time=tvec[0], mu=mu, K=K)
+        self.assertFalse(np.isnan(val).any(), f'NaN: mu {mu}, K {K}')
+        self.assertTrue(len(val), FakeDataGenerator.grid.L.n)
 
     def test10_valid_ijk_time_series(self):
 
         ko = self.reader(self.output_path)
-        L = np.random.choice(ko.L())
-        E_e = np.random.choice(ko.E_e())
-        alpha_e = np.random.choice(ko.alpha_e())
-        mu = np.random.choice(ko.mu())
-        K = np.random.choice(ko.K())
+        # L = np.random.choice(ko.L())
+        # E_e = np.random.choice(ko.E_e())
+        # alpha_e = np.random.choice(ko.alpha_e())
+        # mu = np.random.choice(ko.mu())
+        # K = np.random.choice(ko.K())
+
+        L, E_e, alpha_e, mu, K = self._random_grid_points()
 
         for var in self.tvar_list:
             if '_lea' in var:
@@ -660,6 +677,32 @@ class TestVerb03DatasetCheck(TestCase):
         #assert_grid_value(ko.mu, [xvec_lmk[0], FakeDataGenerator.grid.M.max, xvec_lmk[2]], FakeDataGenerator.grid.M.max, 'mu')
         #assert_grid_value(ko.K, [xvec_lmk[0], xvec_lmk[1], FakeDataGenerator.grid.K.max], FakeDataGenerator.grid.K.max, 'K')
 
+    def _random_grid_points(self):
+        def select_value_within_bounds(grid, min_bound, max_bound):
+            values = np.unique(grid.ravel())
+            valid_values = values[(values >= min_bound) & (values <= max_bound)]
+            return np.random.choice(valid_values)
+
+        ko = self.reader(self.output_path, variables_requested=['L', 'E_e', 'alpha_e', 'mu', 'K'])
+
+        # Choose grid value on a grid node available at all L shells
+        L = np.random.choice(ko._gridL.ravel())
+
+        # Choose grid value on a grid node available at all L shells
+        alpha_e = np.random.choice(ko._gridAlpha.ravel())  # Alpha does not change with L
+
+        # Energy (E_e) changes with L in realistic cases, select a valid E_e within the range
+        e_min, e_max = np.max(ko._gridE[:, 0, :]), np.min(ko._gridE[:, -1, :])
+        E_e = select_value_within_bounds(ko._gridE, e_min, e_max)
+
+        # K depends on L, select a valid K within the range
+        K_min, K_max = np.max(ko._gridK[:, :, -1]), np.min(ko._gridK[:, :, 0])
+        K = select_value_within_bounds(ko._gridK, K_min, K_max)
+
+        # Mu depends on L, select a valid mu within the range
+        m_min, m_max = np.max(ko._gridMu[:, 0, :]), np.min(ko._gridMu[:, -1, :])
+        mu = select_value_within_bounds(ko._gridMu, m_min, m_max)
+        return L, E_e, alpha_e, mu, K
 
 # TODO: Make this class checking the output. use plotpy generator to control the output somehow.
 class TestVerb04plot(unittest.TestCase):
@@ -750,7 +793,7 @@ class TestVerb04plot(unittest.TestCase):
             self.assertEqual(res['data'][0]['meta'], 'line', f'Not a line plot of {fig_var}')
             self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
             self.assertIn('time', res['layout']['xaxis']['title']['text'],
-                             f'Unexpected time axis name for {fig_var}')
+                          f'Unexpected time axis name for {fig_var}')
 
     def test03_time_line_interpolated(self):
         _, L, E_e, alpha_e = FakeDataGenerator.grid_lea_rand()
@@ -774,7 +817,7 @@ class TestVerb04plot(unittest.TestCase):
             self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
             self.assertCountEqual(res['data'][0]['y'], expected_L, f'Incorrect L axis {fig_var}')
             self.assertIn('time', res['layout']['xaxis']['title']['text'],
-                             f'Unexpected time axis name for {fig_var}')  # Changed assertion to IN because time text is not consistent in Kamodo
+                          f'Unexpected time axis name for {fig_var}')  # Changed assertion to IN because time text is not consistent in Kamodo
 
     def test04_Lvtime_interpolated(self):
         _, _, E_e, alpha_e = FakeDataGenerator.grid_lea_rand()
