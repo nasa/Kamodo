@@ -36,8 +36,11 @@ class FakeDataGenerator:
     """ This class generates fake VERB output """
     output_dir = "output"
     output_path = output_dir + '/'  # because Kamodo cannot work without slash
-    teardown = False  # perform teardown at the end.
-    overwrite = True  # Overwrite created dataset
+
+    # Flags for debugging
+    teardown = False  # perform teardown at the end. Normally True
+    setup = False  # Always attempt to create dataset, otherwise reuse existing. Normally True
+    overwrite = False  # Overwrite created dataset if one exists. Normally False
 
     @dataclass
     class Node:
@@ -197,28 +200,36 @@ class FakeDataGenerator:
             return tvec
 
     @staticmethod
-    def setup_fake_data():
+    def setup_fake_data(random_data=True):
+        FDG = FakeDataGenerator
+
         # Setup random seed (old style) for constancy of the tests
         np.random.seed(31415)
 
-        if os.path.exists(FakeDataGenerator.output_dir) and not FakeDataGenerator.overwrite:
+        output_exists = os.path.exists(FDG.output_dir)
+
+        # If the folder exists, we don't want to overwrite it and setup is requested, skip the test.
+        if output_exists and not FDG.overwrite and FDG.setup:
             raise unittest.SkipTest("Test cannot be done because the folder 'output' already exists.")
-        elif (os.path.exists(
-                FakeDataGenerator.output_dir) and FakeDataGenerator.overwrite and FakeDataGenerator.teardown) or (
-        not os.path.exists(FakeDataGenerator.output_dir)):
-            os.makedirs(FakeDataGenerator.output_dir, exist_ok=FakeDataGenerator.overwrite)
-            FakeDataGenerator.generate_fake_out1d(os.path.join(FakeDataGenerator.output_dir, 'out1d.dat'))
-            FakeDataGenerator.generate_fake_outpsd(os.path.join(FakeDataGenerator.output_dir, 'OutPSD.dat'))
-            FakeDataGenerator.generate_fake_perp_grid(os.path.join(FakeDataGenerator.output_dir, 'perp_grid.plt'))
+
+        # Otherwise, handle the creation or overwriting of the data.
+        if not output_exists or (output_exists and FDG.overwrite and FDG.setup):
+            os.makedirs(FDG.output_dir, exist_ok=FDG.overwrite)
+            FDG.generate_fake_out1d(os.path.join(FDG.output_dir, 'out1d.dat'), random_data)
+            FDG.generate_fake_outpsd(os.path.join(FDG.output_dir, 'OutPSD.dat'), random_data)
+            FDG.generate_fake_perp_grid(os.path.join(FDG.output_dir, 'perp_grid.plt'), random_data)
+
         # else: Tests run normally
 
     @staticmethod
     def teardown_fake_data():
-        if FakeDataGenerator.teardown:
-            for file_name in os.listdir(FakeDataGenerator.output_dir):
-                file_path = os.path.join(FakeDataGenerator.output_dir, file_name)
+        FDG = FakeDataGenerator
+
+        if FDG.teardown:
+            for file_name in os.listdir(FDG.output_dir):
+                file_path = os.path.join(FDG.output_dir, file_name)
                 os.remove(file_path)
-            os.rmdir(FakeDataGenerator.output_dir)
+            os.rmdir(FDG.output_dir)
 
 
 # Tests
