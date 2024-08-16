@@ -10,6 +10,7 @@ from datetime import datetime
 import re
 import rbamlib
 
+
 def get_start_date(file_dir):
     '''Return the start date based on the information from DatabaseInfo1'''
 
