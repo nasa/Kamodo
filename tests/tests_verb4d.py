@@ -36,8 +36,8 @@ class FakeDataGenerator:
     """ This class generates fake VERB output """
     output_dir = "output"
     output_path = output_dir + '/'  # because Kamodo cannot work without slash
-    teardown = True  # perform teardown at the end. If folder exist - do nothing.
-    overwrite = True  # Overwrite created dataset, TODO: Fix, it does not work yet
+    teardown = False  # perform teardown at the end.
+    overwrite = True  # Overwrite created dataset
 
     @dataclass
     class Node:
@@ -201,13 +201,16 @@ class FakeDataGenerator:
         # Setup random seed (old style) for constancy of the tests
         np.random.seed(31415)
 
-        if os.path.exists(FakeDataGenerator.output_dir) and FakeDataGenerator.teardown:
+        if os.path.exists(FakeDataGenerator.output_dir) and not FakeDataGenerator.overwrite:
             raise unittest.SkipTest("Test cannot be done because the folder 'output' already exists.")
-        elif not os.path.exists(FakeDataGenerator.output_dir) or FakeDataGenerator.overwrite:
+        elif (os.path.exists(
+                FakeDataGenerator.output_dir) and FakeDataGenerator.overwrite and FakeDataGenerator.teardown) or (
+        not os.path.exists(FakeDataGenerator.output_dir)):
             os.makedirs(FakeDataGenerator.output_dir, exist_ok=FakeDataGenerator.overwrite)
             FakeDataGenerator.generate_fake_out1d(os.path.join(FakeDataGenerator.output_dir, 'out1d.dat'))
             FakeDataGenerator.generate_fake_outpsd(os.path.join(FakeDataGenerator.output_dir, 'OutPSD.dat'))
             FakeDataGenerator.generate_fake_perp_grid(os.path.join(FakeDataGenerator.output_dir, 'perp_grid.plt'))
+        # else: Tests run normally
 
     @staticmethod
     def teardown_fake_data():
