@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from math import isnan
 from dataclasses import dataclass, field
 from typing import List
-import time
 
 # LatexFormatter as some point is used to get LaTeX string out of Kamodo object
 # We simply apply this formater to check if the LaTeX is returned.
@@ -39,9 +38,10 @@ class FakeDataGenerator:
     """ This class generates fake VERB output """
     output_dir = "output"
     output_path = output_dir + '/'  # because Kamodo cannot work without slash
+    model = 'VERB-3D'
 
     # Flags for debugging
-    teardown = False  # perform teardown at the end. Normally True
+    teardown = True  # perform teardown at the end. Normally True
     setup = False  # Always attempt to create dataset, otherwise reuse existing. Normally True
     overwrite = False  # Overwrite created dataset if one exists. Normally False
 
@@ -134,9 +134,9 @@ class FakeDataGenerator:
             L_grid, E_grid, A_grid = np.meshgrid(L_values, E_values, A_values, indexing='ij')
 
             # Create monotonic profile according to the grid
-            L_profile = 1 / (1 + np.exp(L_grid - 1))
+            L_profile = .1 / (1 + np.exp(1 - L_grid))
             A_profile = np.sin(A_grid)
-            E_profile = (E_grid / 1.) ** -3
+            E_profile = (E_grid / 1.) ** -2 / rbamlib.conv.en2pc(E_grid) ** 2
 
         with open(file_path, 'w') as file:
             file.write(header)
@@ -146,7 +146,7 @@ class FakeDataGenerator:
                     data = np.random.random(np.prod(data_shape))
                 else:
                     # Make profile increasing with time, a very basic approach
-                    data = L_profile * A_profile * E_profile + 0.1 * t
+                    data = L_profile * A_profile * E_profile * (1 + 0.1*t)
                 for value in data.ravel():
                     file.write(f'{value:e}\n')
 
@@ -248,6 +248,12 @@ class FakeDataGenerator:
             FDG.generate_fake_out1d(os.path.join(FDG.output_dir, 'out1d.dat'), random_data)
             FDG.generate_fake_outpsd(os.path.join(FDG.output_dir, 'OutPSD.dat'), random_data)
             FDG.generate_fake_perp_grid(os.path.join(FDG.output_dir, 'perp_grid.plt'), random_data)
+
+            # Clear list files if they exist
+            for filename in ['_list.txt', '_times.txt']:
+                file_path = os.path.join(FDG.output_dir, FDG.model + filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
 
         # else: Tests run normally
 
