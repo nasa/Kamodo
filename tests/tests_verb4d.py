@@ -19,7 +19,8 @@ import rbamlib
 import kamodo_ccmc.flythrough.model_wrapper as MW
 from kamodo_ccmc.flythrough import SatelliteFlythrough as SF
 import spacepy.toolbox as sptb
-
+from scipy.optimize import curve_fit
+from datetime import datetime, timedelta
 
 # Supporting functions
 def _latex_wrap(text):
@@ -677,12 +678,12 @@ class TestVerb03DatasetCheck(TestCase):
         for var in self.tvar_list:
             if '_lea' in var:
                 val = ko[var + '_ijk'](L=L, E_e=E_e, alpha_e=alpha_e)
-                self.assertFalse(np.isnan(val).any())
-                self.assertTrue(len(val), FakeDataGenerator.grid.T.n)
-            if '_lmk' in var:
+            elif '_lmk' in var:
                 val = ko[var + '_ijk'](L=L, mu=mu, K=K)
-                self.assertFalse(np.isnan(val).any())
-                self.assertTrue(len(val), FakeDataGenerator.grid.T.n)
+            else:
+                raise ValueError(f"Unrecognized var format: {var}")
+            self.assertFalse(np.isnan(val).any())
+            self.assertTrue(len(val), FakeDataGenerator.grid.T.n)
 
     def test11_valid_filedate(self):
         expected_filedate = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
@@ -906,9 +907,22 @@ class TestVerb05flyby(unittest.TestCase):
     def tearDownClass(cls):
         FakeDataGenerator.teardown_fake_data()
 
+    def timestamp_from_timegrid(self, days) -> datetime:
+        """
+        Adds a specified number of hours to a given datetime.
+
+        :param start_time: The initial datetime to start from.
+        :param days: The number of days to add.
+        :return: A new datetime with the hours added.
+        """
+        new_time = self.kamodo_object.filedate + timedelta(days=days)
+        return new_time.timestamp()
+
+
     def test01_singlePoint_flux_lea(self):
         tvec = FakeDataGenerator.grid_lea_rand()
-        sat_time_ts, Lstar, ech, a_eq = tvec
+        t, Lstar, ech, a_eq = tvec
+        sat_time_ts = self.timestamp_from_timegrid(t)
         var = self.variables_requested[2] # flux_lea
         results = SF.ModelFlythrough(self.model, self.output_path, [var],
                                      [sat_time_ts], [Lstar], [ech], [a_eq],
@@ -916,24 +930,174 @@ class TestVerb05flyby(unittest.TestCase):
         self.assertFalse(np.isnan(results[var]), f'Result is nan')
 
     def test01_singlePoint(self):
-        tvec = FakeDataGenerator.grid_lea_rand()
-        tvec_lmk = FakeDataGenerator.grid_lmk_rand()
-        sat_time_ts, Lstar, ech, a_eq = tvec
-        sat_time_ts, Lstar, mu, K = tvec_lmk
+        t, Lstar, ech, a_eq = FakeDataGenerator.grid_lea_rand()
+        _, Lstar, mu, K = FakeDataGenerator.grid_lmk_rand()
+        sat_time_ts = self.timestamp_from_timegrid(t)
 
         for var in self.tvar_list:
             if '_lea' in var:
                 results = SF.ModelFlythrough(self.model, self.output_path, [var],
                                              [sat_time_ts], [Lstar], [ech], [a_eq],
                                              coord_sys='LEA-rb', verbose=False)
-                self.assertFalse(np.isnan(results[var]), f'Result of {var} is nan')
-            if '_lmk' in var:
+            elif '_lmk' in var:
                 results = SF.ModelFlythrough(self.model, self.output_path, [var],
                                              [sat_time_ts], [Lstar], [mu], [K],
                                              coord_sys='LMK-rb', verbose=False)
-                self.assertFalse(np.isnan(results[var]), f'Result of {var} is nan')
+            else:
+                raise ValueError(f"Unrecognized var format: {var}")
+            self.assertFalse(np.isnan(results[var]), f'Result of {var} is nan')
 
+    def test02_multiPoints_time(self):
 
+        n = 3
+        t_arr, L_arr, e_arr, a_arr, mu_arr, K_arr = (np.zeros(n) for _ in range(6))
+
+        for i in range(n):
+            tvec = FakeDataGenerator.grid_lea_rand()
+            tvec[0] = self.timestamp_from_timegrid(tvec[0])
+            t_arr[i], L_arr[i], e_arr[i], a_arr[i] = tvec
+            _, mu_arr[i], K_arr[i] = FakeDataGenerator.grid_lmk_rand(xvec=True)
+
+        # Sort t_arr and L_arr
+        t_arr = np.sort(t_arr)
+        L_arr = np.sort(L_arr)
+
+        for var in self.tvar_list:
+            if '_lea' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, e_arr, a_arr,
+                                             coord_sys='LEA-rb', verbose=False)
+            elif '_lmk' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, mu_arr, K_arr,
+                                             coord_sys='LMK-rb', verbose=False)
+            else:
+                raise ValueError(f"Unrecognized var format: {var}")
+
+            self.assertFalse(np.isnan(results[var]).any(), f'Result of {var} is nan')
+
+    def test03_psd_L_profile(self):
+        # Testing PSD L-shell profile on the first point of time
+        L_min, L_max, _ = FakeDataGenerator.grid.L
+
+        n = 10
+        L_arr = np.sort(np.random.uniform(L_min, L_max, n))
+
+        # Generate grid values for ech and al_eq from grid_lea_rand, and mu and K from grid_lmk_rand
+        t, _, ech, al_eq = FakeDataGenerator.grid_lea_rand()
+        ts = self.timestamp_from_timegrid(t)
+        _, mu, K = FakeDataGenerator.grid_lmk_rand(xvec=True)
+        t_arr, e_arr, a_arr, mu_arr, K_arr = [np.full(n, value) for value in [ts, ech, al_eq,  mu, K]]
+
+        for var in self.tvar_list:
+            if 'PSD_lea' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, e_arr, a_arr,
+                                             coord_sys='LEA-rb', verbose=False)
+            elif 'PSD_lmk' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, mu_arr, K_arr,
+                                             coord_sys='LMK-rb', verbose=False)
+            else:
+                continue
+            self.assertFalse(np.isnan(results[var]).any(), f'{var} is nan. Result: {results} of')
+            self.assertTrue(np.all(np.diff(results[var]) >= 0), f'{var} is not monotonically increasing. Result: {results}')
+
+    def test04_flux_PAD_profile(self):
+        # Testing that flyby returns sin dependence of pitch angle distribution
+        A_min, A_max, _ = FakeDataGenerator.grid.A
+
+        n = 10
+        a_arr = np.sort(np.random.uniform(A_min, A_max, n))
+
+        # Generate grid values for ech and al_eq from grid_lea_rand, and mu and K from grid_lmk_rand
+        t, L, ech, _ = FakeDataGenerator.grid_lea_rand()
+        ts = self.timestamp_from_timegrid(t)
+        t_arr, e_arr, L_arr = [np.full(n, value) for value in [ts, ech, L]]
+
+        def sine_model(a, amplitude, offset):
+            # a should be converted to radians because np.sin() expects radians
+            return amplitude * np.sin(np.radians(a)) + offset
+
+        for var in self.tvar_list:
+            if 'flux_lea' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, e_arr, a_arr,
+                                             coord_sys='LEA-rb', verbose=False)
+                params, _ = curve_fit(sine_model, a_arr, results[var])
+                fitted_sine_curve = sine_model(a_arr, params[0], params[1])
+            else:
+                continue
+            self.assertFalse(np.isnan(results[var]).any(), f'{var} is nan. Result: {results} of')
+            self.assertTrue(np.all(np.diff(results[var]) >= 0), f'{var} is not monotonically increasing. Result: {results}')
+            # Assert if fitted sin is within 30%
+            self.assertTrue(np.allclose(results[var], fitted_sine_curve, rtol=0.3, atol=0),
+                            f'{var} is not is not close to sin. Result: {results}')
+
+    def test04_flux_E_profile(self):
+        # Testing that flyby returns power law dependence of energy spectrum
+        E_min, E_max, _ = FakeDataGenerator.grid.E
+
+        n = 10
+        e_arr = 10 ** np.sort(np.random.uniform(E_min, E_max, n))
+
+        # Generate grid values for ech and al_eq from grid_lea_rand, and mu and K from grid_lmk_rand
+        t, L, _, al_eq = FakeDataGenerator.grid_lea_rand()
+        ts = self.timestamp_from_timegrid(t)
+        t_arr, L_arr, a_arr = [np.full(n, value) for value in [ts, L, al_eq]]
+
+        # IMPORTANT: this function must be the same as in FakeDataGenerator
+        # Define a power law function with amplitude, and offset as unknowns
+        def linear_power_law_model(E, slope, offset):
+            # Define a linear model for log-log fitting: log(y) = m * log(x) + b
+            return slope * E + offset
+
+        for var in self.tvar_list:
+            if 'flux_lea' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, e_arr, a_arr,
+                                             coord_sys='LEA-rb', verbose=False)
+                params, _ = curve_fit(linear_power_law_model, np.log10(e_arr), np.log10(results[var]))
+                fitted_law_curve = linear_power_law_model(np.log10(e_arr), params[0], params[1])
+            else:
+                continue
+            self.assertFalse(np.isnan(results[var]).any(), f'{var} is nan. Result: {results} of')
+            self.assertTrue(np.all(np.diff(results[var]) <= 0),
+                            f'{var} is not monotonically decreasing. Result: {results}')
+            # Assert if fitted sin is within 30%
+            self.assertTrue(np.allclose(np.log10(results[var]), fitted_law_curve, rtol=0.3, atol=0),
+                            f'{var} is not close to power law. Result: {results}')
+
+    def test05_time_profile(self):
+        # Test time profile at single random grid point
+
+        # Generate grid values for ech and al_eq from grid_lea_rand, and mu and K from grid_lmk_rand
+        L, ech, al_eq = FakeDataGenerator.grid_lea_rand(xvec=True)
+        _, mu, K = FakeDataGenerator.grid_lmk_rand(xvec=True)
+
+        n = 10
+        L_arr, e_arr, a_arr, mu_arr, K_arr = [np.full(n, value) for value in [L, ech, al_eq, mu, K]]
+
+        T_min, T_max, _ = FakeDataGenerator.grid.T
+        ts_min = self.timestamp_from_timegrid(T_min)
+        ts_max = self.timestamp_from_timegrid(T_max)
+
+        t_arr = np.sort(np.random.uniform(ts_min, ts_max, n))
+
+        for var in self.tvar_list:
+            if '_lea' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, e_arr, a_arr,
+                                             coord_sys='LEA-rb', verbose=False)
+            elif '_lmk' in var:
+                results = SF.ModelFlythrough(self.model, self.output_path, [var],
+                                             t_arr, L_arr, mu_arr, K_arr,
+                                             coord_sys='LMK-rb', verbose=False)
+            else:
+                raise ValueError(f"Unrecognized var format: {var}")
+            self.assertFalse(np.isnan(results[var]).any(), f'{var} is nan. Result: {results} of')
+            self.assertTrue(np.all(np.diff(results[var]) > 0),
+                            f'{var} is not increasing. Result: {results}')
 
 @unittest.skip("This class is designed for debug purposes only")
 class TestDebug(TestCase):
