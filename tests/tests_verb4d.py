@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from math import isnan
 from dataclasses import dataclass, field
 from typing import List
+import json
 
 # LatexFormatter as some point is used to get LaTeX string out of Kamodo object
 # We simply apply this formater to check if the LaTeX is returned.
@@ -174,6 +175,22 @@ class FakeDataGenerator:
                         file.write(f'{L:e}\t{E:e}\t{A:e}\t{pc:e}\n')
 
     @staticmethod
+    def generate_fake_simulation_metadata(file_path, random_data=True):
+        # Create metadata only if the simulation is not random
+        if not random_data:
+            # If no simulation start time is provided, generate a default one (current time)
+            simulation_start_time = datetime(2012, 9, 1).isoformat()
+
+            # Create a minimal metadata dictionary with the simulationStartTime entry
+            fake_metadata = {
+                "simulationStartTime": simulation_start_time
+            }
+
+            # Write the dictionary to a JSON file
+            with open(file_path, 'w') as file:
+                json.dump(fake_metadata, file, indent=4)
+
+    @staticmethod
     def grid_lea_dict():
         g = FakeDataGenerator.grid
         grid = {'time': [g.T[0] * 24, g.T[1] * 24, 'hr'],
@@ -249,6 +266,7 @@ class FakeDataGenerator:
             FDG.generate_fake_out1d(os.path.join(FDG.output_dir, 'out1d.dat'), random_data)
             FDG.generate_fake_outpsd(os.path.join(FDG.output_dir, 'OutPSD.dat'), random_data)
             FDG.generate_fake_perp_grid(os.path.join(FDG.output_dir, 'perp_grid.plt'), random_data)
+            FDG.generate_fake_simulation_metadata(os.path.join(FDG.output_dir, 'ror_metadata.json'), random_data)
 
             # Clear list files if they exist
             for filename in ['_list.txt', '_times.txt']:
@@ -473,7 +491,7 @@ class TestVerb03DatasetCheck(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        FakeDataGenerator.setup_fake_data()
+        FakeDataGenerator.setup_fake_data(random_data=False)
         # Generate model files
         cls.reader = MW.Model_Reader(cls.model)
         cls.reader(cls.output_path, filetime=True)  # creates any preprocessed files
@@ -751,6 +769,15 @@ class TestVerb03DatasetCheck(TestCase):
         m_min, m_max = np.max(ko._gridMu[:, 0, :]), np.min(ko._gridMu[:, -1, :])
         mu = select_value_within_bounds(ko._gridMu, m_min, m_max)
         return L, E_e, alpha_e, mu, K
+
+    def test12_File_Times(self):
+        # 2019/9/1 - is not random datetime
+        expected_start_time = datetime(2012, 9, 1, 0, 0, tzinfo=timezone.utc)
+        expected_end_time = datetime(2012, 9, 5, 0, 0, tzinfo=timezone.utc)
+        result = MW.File_Times(self.model, self.output_path, print_output=False)
+
+        self.assertEqual(result, (expected_start_time, expected_end_time),
+                         'File_Time returns incorrect time interval')
 
 
 class TestVerb04plot(unittest.TestCase):

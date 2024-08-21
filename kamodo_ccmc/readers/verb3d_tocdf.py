@@ -8,6 +8,7 @@ import pyverbplt
 import kamodo_ccmc.readers.reader_utilities as RU
 from datetime import datetime
 import re
+import json
 import rbamlib
 
 
@@ -30,6 +31,28 @@ def get_start_date(file_dir):
                 if match:
                     date_str = match.group(1)  # Return only the date part
                     date_start = datetime.strptime(date_str, '%Y/%m/%d %H:%M')
+
+    # Define possible metadata file paths
+    metadata_paths = [
+        os.path.join(file_dir, 'ror_metadata.json'),
+        os.path.join(file_dir, '..', 'ror_metadata.json')
+    ]
+
+    # Check if the metadata file exists in any of the defined paths
+    metadata_filename = next((path for path in metadata_paths if RU._isfile(path)), None)
+
+    if metadata_filename:
+        # Metadata file found, load the JSON data
+        # Load the JSON data from the file
+        with open(metadata_filename, 'r') as file:
+            metadata = json.load(file)
+
+        # Extract the simulation start time
+        simulation_start_time_str = metadata.get("simulationStartTime")
+
+        # Convert it to a datetime object
+        if simulation_start_time_str:
+            date_start = datetime.fromisoformat(simulation_start_time_str)
 
     return date_start
 
