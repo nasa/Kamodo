@@ -692,7 +692,7 @@ def MODEL():
             PSD_interp = linear_interp(X, Y, Z)
 
             # Handle NaNs using nearest-neighbor interpolation if needed
-            nan_mask = np.isnan(PSD_interp) & ~(np.isnan(Y) | np.isnan(Y) | np.isnan(Y))
+            nan_mask = np.isnan(PSD_interp) & ~(np.isnan(X) | np.isnan(Y) | np.isnan(Z))
             if np.any(nan_mask):
                 # Normalize the coordinates only for proximity search
                 x_range = np.ptp(x)  # Peak-to-peak (max - min) range
