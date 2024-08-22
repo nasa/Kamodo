@@ -476,10 +476,9 @@ class TestVerb02DatasetGeneration(TestCase):
         # Check results contains variable 'PSD_lea'
         self.assertIn('PSD_lea', results.keys(), 'Variable_Search does not return PSD_lea')
 
-
+# TODO: Determine datetime from class, not hardcoded
 class TestVerb03DatasetCheck(TestCase):
     """ This class is advanced test with fake dataset. """
-    # TODO: Add tests for interpolation between time and grid points
 
     model = 'VERB-3D'
     output_dir = FakeDataGenerator.output_dir
@@ -704,7 +703,7 @@ class TestVerb03DatasetCheck(TestCase):
             self.assertTrue(len(val), FakeDataGenerator.grid.T.n)
 
     def test11_valid_filedate(self):
-        expected_filedate = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
+        expected_filedate = datetime(2012, 9, 1, 0, 0, tzinfo=timezone.utc)
         ko = self.reader(self.output_path, variables_requested='PSD_lea')
         self.assertEqual(ko.filedate, expected_filedate)
 

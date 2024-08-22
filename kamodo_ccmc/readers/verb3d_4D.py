@@ -9,28 +9,23 @@ import numpy as np
 # It is easier to use pc, Mu, K as grid variables than calculate it within Kamodo.
 model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)', 0, 'LEA',
                           'rb', ['time', 'L', 'E_e', 'alpha_e'], '(c/MeV/cm)**3'],
-                  'Flux': ['flux_lea', 'Electron flux (L, E_e, alpha_e)', 0, 'LEA',
+                  'Flux': ['flux_lea', 'Electron flux (L, E_e, alpha_e)', 1, 'LEA',
                            'rb', ['time', 'L', 'E_e', 'alpha_e'], '1/(s*cm**2*keV*sr)'],
-                  'L': ['L', 'L-shell', 1, 'LEA',
-                        'rb', ['L', 'E_e', 'alpha_e'], ''],
-                  'E': ['E_e', 'Electron energy', 1, 'LEA',
-                        'rb', ['L', 'E_e', 'alpha_e'], 'MeV'],
-                  'Alpha': ['alpha_e', 'Equatorial pitch angle', 1, 'LEA',
+                  'L': ['L', 'L-shell', 2, 'LEA', 'rb', ['L', 'E_e', 'alpha_e'], ''],
+                  'E': ['E_e', 'Electron energy', 3, 'LEA', 'rb', ['L', 'E_e', 'alpha_e'], 'MeV'],
+                  'Alpha': ['alpha_e', 'Equatorial pitch angle', 4, 'LEA',
                             'car', ['L', 'E_e', 'alpha_e'], 'deg'],
-                  'pc': ['pc', 'Momentum times speed of light', 1, 'LEA',
+                  'pc': ['pc', 'Momentum times speed of light', 5, 'LEA',
                          'rb', ['L', 'E_e', 'alpha_e'], 'MeV'],
-                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, mu, K)', 0, 'LMK',
+                  'PSD_2': ['PSD_lmk', 'Phase Space Density in (L, mu, K)', 6, 'LMK',
                             'rb', ['time', 'L', 'mu', 'K'], '(c/MeV/cm)**3'],
-                  'Mu': ['mu', '1st adiabatic invariant mu', 1, 'LMK',
+                  'Mu': ['mu', '1st adiabatic invariant mu', 7, 'LMK',
                          'rb', ['L', 'mu', 'K'], 'MeV/G'],  # Kamodo should also not handle units of G...
-                  'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
+                  'K': ['K', '2dn adiabatic invariant K', 8, 'LMK',
                         'rb', ['L', 'mu', 'K'], '10**-4*T*(km/6371*km)**1/2'],  # Kamodo cannot handle units of G * R_E^1/2
-                  'Boundary_fluxes': ['bf', 'Upper boundary condition scale', 2, '',
-                        'rb', ['time'], ''],
-                  'Kp': ['kp', 'Kp-index', 2, '',
-                                      'rb', ['time'], ''],
-                  'Lpp': ['Lpp', 'Plasmapause location', 2, '',
-                                      'rb', ['time'], '']
+                  'Boundary_fluxes': ['bf', 'Upper boundary condition scale', 9, '', 'rb', ['time'], ''],
+                  'Kp': ['kp', 'Kp-index', 10, '', 'rb', ['time'], ''],
+                  'Lpp': ['Lpp', 'Plasmapause location', 11, '', 'rb', ['time'], '']
                   }
 
 def MODEL():
