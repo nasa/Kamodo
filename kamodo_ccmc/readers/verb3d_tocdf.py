@@ -64,9 +64,10 @@ def convert_all(file_dir, start_date=None):
     # psd_filename = os.path.join(file_dir, 'Output', 'OutPSD.dat')
     perp_grid_filename = os.path.join(file_dir, 'perp_grid.plt')
     psd_filename = os.path.join(file_dir, 'OutPSD.dat')
+    out1d_filename = os.path.join(file_dir, 'out1d.dat')
 
     # check for files existence
-    if not RU._isfile(perp_grid_filename) or not RU._isfile(psd_filename):
+    if not RU._isfile(perp_grid_filename) or not RU._isfile(psd_filename) or not RU._isfile(out1d_filename):
         return False
 
     # Get the start date
@@ -154,12 +155,40 @@ def convert_all(file_dir, start_date=None):
             time_var = ncfile.createVariable('time', np.float32, ('time'))
             time_var[:] = time[t]
 
+    # Load 1d
+    import pandas as pd
+    df = pd.read_csv(out1d_filename, sep='\s+', skiprows=2, header=None)
+
+    with open(out1d_filename, 'r') as file:
+        for line in file:
+            line = line.strip()
+
+            # Capture the variables in the line that contains VARIABLES
+            if line.startswith("Variables"):
+                # Extract the variables from the line
+                variables_str = line.split('=')[1].strip()
+                variables = re.findall(r'"([^"]*)"', variables_str)
+                break
+    df.columns = variables
+
+    # Import 1d variables into the NETCDF4
+    cdf_filename = os.path.join(file_dir, f'out1d.nc')
+    out1d_files = [cdf_filename]
+    with Dataset(cdf_filename, 'w', format='NETCDF4') as ncfile:
+        # Create dimensions
+        ncfile.createDimension('time', df.shape[0])
+
+        for var_str in variables:
+            var = ncfile.createVariable(var_str, np.float64, ('time'))
+            var[:] = df[var_str].values
+
     modelname = 'VERB-3D'
     # List of files for Kamodo reader
     list_file = file_dir + modelname + '_list.txt'
     time_file = file_dir + modelname + '_times.txt'
 
-    pattern_files = {'OutPSD_Flux': nc_psd_files, 'OutPSD_lmk': nc_psdlmk_files, 'perp_grid': grid_file}
+    pattern_files = {'OutPSD_Flux': nc_psd_files, 'OutPSD_lmk': nc_psdlmk_files, 'perp_grid': grid_file,
+                     'out1d': out1d_files}
     times_list = list(time * 24)  # Convert to number of hours
     times_end = times_list
 
@@ -167,7 +196,8 @@ def convert_all(file_dir, start_date=None):
     # first file of all the files in the given directory.
     times = {'OutPSD_Flux': {'start': times_list, 'end': times_end, 'all': times_list},
              'OutPSD_lmk': {'start': times_list, 'end': times_end, 'all': times_list},
-             'perp_grid': {'start': [times_list[0]], 'end': [times_end[-1]], 'all': [times_list[0]]}}
+             'perp_grid': {'start': [times_list[0]], 'end': [times_end[-1]], 'all': [times_list[0]]},
+             'out1d': {'start': [times_list[0]], 'end': [times_end[-1]], 'all': times_list}}
 
     RU.create_timelist(list_file, time_file, modelname,
                        times, pattern_files,

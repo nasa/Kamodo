@@ -24,8 +24,13 @@ model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)',
                   'Mu': ['mu', '1st adiabatic invariant mu', 1, 'LMK',
                          'rb', ['L', 'mu', 'K'], 'MeV/G'],  # Kamodo should also not handle units of G...
                   'K': ['K', '2dn adiabatic invariant K', 1, 'LMK',
-                        'rb', ['L', 'mu', 'K'], '10**-4*T*(km/6371*km)**1/2']
-                  # Kamodo cannot handle units of G * R_E^1/2
+                        'rb', ['L', 'mu', 'K'], '10**-4*T*(km/6371*km)**1/2'],  # Kamodo cannot handle units of G * R_E^1/2
+                  'Boundary_fluxes': ['bf', 'Upper boundary condition scale', 2, '',
+                        'rb', ['time'], ''],
+                  'Kp': ['kp', 'Kp-index', 2, '',
+                                      'rb', ['time'], ''],
+                  'Lpp': ['Lpp', 'Plasmapause location', 2, '',
+                                      'rb', ['time'], '']
                   }
 
 def MODEL():
@@ -197,9 +202,11 @@ def MODEL():
                 # Register PSD variables
                 if varname in ['PSD_lmk', 'PSD_lea', 'flux_lea']:
                     self.register_ncfile_variable(varname, gridded_int, file_dir)
-                # If this is not a PSD variable, it is a grid variable.
-                # Grid and static variables handled diffrently
+                elif varname in ['bf', 'kp', 'Lpp']:
+                    # Grid and static variables handled diffrently
+                    self.register_1d_variable(varname, gridded_int, file_dir)
                 else:
+                    # If this is not a PSD or 1d variable, it is a grid variable.
                     self.register_grid_variable(varname, gridded_int, file_dir)
 
             if verbose:
@@ -371,6 +378,37 @@ def MODEL():
                 self, coord_dict, varname, self.variables[varname],
                 gridded_int=False, coord_str=coord_str, interp_flag=0, func=func_near(),
                 times_dict=None, func_default='custom')
+            return
+
+        def register_1d_variable(self, varname, gridded_int, file_dir):
+            """Registers an interpolator with proper signature"""
+
+            # File pattern of this varname
+            pattern_key = self.variables[varname]['data']
+
+            # Name of the variable in the file
+            gvar = _model_vars.keys[varname]
+
+            # List of coordinates
+            grid_variables = _model_vars.vars[gvar].coord
+
+            # TDO: grid_variables should contain only time!
+            if 'time' in grid_variables and len(grid_variables) == 1:
+                coord_dict = {'time': {'units': 'hr',
+                                       'data': self.times[pattern_key]['all']}}
+            else:
+                # Return without registering variable.
+                return
+
+            coord_str = ''
+
+            with RU.Dataset(self.pattern_files[pattern_key][0]) as cdf_data:
+                data = array(cdf_data.variables[gvar])
+            data_dict = {'units': self.variables[varname]['units'], 'data': data}
+
+            self = RU.Functionalize_Dataset(
+                self, coord_dict, varname, data_dict,
+                gridded_int, coord_str, interp_flag=0)
             return
 
         def load_grid(self, file_dir):
