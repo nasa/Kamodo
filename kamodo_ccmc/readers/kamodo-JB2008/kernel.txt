@@ -1,0 +1,27 @@
+\begindata
+
+KERNELS_TO_LOAD = ('/DESTOPy/Data/latest_leapseconds.tls',
+                   '/DESTOPy/Data/de430.bsp',
+                   '/DESTOPy/Data/pck00010.tpc',
+                   '/DESTOPy/Data/earth_fixed.tf',
+                   '/DESTOPy/Data/earthstns_itrf93_201023.bsp',
+                   '/DESTOPy/Data/earth_200101_990628_predict.bpc',
+                   '/DESTOPy/Data/earth_000101_210530_210308.bpc',
+                   '/DESTOPy/Data/earth_latest_high_prec.bpc',
+                   '/DESTOPy/Data/earth_720101_070426.bpc')
+
+\begintext
+
+DESCRIPTION:
+latest_leapseconds.tls              Leapseconds kernel
+de430.bsp                           Planet and Lunar Ephemerides
+pck00010.tpc                        Orientation of main bodies & physical constants (PCK)
+earth_fixed.tf                      Earth fixed frame transformations
+earthstns_itrf93_201023.bsp         Station locations in ITRF93
+earth_200101_990628_predict.bpc     Predicted Earth orientation parameters (01-Jan-2001 to 28-Jun-1999)
+earth_000101_210530_210308.bpc      High precision Earth orientation parameters (01-Jan-2000 to 30-May-2105)
+earth_latest_high_prec.bpc          Latest high precision Earth orientation parameters
+earth_720101_070426.bpc             High precision Earth orientation parameters (01-Jan-1972 to 26-Apr-2007)
+
+.bsp      == binary format
+.tpc, .tf == text format

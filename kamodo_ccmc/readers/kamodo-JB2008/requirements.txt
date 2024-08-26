@@ -1,0 +1,9 @@
+mkdocs
+numpy==1.26.4
+python-markdown-math
+markdown-include
+pygments
+mkdocs-material
+jupyter
+jupytext
+notebook==6.4.*
