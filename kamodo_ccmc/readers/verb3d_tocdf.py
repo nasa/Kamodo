@@ -13,7 +13,16 @@ import rbamlib
 
 
 def get_start_date(file_dir):
-    '''Return the start date based on the information from DatabaseInfo1'''
+    '''
+    Returns the start date based on the information available in `DatabaseInfo1` or `ror_metadata.json`.
+
+    Inputs:
+        file_dir (str): Directory where the model output data is located.
+
+    Returns:
+        datetime: The simulation start date extracted from either `DatabaseInfo1` or `ror_metadata.json`.
+                  Defaults to `1970-01-01` if not found.
+    '''
 
     # Default date_start
     date_start = datetime(1970, 1, 1)
@@ -58,7 +67,23 @@ def get_start_date(file_dir):
 
 
 def convert_all(file_dir, start_date=None):
-    '''Converting all plt files to netCDF4.'''
+    '''
+    Converts all model output `plt` files in the directory into NetCDF4 format for use in Kamodo.
+
+    This includes:
+    - perp_grid.plt: Model grid data, including `pc`.
+    - OutPSD.dat: Phase space density (PSD) data.
+    - out1d.dat: 1D output data.
+
+    Additional variables such as Mu and K are calculated from the grid data and added to the NetCDF files.
+
+    Inputs:
+        file_dir (str): Directory where the model output data is located.
+        start_date (datetime, optional): Simulation start date. If not provided, it will be retrieved from the metadata files.
+
+    Returns:
+        bool: True if the conversion is successful, False otherwise.
+    '''
 
     # perp_grid_filename = os.path.join(file_dir, 'Output', 'perp_grid.plt')
     # psd_filename = os.path.join(file_dir, 'Output', 'OutPSD.dat')

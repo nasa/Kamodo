@@ -1,7 +1,7 @@
 """
 @author: xandrd
+VERB code model reader
 """
-import numpy as np
 
 # model_varnames = {'Name in file': ['LaTeX representation', 'Description', integer, 'Coordinate system',
 #                            'Coordinate grid', [Coordinate list], 'Units'],
@@ -41,44 +41,8 @@ def MODEL():
 
     # main class
     class MODEL(Kamodo):
-        '''VERB-3D model data reader.
-
-        Inputs:
-            file_dir: a string representing the file directory of the
-                model output data.
-            variables_requested = a list of variable name strings (LaTeX representation) chosen from
-                the model_varnames dictionary in this script, specifically the
-                first item in the list associated with a given key.
-                - If empty, the reader functionalizes all possible variables
-                    (default)
-                - If 'all', the reader returns the model_varnames dictionary
-                    above for only the variables present in the given files.
-            filetime = boolean (default = False)
-                - If False, the script fully executes.
-                - If True, the script only executes far enough to determine the
-                    time values associated with the chosen data.
-            printfiles = boolean (default = False)
-                - If False, the filenames associated with the data retrieved
-                    ARE NOT printed.
-                - If True, the filenames associated with the data retrieved ARE
-                    printed.
-            gridded_int = boolean (default = True)
-                - If True, the variables chosen are functionalized in both the
-                    standard method and a gridded method.
-                - If False, the variables chosen are functionalized in only the
-                    standard method.
-            verbose = boolean (False)
-                - If False, script execution and the underlying Kamodo
-                    execution is quiet except for specified messages.
-                - If True, be prepared for a plethora of messages.
-        All inputs are described in further detail in
-            KamodoOnboardingInstructions.pdf.
-
-        Returns: a kamodo object (see Kamodo core documentation) containing all
-            requested variables in functionalized form.
-
-        Notes:
-            -
+        '''
+            VERB-3D model data reader.
         '''
 
         # Static properties of this mode class
@@ -100,6 +64,19 @@ def MODEL():
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
                      printfiles=False, **kwargs):
+            """
+               Initializes the model reader by setting up the file directory, loading requested variables,
+               and preparing the model for Kamodo functionalization.
+
+               Inputs:
+                   file_dir: string representing the directory of model output files.
+                   variables_requested: list of variable names to load. Default is an empty list, which loads all variables.
+                   filetime: boolean indicating whether to return only time information. Default is False.
+                   verbose: boolean controlling the verbosity of the output. Default is False.
+                   gridded_int: boolean indicating whether to functionalize variables in a gridded form. Default is True.
+                   printfiles: boolean that, when True, prints the filenames of the loaded data. Default is False.
+               """
+
             super(MODEL, self).__init__()
 
             t0 = perf_counter()
@@ -212,7 +189,11 @@ def MODEL():
 
         def print_err_list(self, variables_requested, varfiles):
             """
-            Print variables_requested that are not in varfiles
+            Prints a list of requested variables that are not available in the data files.
+
+            Inputs:
+                variables_requested: list of variable names requested by the user.
+                varfiles: dictionary mapping patterns to the available variables in the corresponding files.
             """
             if variables_requested != 'all' and len(variables_requested) > 0:
                 err_list = [v for v in variables_requested if v not in
@@ -223,7 +204,14 @@ def MODEL():
                     print(f'requested variables are not available: {err_list}')
 
         def register_ncfile_variable(self, varname, gridded_int, file_dir):
-            """Registers an interpolator with proper signature"""
+            """
+            Registers an interpolator for the specified NetCDF variable, like PSD or flux, preparing it for use in Kamodo.
+
+            Inputs:
+                varname: the name of the variable to be registered.
+                gridded_int: boolean flag indicating whether to use gridded interpolation.
+                file_dir: string representing the directory of the model output files.
+            """
 
             # coord_dict = {'time': {'units': 'hr', 'data': time},
             #               'L': {'units': '', 'data': L},
@@ -323,8 +311,14 @@ def MODEL():
             return
 
         def register_grid_variable(self, varname, gridded_int, file_dir):
-            """Registers an interpolator with proper signature"""
+            """
+            Registers a variable interpolator that is part of a grid, preparing it for use in Kamodo.
 
+            Inputs:
+                varname: the name of the grid variable to be registered.
+                gridded_int: boolean flag indicating whether to use gridded interpolation.
+                file_dir: string representing the directory of the model output files.
+            """
             coord_dict = {}
 
             # File pattern of this varname
@@ -376,7 +370,14 @@ def MODEL():
             return
 
         def register_1d_variable(self, varname, gridded_int, file_dir):
-            """Registers an interpolator with proper signature"""
+            """
+            Registers a 1D variable interpolator, preparing it for use in Kamodo without the need for complex grids.
+
+            Inputs:
+                varname: the name of the 1D variable to be registered.
+                gridded_int: boolean flag indicating whether to use gridded interpolation.
+                file_dir: string representing the directory of the model output files.
+            """
 
             # File pattern of this varname
             pattern_key = self.variables[varname]['data']
@@ -407,7 +408,12 @@ def MODEL():
             return
 
         def load_grid(self, file_dir):
-            """Load grid data according to the requested variables"""
+            """
+            Loads grid data according to the requested variables from the model output files and makes it available as class properties.
+
+            Inputs:
+                file_dir: string representing the directory of the model output files.
+            """
 
             # Determine the variables
             variables = [v for gvars in self.gvarfiles.values() for v in gvars]
@@ -441,8 +447,12 @@ def MODEL():
                             setattr(self, self._grid_prefix + var, array(cdf_data.variables[var]))
 
         def load_static(self, file_dir):
-            """Load static variables data according to the requested variables"""
+            """
+            Loads static data (such as 'pc') from the model output files and makes it available as class properties.
 
+            Inputs:
+                file_dir: string representing the directory of the model output files.
+            """
             # Determine the requested variables
             variables = [v for gvars in self.gvarfiles.values() for v in gvars]
 
@@ -466,6 +476,12 @@ def MODEL():
                             setattr(self, self._grid_prefix + var, array(cdf_data.variables[var]))
 
         def _update_var_dict(self, varfiles):
+            """
+            Updates the internal dictionary of variables based on the model's output files.
+
+            Inputs:
+                varfiles: dictionary mapping patterns to the available variables in the corresponding NetCDF files.
+            """
             for p in self.patterns:
                 var_list = varfiles[p]
 
@@ -474,7 +490,10 @@ def MODEL():
                                       if var in var_list})
 
         def _create_variables(self):
-            # initialize storage structure
+            """
+            Initializes the internal storage structure for variables and prepares them for Kamodo functionalization.
+            """
+
             self.variables = {}
             for p in self.patterns:
                 var = {_model_vars.vars[key].var: {
@@ -483,7 +502,12 @@ def MODEL():
                 self.variables.update(var)
 
         def _print_files(self, printfiles):
-            # option to print files
+            """
+            Prints a list of the files that have been processed if the printfiles flag is set to True.
+
+            Inputs:
+                printfiles: boolean flag controlling whether the filenames are printed.
+            """
             if printfiles:
                 print(f'{len(self.filename)} Files:')
                 files = self.filename.split(',')
@@ -492,9 +516,13 @@ def MODEL():
 
         def _variable_requested_check(self, variables_requested):
             """
-            Initial check of the requested variable.
-            Compare requested variables by user with the list of the variables that are provided by the model.
+            Checks the list of requested variables and validates them against the available variables in the model.
+
+            Compares requested variables with the list of the variables that are provided by the model.
             Prints the variables that were not recognized and removes them from the requested variables list.
+
+            Inputs:
+                variables_requested: list of variable names requested by the user.
             """
 
             err_list = [item for item in variables_requested
@@ -506,9 +534,15 @@ def MODEL():
 
         def time_list_files(self, file_dir):
             """
-            Check if '_list.txt' and '_time.txt' files exist.
-            If not, then we don't have generated files for this dataset (run) specified by file_dir.
-            Creates dataset files.
+            Checks for the existence of the time and list files ('_list.txt' and '_time.txt') in the specified directory.
+            If files are not found this dataset (run) specified by `file_dir` is likely has not been converted.
+            In this case, the verb3d_tocdf.convert_all() convertion is executed.
+
+            Inputs:
+                file_dir: string representing the directory of the model output files.
+
+            Returns:
+                tuple: A tuple containing the paths to the time and list files (time_file, list_file).
             """
 
             # first, check for file list, create if DNE
@@ -522,6 +556,16 @@ def MODEL():
             return time_file, list_file
 
         def _nearest_xvec_data_LEA(self, xvec, data):
+            """
+            Finds the nearest data point to the input vector in the LEA coordinate system using nearest-neighbor interpolation.
+
+            Inputs:
+                xvec: the input vector of coordinates.
+                data: the dataset from which the nearest data point is extracted.
+
+            Returns:
+                list: A list of nearest data points for each input vector.
+            """
             # TODO: Understand how gridded intrepolant takes xvec
 
             if not isinstance(xvec, np.ndarray):
@@ -544,6 +588,16 @@ def MODEL():
             return d1
 
         def _nearest_xvec_data_LMK(self, xvec, data):
+            """
+            Finds the nearest data point to the input vector in the LMK coordinate system using nearest-neighbor interpolation.
+
+            Inputs:
+                xvec: the input vector of coordinates.
+                data: the dataset from which the nearest data point is extracted.
+
+            Returns:
+                list: A list of nearest data points for each input vector.
+            """
             # TODO: Understand how gridded intrepolant takes xvec
 
             if not isinstance(xvec, np.ndarray):
@@ -566,6 +620,17 @@ def MODEL():
             return d1
 
         def _intrep_xvec_data_prepare(self, xvec):
+            """
+            Prepares the input vector (xvec) for interpolation by ensuring it is in the correct format,
+            checking for NaN values, and determining interpolation limits in the L grid.
+
+            Inputs:
+                xvec: the input vector of coordinates.
+
+            Returns:
+                tuple: A tuple containing the L, Y, Z components of the input vector,
+                       output array (if NaN values are detected), and the min/max limits for interpolation.
+            """
             if not isinstance(xvec, np.ndarray):
                 xvec = np.array(xvec)
 
@@ -603,7 +668,19 @@ def MODEL():
             return L, Y, Z, None, limin, limax
 
         def _intrep_stack_hstack(self, Xit, Xi, Yit, Yi, Zit, Zi, PSDit, PSDi):
-            # Accumulate grid points and Psi values using np.hstack
+            """
+            Accumulates grid points and Psi values using np.hstack by stacking the flattened arrays.
+
+            Inputs:
+                Xit, Yit, Zit: Existing accumulated arrays of grid points.
+                Xi, Yi, Zi: Current grid points to be added.
+                PSDit: Existing accumulated array of Psi values.
+                PSDi: Current Psi values to be added.
+
+            Returns:
+                tuple: A tuple containing the updated arrays of grid points and Psi values.
+            """
+
             Xit = np.hstack((Xit, Xi.ravel()))
             Yit = np.hstack((Yit, Yi.ravel()))
             Zit = np.hstack((Zit, Zi.ravel()))
@@ -612,7 +689,18 @@ def MODEL():
             return Xit, Yit, Zit, PSDit
 
         def _intrep_stack_list(self, Xit_list, Xi, Yit_list, Yi, Zit_list, Zi, PSDit_list, PSDi):
-            # Collect grid points and Psi values in lists
+            """
+            Collects grid points and Psi values into lists for further processing.
+
+            Inputs:
+                Xit_list, Yit_list, Zit_list: Existing lists of accumulated grid points.
+                Xi, Yi, Zi: Current grid points to be added to the lists.
+                PSDit_list: Existing list of accumulated Psi values.
+                PSDi: Current Psi values to be added to the list.
+
+            Returns:
+                tuple: A tuple containing the updated lists of grid points and Psi values.
+            """
             Xit_list.append(Xi.ravel())
             Yit_list.append(Yi.ravel())
             Zit_list.append(Zi.ravel())
@@ -620,7 +708,16 @@ def MODEL():
             return Xit_list, Yit_list, Zit_list, PSDit_list
 
         def _finalize_stack(Xit_list, Yit_list, Zit_list, PSDit_list):
-            # Convert lists to numpy arrays after all data is collected
+            """
+            Converts lists of accumulated grid points and Psi values into numpy arrays after data collection is complete.
+
+            Inputs:
+                Xit_list, Yit_list, Zit_list: Lists of accumulated grid points.
+                PSDit_list: List of accumulated Psi values.
+
+            Returns:
+                tuple: A tuple containing the final stacked numpy arrays of grid points and Psi values.
+            """
             Xit = np.hstack(Xit_list)
             Yit = np.hstack(Yit_list)
             Zit = np.hstack(Zit_list)
@@ -628,7 +725,16 @@ def MODEL():
             return Xit, Yit, Zit, PSDit
 
         def _interp_xvec_data_LEA(self, xvec, data):
+            """
+            Interpolates data based on the input vector in the LEA coordinate system, preparing the data for use in Kamodo.
 
+            Inputs:
+                xvec: the input vector of coordinates.
+                data: the dataset to be interpolated.
+
+            Returns:
+                numpy.ndarray: The interpolated data points for each input vector.
+            """
             L, E, A, output, limin, limax = self._intrep_xvec_data_prepare(xvec)
             if output is not None:
                 return output
@@ -671,7 +777,16 @@ def MODEL():
             return self._interpolate(L, np.log10(E), A, Xit, Yit, Zit, PSDit)
 
         def _interp_xvec_data_LMK(self, xvec, data):
+            """
+            Interpolates data based on the input vector in the LMK coordinate system, preparing the data for use in Kamodo.
 
+            Inputs:
+                xvec: the input vector of coordinates.
+                data: the dataset to be interpolated.
+
+            Returns:
+                numpy.ndarray: The interpolated data points for each input vector.
+            """
             L, M, K, output, limin, limax = self._intrep_xvec_data_prepare(xvec)
             if output is not None:
                 return output
@@ -718,7 +833,19 @@ def MODEL():
             return self._interpolate(L, np.log10(M), K, Xit, Yit, Zit, PSDit)
 
         def _interpolate(self, X, Y, Z, x, y, z, Psi_tt):
-            """Common interpolation logic for both LEA and LMK methods."""
+            """
+            Handles multi-dimensional interpolation of data points across 3D grids, ensuring accurate data retrieval.
+
+            Common interpolation logic for both LEA and LMK methods.
+
+            Inputs:
+                X, Y, Z: the multi-dimensional coordinates for interpolation.
+                x, y, z: specific input coordinates for the interpolation.
+                Psi_tt: the data array being interpolated.
+
+            Returns:
+                numpy.ndarray: The interpolated values in 3D space.
+            """
 
             # Perform linear interpolation
             linear_interp = LinearNDInterpolator(list(zip(x, y, z)), Psi_tt)
@@ -763,12 +890,36 @@ def MODEL():
 
     # get nearest index
     def _nearest_index(arr, val):
+        """
+        Finds the nearest index in the given array for the specified value.
+
+        Inputs:
+            arr: array of data points.
+            val: the value for which the nearest index is sought.
+
+        Returns:
+            int: The index of the nearest value in the array.
+        """
+
         idx = np.abs(arr - val).argmin()
         return idx
 
     @dataclass
     class ModelVariable:
-        """ Class of the Model Variables. This cals replaces the list of kamodo variable"""
+        """
+        Represents a model variable with relevant metadata from `model_varnames`.
+        This class encapsulates details such as the LaTeX representation, description,
+        coordinate system, and units for each variable in the model.
+
+        Attributes:
+            var (str): LaTeX representation of the variable.
+            desc (str): Description of the variable.
+            i (int): Index or identifier for the variable.
+            sys (str): The coordinate system associated with the variable.
+            grid (str): The type of grid used for the variable.
+            coord (list): List of coordinates relevant to the variable.
+            units (str): The units of the variable.
+        """
 
         var: str  # LaTeX representation
         desc: str  # Description
@@ -779,13 +930,36 @@ def MODEL():
         units: str  # Units
 
         def to_list(self):
+            """
+            Converts the ModelVariable instance into a list format, suitable for Kamodo.
+
+            Returns:
+                list: A list containing the variable's metadata representing `model_varnames` record:
+                      [var, desc, i, sys, grid, coord, units].
+            """
             return [self.var, self.desc, self.i, self.sys, self.grid, self.coord, self.units]
 
-    # TODO: change the class so different LaTeX variables can correspond to the same key in file
     class ModelVariables:
-        """ Class which service the model variables"""
+        """
+        Manages multiple ModelVariable instances. Provides methods to access and
+        filter model variables by their LaTeX representation or internal (in file) name.
+        It simplifies the handling of `model_varnames` metadata for variables functionalized in Kamodo.
+
+        Attributes:
+            vars (dict): A dictionary where keys are the internal names of variables and
+                         values are ModelVariable instances.
+            keys (dict): A dictionary mapping LaTeX representations to internal (in file) variable names.
+        """
 
         def __init__(self, model_varnames):
+            """
+            Initializes ModelVariables by creating ModelVariable instances for each
+            variable in the model_varnames dictionary.
+
+            Inputs:
+                model_varnames (dict): A dictionary mapping internal variable names
+                                       to their metadata.
+            """
             self.vars = {}  # ModelVariable
             self.keys = {}  # Name in file according to the variable name
 
@@ -795,8 +969,14 @@ def MODEL():
 
         def latex_variables(self, variables_requested=None):
             """
-            List of latex formatted variables
-            If requested_variable is specified, return only matching variables
+            Returns a list of LaTeX representations for all variables or filtered
+            by a specific requested variable name.
+
+            Inputs:
+                variables_requested (str, optional): Name of a specific variable to filter.
+
+            Returns:
+                list: LaTeX representations of the variables.
             """
             if variables_requested is None:
                 return [v.var for v in self.vars.values()]
@@ -805,10 +985,20 @@ def MODEL():
 
         def file_variables(self, variables_requested=None, cdf_keys=None):
             """
+            Returns a list of file variable names that match the requested variables
+            and/or the available CDF keys.
+
             List of files variables
-            If requested_variable is specified, return only matching variables
-            If cdf_key is specified, return matching variables that correspond to cdf_keys
-            If only cdf_key is specified, return all variables that correspond to cdf_keys
+            - If requested_variable is specified, return only matching variables
+            - If cdf_key is specified, return matching variables that correspond to cdf_keys
+            - If only cdf_key is specified, return all variables that correspond to cdf_keys
+
+            Inputs:
+                variables_requested (list, optional): A list of variable names to filter.
+                cdf_keys (list, optional): A list of CDF keys to match with variables.
+
+            Returns:
+                list: A list of file variable names that match the requested variables and/or CDF keys.
             """
 
             if cdf_keys and variables_requested:
@@ -822,7 +1012,15 @@ def MODEL():
                 return list(self.keys.values())
 
         def model_var_by_name(self, name):
-            """ Get model variable by its name """
+            """
+            Retrieves a specific ModelVariable instance by its internal name.
+
+            Inputs:
+                name (str): The internal name of the model variable.
+
+            Returns:
+                ModelVariable: The corresponding ModelVariable instance.
+            """
             key = self.keys[name]
             return self.vars[key]
 
