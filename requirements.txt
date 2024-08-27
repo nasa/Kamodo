@@ -12,3 +12,5 @@ s3fs
 h5netcdf
 netCDF4
 boto3
+rbamlib
+pyverbplt

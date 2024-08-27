@@ -1,5 +1,6 @@
 """
 @author: xandrd
+VERB code model reader data converter
 """
 from netCDF4 import Dataset
 import numpy as np
