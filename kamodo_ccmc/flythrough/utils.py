@@ -78,7 +78,7 @@ def ts_to_spacepystr(ts):
 @np.vectorize
 def ts_to_spacepydt(ts):
     '''Convert from utc timestamp to a datetime object.'''
-    return dt.fromtimestamp(ts, tz=timezone.utc)
+    return dt.fromtimestamp(int(ts), tz=timezone.utc)
 
     '''Testing description and results:
     Given nine spherical coordinate positions...

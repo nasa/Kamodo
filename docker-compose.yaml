@@ -85,5 +85,21 @@ services:
         source: ${PWD}
         target: /kamodo_ccmc
     working_dir: /kamodo_ccmc
+    
+  kamodo-dev:
+    image: kamodo-wrap
+    command: ["sh", "-c", "~/miniconda3/envs/venv/bin/python3 -m jupyter notebook --port=8888 --no-browser --ip=0.0.0.0 --allow-root"]
+    volumes:
+      - ./kamodo-wrapper:/kamodo-wrapper
+    ports:
+      - 8888:8888
+  kamodo-wrap:
+    image: kamodo-wrap
+    build:
+      context: .
+      dockerfile: ./dockerfiles/kamodo-wrap.Dockerfile
+      args:
+        CUSTOM_LIB_DIR: /usr/local/lib
+    working_dir: /kamodo-wrapper
 
 

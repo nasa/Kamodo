@@ -287,7 +287,9 @@ def MODEL():
     from datetime import datetime, timezone
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
-
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log, exp
+    
     class MODEL(Kamodo):
         '''GITM model data reader.
 
@@ -375,17 +377,21 @@ def MODEL():
                     # get list of files to loop through later
                     pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
-                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    self.times[p] = {'start': [], 'end': [], 'all': [], 'start_index': []}
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
                         cdf_data = RU.Dataset(pattern_files[f])
                         # hours since midnight first file
                         tmp = array(cdf_data['time'])
+                        self.times[p]['start_index'].append(len(self.times[p]['all']))
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
                         cdf_data.close()
+                    self.times[p]['start_index'].append(len(self.times[p]['all'])-1)
+
+                    self.times[p]['start_index'] = array(self.times[p]['start_index'])
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
@@ -543,9 +549,31 @@ def MODEL():
                 cdf_data.close()
                 return data
 
+            def func_custom(i):
+                '''interpolation in logarithmic data space; i is the file number.'''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = RU.Dataset(file)
+                log_data = log(array(cdf_data[gvar]))
+                cdf_data.close()
+                coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
+                rgi = rgiND(coord_dict_data[1:], log_data, bounds_error=False,fill_value=NaN)
+                def custom_interp(xvec):
+                    return exp(rgi(xvec))
+                return custom_interp
+                #return data
+                
             # define and register the interpolators
-            self = RU.Functionalize_Dataset(self, coord_dict, varname,
-                                            self.variables[varname],
-                                            gridded_int, coord_str,
-                                            interp_flag=1, func=func)
+            if varname[0:3] == "rho" or varname[0:3] == "mmr" or varname[0:2] == "N_":
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str,
+                                                interp_flag=1, func=func_custom, func_default='custom')
+
+            else:
+                self = RU.Functionalize_Dataset(self, coord_dict, varname,
+                                                self.variables[varname],
+                                                gridded_int, coord_str,
+                                                interp_flag=1, func=func)
+
     return MODEL

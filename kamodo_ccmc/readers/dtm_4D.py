@@ -14,17 +14,31 @@ model_varnames = {'Temp_exo': ['T_exo', 'Exospheric temperature', 0, 'GDZ',
                           ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
                   'MU': ['m_avgmol', 'Mean molecular mass', 0, 'GDZ', 'sph',
                          ['time', 'lon', 'lat', 'height'], 'g'],
-                  'H': ['N_H', 'Atomic hydrogen partial density', 0, 'GDZ',
+                  'H': ['rho_H', 'Atomic hydrogen partial density', 0, 'GDZ',
                         'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
-                  'He': ['N_He', 'Atomic helium partial density', 0, 'GDZ',
+                  'He': ['rho_He', 'Atomic helium partial density', 0, 'GDZ',
                          'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
-                  'O': ['N_O', 'Atomic oxygen partial density', 0, 'GDZ',
+                  'O': ['rho_O', 'Atomic oxygen partial density', 0, 'GDZ',
                         'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
-                  'N2': ['N_N2', 'Molecular nitrogen partial density', 0,
+                  'N2': ['rho_N2', 'Molecular nitrogen partial density', 0,
                          'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
                          'g/cm**3'],
-                  'O2': ['N_O2', 'Molecular oxygen partial density', 0, 'GDZ',
-                         'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3']
+                  'O2': ['rho_O2', 'Molecular oxygen partial density', 0, 'GDZ',
+                         'sph', ['time', 'lon', 'lat', 'height'], 'g/cm**3'],
+                  'DEN_unc': ['rho_unc','Density uncertainty', 0, 'GDZ',
+                              'sph',['time', 'ht', 'lat', 'lon'], 'percent' ],
+                  'F107': ['F107',
+                           'Solar EUV irradiance index (daily value, delayed by 24 hours)',
+                           0, 'GDZ', 'sph',['time'],'10**-22*W/m**2/Hz'],
+                  'F107m': ['F107m',
+                            'Solar EUV irradiance index (average over past 81-days)',
+                            0, 'GDZ','sph',['time'],'10**-22*W/m**2/Hz'],
+                  'Kp': ['Kp',
+                         'Planetary Geomantetic activity index (delayed by 3 hours)',
+                         0, 'GDZ', 'sph', ['time'],'m/m'],
+                  'Kpm': ['Kpm',
+                          'Planetary Geomagntetic activity index (mean over last 24 hours)',
+                          0, 'GDZ', 'sph',['time'],'m/m'],
                   }
 
 
@@ -36,6 +50,9 @@ def MODEL():
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 
+    from scipy.interpolate import RegularGridInterpolator as rgiND
+    from numpy import log, exp
+    
     class MODEL(Kamodo):
         '''DTM model data reader.
 
@@ -111,7 +128,7 @@ def MODEL():
                     # get list of files to loop through later
                     pattern_files = sorted(RU.glob(file_dir+p+'*.nc'))
                     self.pattern_files[p] = pattern_files
-                    self.times[p] = {'start': [], 'end': [], 'all': []}
+                    self.times[p] = {'start': [], 'end': [], 'all': [], 'start_index': []}
 
                     # loop through to get times, one day per file
                     for f in range(len(pattern_files)):
@@ -119,10 +136,12 @@ def MODEL():
                                               filetype='netCDF3')
                         # minutes since 12am EACH file -> hrs since 12am 1st f
                         tmp = array(cdf_data.variables['time'])/60. + f*24.
+                        self.times[p]['start_index'].append(len(self.times[p]['all']))
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
                         cdf_data.close()
+                    self.times[p]['start_index'] = array(self.times[p]['start_index'])
                     self.times[p]['start'] = array(self.times[p]['start'])
                     self.times[p]['end'] = array(self.times[p]['end'])
                     self.times[p]['all'] = array(self.times[p]['all'])
@@ -240,15 +259,34 @@ def MODEL():
                     value[0] == varname][0]  # variable name in file
             coord_list = [value[-2] for key, value in
                           model_varnames.items() if value[0] == varname][0]
+            coord_str = [value[3]+value[4] for key, value in
+                         model_varnames.items() if value[0] == varname][0]
             coord_dict = {'time': {'units': 'hr',
                                    'data': self.times[key]['all']}}
+
+            # handling 1D time dependent variables
+            if len(coord_list) == 1:  # read all the values in
+                data_1dvar = []
+                for f in self.pattern_files[key]:
+                    cdf_dataset_tmp = RU.Dataset(f)
+                    data_1dvar.append(list(array(cdf_dataset_tmp[gvar])))
+                    cdf_dataset_tmp.close()
+                self.variables[varname]['data'] = array(data_1dvar)
+                #                print(varname,self.variables[varname]['data'])
+                print(coord_list)
+                #                print(coord_dict)
+
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=0)
+                return
+
+            # remainder of logic is for time + 3D variables
             # get the correct coordinates
             coord_dict['lon'] = {'data': self._lon, 'units': 'deg'}
             coord_dict['lat'] = {'data': self._lat, 'units': 'deg'}
             if len(coord_list) == 4:
                 coord_dict['height'] = {'data': self._height, 'units': 'km'}
-            coord_str = [value[3]+value[4] for key, value in
-                         model_varnames.items() if value[0] == varname][0]
 
             # define operations for each variable when given the key
             def func(i):
@@ -280,10 +318,62 @@ def MODEL():
                     variable = transpose(data, (0, 3, 2, 1))
                 return variable[:, self._lon_idx]
 
-            self = RU.Functionalize_Dataset(
-                self, coord_dict, varname, self.variables[varname],
-                gridded_int, coord_str, interp_flag=2, func=func,
-                times_dict=self.times[key])
+            def func_custom(i):
+                '''key is the file pattern, start_idxs is a list of one or two
+                indices matching the file start times in self.start_times[key].
+                '''
+                # get data from file
+                file = self.pattern_files[key][i]
+                cdf_data = RU.Dataset(file, filetype='netCDF3')
+                data = array(cdf_data.variables[gvar])
+                if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
+                    fill_value = cdf_data.variables[gvar][0].fill_value
+                else:
+                    fill_value = None
+                cdf_data.close()
+                # if not the last file, tack on first time from next file
+                if file != self.pattern_files[key][-1]:  # interp btwn files
+                    next_file = self.pattern_files[key][i+1]
+                    cdf_data = RU.Dataset(next_file, filetype='netCDF3')
+                    data_slice = array(cdf_data.variables[gvar][0])
+                    cdf_data.close()
+                    data = append(data, [data_slice], axis=0)
+                # data wrangling
+                if fill_value is not None:  # if defined, replace with NaN
+                    data = where(data != fill_value, data, NaN)
+                
+                data = log(data)
+                coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
+                time_index_start = self.times[key]['start_index'][i]
+                time_index_end = self.times[key]['start_index'][i+1]+1
+                times_file = self.times[key]['all'][time_index_start:time_index_end]
+                coord_dict_data[0] = array(times_file)
+                
+                if len(data.shape) == 3:
+                    variable = transpose(data, (0, 2, 1))
+                elif len(data.shape) == 4:
+                    variable = transpose(data, (0, 3, 2, 1))
+
+                rgi = rgiND(coord_dict_data, variable, bounds_error=False,fill_value=NaN)
+                def interp_custom(xvec):
+                    return exp(rgi(xvec))
+                return interp_custom
+
+                return variable[:, self._lon_idx]
+
+
+            if varname[0:3] == "rho" and varname != "rho_unc":
+               self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=2,
+                    func=func_custom, func_default='custom',
+                    times_dict=self.times[key])
+            else: 
+                self = RU.Functionalize_Dataset(
+                    self, coord_dict, varname, self.variables[varname],
+                    gridded_int, coord_str, interp_flag=2, func=func,
+                    times_dict=self.times[key])
+
             return
 
     return MODEL

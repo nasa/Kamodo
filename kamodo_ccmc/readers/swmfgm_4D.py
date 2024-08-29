@@ -2,16 +2,17 @@
 Written by Rebecca Ringuette, 2021
 '''
 from datetime import datetime, timezone
+import numpy as np
 
 # variable name in file: [standardized variable name, descriptive term, units]
-model_varnames = {'b1x': ['B_1x', 'x component of the deviation from the ' +
-                          'Earth dipole field', 0, 'GSM', 'car',
+model_varnames = {'b1x': ['B1_x', 'x component of the deviation from the ' +
+                          'Earth dipole magnetic field', 0, 'GSM', 'car',
                           ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'b1y': ['B_1y', 'x component of the deviation from the ' +
-                          'Earth dipole field', 0, 'GSM', 'car',
+                  'b1y': ['B1_y', 'y component of the deviation from the ' +
+                          'Earth dipole magnetic field', 0, 'GSM', 'car',
                           ['time', 'X', 'Y', 'Z'], 'nT'],
-                  'b1z': ['B_1z', 'x component of the deviation from the ' +
-                          'Earth dipole field', 0, 'GSM', 'car',
+                  'b1z': ['B1_z', 'z component of the deviation from the ' +
+                          'Earth dipole magnetic field', 0, 'GSM', 'car',
                           ['time', 'X', 'Y', 'Z'], 'nT'],
                   'bx': ['B_x', 'x component of the magnetic field', 0, 'GSM',
                          'car', ['time', 'X', 'Y', 'Z'], 'nT'],
@@ -40,8 +41,67 @@ model_varnames = {'b1x': ['B_1x', 'x component of the deviation from the ' +
                   'th': ['theta_Btilt', 'Dipole tilt angle: positive for the' +
                          ' northern hemisphere dipole axis tilting towards ' +
                          'the Sun in northern hemisphere summer', 0, 'GSM',
-                         'car', ['time'], 'radians']}
+                         'car', ['time'], 'radians'],
+                  'status': ['status',
+                         'Classification of magnetic fieldlines', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], ''],
+                  'theta1': ['BfootNlat',
+                         'Magnetic fieldline footpoint North (latitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg'],
+                  'theta2': ['BfootSlat',
+                         'Magnetic fieldline footpoint South (latitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg'],
+                  'phi1': ['BfootNlon',
+                         'Magnetic fieldline footpoint North (longitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg'],
+                  'phi2': ['BfootSlon',
+                         'Magnetic fieldline footpoint South (longitude)', 0, 'GSM', 'car',
+                         ['time', 'X', 'Y', 'Z'], 'deg']}
 
+# Alternate variable names in model output, dimensioned and dimensionless
+alt_varnames = {'N_p': ['rho', 'Rho'],
+                'v_x': ['ux', 'Ux'],
+                'v_y': ['uy', 'Uy'],
+                'v_z': ['uz', 'Uz'],
+                'P': ['p', 'P'],
+                'B1_x': ['b1x', 'B1x'],
+                'B1_y': ['b1y', 'B1y'],
+                'B1_z': ['b1z', 'B1z'],
+                'B_x': ['bx', 'Bx'],
+                'B_y': ['by', 'By'],
+                'B_z': ['bz', 'Bz']}
+
+# Dimensionalizing constants and scales to apply to variables
+kbSI = 1.3807e-23       # Boltzmann constant
+mpSI = 1.6726e-27       # proton mass
+mu0SI = 4.*np.pi*1.e-7  # vacuum permeability
+eSI = 1.602e-19         # elementary charge
+ReSI = 6378.e+3         # radius of Earth
+RsSI = 6.96e+8          # radius of Sun
+AuSI = 1.4959787e+11    # astronomical unit
+cSI = 2.9979e+8         # speed of light
+xSI = ReSI
+rhoSI = 1.e+6 * mpSI
+nSI = 1.e+6                         # for Rho
+uSI = ReSI                          # for Ux,Uy,Uz
+pSI = rhoSI * uSI**2                # for P
+bSI = uSI * np.sqrt(mu0SI * rhoSI)  # for Bx,By,Bz,B1x,B1y,B1z
+jSI = bSI / (xSI * mu0SI)           # for Jx,Jy,Jz
+
+scale_varnames = {'Rho': nSI/1.e+6,
+                  'P':   pSI*1.e+9,
+                  'Ux':  uSI/1.e+3,
+                  'Uy':  uSI/1.e+3,
+                  'Uz':  uSI/1.e+3,
+                  'Bx':  bSI*1.e+9,
+                  'By':  bSI*1.e+9,
+                  'Bz':  bSI*1.e+9,
+                  'B1x': bSI*1.e+9,
+                  'B1y': bSI*1.e+9,
+                  'B1z': bSI*1.e+9,
+                  'Jx':  jSI*1.e+6,
+                  'Jy':  jSI*1.e+6,
+                  'Jz':  jSI*1.e+6}
 
 # coordinates stored as x, y, z in earth radii.
 def MODEL():
@@ -178,8 +238,9 @@ def MODEL():
             mhd = sp.IdlFile(self.pattern_files[p][0],
                              sort_unstructured=False)  # This fails on s3
             file_variables = [key for key in mhd.keys() if key not in
-                              ['grid', 'status', 'x', 'y', 'z']] + ['th']
+                              ['grid', 'x', 'y', 'z']] + ['th']
             if len(variables_requested) > 0 and variables_requested != 'all':
+                self.check_alt_varnames(file_variables)
                 gvar_list = [key for key, value in model_varnames.items()
                              if value[0] in variables_requested and
                              key in file_variables]
@@ -189,10 +250,16 @@ def MODEL():
                     err_list = [value[0] for key, value in
                                 model_varnames.items() if value[0] in
                                 variables_requested and key not in gvar_list]
+                    # remove value from list if another renamed value matches
+                    for errval in err_list:
+                        err_not = [key for key, value in model_varnames.items()
+                             if value[0] == errval and key in file_variables]
+                        if len(err_not) > 0: err_list.remove(errval)
                     if len(err_list) > 0:
                         print('Some requested variables are not available:',
                               err_list)
             else:  # only input variables on the avoid_list if requested
+                self.check_alt_varnames(file_variables)
                 gvar_list = [key for key in file_variables
                              if key in model_varnames.keys()]
                 # returns list of variables included in data files
@@ -217,7 +284,7 @@ def MODEL():
             if 'NZ' in mhd.meta.keys():
                 self.constants['NZ'] = mhd.meta['NZ']
 
-            # store kay for each variable desired
+            # store key for each variable desired
             self.variables = {model_varnames[var][0]: {
                 'units': model_varnames[var][-1],
                 'data': p} for var in gvar_list}
@@ -242,6 +309,24 @@ def MODEL():
             if verbose:
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
+
+        def check_alt_varnames(self, file_variables):
+            '''
+            Some variables can be saved as either dimensioned or dimensionless.
+            Lower case (default) is dimensioned. Upper case is dimensionless.
+            This includes B1x, B1y, B1z, Bx, By, Bz, Ux, Uy, Uz, P, Rho, Jx, Jy, Jz.
+            This function looks to see if the variables in the file match the current
+              model_varnames dictionary and if not changes the dictionary to match.
+            It then will dimensionalize the variables if needed upon reading.
+            '''
+            for key, values in alt_varnames.items():
+                for value in values:
+                    if value in model_varnames: oldvalue = value
+                for value in values:
+                    if value in file_variables and value not in model_varnames:
+                        model_varnames[value] = model_varnames.pop(oldvalue)
+
+            return
 
         def setup_octree(self, x, y, z, verbose=False):
             '''
@@ -447,6 +532,11 @@ def MODEL():
                 # get data from file and initialize
                 data = sp.IdlFile(self.pattern_files[key][i],
                                   sort_unstructured=False)[gvar]  # dmarray
+                if gvar in scale_varnames:
+                    data = data*scale_varnames[gvar]
+                if gvar in ['theta1', 'theta2', 'phi1', 'phi2']:
+                    dmask = data < -99.
+                    data[dmask] = None
                 var_data = ffi.new("float[]", list(data))
 
                 # assign custom interpolator: Lutz Rastaetter 2021

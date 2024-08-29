@@ -20,6 +20,8 @@ model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
                       'https://doi.org/10.1016/j.jastp.2006.01.008',
               'IRI': 'International Reference Ionosphere Model ' +
                      'https://doi.org/10.5194/ars-16-1-2018',
+              'Ovation-Prime': 'OVATION Prime - an ionospheric empirical precipitation model driven by solar wind input data ' +
+                               'https://doi.org/10.1002/2014SW001056',
               'OpenGGCM_GM': 'The Open Geospace General Circulation Model - ' +
                              'Global Magnetosphere outputs only ' +
                              'https://doi.org/10.1023/A:1014228230714',
@@ -91,6 +93,10 @@ def Choose_Model(model=''):
         import kamodo_ccmc.readers.tiegcm_4D as module
         return module
 
+    elif model == 'Ovation-Prime':
+        import kamodo_ccmc.readers.ovationprime_4D as module
+        return module
+
     elif model == 'OpenGGCM_GM':
         import kamodo_ccmc.readers.openggcm_gm_4Dcdf as module
         return module
@@ -156,7 +162,7 @@ def Model_Variables(model, file_dir=None, return_dict=False):
     Inputs:
         model: A string or integer associated with the desired model.
         file_dir: A string giving the full file path for the chosen directory.
-            The default value is None, meaning that tall of the variables
+            The default value is None, meaning that all of the variables
             possible for the chosen model will be returned/printed. Setting
             file_dir to a file path will restrict the out to only the variables
             found in the output files in the given directory.

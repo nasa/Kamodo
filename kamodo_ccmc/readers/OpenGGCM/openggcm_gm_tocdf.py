@@ -66,7 +66,7 @@ def openggcm_combine_magnetosphere_files(full_file_prefix,cadence=None,requested
     # file prefix includes everything including '3df' for magnetosphere and intended year,month,day (and hour)
     # read matching dates, times from 3df_list to generate list of raw files.
     # coadence: Default: None -- use all available times, otherwise use cadence as input starting with first time in simualtion.
-    # requested_variables default: None -- convert all available 3D fields, other vise use only the requeted variables to generate smaller NetCDF files.
+    # requested_variables default: None -- convert all available 3D fields, otherwise use only the requested variables to generate smaller NetCDF files.
     
     tic=perf_counter()
     file_prefix,file_datetime = full_file_prefix.split('.3df')

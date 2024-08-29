@@ -14,7 +14,7 @@ model_varnames = {"Sigma_H": ['Sigma_H', '3D Hall conductivity',
                   "Phi_E": ['Phi_E', 'energy flux',
                             2, 'SM', 'sph', ['time', 'lon', 'lat'], "W/m**2"],
                   "E_avg": ['E_avg', 'average energy',
-                                3, 'SM', 'sph', ['time', 'lon', 'lat'], 'eV'],
+                                3, 'SM', 'sph', ['time', 'lon', 'lat'], 'keV'],
                   "j_R": ["j_R", 'radial current density',
                           4, 'SM', 'sph', ['time', 'lon', 'lat'], "muA/m**2"],
                   "Phi": ["phi", 'electric potential',
@@ -139,6 +139,8 @@ def MODEL():
                 # find unconverted files and convert them
                 nc_files = sorted(RU.glob(file_dir+'*.nc'))
                 tec_files = sorted(RU.glob(file_dir+'*.tec'))
+                idl_files = sorted(RU.glob(file_dir+'*.idl'))
+                tec_files.append(idl_files)
                 if len(nc_files) != len(tec_files) and len(tec_files) > 0:
                     from kamodo_ccmc.readers.swmfie_tocdf import \
                         convert_all
@@ -151,7 +153,7 @@ def MODEL():
                 patterns = unique([basename(f)[:-22] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
                 self.filedate = datetime.strptime(
-                    basename(files[0])[-22:-13]+'000000', '%Y%m%d-%H%M%S').replace(
+                    basename(files[0])[-22:-14]+'-000000', '%Y%m%d-%H%M%S').replace(
                         tzinfo=timezone.utc)
 
                 # establish time attributes from filenames
@@ -162,8 +164,10 @@ def MODEL():
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
                     # loop through to get times, one time per file
+                    # Here we extract the date part f[-22:-14] and the UT time part (f[-13:-7]) of the file name and insert '-' in between
+                    # so we do not rely on having the '-' (and not a '_') in the file name at that position
                     for f in pattern_files:
-                        time = RU.str_to_hrs(f[-22:-7], self.filedate,
+                        time = RU.str_to_hrs(f[-22:-14]+'-'+f[-13:-7], self.filedate,
                                              format_string='%Y%m%d-%H%M%S')
                         self.times[p]['start'].append(time)
                         self.times[p]['end'].append(time)

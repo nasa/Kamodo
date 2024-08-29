@@ -4,16 +4,60 @@
 ! Modification History:
 !  2022/03/23 Lutz Rastaetter call_read() renamed to read_3d_field()
 !                             dropped logical unit number in input of routine
+!  2024/03/25 Lutz Rastaetter made read_mhd2d() from  read_mhd3d() to read 2D fields
+!     added read_2d_field() interface for Python
+!     added fieldsize input parameter so that actual buffer size and be checked  against expected (ARRAY_SIZE)
 !
-c----------------------------------------------------------------------      
-      subroutine read_3d_field(path3d,
-     &              threeDfield,var,nx,ny,nz,asciiTime)
+c----------------------------------------------------------------------
+      subroutine read_2d_field(path3d,
+     &              twoDfield,var,fieldsize,nx,ny,asciiTime)
 c----------------------------------------------------------------------              
 !      character(len=40) :: path3d
       character(len=110) :: path3d           
       character*80 var
       character*80 asciiTime
-      real threeDfield(nx,ny,nz) 
+      integer ARRAY_SIZE
+      integer fieldsize
+      PARAMETER ( ARRAY_SIZE = 1000000 )
+      real twoDfield(ARRAY_SIZE)
+!      real twoDfield(nx,ny,nz) 
+      integer fileNo2
+      integer nx
+      integer ny
+      integer it
+!f2py intent(in) :: path3d
+!f2py intent(in,out) :: twoDfield
+!f2py intent(in) :: var
+!f2py intent(in) :: fieldsize
+!f2py intent(out) :: nx,ny
+!f2py intent(out) :: asciiTime
+      if (fieldsize .lt. ARRAY_SIZE) goto 223
+      
+      fileNo2=11
+c     write (0,*) 'opening file: |',path3d,'|'              
+      open(unit=fileNo2,file=path3d,status='old',action='read',err=222)
+      call read_mhd2d(fileNo2,twoDfield,nx,ny,var,asciiTime,it)
+!      call getf21(fileNo2,twoDfield,nx,ny,fieldname,asciitime,it)
+      close(fileNo2)
+      return
+ 222  write(0,*) "could not open file"
+ 223  write(0,*) "buffer size smaller than ",ARRAY_SIZE
+      return
+      end
+
+c----------------------------------------------------------------------
+      subroutine read_3d_field(path3d,
+     &              threeDfield,var,fieldsize,nx,ny,nz,asciiTime)
+c----------------------------------------------------------------------              
+!      character(len=40) :: path3d
+      character(len=110) :: path3d           
+      character*80 var
+      character*80 asciiTime
+      integer ARRAY_SIZE
+      integer fieldsize
+      PARAMETER ( ARRAY_SIZE = 100000000 )
+      real threeDfield(ARRAY_SIZE)
+!      real threeDfield(nx,ny,nz) 
       integer fileNo2
       integer nx
       integer ny
@@ -22,8 +66,11 @@ c----------------------------------------------------------------------
 !f2py intent(in) :: path3d
 !f2py intent(in,out) :: threeDfield
 !f2py intent(in) :: var
+!f2py intent(in) :: fieldsize
 !f2py intent(out) :: nx,ny,nz
 !f2py intent(out) :: asciiTime
+      if (fieldsize .lt. ARRAY_SIZE) goto 223
+      
       fileNo2=11
 c     write (0,*) 'opening file: |',path3d,'|'              
       open(unit=fileNo2,file=path3d,status='old',action='read',err=222)
@@ -31,6 +78,7 @@ c     write (0,*) 'opening file: |',path3d,'|'
       close(fileNo2)
       return
  222  write(0,*) "could not open file"
+ 223  write(0,*) "buffer size smaller than ",ARRAY_SIZE
       return
       end
       
@@ -175,11 +223,140 @@ cc        write(*,'("m=",I3,2(1X,A))')m,fieldname,thisFieldName
       return
       end
 
+
+      subroutine read_mhd2d( fileNo,
+     &                   fieldData,
+     &                   nx,ny,
+     &                   fieldName,
+     &                   asciiTime,
+     &                   it )
+! nx,ny are dimensions of the array
+! nx is set to < 0 if an error occured
+! other wise the decompressed field specified by fieldName
+! is returned in fieldData along with asciiTime and 'it'.
+! still working on what 'it' is... may be integerTime or itteration 
+! Note: do not implicit none this unless you are certain
+! that you can count on fieldName and asciiTime being a 
+! a specific fixed length
+c-----------------------------------------------------------
+      include 'DBGDEV.F'
+! dbg_level set to zero or negative to get diagnostic outputs
+      integer dbg_level
+      parameter (dbg_level=1) 
+      real fieldData(nx,ny)
+      character*80 thisFieldType
+      character*80 thisFieldName
+      character*80 fieldName
+      character*80 asciiTime
+      integer isany
+      integer fileNo
+      integer nx
+      integer ny
+      integer nn
+      integer it
+
+!      print *, 'debug_level= ', debug_level.gt.dbg_level-1
+      if(debug_level.gt.dbg_level-1)then                     !(.gt. >)
+         write(dbglog,'("ENTERING: read_mhd2d")')
+         write(dbglog,'(3X,"nx,ny=",2(1X,I8))')nx,ny
+      endif
+!      print *, 'hello there'
+
+c     if ascii, execute this branch      
+c==============================================      
+      ! string length, needed for string comparisions
+      m=len(fieldName)
+cc      write(*,'("m=",I3)')m
+c      call end0(fieldName,m)
+
+      ! determine if the string is "any"
+      isany=0
+      if(fieldName(1:m).eq.'any') isany=1
+      ! read records of the file until we find what we are looking for.
+      ! or we hit the end of the file.
+100   continue
+
+!      print *, 'fileNo1= ', fileNo
+      ! read field type
+      read( UNIT=fileNo,FMT='(A)',END=190, ERR=190 ) thisFieldType
+!    print *, 'thisFieldType= ', thisFieldType
+
+        if(debug_level.gt.dbg_level+1)then
+           write(dbglog,'("thisFieldType=",A10)')thisFieldType(1:10)
+        endif
+
+      ! we are looking for a 3D field and this could be it
+      if ( thisFieldType(1:10).eq.'FIELD-2D-1' ) then
+
+        ! get this fields name
+        read( UNIT=fileNo,
+     &        FMT='(A)',
+     &        END=190 ) thisFieldName
+
+
+        if(debug_level.gt.dbg_level)then
+           write(dbglog,'("thisFieldName=",A)')thisFieldName
+        endif
+
+!       write(*,*) '<'//fieldName(1:m)//'>','<'//thisFieldName(1:m)//'>'
+!       write(*,*) fieldName(1:m).ne.thisFieldName(1:m)
+
+        ! this isn't the one we want
+cc        write(*,'("m=",I3,2(1X,A))')m,fieldname,thisFieldName
+        if (  (isany.eq.0).and.
+     &        (fieldName(1:m).ne.thisFieldName(1:m)) ) then
+           goto 100
+        endif
+
+        ! this is the one we want (but why re-asign??)
+        fieldName=thisFieldName
+
+        ! read the time string
+        read( UNIT=fileNo,
+     &        FMT='(A)',
+     &        END=190 ) asciiTime
+
+        ! read the array dimensions and 'it'
+        read( UNIT=fileNo,
+     &        FMT=*,
+     &        END=190 ) it,nx,ny
+
+        ! read and decompress the data
+        call rdn2( fileNo,fieldData,nn,thisFieldName,it,rid )
+        if(debug_level.gt.dbg_level-1)then
+          print *, 'fieldData= ', shape(fieldData)
+          print *, 'data sample: ', fieldData(1,1)
+        endif
+!     output_fieldData=fieldData       !--reasign for f2py function jcc 09/20/19
+        ! an error occured, set nx to error code 
+        if(nn.lt.0)nx=nn
+
+        ! done
+        return
+      endif
+
+      ! we didn't find what we wanted so we try again
+      goto 100
+
+      ! we hit EOF before we found what we wanted
+190   continue
+      nx=-1
+      rewind(fileNo)                ! hit end of file, rewind so that subsequent searches make sense
+      if(debug_level.gt.dbg_level-1)then
+         write(dbglog,'(3X,"x: nx,ny=",2(1X,I8))')nx,ny
+         write(dbglog,*) "EXITING: read_mhd2d"
+      endif
+      return
+      end
+
+
+
+      
 ! Change log---
 ! 
 ! Burlen Loring 2008-01-03
 ! 
-! added comments, indetantion, and implicit none
+! added comments, indentation, and implicit none
 ! I had wanted to OpenMPI the decompression loops
 ! however a major rewrite would be needed since these are
 ! interleaved with *sequential* reads of the data file :(
@@ -421,3 +598,39 @@ c.---------------------------------------
         return
 
       end 
+
+      
+
+c-----------------------------------------------------------
+      subroutine getf21(iu,a1,nx,ny,l1,l2,it)
+c-----------------------------------------------------------
+      real a1(*)
+      real rid
+      character*80 rec,l1,l2
+      m=len(l1)
+      call end0(l1,m)
+      isany=0
+      if(l1(1:m).eq.'any') isany=1
+100   continue
+      read(iu,1000,end=190,err=190) rec
+      write(0,*)'rec: ',m,rec
+      if(rec(1:10).eq.'FIELD-2D-1') then
+      read(iu,1000,end=190,err=190) rec
+      write(0,*)'rec2: ',rec
+      if((isany.eq.0).and.l1(1:m).ne.rec(1:m)) goto 100
+      l1=rec
+      read(iu,1000,end=190,err=190) l2
+      write(0,*)'L2: ',l2
+      read(iu,*,end=190,err=190)it,nx,ny
+      call rdn2(iu,a1,nn,rec,it,rid)
+      write(0,*)'NX,NY,NN: ',nx,ny,nn
+      if(nn.lt.0)nx=nn
+      return
+      endif
+      goto 100
+190   continue
+      nx=-1
+1000  format(a)
+      return
+      end
+
