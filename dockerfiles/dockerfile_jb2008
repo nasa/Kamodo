@@ -1,0 +1,50 @@
+FROM  condaforge/miniforge3:latest
+LABEL maintainer "Asher Pembroke <apembroke@gmail.com>"
+
+# Update and install build-essential and curl
+RUN DEBIAN_FRONTEND="noninteractive" apt-get update && apt-get install -y \
+    gfortran \
+    build-essential \
+    curl
+
+WORKDIR /
+
+# kamodo-core
+RUN git clone https://github.com/asherp/kamodo-core.git
+RUN pip install /kamodo-core
+
+RUN git clone https://github.com/pengmun/DESTOPy.git
+
+RUN conda install h5py
+
+WORKDIR /DESTOPy
+
+RUN pip install -r requirements.txt
+
+WORKDIR /jb2008
+
+COPY kamodo_ccmc/readers/kamodo-JB2008/requirements.txt .
+RUN pip install -r requirements.txt
+
+WORKDIR /DESTOPy/Data
+
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/lsk/latest_leapseconds.tls
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de430.bsp
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/stations/earthstns_itrf93_201023.bsp
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00010.tpc
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_fixed.tf
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/a_old_versions/earth_200101_990628_predict.bpc
+RUN wget -O earth_000101_210530_210308.bpc https://naif.jpl.nasa.gov/pub/naif/MEX/kernels/pck/former_versions/EARTH_000101_210530_210308.BPC
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/a_old_versions/earth_720101_070426.bpc
+RUN wget https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc
+RUN wget https://www.celestrak.com/SpaceData/SW-All.txt
+RUN wget https://www.celestrak.com/SpaceData/EOP-All.txt
+RUN wget -O SOLFSMY.txt https://sol.spacenvironment.net/JB2008/indices/SOLFSMY.TXT
+RUN wget -O DTCFILE.txt https://sol.spacenvironment.net/JB2008/indices/DTCFILE.TXT
+
+COPY kernel.txt /DESTOPy/Data/kernel.txt
+
+WORKDIR /jb2008
+
+COPY . .
+

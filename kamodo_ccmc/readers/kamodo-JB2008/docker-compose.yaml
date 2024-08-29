@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  jb2008:
+    image: ensemble/jb2008
+    build:
+      context: ../../../
+      dockerfile: dockerfiles/dockerfile_JB2008
+    volumes:
+      - .:/jb2008
+    ports:
+      - "8887:8887"
+    command:
+      - jupyter
+      - notebook
+      - /jb2008
+      - --port=8887
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
+  destopy:
+    image: ensemble/jb2008
+    build:
+      context: ../../../
+      dockerfile: dockerfiles/dockerfile_JB2008
+    volumes:
+      - .:/jb2008
+    ports:
+      - "8889:8889"
+    command:
+      - jupyter
+      - notebook
+      - /DESTOPy
+      - --port=8889
+      - --no-browser
+      - --ip=0.0.0.0
+      - --allow-root
