@@ -320,16 +320,16 @@ def MODEL():
                 # if not the last file, tack on first time from next file
                 time_index_start = self.times[key]['start_index'][i]
                 time_index_end = self.times[key]['start_index'][i+1]+1
+                if self.doublemidnight:
+                    time_index_end += 1
+                    if i > 0:
+                        time_index_start += 1
                 if file != self.pattern_files[key][-1]:  # interp btwn files
                     next_file = self.pattern_files[key][i+1]
                     cdf_data = RU.Dataset(next_file, filetype='netCDF3')
                     data_slice = array(cdf_data.variables[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
-                    if self.doublemidnight:
-                        time_index_end += 1
-                        if i > 0:
-                            time_index_start += 1
                 # data wrangling
                 coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
                 times_file = self.times[key]['all'][time_index_start:time_index_end]
