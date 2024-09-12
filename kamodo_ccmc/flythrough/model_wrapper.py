@@ -46,7 +46,9 @@ model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
                         'https://doi.org/10.1002/2015GL067312 and ' +
                         'https://doi.org/10.1029/2022SW003193',
               'Weimer': 'Weimer Ionosphere model ' +
-                        'https://doi.org/10.1029/2005JA011270'
+                        'https://doi.org/10.1029/2005JA011270',
+              'VERB-3D': 'VERB 3D model ' +
+                        'http://dx.doi.org/10.1029/2008SW000452'
               }
 
 
@@ -133,6 +135,10 @@ def Choose_Model(model=''):
 
     elif model == 'Weimer':
         import kamodo_ccmc.readers.weimer_4D as module
+        return module
+
+    elif model == 'VERB-3D':
+        import kamodo_ccmc.readers.verb3d_4D as module
         return module
 
     else:
@@ -410,6 +416,11 @@ def coord_units(coord_type, coord_grid):
         else:
             return {'utc_time': 's', 'net_idx': '', 'c1': 'deg', 'c2': 'deg',
                     'c3': 'R_E'}
+    elif coord_grid == 'rb':
+        if coord_type == 'LEA':
+            return {'utc_time': 's', 'net_idx': '', 'c1': '', 'c2': 'MeV', 'c3': 'deg'}
+        elif coord_type == 'LMK':
+            return {'utc_time': 's', 'net_idx': '', 'c1': '', 'c2': 'MeV/G', 'c3': '10**-4*T*(km/6371*km)**1/2'}
 
 
 def coord_names(coord_type, coord_grid):
@@ -479,7 +490,7 @@ def Coord_Range(kamodo_object, var_names, print_output=True,
                 cunits = kamodo_object[var].meta['arg_units']
                 return_d[var] = {key: [defaults[key].min(),
                                        defaults[key].max(),
-                                       cunits[key.split('_')[0]]]
+                                       cunits[key.split('_ijk')[0]]]
                                  for key in key_list}
                 
             else:
