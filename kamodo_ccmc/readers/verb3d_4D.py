@@ -365,7 +365,7 @@ def MODEL():
             # functionalize the 3D or 4D dataset, series of time slices
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, self.variables[varname],
-                gridded_int=False, coord_str=coord_str, interp_flag=0, func=func_near(),
+                gridded_int=False, coord_str=coord_str, interp_flag=0, func=func_near,
                 times_dict=None, func_default='custom')
             return
 
