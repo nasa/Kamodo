@@ -1569,7 +1569,9 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     # Rotate
     if abs(uvec[2]) < 1.:  # No rotation for +/- Z normal
         new_xaxis = np.cross([0, 0, 1], uvec)
+        new_xaxis = new_xaxis/np.linalg.norm(new_xaxis)  # unit vector
         new_yaxis = np.cross(new_xaxis, uvec)
+        new_yaxis = new_yaxis/np.linalg.norm(new_yaxis)  # unit vector
         transform = np.array([new_xaxis, new_yaxis, uvec]).T
         grid0 = np.inner(grid0, transform)
     # Shift
@@ -1688,7 +1690,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     if showgrid:
         fig.add_scatter3d(name='grid',
             x=grid[:, 1], y=grid[:, 2], z=grid[:, 3], mode='markers',
-            marker=dict(size=1, color='white'), line=dict(width=1) )
+            marker=dict(size=1, color='grey'), line=dict(width=1) )
 
     # Create Earth sphere
     if showE:
