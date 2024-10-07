@@ -7,9 +7,9 @@
 KamodoWrapper::KamodoWrapper(const std::string& configPath) {
     Py_Initialize();
 
+
+
     this->loadConfig(configPath);
-
-
     this->createKamodoInstance(); // Optionally create the instance upon construction
 
     PyObject* np = PyImport_Import(PyUnicode_DecodeFSDefault("numpy"));
@@ -67,7 +67,6 @@ void KamodoWrapper::loadConfig(const std::string& configPath) {
         }
 
         // Extract module and class name
-
         std::string modulePath = config["models"]["mymodel"]["class"].as<std::string>();
         size_t lastDot = modulePath.rfind(".");
         moduleName = modulePath.substr(0, lastDot);
@@ -76,10 +75,13 @@ void KamodoWrapper::loadConfig(const std::string& configPath) {
         this->moduleName = moduleName;
         this->className = className;
 
-
         PyObject *kamodo_module = PyImport_Import(PyUnicode_DecodeFSDefault(this->moduleName.c_str()));
+        if (PyErr_Occurred()) {
+    // Handle the exception
+    // Optionally, you can log the error or perform some cleanup
+            PyErr_Print();
+        }
         PyObject *dict = PyModule_GetDict(kamodo_module);
-
         PyObject *kamodo_class =  PyDict_GetItemString(dict, this->className.c_str());
         this->KamodoModule = kamodo_module;
         this->KamodoClass = kamodo_class;

@@ -1,6 +1,53 @@
+# How to install and run the program locally
+Required compilers:
+        g++ (13.2 or higher)
+        gfortran (13.2 or higher)
+
+Python version 3.10 libraries(use conda to create virtual environment for version control):
+        setuptools (latest)
+        kamodo (latest)
+
+Required C++ libraries (you can get all of these using your OS package manager):
+        python3.10-dev (it may have  a different name depending on your OS, I use Ubuntu 24)
+        libyaml-cpp-dev (0.8.0 or higher)
+
+Here are the commands to install the necessary libraries and environment, please modify according to your system:
+
+- sudo apt-get install g++
+- sudo apt-get install gfortran
+- sudo apt-get install libyaml-cpp-dev
+
+Now we create the python environment:
+
+- conda create -n py310 python=3.10
+- conda activate py310
+- python -m pip install setuptools
+- python -m pip install kamodo
+
+Next, we install the python3.10-dev library:
+
+- sudo apt-get install python3.10-dev
+Note: in case of Ubuntu 24, the standard package manager doesn't have the python3.10-dev library, so you have to update it as followed:
+- sudo apt install software-properties-common
+- sudo add-apt-repository ppa:deadsnakes/ppa
+- sudo apt update
+- sudo apt-get install python3.10-dev
+
+Finally, we go into the Makefile and modify the $CXXFLAGS, it should be the path to your Python.h file lying inside your environment,
+in my case, it is: /home/duc/miniconda3/envs/py310/include/python3.10
+
+Finally, we can compile the program, go to source code folder and type:
+- make
+- ./KamodoWrapperExample
+
+To change the name of the output program or your Fortran main program, go into the Makefile and modify the variables $TARGET or $USER_FORTRAN_FILE
+
+To make the program work with a different version of Python, modify the Makefile accordingly, and remember to get the right version of python3-dev libraries:
+if you use python3.11, you need python3.11-dev, modify the $CXXFLAGS and $LDFLAGS variables
 
 
-# How to run the program
+
+# How to run the program in Docker
 Go to the folder where docker-compose.yml is located, and then run:
 
 - docker compose up kamodo-wrap
@@ -11,7 +58,6 @@ Now you should be inside the bash of the container, then do the following comman
 
 - conda activate venv
 
-- cmake .
 
 - make
 
