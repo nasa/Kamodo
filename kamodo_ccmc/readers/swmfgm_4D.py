@@ -32,7 +32,7 @@ model_varnames = {'b1x': ['B1_x', 'x component of the deviation from the ' +
                   'p': ['P', 'Pressure', 0, 'GSM', 'car',
                         ['time', 'X', 'Y', 'Z'], 'nPa'],
                   'rho': ['N_p', 'proton number density', 0, 'GSM', 'car',
-                          ['time', 'X', 'Y', 'Z'], '10**6/cm**3'],  # Mp/cc
+                          ['time', 'X', 'Y', 'Z'], '1/cm**3'],  # Mp/cc
                   'ux': ['v_x', 'x component of velocity', 0, 'GSM', 'car',
                          ['time', 'X', 'Y', 'Z'], 'km/s'],
                   'uy': ['v_y', 'y component of velocity', 0, 'GSM', 'car',
