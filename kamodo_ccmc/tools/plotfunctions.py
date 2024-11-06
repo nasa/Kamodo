@@ -7,10 +7,28 @@ colorset = ['#00B7FF', '#004DFF', '#00FFFF', '#826400', '#580041', '#FF00FF',
             '#CCCCCC', '#009E8F', '#D7A870', '#8200FF', '#960000', '#006F00']
 
 ### ====================================================================================== ###
+def rotatePoints(x, y, degA):
+    '''
+    Rotate arrays of x,y values around 0,0 by degA given in degrees counter-clockwise
+    Return new x,y values
+    '''
+    import numpy as np
+
+    cosA = np.cos(degA*np.pi/180.)
+    sinA = np.sin(degA*np.pi/180.)
+
+    newx = cosA * x - sinA * y
+    newy = sinA * x + cosA * y
+    
+    return newx, newy
+
+
+### ====================================================================================== ###
 def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
             cutInside=-1., returnGrid=False, enhanceHover=False,
             enhanceHover1D=False, newTitle='', cText='',
-            llText='', llText2='', coText='', crange='', xtic='', ytic=''):
+            llText='', llText2='', coText='', resetAnnotations=True,
+            crange='', xtic='', ytic=''):
     '''
     Function to modify a plotly figure object in multiple ways.
 
@@ -29,6 +47,8 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
       llText      String to add to lower left of plot
       llText2     String to add just above llText
       coText      String to add coordinate system to lower right of plot
+      resetAnnotations Logical, if true will clear annotations if
+                  llText, llText2, or coText are not empty
       crange      Two position array with min/max contour values, [cmin,cmax]
       xtic        X axis tick spacing
       ytic        Y axis tick spacing
@@ -37,6 +57,13 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
     import re
     import numpy as np
     import plotly.graph_objects as go
+
+    # Create list of the plot types in the figure object
+    #   Some figure mods can only apply to some traces in the fig
+    typelist = []
+    for i in range(len(fig.data)):
+        typelist.append(fig.data[i].type)
+    typelist = np.unique(typelist)
 
     if returnGrid:
         xx = fig.data[0]['x']
@@ -66,25 +93,30 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
 
     if ncont > 0:
         fig.update_traces(ncontours=ncont,
-                          contours=dict(coloring="fill", showlines=False))
+                          contours=dict(coloring="fill", showlines=False),
+                          selector=dict(type='contour'))
 
     if colorscale != '':
+        usedcolorscale = colorscale
         if colorscale == "BlueRed":
-            fig.update_traces(colorscale="RdBu_r")
+            usedcolorscale = "RdBu_r"
         elif colorscale == "Rainbow":
-            fig.update_traces(
-                colorscale=[[0.00, 'rgb(0,0,255)'],
+            usedcolorscale=[[0.00, 'rgb(0,0,255)'],
                             [0.25, 'rgb(0,255,255)'],
                             [0.50, 'rgb(0,255,0)'],
                             [0.75, 'rgb(255,255,0)'],
-                            [1.00, 'rgb(255,0,0)']])
-        else:
-            fig.update_traces(colorscale=colorscale)
+                            [1.00, 'rgb(255,0,0)']]
+        fig.update_traces(colorscale=usedcolorscale, selector=dict(type='contour'))
+        fig.update_traces(colorscale=usedcolorscale, selector=dict(type='surface'))
 
     if crange != '':
         cmin = float(crange[0])
         cmax = float(crange[1])
-        fig.update_traces(zmin=cmin, zmax=cmax)
+        for val in typelist:
+            if val in ['contour']:
+                fig.update_traces(zmin=cmin, zmax=cmax, selector={'type': val})
+            if val in ['surface', 'mesh3d']:
+                fig.update_traces(cmin=cmin, cmax=cmax, selector={'type': val})
 
     if cutInside > 0.:
         xx = fig.data[0]['x']
@@ -128,42 +160,31 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
         fig.update_traces(colorbar=dict(title=cText, tickformat=".3g"))
 
     if llText != '' or llText2 != '' or coText != '':
-        if fig['data'][0]['type'] == 'surface':
-            # A 3D plot needs different positions for text labels
-            xs = 6
-            ys1 = -23
-            ys2 = -8
-        else:
-            xs = -70
-            ys1 = -44
-            ys2 = -28
-        # BUG: fig sometimes needs this twice to get set properly
-        fig.update_layout(
-            annotations=[
-                dict(text=llText, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
-                     xshift=xs, yshift=ys1, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000")),
-                dict(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
-                     xshift=xs, yshift=ys2, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000")),
-                dict(text=coText, x=1.0, y=0.0, ax=0, ay=0, xanchor="right",
-                     xshift=-6, yshift=ys1, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000")),
-            ],
-        )
-        fig.update_layout(
-            annotations=[
-                dict(text=llText, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
-                     xshift=xs, yshift=ys1, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000")),
-                dict(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
-                     xshift=xs, yshift=ys2, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000")),
-                dict(text=coText, x=1.0, y=0.0, ax=0, ay=0, xanchor="right",
-                     xshift=-6, yshift=ys1, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000")),
-            ],
-        )
+        if resetAnnotations:
+            fig.layout.annotations = []
+
+        # Default text offsets unless specific plot types
+        xs1, xs2 = -70,  -6
+        ys1, ys2 = -44, -28
+        if 'surface' in typelist or 'mesh3d' in typelist:
+            xs1, xs2 =   6, -6
+            ys1, ys2 = -23, -8
+        if fig.data[0].name:
+            if '2Dpolar' in fig['data'][0]['name']:
+                xs1, xs2 = -15,  40
+                ys1, ys2 = -36, -20
+        if llText != '':
+            fig.add_annotation(text=llText, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                     xshift=xs1, yshift=ys1, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000"))
+        if llText2 != '':
+            fig.add_annotation(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
+                     xshift=xs1, yshift=ys2, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000"))
+        if coText != '':
+            fig.add_annotation(text=coText, x=1.0, y=0.0, ax=0, ay=0, xanchor="right",
+                     xshift=xs2, yshift=ys1, xref="paper", yref="paper",
+                     font=dict(size=12, family="sans serif", color="#000000"))
 
     if xtic != '':
         fig.update_layout(xaxis = dict(tick0 = 0., dtick = xtic))
@@ -267,8 +288,10 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
 ### ====================================================================================== ###
 def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
                title='Plot Title', colorscale='Viridis', crange='',
-               opacity=0.70, axis=True, debug=0, showshore=True,
-               useCo='',useCot=''):
+               opacity=0.70, axis=True, debug=0,
+               useCo='', useCot='', plotType='surface',
+               showPole=True, showEarth=True,
+               showshore=True, shorewidth=2, shorecolor='white'):
     """
     Takes a gridified 2D lon/lat figure and creates new plots
     in 3D and for chosen coordinate systems.
@@ -281,6 +304,9 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     import kamodo_ccmc.flythrough.model_wrapper as MW
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     from kamodo_ccmc.tools.shoreline import shoreline
+    import plotly.graph_objs as go
+    from scipy.interpolate import griddata
+    from plotly.subplots import make_subplots
 
     if plotCoord == 'GDZ':
         plotCoord = 'GEO';
@@ -306,7 +332,12 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
         aaa = np.array([val[-1,:]])
         val = np.append(val, aaa, axis=0)
     val2 = np.reshape(val, (len(lat), len(lon)))
+    val1 = np.reshape(val2, -1)
     varn = figIn.data[0]['colorbar']['title']['text']
+    varn2 = varn
+    pos = varn.find('_ijk')
+    if pos != -1:
+        varn2 = varn[0:pos]+varn[pos+4:]
     cmin = np.min(val)
     cmax = np.max(val)
     if crange != '':
@@ -351,44 +382,265 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     y[mask2] = np.nan
     z[mask2] = np.nan
 
+    # \\\ Start of 2Dpolar
+    #   -this plot will return and other plot types will continue
+    if plotType == '2Dpolar':
+        # verified rotations for GEO, GSM, GSE, SM, GEI
+        degRotate = 90.
+        if plotCoord == 'GEO':
+            tmpHr = pytz.utc.localize(dt.datetime.utcfromtimestamp(plotts)).hour
+            degRotate = (360.*tmpHr/24.) - 90.
+
+        # Constants for lat/lon lines on plot
+        c80=rscale*np.sin(((90.-80.)/90.)*np.pi/2.)
+        c70=rscale*np.sin(((90.-70.)/90.)*np.pi/2.)
+        c60=rscale*np.sin(((90.-60.)/90.)*np.pi/2.)
+        c50=rscale*np.sin(((90.-50.)/90.)*np.pi/2.)
+        c50d=c50/np.sqrt(2.)
+
+        # Original coordinates lon,lat
+        full_lon = np.reshape(lon_mg, -1)
+        full_lat = np.reshape(lat_mg, -1)
+
+        # Rotated points
+        xxR, yyR = rotatePoints(xx, yy, degRotate)
+
+        # Polar plot base grid
+        x3 = np.linspace(-.65, .65, 131)
+        y3 = np.linspace(-.65, .65, 131)
+        xx3, yy3 = np.meshgrid(x3, y3)
+
+        # North
+        mask = zz > 0.
+        xxN = xxR[mask]
+        yyN = yyR[mask]
+        vvN = val1[mask]
+        lonN = full_lon[mask]
+        latN = full_lat[mask]
+        z3N = griddata((xxN, yyN), vvN, (xx3, yy3), method='linear')
+        lon3N = griddata((xxN, yyN), lonN, (xx3, yy3), method='linear')
+        lat3N = griddata((xxN, yyN), latN, (xx3, yy3), method='linear')
+        figN = go.Figure(go.Contour(x=x3, y=y3, z=z3N, showscale=False, name='2DpolarN'))
+        if co == plotCoord:
+            figN.update_traces(zmin=cmin, zmax=cmax,
+                colorbar=dict(title=varn2, tickformat=".3g"),
+                customdata=np.dstack((z3N, lon3N, lat3N)),
+                hovertemplate="<b>" + model + " <> NORTH</b><br>" +
+                    "Model Lon: %{customdata[1]:.2f} " + co + "<br>" +
+                    "Model Lat: %{customdata[2]:.2f} " + co + "<br>" +
+                    "Alt: " + "{:.2f}".format(altkm) + " km<br>" +
+                    varn2 + ": %{customdata[0]:.4g} <br>" + 
+                    "<extra></extra>"
+                              )
+        else:
+            lonNplot = lon4[mask]
+            latNplot = lat4[mask]
+            plotlon3N = griddata((xxN, yyN), lonNplot, (xx3, yy3), method='linear')
+            plotlat3N = griddata((xxN, yyN), latNplot, (xx3, yy3), method='linear')
+            figN.update_traces(zmin=cmin, zmax=cmax,
+                colorbar=dict(title=varn2, tickformat=".3g"),
+                customdata=np.dstack((z3N, lon3N, lat3N, plotlon3N, plotlat3N)),
+                hovertemplate="<b>" + model + " <> NORTH</b><br>" +
+                    "Model Lon: %{customdata[1]:.2f} " + co + "<br>" +
+                    "Model Lat: %{customdata[2]:.2f} " + co + "<br>" +
+                    "Alt: " + "{:.2f}".format(altkm) + " km<br>" +
+                    "Plot Lon: %{customdata[3]:.2f} " + plotCoord + "<br>" +
+                    "Plot Lat: %{customdata[4]:.2f} " + plotCoord + "<br>" +
+                    varn2 + ": %{customdata[0]:.4g} <br>" + 
+                    "<extra></extra>"
+                              )
+
+        # South
+        mask = zz < 0.
+        xxS = xxR[mask]
+        yyS = yyR[mask]
+        vvS = val1[mask]
+        lonS = full_lon[mask]
+        latS = full_lat[mask]
+        z3S = griddata((xxS, yyS), vvS, (xx3, yy3), method='linear')
+        lon3S = griddata((xxS, yyS), lonS, (xx3, yy3), method='linear')
+        lat3S = griddata((xxS, yyS), latS, (xx3, yy3), method='linear')
+        figS = go.Figure(go.Contour(x=x3, y=y3, z=z3S, showscale=True, name='2DpolarS'))
+        if co == plotCoord:
+            figS.update_traces(zmin=cmin, zmax=cmax,
+                colorbar=dict(title=varn2, tickformat=".3g"),
+                customdata=np.dstack((z3S, lon3S, lat3S)),
+                hovertemplate="<b>" + model + " <> SOUTH</b><br>" +
+                    "Model Lon: %{customdata[1]:.2f} " + co + "<br>" +
+                    "Model Lat: %{customdata[2]:.2f} " + co + "<br>" +
+                    "Alt: " + "{:.2f}".format(altkm) + " km<br>" +
+                    varn2 + ": %{customdata[0]:.4g} <br>" + 
+                    "<extra></extra>"
+                              )
+        else:
+            lonSplot = lon4[mask]
+            latSplot = lat4[mask]
+            plotlon3S = griddata((xxS, yyS), lonSplot, (xx3, yy3), method='linear')
+            plotlat3S = griddata((xxS, yyS), latSplot, (xx3, yy3), method='linear')
+            figS.update_traces(zmin=cmin, zmax=cmax,
+                colorbar=dict(title=varn2, tickformat=".3g"),
+                customdata=np.dstack((z3S, lon3S, lat3S, plotlon3N, plotlat3N)),
+                hovertemplate="<b>" + model + " <> SOUTH</b><br>" +
+                    "Model Lon: %{customdata[1]:.2f} " + co + "<br>" +
+                    "Model Lat: %{customdata[2]:.2f} " + co + "<br>" +
+                    "Alt: " + "{:.2f}".format(altkm) + " km<br>" +
+                    "Plot Lon: %{customdata[3]:.2f} " + plotCoord + "<br>" +
+                    "Plot Lat: %{customdata[4]:.2f} " + plotCoord + "<br>" +
+                    varn2 + ": %{customdata[0]:.4g} <br>" + 
+                    "<extra></extra>"
+                              )
+
+        # Shoreline
+        if showshore:
+            # Get points, rotate
+            posN = shoreline(rscale=rscale, coord=plotCoord, utcts=plotts)
+            posN[:,0], posN[:,1] = rotatePoints(posN[:,0], posN[:,1], degRotate)
+            # Mask to trim to plot size
+            mask = (posN[:,0] > max(x3)) | (posN[:,0] < min(x3)) | (posN[:,1] > max(y3)) | (posN[:,1] < min(y3))
+            posN[mask] = np.nan
+            # Duplicate for N and S copies
+            posS = posN.copy()
+            # Mask to blank out unused hemisphere (the ~ reverses logical)
+            mask = (posN[:,2] < 0.)
+            posN[mask] = np.nan
+            posS[~mask] = np.nan
+            figN.add_scattergl(mode='lines', x=posN[:,0], y=posN[:,1], 
+                              hoverinfo='skip', showlegend=False, name='N Shoreline',
+                              line=dict(width=1, color='#EEEEEE'))
+            figS.add_scattergl(mode='lines', x=posS[:,0], y=posS[:,1], 
+                              hoverinfo='skip', showlegend=False, name='S Shoreline',
+                              line=dict(width=1, color='#EEEEEE'))
+
+        fig = make_subplots(rows=1, cols=2)
+        for i in range(len(figN.data)):
+            fig.add_trace(figN.data[i], row=1, col=1)
+        for i in range(len(figS.data)):
+            fig.add_trace(figS.data[i], row=1, col=2)
+
+        fig.update_layout(
+            xaxis  = dict(scaleanchor="y", scaleratio=1, range=[-.6, .6], visible=False,
+                domain = [0.0, 0.47]),
+            xaxis2 = dict(scaleanchor="y", scaleratio=1, range=[-.6, .6], visible=False,
+                domain = [0.53, 1.0], autorange="reversed"),
+            yaxis  = dict(scaleanchor="x", scaleratio=1, range=[-.6, .6], visible=False),
+            yaxis2 = dict(scaleanchor="x", scaleratio=1, range=[-.6, .6], visible=False),
+            title_text="2D Polar Plots, North and South",
+            width=800, height=400,
+            margin=dict(t=50, b=60, l=25, r=120),
+        )
+        fig.add_annotation(xref='paper', yref='paper', x=.485, y=.50, textangle=90,
+                           yanchor='middle', showarrow=False, text='Dawn')
+        fig.add_annotation(xref='paper', yref='paper', x=.515, y=.50, textangle=-90,
+                           yanchor='middle', showarrow=False, text='Dawn')
+        fig.add_annotation(xref='paper', yref='paper', x=1.03, y=.50, textangle=90,
+                           yanchor='middle', showarrow=False, text='Dusk')
+        fig.add_annotation(xref='paper', yref='paper', x=-.03, y=.50, textangle=-90,
+                           yanchor='middle', showarrow=False, text='Dusk')
+        fig.add_annotation(xref='paper', yref='paper', x=.235, y=1.06,
+                           xanchor='center', showarrow=False, text='Noon')
+        fig.add_annotation(xref='paper', yref='paper', x=.765, y=1.06,
+                           xanchor='center', showarrow=False, text='Noon')
+        fig.add_annotation(xref='paper', yref='paper', x=.235, y=-.06,
+                           xanchor='center', showarrow=False, text='Midnight')
+        fig.add_annotation(xref='paper', yref='paper', x=.765, y=-.06,
+                           xanchor='center', showarrow=False, text='Midnight')
+        fig.add_annotation(xref='paper', yref='paper', x=.4, y=1.06,
+                           showarrow=False, text='<b>NORTH</b>')
+        fig.add_annotation(xref='paper', yref='paper', x=.6, y=1.06,
+                           showarrow=False, text='<b>SOUTH</b>')
+
+        for i in range(2):
+            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80 )
+            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70 )
+            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60 )
+            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50 )
+            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=.0 )
+            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50 )
+            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d )
+            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=c50d, y0=-c50d, x1=-c50d, y1=c50d )
+
+        # Set colorscale
+        fig = figMods(fig, colorscale=colorscale, ncont=200, resetAnnotations=False) 
+
+        return fig
+    # /// End of 2Dpolar
+
     # Generate initial figure to build upon
+    if plotType == 'surface':
+        def plot3d_var(X=x, Y=y, Z=z):
+            return val2
 
-    def plot3d_var(X=x, Y=y, Z=z):
-        return val2
+        kobject = Kamodo(plot_var=plot3d_var)
+        fig = kobject.plot(plot_var=dict())
 
-    kobject = Kamodo(plot_var=plot3d_var)
-    fig = kobject.plot(plot_var=dict())
+        fig.update_traces(
+            customdata=np.dstack((
+                np.transpose(val2, axes=[1, 0]),
+                np.transpose(lon_mg, axes=[1, 0]),
+                np.transpose(lat_mg, axes=[1, 0]))),
+            hovertemplate="<b>" + model + "</b><br>" +
+            "X: %{x:.2f} " + units[0] + " " + plotCoord + "<br>"
+            "Y: %{y:.2f} " + units[1] + " " + plotCoord + "<br>"
+            "Z: %{z:.2f} " + units[2] + " " + plotCoord + "<br>"
+            "Lon: %{customdata[1]:.2f} " + co + "<br>" +
+            "Lat: %{customdata[2]:.2f} " + co + "<br>" +
+            "Alt: " + "{:.2f}".format(altkm) + " km<br>" +
+            varn2 + ": %{customdata[0]:.4g} <br>" +
+            "<extra></extra>"
+        )
+
+    elif plotType == 'mesh3d':
+        # Build connectivity grid cell by cell looping over positions
+        iv = []
+        jv = [] 
+        kv = [] 
+        for iy in range(len(lat)-1):
+            for ix in range(len(lon)-1):
+                # For each cell, create two triangular connectivity entries
+                iv.append(ix+iy*len(lon))
+                jv.append(ix+1+iy*len(lon))
+                kv.append(ix+(iy+1)*len(lon))
+
+                iv.append(ix+(iy+1)*len(lon))
+                jv.append(ix+1+(iy+1)*len(lon))
+                kv.append(ix+1+iy*len(lon))
+
+        # Build resulting plot
+        fig = go.Figure(data=[
+            go.Mesh3d(
+                x=xx, y=yy, z=zz, i=iv, j=jv, k=kv,
+                colorbar_title=varn2, 
+                intensity=val1, intensitymode='vertex',
+                name='cont', showscale=True
+            )
+        ])
+        fig.update_traces(
+            flatshading=True,
+            hovertemplate="X: %{x:.4g}<br>" + "Y: %{y:.4g}<br>" +
+            "Z: %{z:.4g}<br>" + varn2 + ": %{intensity:.4g}<br>" +
+            "<extra></extra>"
+        )
+
+    else:
+        print('ERROR, unknown plotType: ',plotType)
+        return
 
     # Set colorscale
-    if colorscale == "BlueRed":
-        fig.update_traces(colorscale="RdBu_r")
-    elif colorscale == "Rainbow":
-        fig.update_traces(
-            colorscale=[[0.00, 'rgb(0,0,255)'],
-                        [0.25, 'rgb(0,255,255)'],
-                        [0.50, 'rgb(0,255,0)'],
-                        [0.75, 'rgb(255,255,0)'],
-                        [1.00, 'rgb(255,0,0)']])
-    else:
-        fig.update_traces(colorscale=colorscale)
+    fig = figMods(fig, colorscale=colorscale, ncont=200)
 
     # Set plot options
     fig.update_traces(
-        cmin=cmin, cmax=cmax, colorbar=dict(title=varn, tickformat=".3g"),
+        cmin=cmin, cmax=cmax,
+        colorbar=dict(title=varn2, tickformat=".3g"),
         opacity=opacity,
-        customdata=np.dstack((
-            np.transpose(val2, axes=[1, 0]),
-            np.transpose(lon_mg, axes=[1, 0]),
-            np.transpose(lat_mg, axes=[1, 0]))),
-        hovertemplate="<b>" + model + "</b><br>" +
-        "X: %{x:.2f} " + units[0] + " " + plotCoord + "<br>"
-        "Y: %{y:.2f} " + units[1] + " " + plotCoord + "<br>"
-        "Z: %{z:.2f} " + units[2] + " " + plotCoord + "<br>"
-        "Lon: %{customdata[1]:.2f} " + co + "<br>" +
-        "Lat: %{customdata[2]:.2f} " + co + "<br>" +
-        "Alt: " + "{:.2f}".format(altkm) + " km<br>" +
-        varn + ": %{customdata[0]:.4g} <br>" +
-        "<extra></extra>"
     )
     if not axis:
         fig.update_scenes(xaxis=dict(visible=False),
@@ -414,58 +666,61 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     )
 
     # Add poles to plot
-    xt = [0., 0.]
-    yt = [0., 0.]
-    zt = [-1.2, 1.2]
-    fig.add_scatter3d(mode='lines', x=xt, y=yt, z=zt,
-                      line=dict(width=4, color='black'),
-                      showlegend=False,
-                      hovertemplate=plotCoord+' Pole<extra></extra>')
-    if plotCoord != 'GEO':
-        # Add pole for GEO as well
-        xt = np.array([0., 0.])
-        yt = np.array([0., 0.])
-        zt = np.array([-1., 1.])
-        tt = np.full(xt.shape, plotts)
-        xt, yt, zt, un = ConvertCoord(tt, xt, yt, zt,
-                                      'GEO', 'car', plotCoord, 'car')
-        xt = 1.2*xt
-        yt = 1.2*yt
-        zt = 1.2*zt
+    if showPole:
+        xt = [0., 0.]
+        yt = [0., 0.]
+        zt = [-1.2, 1.2]
         fig.add_scatter3d(mode='lines', x=xt, y=yt, z=zt,
-                          line=dict(width=4, color='rgb(79,79,79)'),
-                          showlegend=False,
-                          hovertemplate='GEO Pole<extra></extra>')
+                          line=dict(width=4, color='black'),
+                          showlegend=False, name=plotCoord+' Pole',
+                          hovertemplate=plotCoord+' Pole<extra></extra>')
+        if plotCoord != 'GEO':
+            # Add pole for GEO as well
+            xt = np.array([0., 0.])
+            yt = np.array([0., 0.])
+            zt = np.array([-1., 1.])
+            tt = np.full(xt.shape, plotts)
+            xt, yt, zt, un = ConvertCoord(tt, xt, yt, zt,
+                                          'GEO', 'car', plotCoord, 'car')
+            xt = 1.2*xt
+            yt = 1.2*yt
+            zt = 1.2*zt
+            fig.add_scatter3d(mode='lines', x=xt, y=yt, z=zt,
+                              line=dict(width=4, color='rgb(79,79,79)'),
+                              showlegend=False, name='GEO Pole',
+                              hovertemplate='GEO Pole<extra></extra>')
 
-    # Zero latitude
-    xt = rscale*(np.cos(ilon*np.pi/180.))
-    yt = rscale*(np.sin(ilon*np.pi/180.))
-    zt = np.zeros(xt.shape)
-    fig.add_scatter3d(mode='lines', x=xt, y=yt, z=zt,
-                      line=dict(width=2, color='black'),
-                      showlegend=False,
-                      hovertemplate=plotCoord+' Latitude=0<extra></extra>')
+        # Zero latitude (in plotCoord)
+        xt = rscale*(np.cos(ilon*np.pi/180.))
+        yt = rscale*(np.sin(ilon*np.pi/180.))
+        zt = np.zeros(xt.shape)
+        fig.add_scatter3d(mode='lines', x=xt, y=yt, z=zt,
+                          line=dict(width=2, color='black'),
+                          showlegend=False, name=plotCoord+' Lat=0',
+                          hovertemplate=plotCoord+' Latitude=0<extra></extra>')
 
     # Create blank earth surface
-    elon = np.linspace(-180, 180, 181)
-    elat = np.linspace(-90, 90, 91)
-    elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
-    ex = -(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
-    ey = -(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
-    ez = (np.sin(elat_mg*np.pi/180.))
-    colorse = np.zeros(shape=ex.shape)
-    # colorse[ex<0.]=1  # Option to make day side a lighter color
-    colorscalee = ['rgb(99,99,99)', 'rgb(0,0,0)']
-    fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
-                    cmin=0, cmax=1, colorscale=colorscalee,
-                    showlegend=False, showscale=False, hoverinfo='skip')
+    if showEarth:
+        elon = np.linspace(-180, 180, 181)
+        elat = np.linspace(-90, 90, 91)
+        elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+        ex = -(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+        ey = -(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+        ez = (np.sin(elat_mg*np.pi/180.))
+        colorse = np.zeros(shape=ex.shape)
+        # colorse[ex<0.]=1  # Option to make day side a lighter color
+        colorscalee = ['rgb(99,99,99)', 'rgb(0,0,0)']
+        fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                        cmin=0, cmax=1, colorscale=colorscalee,
+                        showlegend=False, showscale=False, hoverinfo='skip',
+                        name='Earth Sphere')
 
     # Shoreline (land/water boundaries)
     if showshore:
         pos = shoreline(rscale=1.001, coord=plotCoord, utcts=plotts)
         fig.add_scatter3d(mode='lines', x=pos[:, 0], y=pos[:, 1], z=pos[:, 2],
-                          line=dict(width=2, color='white'),
-                          showlegend=False, hoverinfo='skip')
+                          line=dict(width=shorewidth, color=shorecolor),
+                          showlegend=False, hoverinfo='skip', name='Shoreline')
 
     return fig
 
