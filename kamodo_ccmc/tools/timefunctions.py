@@ -8,6 +8,7 @@ Kamodo time conversion functions in this file:
  timeTStoDT
  timeTStoSTR
  timeKOtoTS
+ timeTStoKOoffset
 '''
 
 def timeDTtoSTR(inDT):
@@ -86,10 +87,25 @@ def timeKOtoTS(ko, sOffset=0.):
     '''
     UTC time conversion from Kamodo object start (midnight) to timestamp
     
-    IN:      A Kamodo object with ko.filedate defined (datetime)
-    sOffset: Optional shift of timestamp by number of seconds given
-    OUT:     1117632780.1
+    IN:
+      ko       A Kamodo object with ko.filedate defined (datetime)
+      sOffset  Optional shift of timestamp by number of seconds given
+    OUT:
+      Timestamp, ie. 1117632780.1
     '''
     TS = ko.filedate.timestamp() + sOffset
     return TS
+
+def timeTStoKOoffset(ko, inTS):
+    '''
+    UTC time conversion from timestamp to hours offset from start of Kamodo object
+
+    IN:
+      ko      A Kamodo object with ko.filedate defined (datetime)
+      inTS    Timestamp in seconds to convert from
+    OUT:
+      returns floating point hours from start of Kamodo object
+    '''
+    Hrs = (inTS - ko.filedate.timestamp()) / 3600.
+    return Hrs
 
