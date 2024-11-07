@@ -758,6 +758,57 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
 
 
 ### ====================================================================================== ###
+def LLChangeCoord(figIn, model, altkm, plotts, inCoord, plotCoord):
+    """
+    Takes a gridified 2D lon/lat figure and changes the coordinate system.
+    """
+
+    import numpy as np
+    from kamodo_ccmc.flythrough.utils import ConvertCoord
+    from kamodo_ccmc.tools.shoreline import shoreline
+    import plotly.graph_objs as go
+    from scipy.interpolate import griddata
+
+    if inCoord == plotCoord:
+        print('WARNING, no change in coordinates, returning existing plot unchanged.')
+        return figIn
+
+    if fig.data[0].type != 'contour':
+        print('ERROR, plotly plot type is not contour. Returning ...')
+        return
+
+    # Pull out lon, lat, values from passed in figure
+    lon = figIn.data[0]['x']
+    lat = figIn.data[0]['y']
+    val = figIn.data[0]['z']
+    val1d = np.reshape(val, -1)
+
+    # Prepare variables for use later
+    rscale = (altkm + 6.3781E3)/6.3781E3
+    lon2d, lat2d = np.meshgrid(np.array(lon), np.array(lat))
+    lon1d = np.reshape(lon2d, -1)
+    lat1d = np.reshape(lat2d, -1)
+    alt1d = np.full(lon1d.shape, rscale)
+    t = np.full(lon1d.shape, plotts)
+
+    # Convert from plot coordinates to model coordinates
+    newlon1d, newlat1d, newalt1d, units = ConvertCoord(t, lon1d, lat1d, alt1d,
+        plotCoord, 'sph', inCoord, 'sph')
+    newlon2d = np.reshape(newlon1d, val.shape)
+    newlat2d = np.reshape(newlat1d, val.shape)
+
+    # Interpolate on converted coordinates
+    newval = griddata((lon1d, lat1d), val1d, (newlon2d, newlat2d), method='linear')
+    newval2d = np.reshape(newval, val.shape)
+
+    # Make new figure, updating values
+    figOut = go.Figure(data=figIn.data[0],layout=figIn.layout)
+    figOut.data[0]['z'] = newval2d
+
+    return figOut
+
+
+### ====================================================================================== ###
 def GDZSlice4D(interp, varname, model, date, plotType, plotCoord='GEO',
                fixed_time='', fixed_lon='', fixed_lat='', fixed_alt='',
                title='Plot Title', shoreline=False, colorscale='Viridis',
