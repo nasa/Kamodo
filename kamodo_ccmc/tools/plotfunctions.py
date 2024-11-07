@@ -403,6 +403,8 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     else:
         xx, yy, zz, units = ConvertCoord(full_t, full_x, full_y, full_z,
                                          co, cot, plotCoord, 'car')
+    if co != plotCoord:
+        lon4, lat4, alt4, units = ConvertCoord(full_t, full_x, full_y, full_z, co, cot, plotCoord, 'sph')
     x = np.reshape(xx, (len(lat), len(lon)))
     y = np.reshape(yy, (len(lat), len(lon)))
     z = np.reshape(zz, (len(lat), len(lon)))
