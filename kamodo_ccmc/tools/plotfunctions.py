@@ -28,7 +28,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
             cutInside=-1., returnGrid=False, enhanceHover=False,
             enhanceHover1D=False, newTitle='', cText='',
             llText='', llText2='', coText='', resetAnnotations=True,
-            crange='', xtic='', ytic=''):
+            zcrange=False, crange='', xtic='', ytic=''):
     '''
     Function to modify a plotly figure object in multiple ways.
 
@@ -108,6 +108,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
                             [1.00, 'rgb(255,0,0)']]
         fig.update_traces(colorscale=usedcolorscale, selector=dict(type='contour'))
         fig.update_traces(colorscale=usedcolorscale, selector=dict(type='surface'))
+        fig.update_traces(colorscale=usedcolorscale, selector=dict(type='mesh3d'))
 
     if crange != '':
         cmin = float(crange[0])
@@ -117,6 +118,31 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
                 fig.update_traces(zmin=cmin, zmax=cmax, selector={'type': val})
             if val in ['surface', 'mesh3d']:
                 fig.update_traces(cmin=cmin, cmax=cmax, selector={'type': val})
+
+    if zcrange:  # ONLY for data block 0
+        val = fig.data[0].type
+        if val in ['contour']:
+            if fig.data[0].zmin and fig.data[0].zmax:
+                zmin = fig.data[0].zmin
+                zmax = fig.data[0].zmax
+            else:
+                zmin = np.min(fig.data[0].z)
+                zmax = np.max(fig.data[0].z)
+            zmm = max(abs(zmin),abs(zmax))
+            fig.update_traces(zmin=-zmm, zmax=zmm, selector={'type': val})
+        if val in ['surface', 'mesh3d']:
+            if fig.data[0].cmin and fig.data[0].cmax:
+                cmin = fig.data[0].cmin
+                cmax = fig.data[0].cmax
+            else:
+                if val in ['surface']:
+                    cmin = np.min(fig.data[0].surfacecolor)
+                    cmax = np.max(fig.data[0].surfacecolor)
+                else:
+                    cmin = np.min(fig.data[0].intensity)
+                    cmax = np.max(fig.data[0].intensity)
+            cmm = max(abs(cmin),abs(cmax))
+            fig.update_traces(cmin=-cmm, cmax=cmm, selector={'type': val})
 
     if cutInside > 0.:
         xx = fig.data[0]['x']
@@ -288,7 +314,7 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
 ### ====================================================================================== ###
 def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
                title='Plot Title', colorscale='Viridis', crange='',
-               opacity=0.70, axis=True, debug=0,
+               opacity=0.70, axis=True, debug=0, zcrange=False,
                useCo='', useCot='', plotType='surface',
                showPole=True, showEarth=True,
                showshore=True, shorewidth=2, shorecolor='white'):
@@ -343,6 +369,10 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     if crange != '':
         cmin = float(crange[0])
         cmax = float(crange[1])
+    if zcrange:  # Set zero value to center of contour range
+        cmm = max(abs(cmin),abs(cmax))
+        cmin = -cmm
+        cmax =  cmm
 
     # Prepare variables for use later
     rscale = (altkm + 6.3781E3)/6.3781E3
