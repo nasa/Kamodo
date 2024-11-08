@@ -773,7 +773,7 @@ def LLChangeCoord(figIn, model, altkm, plotts, inCoord, plotCoord):
         print('WARNING, no change in coordinates, returning existing plot unchanged.')
         return figIn
 
-    if fig.data[0].type != 'contour':
+    if figIn.data[0].type != 'contour':
         print('ERROR, plotly plot type is not contour. Returning ...')
         return
 
