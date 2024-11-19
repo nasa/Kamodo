@@ -2689,6 +2689,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     from datetime import datetime
     from kamodo_ccmc.tools.plotfunctions import XYC
     from kamodo_ccmc.flythrough.utils import ConvertCoord
+    import kamodo_ccmc.flythrough.model_wrapper as MW
 
     tic = time.perf_counter()
 
