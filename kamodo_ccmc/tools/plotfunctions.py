@@ -2651,4 +2651,262 @@ def gmSurfaceMovie(where='.', where2='', wireframe=False):
 
     return fig
 
+### ====================================================================================== ###
+def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0., 
+                runname='UNKNOWN', resolution=0.25, showBS=True, showMP=True,
+                xrange=[-95., 25.], yrange=[-30., 30.], crange='',
+                xtic=10., ytic=10., log10=False, logCustom=True, 
+                colorscale='Viridis'):
+    '''
+    Function to create a 2D slice for a Y or Z constant value. It will interpolate
+      from a Kamodo object onto that grid in given coordinate system.
+    Returns a full 2D plotly figure.
+    Many options to customize the figure are available.
+    
+    ko:           Kamodo object
+    timeHrs:      floating time in hours from start of first day of data
+    var:          string variable name
+    pco:          plot coordinate system
+    slicedir:     direction of slice, Y or Z
+    sliceval:     value of slice position
+    runname:      string that describes run name
+    resolution:   grid dx,dy in R_E of plot positions
+    showMP:       logical to show magnetopause boundary (requires 'status' variable)
+    showBS:       logical to show bow shock (requires 'v_x' variable)
+    crange:       2 value array for min/max contour range
+    xrange:       2 value array for min/max extent of X values in slice
+    yrange:       2 value array for min/max extent of Y values in slice
+      -note: xy range values may be ajusted to keep overall plot aspect ratio
+    xtic:         tic spacing on x axis
+    ytic:         tic spacing on y axis
+    log10:        logical to use log10 of variable values
+    logCustom:    logical to adjust label on colorscale to more human interpretable values
+    colorscale:   string value of colorscale range from official plotly list
+    '''
+
+    import time
+    import numpy as np
+    from datetime import datetime
+    from kamodo_ccmc.tools.plotfunctions import XYC
+    from kamodo_ccmc.flythrough.utils import ConvertCoord
+
+    tic = time.perf_counter()
+
+    # Set some constants
+    pcot = 'car'
+    slicedir = slicedir.upper()
+    if slicedir != 'Y' and slicedir != 'Z':
+        print('ERROR: Invalid slice passed.')
+        return
+
+    # Pad range to make plot nice for 800x400 size
+    xmin, xmax = xrange[0], xrange[1]
+    ymin, ymax = yrange[0], yrange[1]
+    ratio = (xmax - xmin)/(ymax - ymin)
+    if ratio > 2.05:
+        # extend Y
+        pad = 0.5*(((xmax - xmin)/2.05)-(ymax - ymin))
+        ymin += -pad
+        ymax += pad
+    elif ratio < 2.05:
+        # extend X
+        pad = 0.5*(-(2.05*(ymax-ymin)-xmax)-xmin)
+        xmin += -pad
+        xmax += pad
+    xmin = int(xmin-6.)
+    xmax = int(xmax+6.)
+    ymin = int(ymin-3.)
+    ymax = int(ymax+3.)
+    xpts = 1+int((xmax-xmin)/resolution)
+    ypts = 1+int((ymax-ymin)/resolution)
+
+    # Get current coordinate system and type from Kamodo object
+    tmp = list(MW.Model_Variables(model=ko.modelname, return_dict=True).values())[0][2:4]
+    co, cot = tmp[0], tmp[1]
+    print('Coords:',co,cot)
+
+    # Setup interpolator and some labels
+    vMag = False  
+    if var not in ko:
+        if var+'_x' in ko:
+            vMag = True
+            interpX = getattr(ko, var+'_x')
+            interpY = getattr(ko, var+'_y')
+            interpZ = getattr(ko, var+'_z')
+            vunits = ko.variables[var+'_x']['units']
+            var2 = var+'_x_ijk'
+            cr = MW.Coord_Range(ko, [var2], return_dict=True, print_output=False)
+            xunits = cr[var2]['X'][2]
+            coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var+'_x'][2]
+        else:
+            print('Error, variable not in Kamodo object')
+            return
+    else:
+        interp = getattr(ko, var)
+        vunits = ko.variables[var]['units']
+        var2 = var+'_ijk' 
+        cr = MW.Coord_Range(ko, [var2], return_dict=True, print_output=False)
+        xunits = cr[var2]['X'][2] 
+        coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var][2]
+    varlabel = var+" ["+vunits+"]"
+    if 'v_x' in ko:
+        interpBS = getattr(ko, 'v_x') 
+    else:
+        showBS = False
+    if 'status' in ko:
+        interpMP = getattr(ko, 'status') 
+    else:
+        showMP = False
+
+    # Make base grid
+    x = np.linspace(xmin, xmax, xpts)
+    y = np.linspace(ymin, ymax, ypts)
+    xx, yy = np.array(np.meshgrid(x, y, indexing='ij'))
+    c = xx
+    x1 = np.reshape(xx, -1)
+    xlabel = 'X ['+xunits+'] '+pco
+    if slicedir == 'Z':
+        y1 = np.reshape(yy, -1)
+        z1 = np.full((len(x1)), sliceval)
+        ylabel = 'Y ['+xunits+'] '+pco
+    else:
+        z1 = np.reshape(yy, -1)
+        y1 = np.full((len(x1)), sliceval)
+        ylabel = 'Z ['+xunits+'] '+pco
+    t1 = np.full((len(x1)), timeHrs)
+
+    # Take grid in preferred plot coordinates and transform into model coordinates
+    if co == 'GDZ':
+        print('Fix this edge case later')
+        return
+    elif co == pco and cot == pcot:
+        # same
+        g2 = np.stack((t1, x1, y1, z1), axis=-1)  # nx4 grid
+    else:
+        # transform
+        x2, y2, z2, units = ConvertCoord(t1, x1, y1, z1, pco, pcot, co, cot)
+        g2 = np.stack((t1, x2, y2, z2), axis=-1)  # nx4 grid
+
+
+    # Interpolate
+    if vMag:
+        valueX = interpX(g2)
+        valueY = interpY(g2)
+        valueZ = interpZ(g2)
+        value = np.sqrt(valueX**2 + valueY**2 + valueZ**2)
+    else:
+        value = interp(g2)
+    if log10:
+        value[value <= 0.] = np.nan
+        value = np.log10(value)
+        if logCustom:
+            varlabel = "log scale<br>"+varlabel
+        else:
+            varlabel = "log10("+varlabel+")"
+
+    # Set values inside R=2.25 to None
+    r1 = np.sqrt(x1**2 + y1**2 + z1**2)
+    mask = r1 < 2.25
+    value[mask] = None
+    vmin = np.nanmin(value)
+    vmax = np.nanmax(value)
+    c = np.reshape(value, (len(x),len(y)))
+
+    # Bow shock
+    if showBS:
+        valueVX = interpBS(g2)
+        vx = np.reshape(valueVX, (len(x),len(y)))
+        bsx = np.full((len(y)), None)
+        bsy = np.full((len(y)), None)
+        for j in range(len(y)):
+            bsy[j] = y[j]
+            refVX = vx[-1,j]
+            for ii in range(len(x)):
+                i = len(x)-1-ii
+                if x[i] < 1.:
+                    break
+                if vx[i,j] > (0.85*refVX):
+                    bsx[j] = x[i]
+                    break
+
+    # Magnetopause
+    if showMP:
+        valueMP = interpMP(g2)
+        status = np.reshape(valueMP, (len(x),len(y)))
+        mpx = np.full((len(y)), None)
+        mpy = np.full((len(y)), None)
+        for j in range(len(y)):
+            mpy[j] = y[j]
+            for ii in range(len(x)):
+                i = len(x)-1-ii
+                if x[i] < 1.:
+                    break
+                if status[i,j] > 2.5:
+                    mpx[j] = x[i]
+                    break
+
+    # Plot values
+    pTS = ko.filedate.timestamp() + timeHrs*3600.
+    pDT = datetime.utcfromtimestamp(pTS)
+    pDateStr = pDT.strftime("%Y-%m-%d %H:%M:%S UT")
+    label1 = slicedir+' = '+str(sliceval)+' slice at  '+pDateStr
+    label2 = 'Model: '+ko.modelname
+    ptitle = 'CCMC Run: '+runname
+
+    fig = XYC(xlabel,x,ylabel,y,varlabel,c,title=ptitle,crange=crange)
+    fig.update_traces(colorscale=colorscale)
+    if log10 and logCustom:
+        fig.update_traces(colorbar=dict(
+            tickvals=[-5,-4,-3,-2,-1,0,1,2],
+            ticktext=['.00001','.0001','.001','.01','.1','1.','10.','100.'],
+        ))
+
+    if showBS:
+        fig.add_scatter(x=bsx, y=bsy, showlegend=False, hoverinfo='skip',
+                       line=dict(color="grey", width=2))
+    if showMP:
+        fig.add_scatter(x=mpx, y=mpy, showlegend=False, hoverinfo='skip',
+                       line=dict(color="grey", width=2))
+    degs = np.linspace(-180, 180, 181)
+    ex = np.cos(degs*np.pi/180.)
+    ey = np.sin(degs*np.pi/180.)
+    if abs(sliceval) < 2.5:
+        r = np.sqrt(2.5**2 - sliceval**2)
+        fig.add_scatter(x=r*ex, y=r*ey, fill='toself', showlegend=False, hoverinfo='skip',
+                       fillcolor="black", line=dict(color="black", width=1))
+    if sliceval == 0.0:
+        # Only show when slicing through 0
+        r = np.sqrt(1. - sliceval**2)
+        fig.add_scatter(x=r*ex, y=r*ey, showlegend=False, hoverinfo='skip',
+                       fillcolor="black", line=dict(color="white", width=1))
+        degs = np.linspace(-90, 90, 91)
+        ex = np.cos(degs*np.pi/180.)
+        ey = np.sin(degs*np.pi/180.)
+        fig.add_scatter(x=r*ex, y=r*ey, fill='toself', showlegend=False, hoverinfo='skip',
+                       fillcolor="white", line=dict(color="white", width=1))
+
+    fig.update_layout(
+        xaxis=dict(scaleanchor="y", scaleratio=1, tick0 = 0., dtick = xtic,
+                   range=[xrange[0], xrange[1]]),
+        yaxis=dict(scaleanchor="x", scaleratio=1, tick0 = 0., dtick = ytic,
+                   range=[yrange[0], yrange[1]]),
+        annotations=[
+            dict(text=label1, x=1.18, y=1.07, ax=0, ay=0, xanchor="right",
+                 xshift=0, yshift=0, xref="paper", yref="paper",
+                 font=dict(size=16, family="sans serif", color="#000000")),
+            dict(text=label2, x=-0.07, y=-0.1, ax=0, ay=0, xanchor="left",
+                 xshift=0, yshift=0, xref="paper", yref="paper",
+                 font=dict(size=16, family="sans serif", color="#000000")),
+        ],
+        width=800, height=400,
+    )
+    fig.update_layout(margin=dict(r=120))
+    fig.data[0]['colorbar']['xpad'] = 5
+    fig.data[0]['colorbar']['y'] = -.03
+    fig.data[0]['colorbar']['yanchor'] = 'bottom'
+
+    toc = time.perf_counter()
+    print(f"  Time: {toc - tic:0.4f} seconds")
+
+    return fig
 
