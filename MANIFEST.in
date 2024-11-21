@@ -1,4 +1,4 @@
 include LICENSE
 include README.md
 include pyproject.toml
-recursive-include kamodo_ccmc *.yaml *.py *.c *.h *.js *.css *.ico *.png *__init__.py
+recursive-include kamodo_ccmc *.yaml *.py *.c *.o *.so *.h *.js *.css *.ico *.png *__init__.py
