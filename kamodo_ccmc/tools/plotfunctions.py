@@ -1669,6 +1669,147 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     return fig
 
 ### ====================================================================================== ###
+def SatOrbitPlane(satid, refDT, coord='GSM', color='#d6d622'):
+    '''
+    A function to look at a satellite at a given time and it's current orbit.
+      The orbit is broken when it crosses midnight
+
+    Input arguements:
+      satid   ID for the satellite (using SSCWeb HAPI naming)
+      refDT   a datetime object representing the satellite current position
+      coord   the coordinate system of the satellite
+      color   the color for the satellite trajectory in the plot
+
+    Output:
+      Odict   a dictionary with orbit plane centroid/normal and other metadata
+      Oko     a Kamodo object for the trajectory
+      Ofig    a plotly figure of the orbit
+                -trace 0 is orbit path, trace 1 is satellite position, trace 2 is Earth
+    '''
+    import numpy as np
+    from kamodo_ccmc.readers.hapi import HAPI
+    from kamodo_ccmc.readers.hapi import hapi_get_dataset_title
+    from datetime import datetime, timedelta
+    import plotly.graph_objects as go
+
+    # NOTE, max +/- 48 hours on orbit for now
+    # NOTE, orbit cutoff is negative X and change of sign in Y (crossing midnight)
+
+    parameters = 'X_'+coord+',Y_'+coord+',Z_'+coord
+    server = 'https://hapi-server.org/servers/SSCWeb/hapi'
+
+    # Start looking back in time from reference point
+    start = (refDT + timedelta(hours=-48)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    stop  = refDT.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    Oko = HAPI(server, satid, parameters, start, stop, register_components=True)
+    vars = [*Oko.variables]
+    pts = len(Oko[vars[0]].data)
+    found1DT = Oko.dtarray[0]
+    found1TS = Oko.tsarray[0]
+    for i in range(pts-1):
+        j = (pts-1) - i
+        if Oko[vars[0]].data[j] < 0. and (Oko[vars[1]].data[j] * Oko[vars[1]].data[j-1]) <= 0.:
+            found1DT = Oko.dtarray[j]
+            found1TS = Oko.tsarray[j]
+            break
+
+    # Then forward in time from reference point
+    start  = refDT.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    stop  = (refDT + timedelta(hours=+48)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    Oko = HAPI(server, satid, parameters, start, stop, register_components=True)
+    pts = len(Oko[vars[0]].data)
+    found2DT = Oko.dtarray[-1]
+    found2TS = Oko.tsarray[-1]
+    for i in range(pts-1):
+        if Oko[vars[0]].data[i] < 0. and (Oko[vars[1]].data[i] * Oko[vars[1]].data[i+1]) <= 0.:
+            found2DT = Oko.dtarray[i]
+            found2TS = Oko.tsarray[i]
+            break
+
+    # Get actual range to check
+    start = (found1DT + timedelta(seconds=-1)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    stop  = (found2DT + timedelta(seconds=+1)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    Oko = HAPI(server, satid, parameters, start, stop, register_components=True)
+    aveX = np.mean(Oko[vars[0]].data)
+    aveY = np.mean(Oko[vars[1]].data)
+    aveZ = np.mean(Oko[vars[2]].data)
+    pts = len(Oko[vars[0]].data)
+    vecNormal = [0, 0, 0]
+    for i in range(pts-1):
+        vec1 = [Oko[vars[0]].data[i]-Oko[vars[0]].data[i+1],
+                Oko[vars[1]].data[i]-Oko[vars[1]].data[i+1],
+                Oko[vars[2]].data[i]-Oko[vars[2]].data[i+1]]
+        vec2 = [Oko[vars[0]].data[i]-aveX,
+                Oko[vars[1]].data[i]-aveY,
+                Oko[vars[2]].data[i]-aveZ]
+        vec3 = np.cross(vec1, vec2)
+        vec3 = vec3/np.linalg.norm(vec3)
+        vecNormal += vec3
+    vecNormal = vecNormal/np.linalg.norm(vecNormal)
+
+    # Other values
+    refTS = refDT.timestamp()
+    refSTR = refDT.strftime("%Y-%m-%d %H:%M:%S UT")
+    satname = hapi_get_dataset_title(server, satid)
+    tmp = satname.split("(") 
+    satname = tmp[0].strip() 
+
+    Odict = dict(satid=satid, satname=satname, satvars=vars, coord=coord,
+                 refDT=refDT, refTS=refTS, refSTR=refSTR,
+                 startDT=found1DT, startTS=found1TS,
+                 stopDT=found2DT, stopTS=found2TS,
+                 orbitPoint=[aveX, aveY, aveZ], orbitNormal=vecNormal)
+
+    timestrings = [datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S") for t in Oko.tsarray]
+    Ofig = go.Figure()
+    Ofig.add_trace(go.Scatter3d(x=Oko.variables[vars[0]]['data'], 
+                                y=Oko.variables[vars[1]]['data'], 
+                                z=Oko.variables[vars[2]]['data'], mode='lines',
+                                line=dict(color=color, width=3),
+                                name=satname+' orbit', showlegend=True))
+    Ofig.update_traces(customdata = timestrings,
+        hovertemplate=satname + " orbit<br>" + coord + " Coordinates:<br>" +
+        "X [R_E]: %{x:.5g}<br>" +
+        "Y [R_E]: %{y:.5g}<br>" +
+        "Z [R_E]: %{z:.5g}<br>" + "%{customdata}" +
+        "<extra></extra>",
+        selector=dict(name=satname+' orbit')
+    )
+
+    sx = Oko.variables[vars[0]]['interpolator'](refTS)
+    sy = Oko.variables[vars[1]]['interpolator'](refTS)
+    sz = Oko.variables[vars[2]]['interpolator'](refTS)
+    Ofig.add_trace(go.Scatter3d(x=[sx], y=[sy], z=[sz], mode='markers',
+                                marker=dict(color='black', size=5, line=dict(color='black', width=1)),
+                                name=satname+' position', showlegend=True))
+    Ofig.update_traces(
+        hovertemplate=satname + " position<br>" + coord + " Coordinates:<br>" +
+        "X [R_E]: %{x:.5g}<br>" +
+        "Y [R_E]: %{y:.5g}<br>" +
+        "Z [R_E]: %{z:.5g}<br>" + refSTR +
+        "<extra></extra>",
+        selector=dict(name=satname+' position')
+    )
+
+    elon = np.linspace(-180, 180, 181)
+    elat = np.linspace(-90, 90, 91)
+    elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+    ex = -1.*(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+    ey = -1.*(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+    ez = +1.*(np.sin(elat_mg*np.pi/180.))
+    colorse = np.zeros(shape=ex.shape)
+    colorse[ex<0.]=1  # Option to make day side a lighter color
+    colorscalee = ['rgb(199,199,199)', 'rgb(0,0,0)']
+    Ofig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                     cmin=0, cmax=1, colorscale=colorscalee,
+                     name='Earth', showlegend=False, showscale=False, hoverinfo='skip')
+
+    Ofig.update_layout(scene_aspectmode='data',
+        title='Plot of '+satname+' orbit and position at '+refSTR+' in '+coord+' coordinates')
+
+    return Odict, Oko, Ofig
+
+### ====================================================================================== ###
 def fixFigOrigin(fig, setX='', setY='', setZ=''):
     '''
     Simple function that takes a passed in 3D plotly figure object
