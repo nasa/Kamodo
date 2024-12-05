@@ -2689,6 +2689,160 @@ def BlinesFig(fullfile, showE = True):
     return fig
 
 ### ====================================================================================== ###
+def BlinesMovie(where='.', showSW=False, showDate=''):
+    '''
+    Function to take a directory of extracted magnetic fieldlines and make a movie from them
+      Limited to a max of 999 files at a time
+
+    Arguments:
+      where     Relative directory to get json files from
+      showSW    Logical to hide or show solar wind field lines
+      showDate  If specified, will only show values from this date
+    '''
+    import os
+    import numpy as np
+    import plotly.graph_objects as go
+    import glob
+    import time
+
+    tic = time.perf_counter()
+
+    if showDate == '':
+        sfiles = glob.glob(where+'/*.json')
+    else:
+        sfiles = glob.glob(where+'/*'+showDate+'*.json')
+    sfiles.sort()
+    nF = len(sfiles)
+    print(' ... found ',nF,' files ...')
+    if nF > 999:
+        print('ERROR, too many files to process, exiting.')
+        return
+
+    # make figure
+    fig_dict = {
+        "data": [],
+        "layout": {},
+        "frames": []
+    }
+
+    # bounds initialization
+    minX, maxX, minY, maxY, minZ, maxZ = 0., 0., 0., 0., 0., 0.
+
+    # fill in most of layout
+    fig_dict["layout"]["scene_aspectmode"] = "data"
+    fig_dict["layout"]["title"] = {"text": "Magnetic Fieldline Animation"}
+    fig_dict["layout"]["margin"] = {"l": 0, "t": 25, "b": 5}
+    fig_dict["layout"]["updatemenus"] = [
+        {
+            "buttons": [
+                {
+                    "args": [None, {"frame": {"duration": 0, "redraw": True},
+                                    "fromcurrent": True,
+                                    "transition": {"duration": 0}}],
+                    "label": "Play",
+                    "method": "animate"
+                },
+                {
+                    "args": [[None], {"frame": {"duration": 0, "redraw": True},
+                                     "mode": "immediate",
+                                     "transition": {"duration": 0}}],
+                    "label": "Pause",
+                    "method": "animate"
+                }
+            ],
+            "direction": "left",
+            "pad": {"r": 10, "t": 25},
+            "showactive": False,
+            "type": "buttons",
+            "x": 0.16,
+            "xanchor": "right",
+            "y": 0,
+            "yanchor": "top"
+        }
+    ]
+
+    sliders_dict = {
+        "active": 0,
+        "yanchor": "top", "xanchor": "left",
+        "currentvalue": {
+            "prefix": "Currently showing step: ",
+            "visible": True,
+            "xanchor": "left" },
+        "transition": {"duration": 0},
+        "pad": {"b": 10, "t": 5},
+        "len": 0.83,
+        "x": 0.17,
+        "y": 0,
+        "steps": []
+    }
+
+    # make frames
+    ii = 0
+    for sfile in sfiles:
+        bname = os.path.basename(sfile)
+        bname = bname[:-5]
+        p1 = bname.split("_B_")
+        p = p1[1]
+        DateStr = p[0:4]+'-'+p[4:6]+'-'+p[6:8]+' '+p[9:11]+':'+p[11:13]+':'+p[13:15]+' UT'
+        frame = {"data": [], "name": sfile}
+        fig1 = pf.BlinesFig(sfile, showE=False)
+        for i in range(len(fig1.data)):
+            if len(fig1.data[i]['x'].shape) == 1:
+                minX = min(minX, min(v for v in fig1.data[i]['x'] if v is not None))
+                minY = min(minY, min(v for v in fig1.data[i]['y'] if v is not None))
+                minZ = min(minZ, min(v for v in fig1.data[i]['z'] if v is not None))
+                maxX = max(maxX, max(v for v in fig1.data[i]['x'] if v is not None))
+                maxY = max(maxY, max(v for v in fig1.data[i]['y'] if v is not None))
+                maxZ = max(maxZ, max(v for v in fig1.data[i]['z'] if v is not None))
+        fig1.add_trace(go.Scatter3d(x=[0,0], y=[0,0], z=[0,0], mode='markers', name=DateStr,
+            marker=dict(color="black", size=1, opacity=0.1), showlegend=True, hoverinfo='skip' ))
+        frame["data"].append(fig1.data[len(fig1.data)-1])
+        for i in range(len(fig1.data)):
+            if 'B ' in fig1.data[i]['name']:
+                if 'solar wind' not in fig1.data[i]['name']:
+                    frame["data"].append(fig1.data[i])
+                else:
+                    if showSW: frame["data"].append(fig1.data[i])
+        fig_dict["frames"].append(frame)
+        slider_step = {"args": [[sfile],
+            {"frame": {"duration": 0, "redraw": True},
+             "mode": "immediate",
+             "transition": {"duration": 0}}],
+             "label": ii,
+             "method": "animate"}
+        sliders_dict["steps"].append(slider_step)
+        ii += 1
+
+    fig_dict["layout"]["sliders"] = [sliders_dict]
+
+    # make data
+    xx = np.full((3), None)
+    yy = np.full((3), None)
+    zz = np.full((3), None)
+    xx[0], xx[2] = minX, maxX
+    yy[0], yy[2] = minY, maxY
+    zz[0], zz[2] = minZ, maxZ
+    fig1 = pf.BlinesFig(sfiles[0], showE=True)
+    fig1.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='markers', name='newbounds',
+        marker=dict(color="black", size=1, opacity=0.1), showlegend=False, hoverinfo='skip' ))
+
+    fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # First one gets replaced with animation (make small)
+    for i in range(len(fig1.data)):
+        if 'Earth' in fig1.data[i]['name']: fig_dict["data"].append(fig1.data[i])  # Earth
+    fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # Bounds
+    fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # Bounds
+    fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # Bounds
+
+    # make final figure
+    fig = go.Figure(fig_dict)
+
+    # print out time to make movie
+    toc = time.perf_counter()
+    print(f"Creation time: {toc - tic:0.4f} seconds")
+
+    return fig
+
+### ====================================================================================== ###
 def gmSurfaceMovie(where='.', where2='', wireframe=False):
     import os
     import numpy as np
