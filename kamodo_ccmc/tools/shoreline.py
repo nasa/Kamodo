@@ -23088,7 +23088,7 @@ def shoreline(rscale=1.0, coord='GEO', coordT='car', utcts='', zlimit=0.):
         maskNaN = np.isnan(pos)
         pos2 = pos
         pos2[maskNaN] = 0.
-        tt = utcts + 0.*pos2[:, 0]
+        tt = np.full(pos.shape[0], utcts, dtype=np.float64)
         xt, yt, zt, un = ConvertCoord(tt, pos2[:, 0], pos2[:, 1], pos2[:, 2],
                                       'GEO', 'car', coord, coordT)
         pos[:, 0] = xt
