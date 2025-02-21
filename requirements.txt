@@ -9,6 +9,7 @@ mknotebooks
 python-markdown-math
 markdown_include
 kamodo
+cffi
 numpy<2.0.0
 pandas<2.0.0
 netCDF4<1.7.0
@@ -25,3 +26,4 @@ h5netcdf
 psutil
 rbamlib
 pyverbplt
+setuptools<65.0.0

@@ -25,6 +25,9 @@ model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
               'OpenGGCM_GM': 'The Open Geospace General Circulation Model - ' +
                              'Global Magnetosphere outputs only ' +
                              'https://doi.org/10.1023/A:1014228230714',
+              'OpenGGCM_IE': 'The Open Geospace General Circulation Model - ' +
+                             'Ionosphere Electrodynamics outputs ' +
+                             'https://doi.org/10.1023/A:1014228230714',
               'SuperDARN_uni': 'SuperDARN uniform grid output ' +
                                'https://doi.org/10.1029/2010JA016017',
               'SuperDARN_equ': 'SuperDARN equal area grid output ' +
@@ -99,6 +102,10 @@ def Choose_Model(model=''):
 
     elif model == 'OpenGGCM_GM':
         import kamodo_ccmc.readers.openggcm_gm_4Dcdf as module
+        return module
+
+    elif model == 'OpenGGCM_IE':
+        import kamodo_ccmc.readers.openggcm_ie_4D as module
         return module
 
     elif model == 'AMGeO':
