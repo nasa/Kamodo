@@ -9,9 +9,11 @@ mknotebooks
 python-markdown-math
 markdown_include
 kamodo
+cffi
 numpy<2.0.0
 pandas<2.0.0
 netCDF4<1.7.0
+setuptools<65
 nbformat
 cdflib
 astropy
