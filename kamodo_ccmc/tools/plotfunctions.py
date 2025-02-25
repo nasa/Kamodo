@@ -538,10 +538,10 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
             posS[~mask] = np.nan
             figN.add_scattergl(mode='lines', x=posN[:,0], y=posN[:,1], 
                               hoverinfo='skip', showlegend=False, name='N Shoreline',
-                              line=dict(width=1, color='#EEEEEE'))
+                              line=dict(width=1, color=shorecolor))
             figS.add_scattergl(mode='lines', x=posS[:,0], y=posS[:,1], 
                               hoverinfo='skip', showlegend=False, name='S Shoreline',
-                              line=dict(width=1, color='#EEEEEE'))
+                              line=dict(width=1, color=shorecolor))
 
         fig = make_subplots(rows=1, cols=2)
         for i in range(len(figN.data)):
