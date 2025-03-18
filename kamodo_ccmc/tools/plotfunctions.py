@@ -3225,7 +3225,7 @@ def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
       coordT      Coordinate type of output (sph or car)
     '''
     import numpy as np
-    import datetime as dt
+    from datetime import datetime
     import kamodo_ccmc.flythrough.model_wrapper as MW
     from kamodo_ccmc.flythrough.utils import ConvertCoord
 
@@ -3234,7 +3234,7 @@ def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
     cot = tmp[1]
     reader = MW.Model_Reader(model)
     koPCB = reader(file_dir, variables_requested=['Binv_RT'])
-    timets = dt.timestamp(koPCB.filedate) + 3600.*float(time)
+    timets = datetime.timestamp(koPCB.filedate) + 3600.*float(time)
     figPCB=koPCB.plot('Binv_RT_ijk', plot_partial={'Binv_RT_ijk': {'time': float(time), }})
     lons = figPCB.data[0].x
     lats = figPCB.data[0].y
