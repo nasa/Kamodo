@@ -3212,3 +3212,38 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
 
     return fig
 
+### ====================================================================================== ###
+def getIEPCB(model, file_dir, time):
+    '''
+    Function to extract the Polar Cap Boundary (PCB) from SWMF IE model output
+    
+    Arguments:
+      model       Model type
+      file_dir    Directory path to model output (ending with /)
+      time        A floating point hour value
+    '''
+    import numpy as np
+    import kamodo_ccmc.flythrough.model_wrapper as MW
+
+    reader = MW.Model_Reader(model)
+    koPCB = reader(file_dir, variables_requested=['Binv_RT'])
+    figPCB=koPCB.plot('Binv_RT_ijk', plot_partial={'Binv_RT_ijk': {'time': float(time), }})
+    lons = figPCB.data[0].x
+    lats = figPCB.data[0].y
+    zz = figPCB.data[0].z  # f(lats,lons)
+    PCBlatN = []
+    PCBlatS = []
+    PCBlonN = []
+    PCBlonS = []
+    for j in range(len(lons)):
+        for i in range(len(lats)-1):
+            if (zz[i,j]*zz[i+1,j]) < 0.:
+                avelat = 0.5*(lats[i]+lats[i+1])
+                if lats[i] < 0.:
+                    PCBlonS.append(lons[j])
+                    PCBlatS.append(avelat)
+                else:
+                    PCBlonN.append(lons[j])
+                    PCBlatN.append(avelat)
+    return np.array([PCBlonN,PCBlatN]), np.array([PCBlonS,PCBlatS])
+
