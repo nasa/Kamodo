@@ -28,7 +28,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
             cutInside=-1., returnGrid=False, enhanceHover=False,
             enhanceHover1D=False, newTitle='', cText='',
             llText='', llText2='', coText='', resetAnnotations=True,
-            zcrange=False, crange='', xtic='', ytic=''):
+            zcrange=False, crange='', xtic='', ytic='', xTitle='', yTitle=''):
     '''
     Function to modify a plotly figure object in multiple ways.
 
@@ -181,6 +181,12 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
 
     if newTitle != '':
         fig.layout.title.text = newTitle
+
+    if xTitle != '':
+        fig.layout.xaxis.title.text = xTitle
+
+    if yTitle != '':
+        fig.layout.yaxis.title.text = yTitle
 
     if cText != '':
         fig.update_traces(colorbar=dict(title=cText, tickformat=".3g"))
