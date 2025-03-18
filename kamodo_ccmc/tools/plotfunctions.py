@@ -3213,20 +3213,27 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     return fig
 
 ### ====================================================================================== ###
-def getIEPCB(model, file_dir, time):
+def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
     '''
     Function to extract the Polar Cap Boundary (PCB) from SWMF IE model output
-    
+
     Arguments:
       model       Model type
       file_dir    Directory path to model output (ending with /)
       time        A floating point hour value
+      coord       Coordinate system of output (SM, GSM, GSE, GEO, etc.)
+      coordT      Coordinate type of output (sph or car)
     '''
     import numpy as np
     import kamodo_ccmc.flythrough.model_wrapper as MW
+    from kamodo_ccmc.flythrough.utils import ConvertCoord
 
+    tmp = list(MW.Model_Variables(model, return_dict=True).values())[0][2:4]
+    co = tmp[0]
+    cot = tmp[1]
     reader = MW.Model_Reader(model)
     koPCB = reader(file_dir, variables_requested=['Binv_RT'])
+    timets = datetime.timestamp(koPCB.filedate) + 3600.*float(time)
     figPCB=koPCB.plot('Binv_RT_ijk', plot_partial={'Binv_RT_ijk': {'time': float(time), }})
     lons = figPCB.data[0].x
     lats = figPCB.data[0].y
@@ -3245,5 +3252,23 @@ def getIEPCB(model, file_dir, time):
                 else:
                     PCBlonN.append(lons[j])
                     PCBlatN.append(avelat)
-    return np.array([PCBlonN,PCBlatN]), np.array([PCBlonS,PCBlatS])
+    PCBN = np.ones((len(PCBlonN),3))
+    PCBN[:,0] = PCBlonN
+    PCBN[:,1] = PCBlatN
+    PCBS = np.ones((len(PCBlonS),3))
+    PCBS[:,0] = PCBlonS
+    PCBS[:,1] = PCBlatS
+    if coord==co and coordT==cot:
+        return PCBN, PCBS
+    tt = np.full(PCBN.shape[0], timets, dtype=np.float64)
+    xt, yt, zt, un = ConvertCoord(tt, PCBN[:, 0], PCBN[:, 1], PCBN[:, 2], co, cot, coord, coordT)
+    PCBN[:, 0] = xt
+    PCBN[:, 1] = yt
+    PCBN[:, 2] = zt
+    tt = np.full(PCBS.shape[0], timets, dtype=np.float64)
+    xt, yt, zt, un = ConvertCoord(tt, PCBS[:, 0], PCBS[:, 1], PCBS[:, 2], co, cot, coord, coordT)
+    PCBS[:, 0] = xt
+    PCBS[:, 1] = yt
+    PCBS[:, 2] = zt
+    return PCBN, PCBS
 
