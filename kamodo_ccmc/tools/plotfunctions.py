@@ -3253,6 +3253,17 @@ def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
                 else:
                     PCBlonN.append(lons[j])
                     PCBlatN.append(avelat)
+    for i in range(len(lats)):
+        # skip wrap lon for now
+        for j in range(len(lons)-1):
+            if (zz[i,j]*zz[i,j+1]) < 0.:
+                avelon = 0.5*(lons[j]+lons[j+1])
+                if lats[i] < 0.:
+                    PCBlonS.append(avelon)
+                    PCBlatS.append(lats[i])
+                else:
+                    PCBlonN.append(avelon)
+                    PCBlatN.append(lats[i])
     PCBN = np.ones((len(PCBlonN),3))
     PCBN[:,0] = PCBlonN
     PCBN[:,1] = PCBlatN
