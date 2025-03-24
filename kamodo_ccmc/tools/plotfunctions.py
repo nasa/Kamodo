@@ -2957,7 +2957,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
                 runname='UNKNOWN', resolution=0.25, showBS=True, showMP=True,
                 xrange=[-95., 25.], yrange=[-30., 30.], crange='',
                 xtic=10., ytic=10., log10=False, logCustom=True, 
-                colorscale='Viridis'):
+                colorscale='Viridis', showtiming=False):
     '''
     Function to create a 2D slice for a Y or Z constant value. It will interpolate
       from a Kamodo object onto that grid in given coordinate system.
@@ -2992,6 +2992,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     import kamodo_ccmc.flythrough.model_wrapper as MW
 
+    tic0 = time.perf_counter()
     tic = time.perf_counter()
 
     # Set some constants
@@ -3060,6 +3061,10 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     else:
         showMP = False
 
+    toc = time.perf_counter()
+    if showtiming: print(f"  Setup Time: {toc - tic:0.4f} seconds")
+    tic = toc
+
     # Make base grid
     x = np.linspace(xmin, xmax, xpts)
     y = np.linspace(ymin, ymax, ypts)
@@ -3089,6 +3094,9 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         x2, y2, z2, units = ConvertCoord(t1, x1, y1, z1, pco, pcot, co, cot)
         g2 = np.stack((t1, x2, y2, z2), axis=-1)  # nx4 grid
 
+    toc = time.perf_counter()
+    if showtiming: print(f"  Grid Time: {toc - tic:0.4f} seconds")
+    tic = toc
 
     # Interpolate
     if vMag:
@@ -3114,9 +3122,16 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     vmax = np.nanmax(value)
     c = np.reshape(value, (len(x),len(y)))
 
+    toc = time.perf_counter()
+    if showtiming: print(f"  Interpolate Time: {toc - tic:0.4f} seconds")
+    tic = toc
+
     # Bow shock
     if showBS:
         valueVX = interpBS(g2)
+        toc = time.perf_counter()
+        if showtiming: print(f"  BS Interp Time: {toc - tic:0.4f} seconds")
+        tic = toc
         vx = np.reshape(valueVX, (len(x),len(y)))
         bsx = np.full((len(y)), None)
         bsy = np.full((len(y)), None)
@@ -3130,6 +3145,9 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
                 if vx[i,j] > (0.85*refVX):
                     bsx[j] = x[i]
                     break
+        toc = time.perf_counter()
+        if showtiming: print(f"  BS Other Time: {toc - tic:0.4f} seconds")
+        tic = toc
 
     # Magnetopause
     if showMP:
@@ -3146,6 +3164,9 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
                 if status[i,j] > 2.5:
                     mpx[j] = x[i]
                     break
+        toc = time.perf_counter()
+        if showtiming: print(f"  MP Time: {toc - tic:0.4f} seconds")
+        tic = toc
 
     # Plot values
     pTS = ko.filedate.timestamp() + timeHrs*3600.
@@ -3208,7 +3229,11 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     fig.data[0]['colorbar']['yanchor'] = 'bottom'
 
     toc = time.perf_counter()
-    print(f"  Time: {toc - tic:0.4f} seconds")
+    if showtiming: print(f"  Fig Time: {toc - tic:0.4f} seconds")
+    tic = toc
+
+    toc = time.perf_counter()
+    if showtiming: print(f"  Total Time: {toc - tic0:0.4f} seconds")
 
     return fig
 
