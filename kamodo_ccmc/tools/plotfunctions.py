@@ -3297,15 +3297,18 @@ def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
     PCBS[:,1] = PCBlatS
     if coord==co and coordT==cot:
         return PCBN, PCBS
-    tt = np.full(PCBN.shape[0], timets, dtype=np.float64)
-    xt, yt, zt, un = ConvertCoord(tt, PCBN[:, 0], PCBN[:, 1], PCBN[:, 2], co, cot, coord, coordT)
-    PCBN[:, 0] = xt
-    PCBN[:, 1] = yt
-    PCBN[:, 2] = zt
-    tt = np.full(PCBS.shape[0], timets, dtype=np.float64)
-    xt, yt, zt, un = ConvertCoord(tt, PCBS[:, 0], PCBS[:, 1], PCBS[:, 2], co, cot, coord, coordT)
-    PCBS[:, 0] = xt
-    PCBS[:, 1] = yt
-    PCBS[:, 2] = zt
+    if(PCBN.shape[0] > 0):
+        tt = np.full(PCBN.shape[0], timets, dtype=np.float64)
+        xt, yt, zt, un = ConvertCoord(tt, PCBN[:, 0], PCBN[:, 1], PCBN[:, 2], co, cot, coord, coordT)
+        PCBN[:, 0] = xt
+        PCBN[:, 1] = yt
+        PCBN[:, 2] = zt
+    if(PCBS.shape[0] > 0):
+        tt = np.full(PCBS.shape[0], timets, dtype=np.float64)
+        xt, yt, zt, un = ConvertCoord(tt, PCBS[:, 0], PCBS[:, 1], PCBS[:, 2], co, cot, coord, coordT)
+        PCBS[:, 0] = xt
+        PCBS[:, 1] = yt
+        PCBS[:, 2] = zt
+
     return PCBN, PCBS
 
