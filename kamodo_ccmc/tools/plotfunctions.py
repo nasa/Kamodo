@@ -1915,28 +1915,30 @@ def B3Dfig(fullfile, showE = True):
     return fig
 
 ### ====================================================================================== ###
-def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
-                  lowerlabel='', colorscale='RdBu', addTraceTime=False,
-                  showgrid=False, gdeg=2., showE=False, log10=False, 
-                  showMP=True, showBS=True, wireframe=False, crange='', 
-                  xrange=[-999., 999.], yrange=[-999., 999.], zrange=[-999., 999.]):
+def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
+                  pco='', lowerlabel='', colorscale='RdBu', addTraceTime=False,
+                  showGrid=False, showE=False, log10=False,
+                  showMP=True, showBS=True, wireframe=False, crange='',
+                  xrange=[-999., 999.], yrange=[-999., 999.], zrange=[-999., 999.],
+                  showCarpet=False, showCarpetZ=False, showIT=False):
     '''
     Function to create a slice for any point and normal and interpolate
       from Kamodo object onto that grid. Returns a full 3D plotly figure.
       Options to show grid (dots for vertices), magnetopause boundary, and
       bow shock boundary. Many options to customize the figure are available.
-
+    
     ko:           Kamodo object
     var:          string variable name
     timeHrs:      floating time in hours from start of first day of data
     pos, normal:  position and normal vector for slice plane
+    gdeg:         slice grid degree resolution, default is 2.
+    pco:          plot coordinate system, empty value uses model coordinates
     lowerlabel:   string text to label plot lower left
     colorscale:   string name of Python colorscale, ie. Viridis, Cividis, RdBu
     addTraceTime: logical to add time string to trace label
-    showgrid:     logical to show dots at grid locations
-    gdeg:         slice grid degree resolution, default is 2.
+    showGrid:     logical to show dots at grid locations
     showE:        logical to show a sphere at R=1
-    log10:        logical to take log10 of display value
+    log10:        logical to take log10 of contour value
     showMP:       logical to show magnetopause boundary (requires 'status' variable)
     showBS:       logical to show bow shock (requires 'v_x' variable)
     wireframe:    logical to show MP and BS as wireframe
@@ -1945,14 +1947,25 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     yrange:       2 value array for min/max extent of Y values in slice
     zrange:       2 value array for min/max extent of Z values in slice
       -note: xyz range values default as large values that will trim to
-             actual model ranges. User can set small ranges.
+             actual model ranges. User can set arbitrary ranges.
+    showCarpet:   compute the magic carpet surface instead of set pos/normal plane
+    showCarpetZ:  display Z value of magic carpet instead of var contour values
+    showIT:       include "invisible trace" for consistent view for movies
     '''
     import numpy as np
     import plotly.graph_objs as go
     import kamodo_ccmc.flythrough.model_wrapper as MW
+    import kamodo_ccmc.tools.timefunctions as tf
+    from kamodo_ccmc.flythrough.utils import ConvertCoord
     from datetime import datetime
 
     # Error checking  =============================================== Validate
+    if showCarpet:
+        #print('showCarpet is True, overwriting some options ...')
+        pos=[0, 0, 0]
+        normal=[0, 0, 1]
+    else:
+        showCarpetZ = False
     if xrange[0] > xrange[1]:
         print('Error in xrange: ',xrange)
         return
@@ -1966,20 +1979,28 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
         #print('Removing _ijk from variable name')
         var = var.replace('_ijk','')
     vMag = False
+    vRad = False
     if var not in ko:
         if var+'_x' in ko:
+            # Compute magnitude of vector variable
             vMag = True
-            interpX = getattr(ko, var+'_x')
-            interpY = getattr(ko, var+'_y')
-            interpZ = getattr(ko, var+'_z')
-            vunits = ko.variables[var+'_x']['units']
-            var2 = var+'_x_ijk'
-            cr = MW.Coord_Range(ko, [var2], return_dict=True, print_output=False)
-            xunits = cr[var2]['X'][2]
-            coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var+'_x'][2]
+            varbase = var
+        elif var[:-2]+'_x' in ko and var[-2:] == '_r':
+            # Compute radial component of vector variable
+            varbase = var[:-2]
+            varend = var.replace(varbase,'')  # just '_r' for now, but this is more flexible
+            vRad = True
         else:
             print('Error, variable not in Kamodo object')
             return
+        interpX = getattr(ko, varbase+'_x')
+        interpY = getattr(ko, varbase+'_y')
+        interpZ = getattr(ko, varbase+'_z')
+        vunits = ko.variables[varbase+'_x']['units']
+        var2 = varbase+'_x_ijk'
+        cr = MW.Coord_Range(ko, [var2], return_dict=True, print_output=False)
+        xunits = cr[var2]['X'][2]
+        coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[varbase+'_x'][2]
     else:
         interp = getattr(ko, var)
         vunits = ko.variables[var]['units']
@@ -1988,6 +2009,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
         xunits = cr[var2]['X'][2]
         coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var][2]
     varlabel = var+" ["+vunits+"]"
+    if pco == '': pco = coord
 
     # Make sure range is not larger than actual data range
     x1, x2 = cr[var2]['X'][0], cr[var2]['X'][1]
@@ -2000,14 +2022,17 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     zrange[0] = max(z1, zrange[0])
     zrange[1] = min(z2, zrange[1])
 
+    # Set multiple representations of time
     plotTS = ko.filedate.timestamp() + timeHrs*3600.
     plotDT = datetime.utcfromtimestamp(plotTS)
     plotDateStr = plotDT.strftime("%Y-%m-%d %H:%M:%S UT")
 
+    # Set label for slice type
     sliceDir = ''
     if normal[0] == 1: sliceDir = 'X '
     if normal[1] == 1: sliceDir = 'Y '
-    if normal[2] == 1: sliceDir = 'Z ' 
+    if normal[2] == 1: sliceDir = 'Z '
+    if showCarpet: sliceDir = 'MC '
 
     # Compute base 1D grid values  ====================================== Grid
     # Compute max radius of range box
@@ -2015,6 +2040,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     ym = max(abs(yrange[0]),abs(yrange[1]))
     zm = max(abs(zrange[0]),abs(zrange[1]))
     rmax = np.sqrt(xm*xm + ym*ym + zm*zm)
+    if showCarpet: rmax = 100.
 
     # Compute values from pos, normal values
     uvec = normal/np.linalg.norm(normal)  # unit normal vector
@@ -2026,8 +2052,9 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     dg = np.linspace(-180, 180, ndeg)  # degree grid
     deldg = dg[1]-dg[0]
     rv = 0.  # radius value
-    if abs(odist) < 2.75:
-        rv = 2.75*np.sin(((2.75-odist)/2.75)*np.pi/2.)
+    rin = 2.75
+    if abs(odist) < rin:
+        rv = rin*np.sin(((rin-odist)/rin)*np.pi/2.)
     rg = []  # radius grid
     rg.append(rv)
     rtrans = 2.5  # radius transition point from fixed dr to variable
@@ -2048,6 +2075,8 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     gy_1d = gy.reshape(-1)
     gz_1d = np.zeros([len(gx_1d)])
     time_1d = np.full((len(gx_1d)), timeHrs)
+    timeTS = tf.timeKOtoTS(ko, sOffset=3600.*timeHrs)
+    time_1dTS = np.full((len(gx_1d)), timeTS)
     grid0 = np.stack((gx_1d, gy_1d, gz_1d), axis=-1)  # nx3 position grid
 
     # Transform base grid to pos/normal and trim if needed
@@ -2067,7 +2096,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     gx2 = grid0[:, 0].reshape(len(rg), -1)
     gy2 = grid0[:, 1].reshape(len(rg), -1)
     gz2 = grid0[:, 2].reshape(len(rg), -1)
-    # Trim points beyond data, first extracting range
+    # Trim points beyond data range
     x1, x2 = xrange[0], xrange[1]
     y1, y2 = yrange[0], yrange[1]
     z1, z2 = zrange[0], zrange[1]
@@ -2102,21 +2131,84 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
                 gz2[i+1:, j] = gz2[i, j]
                 break
 
-    # Interpolate  ======================================================= Interp
-    # Create 4D (nx4) grid and interpolate plot values
-    grid = np.ndarray(shape=(len(gx_1d), 4), dtype=np.float32)
-    grid[:, 0] = time_1d
-    grid[:, 1] = gx2.reshape(-1)
-    grid[:, 2] = gy2.reshape(-1)
-    grid[:, 3] = gz2.reshape(-1)
-    if vMag:
-        valueX = interpX(grid)
-        valueY = interpY(grid)
-        valueZ = interpZ(grid)
-        value = np.sqrt(valueX**2 + valueY**2 + valueZ**2)
+    # Magic Carpet  ===================================================== Magic Carpet
+    # This will adjust Z value of the grid (from 0) or set to NaN
+    # This grid is working in pco coordinates
+    if showCarpet:
+        # Arrays to hold outer edge for smoothing later
+        ipos = np.full((len(dg)), 0)
+        edge = np.full((len(dg),3), 0.)
+
+        # Loop over points on grid, evaluating
+        for j in range(len(dg)):
+            for i in range(len(rg)):
+                zStart = 0.
+                if i > 0:
+                    if np.isnan(gz2[i-1,j]):
+                        # If previous point is already Nan, make Nan and continue
+                        gz2[i,j] = np.nan
+                        continue
+                    else:
+                        zStart = gz2[i-1,j]
+                gz2[i,j] = MCpoint(ko,gx2[i,j],gy2[i,j],zStart,3.,timeHrs=timeHrs,pco=pco)
+                ipos[j] = i-1
+                edge[j,0] = gx2[i-1,j]
+                edge[j,1] = gy2[i-1,j]
+                edge[j,2] = gz2[i-1,j]
+
+        # Average output around edge, +/- spread points
+        spread = 2
+        fullspread = 1 + 2*spread
+        for j in range(len(dg)):
+            ztmp = 0.
+            for i in range(-spread, spread+1):
+                jj = j+i
+                if jj < 0:
+                    ztmp += edge[jj + (len(dg)-1),2]
+                elif jj > (len(dg)-1):
+                    ztmp += edge[jj - (len(dg)-1),2]
+                else:
+                    ztmp += edge[jj,2]
+            # Fill last point to next 5 points radially to smooth grid look
+            gz2[ipos[j]:ipos[j]+3,j] = ztmp / fullspread
+            gx2[ipos[j]:ipos[j]+5,j] = gx2[ipos[j],j]
+            gy2[ipos[j]:ipos[j]+5,j] = gy2[ipos[j],j]
+
+        # Where z is nan, make x,y nan too
+        nanmask = np.isnan(gz2)
+        gx2[nanmask] = np.nan
+        gy2[nanmask] = np.nan
+
+    # Transform final grid from pco coordinates into coord and make grids (nx4 dimensions)
+    grid = np.stack((time_1d, gx2.reshape(-1), gy2.reshape(-1), gz2.reshape(-1)), axis=-1)
+    if coord == pco:
+        gridI = np.stack((time_1d, gx2.reshape(-1), gy2.reshape(-1), gz2.reshape(-1)), axis=-1)
     else:
-        value = interp(grid)
-    if log10:
+        x2, y2, z2, units = ConvertCoord(time_1dTS, gx2.reshape(-1), gy2.reshape(-1), gz2.reshape(-1), 
+                                         pco, 'car', coord, 'car')
+        gridI = np.stack((time_1d, x2, y2, z2), axis=-1)
+
+    # Interpolate  ======================================================= Interp
+    if showCarpetZ:
+        value = grid[:, 3]
+        varlabel = "Magic Carpet Z"
+        if vMag or vRad:
+            valueX = interpX(gridI)
+            valueY = interpY(gridI)
+            valueZ = interpZ(gridI)
+    elif vMag:
+        valueX = interpX(gridI)
+        valueY = interpY(gridI)
+        valueZ = interpZ(gridI)
+        value = np.sqrt(valueX**2 + valueY**2 + valueZ**2)
+    elif vRad:
+        valueX = interpX(gridI)
+        valueY = interpY(gridI)
+        valueZ = interpZ(gridI)
+        value = vec2radial(grid[:,1],grid[:,2],grid[:,3],valueX,valueY,valueZ)
+    else:
+        value = interp(gridI)
+    if log10 and not showCarpetZ:
         value[value <= 0.] = np.nan
         value = np.log10(value)
         varlabel = "log10("+varlabel+")"
@@ -2135,7 +2227,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
             jv.append(ix+1+(iy+1)*len(dg))
             kv.append(ix+1+ iy   *len(dg))
 
-    # Build resulting plot
+    # Build resulting plot  ============================================== Plot
     traceTime = ''
     if addTraceTime:
         traceTime = ' at '+plotDateStr
@@ -2151,28 +2243,47 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
         cmin = float(crange[0])
         cmax = float(crange[1])
         fig.update_traces(cmin=cmin, cmax=cmax)
-    fig.update_traces(colorbar=dict(lenmode='fraction', len=0.4, y=0.2))
+    fig.update_traces(colorbar=dict(lenmode='fraction', len=0.4, y=0.2),
+                      flatshading=True,
+                      lighting=dict(facenormalsepsilon=0),
+                      lightposition=dict(x=100, y=200, z=100), )
     xlabel = 'X [' + xunits + ']'
     ylabel = 'Y [' + xunits + ']'
     zlabel = 'Z [' + xunits + ']'
-    fig.update_traces(
-        flatshading=True,
-        hovertemplate=xlabel + ": %{x:.4g}<br>" + 
-                      ylabel + ": %{y:.4g}<br>" +
-                      zlabel + ": %{z:.4g}<br>" + 
-                      varlabel + ": %{intensity:.4g}<br>" +
-        "<extra></extra>"
-    )
+    if (vMag or vRad):
+        customdata2=np.dstack((valueX,valueY,valueZ))
+        customdata=customdata2.reshape(customdata2.shape[1],customdata2.shape[2])
+        fig.update_traces(
+            customdata=customdata,
+            hovertemplate=xlabel + ": %{x:.4g}<br>" +
+                          ylabel + ": %{y:.4g}<br>" +
+                          zlabel + ": %{z:.4g}<br>" +
+                          varbase + "_x: %{customdata[0]:.2f}<br>" +
+                          varbase + "_y: %{customdata[1]:.2f}<br>" +
+                          varbase + "_z: %{customdata[2]:.2f}<br>" +
+                          varlabel + ": %{intensity:.4g}<br>" +
+            "<extra></extra>"
+        )
+    else:
+        fig.update_traces(
+            hovertemplate=xlabel + ": %{x:.4g}<br>" +
+                          ylabel + ": %{y:.4g}<br>" +
+                          zlabel + ": %{z:.4g}<br>" +
+                          varlabel + ": %{intensity:.4g}<br>" +
+            "<extra></extra>"
+        )
     # add invisible trace to keep view consistent
-    ix = [xrange[0], None, xrange[1]]
-    iy = [yrange[0], None, yrange[1]]
-    iz = [zrange[0], None, zrange[1]]
-    sz = [0.1, 0.1, 0.1]
-    fig.add_scatter3d(x=np.array(ix), y=np.array(iy), z=np.array(iz), mode='markers',
-        marker=dict(size=1, color='red', opacity=0.10),
-        showlegend=False, hoverinfo='skip', name='FixedRange' )
+    if showIT:
+        ix = [xrange[0], None, xrange[1]]
+        iy = [yrange[0], None, yrange[1]]
+        iz = [zrange[0], None, zrange[1]]
+        sz = [0.1, 0.1, 0.1]
+        fig.add_scatter3d(x=np.array(ix), y=np.array(iy), z=np.array(iz), mode='markers',
+            marker=dict(size=1, color='red', opacity=0.10),
+            showlegend=False, hoverinfo='skip', name='FixedRange' )
+
     # Add grid points
-    if showgrid:
+    if showGrid:
         fig.add_scatter3d(name='grid',
             x=grid[:, 1], y=grid[:, 2], z=grid[:, 3], mode='markers',
             marker=dict(size=1, color='grey'), line=dict(width=1) )
@@ -2202,7 +2313,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     # Bow shock surface
     if showBS:
         fig2,success = gmGetSurfacePlot(ko=ko,timeHrs=timeHrs,wireframe=wireframe,
-            what='BS',traceTime=False)
+            what='MP',traceTime=False)
         if success:
             fig.add_trace(fig2.data[0])
 
@@ -2211,7 +2322,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
     ys1 = -40
     ys2 = -24
     ys3 = -8
-    lrText1 = coord+' Coordinates'
+    lrText1 = pco+' Coordinates'
     lrText2 = 'Min = '+"{:.4e}".format(vmin)
     lrText3 = 'Max = '+"{:.4e}".format(vmax)
     fig.update_layout(
@@ -2238,9 +2349,142 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1],
                 font=dict(size=12, family="sans serif", color="#000000")),
          ],
         margin=dict(l=10, t=35),
+        height=800,
     )
 
     return fig
+
+### ====================================================================================== ###
+def MCpoint(ko,xV,yV,zStart,zRange,timeHrs=0.,pco='',ignoreBz=False,dbg=False):
+    '''
+    Function to compute Magic Carpet Z value for given X,Y values.
+      NOTE: Incoming xV,yV are in pco coordinates or blank for model coordinates.
+
+    Arguments:
+      ko       Kamodo object
+      xV       X position used for finding Z value
+      yV       Y position used for finding Z value
+      timeHrs  floating point hours value from start of ko object
+      pco      string with plot coordinate system (ie. 'GSE', 'GSM', etc.)
+      ignoreBz ignore requirement that on Bz is positive at point
+      dbg      logical to turn on additional debugging output
+
+    Returns:
+      Z value (or np.nan for no value)
+    '''
+    import numpy as np
+    import kamodo_ccmc.flythrough.model_wrapper as MW
+    from kamodo_ccmc.flythrough.utils import ConvertCoord
+    import kamodo_ccmc.tools.timefunctions as tf
+
+    if dbg: print('MCpoint input',xV,yV,zStart,zRange,' time',timeHrs)
+    # Get model coordinate system
+    var='B_x'
+    coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var][2]
+    if pco == '': pco = coord
+
+    # Get interpolators for B
+    interpBx = getattr(ko, 'B_x')
+    interpBy = getattr(ko, 'B_y')
+    interpBz = getattr(ko, 'B_z')
+    # Number of points and range on vertical slice to look for carpet
+    zlenhalf = int(4.*zRange)
+    zlen = 2*zlenhalf
+    z3 = np.linspace(zStart-zRange, zStart+zRange, zlen)
+    ##zlen = 100
+    ##zlenhalf = int(zlen/2)
+    ##z3 = np.linspace(-25., 25., zlen)
+    t3 = np.full((len(z3)), timeHrs)
+    timeTS = tf.timeKOtoTS(ko, sOffset=3600.*timeHrs)
+    t3TS = np.full((len(z3)), timeTS)
+    # Make grid of points, convert into model coordinates, and interpolate
+    x3 = np.full((len(z3)), xV)
+    y3 = np.full((len(z3)), yV)
+    if coord == pco:
+        g3 = np.stack((t3, x3, y3, z3), axis=-1)  # nx4 grid
+    else:
+        x2, y2, z2, units = ConvertCoord(t3TS, x3, y3, z3, pco, 'car', coord, 'car')
+        g3 = np.stack((t3, x2, y2, z2), axis=-1)  # nx4 grid
+    valueBx = interpBx(g3)
+    valueBy = interpBy(g3)
+    valueBz = interpBz(g3)
+    bN = vec2radial(g3[:,1],g3[:,2],g3[:,3],valueBx,valueBy,valueBz)
+    if dbg: print('bN',bN)
+
+    # Make shifted grids to make evaluation of sign change more automatic
+    bN1 = np.append(bN[0],bN)
+    bN2 = np.append(bN,bN[-1])
+    condition = (bN1 >= 0.) & (bN2 < 0.)
+    pts = np.where(condition)
+    # if points found, then evaluate
+    if len(pts[0]) > 0:
+        # Assume best point is nearest to midpoint (in pco coordinates)
+        ptscenter = abs(pts[0] - zlenhalf)
+        bestpt = np.argmin(ptscenter)
+        k = pts[0][bestpt]
+        # Interpolate to more precise Z
+        frac=(0. - bN[k])/(bN[k] - bN[k-1])
+        value = z3[k] + frac*(z3[k]-z3[k-1])
+    else:
+        value = np.nan
+    if dbg: print('MCpoint found value ',value)
+    if ignoreBz: return value
+
+    # Start computing grid to determine B_z, overwriting some values used above
+    x3 = np.full((1), xV)
+    y3 = np.full((1), yV)
+    z3 = np.full((1), value)
+    t3 = np.full((1), timeHrs)
+    t3TS = np.full((1), timeTS)
+    if coord == pco:
+        g3 = np.stack((t3, x3, y3, z3), axis=-1)  # nx4 grid
+    else:
+        x2, y2, z2, units = ConvertCoord(t3TS, x3, y3, z3, pco, 'car', coord, 'car')
+        g3 = np.stack((t3, x2, y2, z2), axis=-1)  # nx4 grid
+    valueBz = interpBz(g3)
+    bb = valueBz[0]
+    # If negative B_z, then outside MC area, set to nan
+    if bb < 0.:
+        if dbg: print('MCpoint negative Bz so returning nan')
+        value = np.nan
+
+    return value
+
+### ====================================================================================== ###
+def vec2radial(x,y,z,Vx,Vy,Vz):
+    '''
+    Function to take a position and vector in cartesian coords and compute the radial component
+
+    Inputs:
+      x    scalar or array of x positions
+      y    scalar or array of y positions
+      z    scalar or array of z positions
+      Vx   scalar or array of vector x values
+      Vy   scalar or array of vector y values
+      Vz   scalar or array of vector z values
+
+    Outputs:
+      Vr   array of radial values for the vector V
+    '''
+    import numpy as np
+
+    # If input is scalar, make as one element arrays to keep array syntax
+    if np.isscalar(x): 
+        x = np.array([x])
+        y = np.array([y])
+        z = np.array([z])
+        Vx = np.array([Vx])
+        Vy = np.array([Vy])
+        Vz = np.array([Vz])
+
+    VretR = np.full((len(x)), np.nan)
+    for i in range(len(x)):
+        posR = np.array([x[i],y[i],z[i]])
+        posRN = posR/np.linalg.norm(posR)
+        Vvec = np.array([[Vx[i],Vy[i],Vz[i]]])
+        VretR[i] = Vvec.dot(posRN)[0]  # this is the radial value (1 point array)
+
+    return VretR
 
 ### ====================================================================================== ###
 def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
