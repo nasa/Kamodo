@@ -2313,7 +2313,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     # Bow shock surface
     if showBS:
         fig2,success = gmGetSurfacePlot(ko=ko,timeHrs=timeHrs,wireframe=wireframe,
-            what='MP',traceTime=False)
+            what='BS',traceTime=False)
         if success:
             fig.add_trace(fig2.data[0])
 
