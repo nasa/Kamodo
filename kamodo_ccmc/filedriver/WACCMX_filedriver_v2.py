@@ -146,7 +146,7 @@ def oneway_forcing(model_A, end_vars, lon_grid, lat_grid, time_grid, input_filed
         
         # Southern Hemisphere Output
         
-        WACCMX_netcdf_file = Dataset(output_filedir+str(model_A)+'_to_WACCMX_'+output_filename[0:10]+'_sh.nc', 'w', format='NETCDF4')
+        WACCMX_netcdf_file = Dataset(output_filedir+'/'+str(model_A)+'_to_WACCMX_'+output_filename[0:10]+'_sh.nc', 'w', format='NETCDF4')
         WACCMX_netcdf_file.description = 'Example simulation data'
                                 
         
@@ -207,7 +207,7 @@ def oneway_forcing(model_A, end_vars, lon_grid, lat_grid, time_grid, input_filed
         
         # Hemispheric Power Index (Setting Kp index to 3 for testing)
         
-        KpData = np.load(input_filedir+'KP_Daily.npz')
+        KpData = np.load('KP_Daily.npz')
         kp_date = KpData['date_daily']
         KpIndex = KpData['kp_daily']
         KP_Date = ["" for x in range(len(kp_date))]
@@ -260,7 +260,7 @@ def oneway_forcing(model_A, end_vars, lon_grid, lat_grid, time_grid, input_filed
         
         # Northern Hemisphere Output        
         
-        WACCMX_netcdf_file = Dataset(output_filedir+str(model_A)+'_to_WACCMX_'+output_filename[0:10]+'_nh.nc', 'w', format='NETCDF4')
+        WACCMX_netcdf_file = Dataset(output_filedir+'/'+str(model_A)+'_to_WACCMX_'+output_filename[0:10]+'_nh.nc', 'w', format='NETCDF4')
         WACCMX_netcdf_file.description = 'Example simulation data'
         
         # create variable dimensions
