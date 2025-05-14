@@ -93,9 +93,7 @@ def oneway_forcing(model_A, end_vars, lon_grid, lat_grid, time_grid, input_filed
         Phi = np.reshape(end_vars[:, 0, :], [len(time_grid), len(lat_grid), len(lon_grid)])    
         Phi_E = np.reshape(end_vars[:, 1, :], [len(time_grid), len(lat_grid), len(lon_grid)])
         E_avg = np.reshape(end_vars[:, 2, :], [len(time_grid), len(lat_grid), len(lon_grid)])
-               
-        #import pdb 
-        #pdb.set_trace()
+
         
         # Build the binary files
         
@@ -112,6 +110,7 @@ def oneway_forcing(model_A, end_vars, lon_grid, lat_grid, time_grid, input_filed
         latn = 90 - lat_grid[middleindex+1:-1]  
         lats = np.flip(lats)
         latn = np.flip(latn)
+
                
         output_filename = str(SF.File_UTCTimes(model_A, input_filedir)[2]) # Returning midnight
         output_filename = output_filename[0:10]+'_'+output_filename[11:-1]
@@ -158,8 +157,8 @@ def oneway_forcing(model_A, end_vars, lon_grid, lat_grid, time_grid, input_filed
         
 
         f.write_record([len(latn), len(MLTs), len(time_grid)-2])
-        f.write_record(np.array(latn).reshape((91)))
-        f.write_record(np.array(MLTs).reshape((181)))  
+        f.write_record(np.array(lats).reshape((len(lats))))
+        f.write_record(np.array(MLTs).reshape((len(MLTs))))  
         f.write_record([len(end_vars)])
         
         
@@ -189,14 +188,15 @@ def oneway_forcing(model_A, end_vars, lon_grid, lat_grid, time_grid, input_filed
         f.close()
         
         f = FortranFile(output_filedir+'/'+str(model_A)+'_to_GITM_'+output_filename+'n.swmf', 'w')
-        #print ('here')
+        
         
         # Build Northern Hemisphere file
 
-        f.write_record([len(lats), len(MLTs), len(time_grid)-2])
-        f.write_record(lats)
+        f.write_record([len(latn), len(MLTs), len(time_grid)-2])
+        f.write_record(latn)
         f.write_record(MLTs)   
         f.write_record(45)
+        
         potential_string = np.array('Potential (V)                 ', dtype='|S30')
         f.write_record(potential_string)
         Energy_flux_string = np.array('Energy Flux (ergs/cm2)        ', dtype='|S30')
