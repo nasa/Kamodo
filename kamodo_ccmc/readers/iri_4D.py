@@ -295,7 +295,12 @@ def MODEL():
                 coord_dict['lon'] = {'units': 'deg', 'data':
                                      getattr(self, '_lon_'+key)}
                 # Some files omit lon=180, add it back copying from -180
-                if coord_dict['lon']['data'][-1] < 179.5:
+                # Note that first value must also be -180 AND
+                #   step must show just missing the 180 value
+                step = coord_dict['lon']['data'][1] - coord_dict['lon']['data'][0]
+                if coord_dict['lon']['data'][-1] < 179.5 and \
+                   coord_dict['lon']['data'][0] == -180. and \
+                   coord_dict['lon']['data'][-1]+step == 180.:
                     print('padding missing longitude value')
                     self.missinglon = True
                     coord_dict['lon']['data'] = append(coord_dict['lon']['data'], [180.], axis=0)
