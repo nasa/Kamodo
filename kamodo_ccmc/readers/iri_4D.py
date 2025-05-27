@@ -61,7 +61,7 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
 
     from scipy.interpolate import RegularGridInterpolator as rgiND
-    from numpy import log, exp, delete
+    from numpy import log, exp, delete, reshape
     
     class MODEL(Kamodo):
         '''IRI model data reader.
@@ -115,6 +115,8 @@ def MODEL():
             # The doublemidnight flag is to check whether file we are reading
             #   has midnight at end of one day and start of next with same time
             self.doublemidnight = False
+            # The missinglon flag checks for omitted lon=180 and adds if needed
+            self.missinglon = False
             # The logD is a toggle to not interpolate density on log scale
             #   as well as a way to validate that it's working properly
             self.logD = logD
@@ -292,6 +294,11 @@ def MODEL():
             if 'lat' in coord_list:   # 3D variables come from neutral file
                 coord_dict['lon'] = {'units': 'deg', 'data':
                                      getattr(self, '_lon_'+key)}
+                # Some files omit lon=180, add it back copying from -180
+                if coord_dict['lon']['data'][-1] < 179.5:
+                    print('padding missing longitude value')
+                    self.missinglon = True
+                    coord_dict['lon']['data'] = append(coord_dict['lon']['data'], [180.], axis=0)
                 coord_dict['lat'] = {'units': 'deg', 'data':
                                      getattr(self, '_lat_'+key)}
             if 'height' in coord_list:
@@ -340,9 +347,19 @@ def MODEL():
                 if len(data.shape) == 3:
                     # time, lat, lon -> time, lon, lat
                     log_variable = log(transpose(data, (0, 2, 1)))
+                    if self.missinglon:
+                        print('fixing 3D log_variable')
+                        lvs = log_variable[:,0,:]
+                        lvs2 = reshape(lvs, (lvs.shape[0], 1, lvs.shape[1]))
+                        log_variable = append(log_variable, lvs2, axis=1)
                 elif len(data.shape) == 4:
                     # time, height, lat, lon -> time, lon, lat, height
                     log_variable = log(transpose(data, (0, 3, 2, 1)))
+                    if self.missinglon:
+                        print('fixing 4D log_variable')
+                        lvs = log_variable[:,0,:,:]
+                        lvs2 = reshape(lvs, (lvs.shape[0], 1, lvs.shape[1], lvs.shape[2]))
+                        log_variable = append(log_variable, lvs2, axis=1)
                 rgi = rgiND(coord_dict_data, log_variable[:, lon_idx],
                             bounds_error=False,fill_value=NaN)
                 def interp4d_custom(xvec):
