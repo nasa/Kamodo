@@ -3199,7 +3199,7 @@ def gmSurfaceMovie(where='.', where2='', wireframe=False):
 ### ====================================================================================== ###
 def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0., 
                 runname='UNKNOWN', resolution=0.25, showBS=True, showMP=True,
-                xrange=[-95., 25.], yrange=[-30., 30.], crange='',
+                xrange=[-95., 25.], yrange=[-30., 30.], crange='', csym=False,
                 xtic=10., ytic=10., log10=False, logCustom=True, 
                 colorscale='Viridis', showtiming=False):
     '''
@@ -3222,6 +3222,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     xrange:       2 value array for min/max extent of X values in slice
     yrange:       2 value array for min/max extent of Y values in slice
       -note: xy range values may be ajusted to keep overall plot aspect ratio
+    csym:         logical to force contour symmetry around 0
     xtic:         tic spacing on x axis
     ytic:         tic spacing on y axis
     log10:        logical to use log10 of variable values
@@ -3365,6 +3366,11 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     vmin = np.nanmin(value)
     vmax = np.nanmax(value)
     c = np.reshape(value, (len(x),len(y)))
+
+    # Contour Symmetry
+    if csym and not log10:
+        vmm = max(abs(vmin),abs(vmax))
+        crange = [-vmm, vmm]
 
     toc = time.perf_counter()
     if showtiming: print(f"  Interpolate Time: {toc - tic:0.4f} seconds")
