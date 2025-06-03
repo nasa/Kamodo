@@ -1914,8 +1914,9 @@ def B3Dfig(fullfile, showE = True):
 
 ### ====================================================================================== ###
 def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
-                  pco='', lowerlabel='', colorscale='RdBu', addTraceTime=False,
-                  showGrid=False, showE=False, log10=False, csym=False,
+                  pco='', upperlabel='', lowerlabel='', colorscale='RdBu',
+                  addTraceTime=False, showGrid=False, showE=False,
+                  log10=False, csym=False,
                   showMP=True, showBS=True, wireframe=False, crange='',
                   xrange=[-999., 999.], yrange=[-999., 999.], zrange=[-999., 999.],
                   showCarpet=False, showCarpetZ=False, showIT=False):
@@ -1931,6 +1932,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     pos, normal:  position and normal vector for slice plane
     gdeg:         slice grid degree resolution, default is 2.
     pco:          plot coordinate system, empty value uses model coordinates
+    upperlabel:   string text to label plot upper left
     lowerlabel:   string text to label plot lower left
     colorscale:   string name of Python colorscale, ie. Viridis, Cividis, RdBu
     addTraceTime: logical to add time string to trace label
@@ -2322,7 +2324,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
             fig.add_trace(fig2.data[0])
 
     # Final figure modifications
-    xs2 = 18
+    xs2 = 12
     ys1 = -40
     ys2 = -24
     ys3 = -8
@@ -2331,14 +2333,17 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     lrText3 = 'Max = '+"{:.4e}".format(vmax)
     fig.update_layout(
         scene_aspectmode='data',
-        title=dict(text=plotDateStr,
-                   yref="container", yanchor="top", x=0.01, y=0.97,
+        title=dict(text=upperlabel,
+                   yref="container", yanchor="top", x=0.01, y=0.98,
                    font=dict(size=16, family="sans serif", color="#000000")),
         scene=dict(
             xaxis=dict(showbackground=False, showgrid=False),
             yaxis=dict(showbackground=False, showgrid=False),
             zaxis=dict(showbackground=False, showgrid=False)),
         annotations=[
+            dict(text=plotDateStr, x=1.0, y=1.0, ax=0, ay=0, xanchor="right",
+                 xshift=0, yshift=12, xref="paper", yref="paper",
+                 font=dict(size=16, family="sans serif", color="#000000")),
             dict(text=lowerlabel, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                  xshift=0, yshift=-20, xref="paper", yref="paper",
                  font=dict(size=16, family="sans serif", color="#000000")),
