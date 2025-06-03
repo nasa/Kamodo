@@ -2344,7 +2344,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
             zaxis=dict(showbackground=False, showgrid=False)),
         annotations=[
             dict(text=plotDateStr, x=1.0, y=1.0, ax=0, ay=0, xanchor="right",
-                 xshift=0, yshift=12, xref="paper", yref="paper",
+                 xshift=0, yshift=14, xref="paper", yref="paper",
                  font=dict(size=16, family="sans serif", color="#000000")),
             dict(text=lowerlabel, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                  xshift=0, yshift=-20, xref="paper", yref="paper",
