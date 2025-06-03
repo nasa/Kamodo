@@ -98,9 +98,7 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
 
     if colorscale != '':
         usedcolorscale = colorscale
-        if colorscale == "BlueRed":
-            usedcolorscale = "RdBu_r"
-        elif colorscale == "Rainbow":
+        if colorscale == "Rainbow_old":
             usedcolorscale=[[0.00, 'rgb(0,0,255)'],
                             [0.25, 'rgb(0,255,255)'],
                             [0.50, 'rgb(0,255,0)'],
@@ -1917,7 +1915,7 @@ def B3Dfig(fullfile, showE = True):
 ### ====================================================================================== ###
 def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
                   pco='', lowerlabel='', colorscale='RdBu', addTraceTime=False,
-                  showGrid=False, showE=False, log10=False,
+                  showGrid=False, showE=False, log10=False, csym=False,
                   showMP=True, showBS=True, wireframe=False, crange='',
                   xrange=[-999., 999.], yrange=[-999., 999.], zrange=[-999., 999.],
                   showCarpet=False, showCarpetZ=False, showIT=False):
@@ -1939,6 +1937,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     showGrid:     logical to show dots at grid locations
     showE:        logical to show a sphere at R=1
     log10:        logical to take log10 of contour value
+    csym:         logical to force contour symmetry around 0
     showMP:       logical to show magnetopause boundary (requires 'status' variable)
     showBS:       logical to show bow shock (requires 'v_x' variable)
     wireframe:    logical to show MP and BS as wireframe
@@ -2214,6 +2213,11 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
         varlabel = "log10("+varlabel+")"
     vmin = np.nanmin(value)
     vmax = np.nanmax(value)
+    
+    # Contour Symmetry 
+    if csym and not log10: 
+        vmm = max(abs(vmin),abs(vmax))
+        crange = [-vmm, vmm]
 
     # Build connectivity grid cell by cell looping over positions
     iv, jv, kv = [], [], []
@@ -2247,9 +2251,9 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
                       flatshading=True,
                       lighting=dict(facenormalsepsilon=0),
                       lightposition=dict(x=100, y=200, z=100), )
-    xlabel = 'X [' + xunits + ']'
-    ylabel = 'Y [' + xunits + ']'
-    zlabel = 'Z [' + xunits + ']'
+    xlabel = 'X [' + xunits + '] ' + pco
+    ylabel = 'Y [' + xunits + '] ' + pco
+    zlabel = 'Z [' + xunits + '] ' + pco
     if (vMag or vRad):
         customdata2=np.dstack((valueX,valueY,valueZ))
         customdata=customdata2.reshape(customdata2.shape[1],customdata2.shape[2])
