@@ -2031,10 +2031,10 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     plotDateStr = plotDT.strftime("%Y-%m-%d %H:%M:%S UT")
 
     # Set label for slice type
-    sliceDir = ''
-    if normal[0] == 1: sliceDir = 'X '
-    if normal[1] == 1: sliceDir = 'Y '
-    if normal[2] == 1: sliceDir = 'Z '
+    sliceDir = '3D '
+    #if normal[0] == 1: sliceDir = 'X '
+    #if normal[1] == 1: sliceDir = 'Y '
+    #if normal[2] == 1: sliceDir = 'Z '
     if showCarpet: sliceDir = 'MC '
 
     # Compute base 1D grid values  ====================================== Grid
