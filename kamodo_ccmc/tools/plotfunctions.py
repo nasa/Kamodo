@@ -1821,6 +1821,7 @@ def fixFigOrigin(fig, setX='', setY='', setZ=''):
     the x, y, and z values of the data blocks, returning an updated figure.
     '''
     minX, maxX, minY, maxY, minZ, maxZ = 0., 0., 0., 0., 0., 0.
+    newX, newY, newZ = 0., 0., 0.
     for i in range(len(fig.data)):
         if len(fig.data[i]['x'].shape) == 1:
             minX = min(minX, min(v for v in fig.data[i]['x'] if v is not None))
@@ -1832,9 +1833,10 @@ def fixFigOrigin(fig, setX='', setY='', setZ=''):
     aveX = (minX + maxX)/2.
     aveY = (minY + maxY)/2.
     aveZ = (minZ + maxZ)/2.
-    newX = 0.7*(0. - aveX)/(maxX - aveX)
-    newY = 0.7*(0. - aveY)/(maxY - aveY)
-    newZ = 0.7*(0. - aveZ)/(maxZ - aveZ)
+    # These factors below do not work for all plots, but do for effectively Y=0 plots.
+    if maxX != aveX: newX = 2.35*(0. - aveX)/(maxX - aveX)
+    if maxY != aveY: newY = 2.35*(0. - aveY)/(maxY - aveY)
+    if maxZ != aveZ: newZ = 2.35*(0. - aveZ)/(maxZ - aveZ)
     if setX != '': newX = float(setX)
     if setY != '': newY = float(setY)
     if setZ != '': newZ = float(setZ)
