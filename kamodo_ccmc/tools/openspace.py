@@ -11,7 +11,7 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
     Parameters:
     -----------
     x_grid, y_grid, z_grid : array-like (21x21)
-        GSM coordinate meshgrids from gmComputeSurface
+        GSM coordinate meshgrids from gmComputeSurface (may contain None values)
     filename : str
         Output filename (without extension)
     timestamp : str or datetime, optional
@@ -24,9 +24,18 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
         Earth radius in meters for unit conversion
     """
     
-    # Convert GSM to Geocentric Solar Magnetospheric if needed
-    # (Note: GSM and Geocentric Solar Magnetospheric are the same coordinate system)
-    # GSM = Geocentric Solar Magnetospheric
+    # Handle None values by converting to numpy arrays with masked arrays or NaN
+    x_array = np.array(x_grid, dtype=float)
+    y_array = np.array(y_grid, dtype=float)
+    z_array = np.array(z_grid, dtype=float)
+    
+    # Create mask for valid (non-None, non-NaN) values
+    valid_mask = (~np.isnan(x_array)) & (~np.isnan(y_array)) & (~np.isnan(z_array))
+    
+    if not np.any(valid_mask):
+        raise ValueError("No valid (non-None) data points found in grids")
+    
+    print(f"Found {np.sum(valid_mask)} valid points out of {valid_mask.size} total points")
     
     # Convert units to meters
     if units == 'Re':
@@ -36,9 +45,9 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
     else:  # assume meters
         scale_factor = 1
     
-    x_m = x_grid * scale_factor
-    y_m = y_grid * scale_factor  
-    z_m = z_grid * scale_factor
+    x_m = x_array * scale_factor
+    y_m = y_array * scale_factor  
+    z_m = z_array * scale_factor
     
     # Create metadata
     metadata = {
@@ -46,7 +55,9 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
         'coordinate_system': 'GSM (Geocentric Solar Magnetospheric)',
         'units': 'meters',
         'original_units': units,
-        'grid_size': f"{x_grid.shape[0]}x{x_grid.shape[1]}",
+        'grid_size': f"{x_array.shape[0]}x{x_array.shape[1]}",
+        'valid_points': int(np.sum(valid_mask)),
+        'total_points': int(valid_mask.size),
         'earth_radius_m': earth_radius_m
     }
     
@@ -56,7 +67,7 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
         metadata['model_parameters'] = model_params
     
     # Write OBJ file
-    _write_obj_file(x_m, y_m, z_m, f"{filename}.obj", metadata)
+    _write_obj_file(x_m, y_m, z_m, valid_mask, f"{filename}.obj", metadata)
     
     # Write OpenSpace asset file
     _write_openspace_asset(filename, metadata)
@@ -64,8 +75,8 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
     print(f"OpenSpace files created: {filename}.obj, {filename}.asset")
 
 
-def _write_obj_file(x_grid, y_grid, z_grid, obj_filename, metadata):
-    """Write OBJ mesh file with metadata"""
+def _write_obj_file(x_grid, y_grid, z_grid, valid_mask, obj_filename, metadata):
+    """Write OBJ mesh file with metadata, handling invalid points"""
     
     rows, cols = x_grid.shape
     
@@ -76,30 +87,42 @@ def _write_obj_file(x_grid, y_grid, z_grid, obj_filename, metadata):
         f.write(f"# Coordinate System: {metadata['coordinate_system']}\n")
         f.write(f"# Units: {metadata['units']}\n")
         f.write(f"# Grid Size: {metadata['grid_size']}\n")
+        f.write(f"# Valid Points: {metadata['valid_points']}/{metadata['total_points']}\n")
         
         if 'computation_time' in metadata:
             f.write(f"# Computation Time: {metadata['computation_time']}\n")
         
         f.write("#\n")
         
-        # Write vertices
+        # Create vertex index mapping (only for valid points)
+        vertex_map = {}
+        vertex_count = 0
+        
+        # Write vertices (only valid ones)
         for i in range(rows):
             for j in range(cols):
-                f.write(f"v {x_grid[i,j]:.6e} {y_grid[i,j]:.6e} {z_grid[i,j]:.6e}\n")
+                if valid_mask[i, j]:
+                    vertex_count += 1
+                    vertex_map[(i, j)] = vertex_count
+                    f.write(f"v {x_grid[i,j]:.6e} {y_grid[i,j]:.6e} {z_grid[i,j]:.6e}\n")
         
-        # Write faces (triangles)
-        # Each grid cell creates 2 triangles
+        # Write faces (triangles) - only for cells where all 4 corners are valid
         for i in range(rows - 1):
             for j in range(cols - 1):
-                # Vertex indices (OBJ uses 1-based indexing)
-                v1 = i * cols + j + 1
-                v2 = i * cols + (j + 1) + 1
-                v3 = (i + 1) * cols + j + 1
-                v4 = (i + 1) * cols + (j + 1) + 1
+                # Check if all 4 corners of this grid cell are valid
+                corners_valid = (valid_mask[i, j] and valid_mask[i, j+1] and 
+                               valid_mask[i+1, j] and valid_mask[i+1, j+1])
                 
-                # Two triangles per grid cell
-                f.write(f"f {v1} {v2} {v3}\n")
-                f.write(f"f {v2} {v4} {v3}\n")
+                if corners_valid:
+                    # Get vertex indices (OBJ uses 1-based indexing)
+                    v1 = vertex_map[(i, j)]
+                    v2 = vertex_map[(i, j+1)]
+                    v3 = vertex_map[(i+1, j)]
+                    v4 = vertex_map[(i+1, j+1)]
+                    
+                    # Two triangles per grid cell
+                    f.write(f"f {v1} {v2} {v3}\n")
+                    f.write(f"f {v2} {v4} {v3}\n")
 
 
 def _write_openspace_asset(filename, metadata):
@@ -108,6 +131,7 @@ def _write_openspace_asset(filename, metadata):
     asset_content = f'''-- Bow Shock Surface Asset
 -- {metadata['created']}
 -- {metadata['coordinate_system']}
+-- Valid points: {metadata['valid_points']}/{metadata['total_points']}
 
 local bowShock = {{
     Identifier = "BowShock_{filename.replace('/', '_').replace('.', '_')}",
@@ -166,11 +190,4 @@ asset.export(bowShock)
 
     with open(f"{filename}.asset", 'w') as f:
         f.write(asset_content)
-
-
-# Example usage:
-# x, y, z = gmComputeSurface(...)  # Your existing function
-# gmSaveOpenSpace(x, y, z, "bowshock_20240101", 
-#                timestamp="2024-01-01T12:00:00Z",
-#                model_params={"solar_wind_pressure": 2.1, "imf_bz": -5.0})
 
