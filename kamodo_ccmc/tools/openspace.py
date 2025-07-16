@@ -1,9 +1,9 @@
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename, 
-                   timestamp=None, model_params=None, 
+                   timestamp=None, duration_minutes=4, model_params=None, 
                    units='Re', earth_radius_m=6.371e6):
     """
     Save bow shock surface data in OpenSpace-compatible format
@@ -15,7 +15,9 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
     filename : str
         Output filename (without extension)
     timestamp : str or datetime, optional
-        Time of computation
+        Start time for the bow shock surface display
+    duration_minutes : int, default 4
+        How long the surface should be visible (in minutes)
     model_params : dict, optional
         Model parameters used in computation
     units : str, default 'Re'
@@ -49,6 +51,22 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
     y_m = y_array * scale_factor  
     z_m = z_array * scale_factor
     
+    # Handle timestamp and duration
+    if timestamp is None:
+        start_time = datetime.now()
+    elif isinstance(timestamp, str):
+        # Try to parse common formats
+        try:
+            start_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        except:
+            # If parsing fails, use current time
+            start_time = datetime.now()
+            print(f"Warning: Could not parse timestamp '{timestamp}', using current time")
+    else:
+        start_time = timestamp
+    
+    end_time = start_time + timedelta(minutes=duration_minutes)
+    
     # Create metadata
     metadata = {
         'created': datetime.now().isoformat(),
@@ -58,11 +76,12 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
         'grid_size': f"{x_array.shape[0]}x{x_array.shape[1]}",
         'valid_points': int(np.sum(valid_mask)),
         'total_points': int(valid_mask.size),
-        'earth_radius_m': earth_radius_m
+        'earth_radius_m': earth_radius_m,
+        'start_time': start_time,
+        'end_time': end_time,
+        'duration_minutes': duration_minutes
     }
     
-    if timestamp:
-        metadata['computation_time'] = str(timestamp)
     if model_params:
         metadata['model_parameters'] = model_params
     
@@ -73,6 +92,7 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename,
     _write_openspace_asset(filename, metadata)
     
     print(f"OpenSpace files created: {filename}.obj, {filename}.asset")
+    print(f"Time frame: {start_time.strftime('%Y %b %d %H:%M:%S')} to {end_time.strftime('%Y %b %d %H:%M:%S')}")
 
 
 def _write_obj_file(x_grid, y_grid, z_grid, valid_mask, obj_filename, metadata):
@@ -88,9 +108,10 @@ def _write_obj_file(x_grid, y_grid, z_grid, valid_mask, obj_filename, metadata):
         f.write(f"# Units: {metadata['units']}\n")
         f.write(f"# Grid Size: {metadata['grid_size']}\n")
         f.write(f"# Valid Points: {metadata['valid_points']}/{metadata['total_points']}\n")
+        f.write(f"# Time Frame: {metadata['start_time']} to {metadata['end_time']}\n")
         
-        if 'computation_time' in metadata:
-            f.write(f"# Computation Time: {metadata['computation_time']}\n")
+        if 'model_parameters' in metadata:
+            f.write(f"# Model Parameters: {metadata['model_parameters']}\n")
         
         f.write("#\n")
         
@@ -128,18 +149,32 @@ def _write_obj_file(x_grid, y_grid, z_grid, valid_mask, obj_filename, metadata):
 def _write_openspace_asset(filename, metadata):
     """Write OpenSpace asset file"""
     
+    start_time_str = metadata['start_time'].strftime('%Y %b %d %H:%M:%S')
+    end_time_str = metadata['end_time'].strftime('%Y %b %d %H:%M:%S')
+    identifier = f"BowShock_{filename.replace('/', '_').replace('.', '_')}"
+    
     asset_content = f'''-- Bow Shock Surface Asset
--- {metadata['created']}
--- {metadata['coordinate_system']}
+-- Created: {metadata['created']}
+-- Coordinate System: {metadata['coordinate_system']}
 -- Valid points: {metadata['valid_points']}/{metadata['total_points']}
+-- Time Frame: {start_time_str} to {end_time_str}
+
+local transforms = asset.require("scene/solarsystem/planets/earth/transforms_gsm_sm")
 
 local bowShock = {{
-    Identifier = "BowShock_{filename.replace('/', '_').replace('.', '_')}",
+    Identifier = "{identifier}",
+    Parent = transforms.GeocentricSolarMagnetospheric.Identifier,
+    TimeFrame = {{
+        Type = "TimeFrameInterval",
+        Start = "{start_time_str}",
+        End = "{end_time_str}"
+    }},
     Renderable = {{
         Type = "RenderableModel",
-        GeometryFile = "{filename}.obj",
+        GeometryFile = asset.resource("{filename}.obj"),
         ModelScale = 1.0, -- Already in meters
         EnableDepthTest = true,
+        EnableFaceCulling = false,
         Enabled = true,
         Opacity = 0.7,
         -- Coloring options
@@ -148,33 +183,11 @@ local bowShock = {{
         DiffuseIntensity = 0.8,
         SpecularIntensity = 0.0
     }},
-    Transform = {{
-        Translation = {{
-            Type = "StaticTranslation",
-            Position = {{ 0, 0, 0 }} -- Relative to Earth center
-        }}
-    }},
     GUI = {{
         Name = "Bow Shock Surface",
         Path = "/Solar System/Earth/Magnetosphere",
         Description = "Bow shock surface computed from magnetospheric model"
-    }},
-    -- Metadata
-    Tag = {{ "earth_magnetosphere", "bow_shock" }}
-}}
-
--- Asset metadata
-bowShock.Meta = {{
-    Name = "Bow Shock Surface",
-    Version = "1.0",
-    Description = "Magnetospheric bow shock surface",
-    CreatedBy = "Kamodo gmSaveOpenSpace function",'''
-
-    if 'model_parameters' in metadata:
-        asset_content += f'''
-    ModelParameters = {json.dumps(metadata['model_parameters'], indent=8).replace('{', '{{').replace('}', '}}')}'''
-
-    asset_content += f'''
+    }}
 }}
 
 asset.onInitialize(function()
@@ -190,4 +203,12 @@ asset.export(bowShock)
 
     with open(f"{filename}.asset", 'w') as f:
         f.write(asset_content)
+
+
+# Example usage:
+# x, y, z = gmComputeSurface(...)  # Your existing function
+# gmSaveOpenSpace(x, y, z, "BS2024-05-10-17-56-00", 
+#                timestamp="2024-05-10T17:56:00",
+#                duration_minutes=4,
+#                model_params={"solar_wind_pressure": 2.1, "imf_bz": -5.0})
 
