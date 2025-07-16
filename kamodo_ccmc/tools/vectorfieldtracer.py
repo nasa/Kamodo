@@ -663,6 +663,9 @@ class KamodoVectorFieldTracer:
         self.field_type = field_type.lower()
         self.verbose = verbose
 
+        # Usage counter
+        self.use_counter = 0
+
         # Validate vector components exist in Kamodo object
         available_vars = list(str(item) for item in kamodo_object.keys())
         for component in vector_components:
@@ -922,6 +925,8 @@ class KamodoVectorFieldTracer:
         trace_result : dict
             Dictionary containing trace results
         """
+        self.use_counter += 1
+
         x0, y0, z0 = start_point_re
 
         if step_size_re is None:
@@ -1307,6 +1312,41 @@ class KamodoVectorFieldTracer:
         }
 
         return stats
+
+    def reset_trace_usage(self):
+        """
+        Reset the number of times the tracer has been called to 0.
+
+        Parameters:
+        -----------
+
+        Returns:
+        --------
+        """
+        self.use_counter = 0
+        print('Tracer usage reset to 0.')
+ 
+        return
+
+    def report_trace_usage(self, value=False):
+        """
+        Report the number of times the tracer has been called.
+
+        Parameters:
+        -----------
+        value : bool
+            Whether to return a value or to just print out usage.
+
+        Returns:
+        --------
+        use_counter value or nothing, depending to value bool
+        """
+        if value:
+            return self.use_counter
+
+        print('Tracer usage: ',self.use_counter)
+
+        return
 
 
 # Convenience functions for creating tracers with correct component names

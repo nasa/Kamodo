@@ -198,7 +198,7 @@ def _find_boundary_bisection(mag_tracer, lon_rad, time_hours, r_start, r_max,
 
 
 def find_last_closed_field_lines(ko, time_hours, n_traces=18, r_start=2.0, r_max=20.0,
-                                tolerance=0.02, max_bisection_iter=10, initial_step=2.0,
+                                tolerance=0.02, max_bisection_iter=10, initial_step=4.0,
                                 max_steps=5000, step_size_re=0.1,
                                 coord_system='GSM', verbose=True):
     """
@@ -222,7 +222,7 @@ def find_last_closed_field_lines(ko, time_hours, n_traces=18, r_start=2.0, r_max
     max_bisection_iter : int
         Maximum iterations for bisection method (default 10)
     initial_step : float
-        Initial step size for coarse search in RE (default 2.0 RE)
+        Initial step size for coarse search in RE (default 4.0 RE)
     max_steps : int
         Maximum integration steps per trace
     step_size_re : float
@@ -362,6 +362,7 @@ def find_last_closed_field_lines(ko, time_hours, n_traces=18, r_start=2.0, r_max
             print(f"  Magnetopause points: {len(magnetopause_points)}")
         else:
             print(f"  No closed field lines found in search range")
+        print(f"  Number of traces computed: {mag_tracer.report_trace_usage(value=True)}")
 
     results = {
         'closed_traces': closed_traces,
@@ -379,7 +380,8 @@ def find_last_closed_field_lines(ko, time_hours, n_traces=18, r_start=2.0, r_max
             'mean_accuracy': np.mean(valid_accuracy) if len(valid_accuracy) > 0 else np.nan,
             'time_hours': time_hours,
             'coord_system': coord_system,
-            'tolerance': tolerance
+            'tolerance': tolerance,
+            'trace_calls': mag_tracer.report_trace_usage(value=True)
         }
     }
 
