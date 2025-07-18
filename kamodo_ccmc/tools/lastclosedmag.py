@@ -3,10 +3,17 @@ Kamodo Last Closed Magnetic Field Lines
 
 Functions for finding the last closed magnetic field lines and magnetopause boundary.
 All coordinates are in Earth radii (RE).
+
+Updated to use optimized vector field tracer with:
+- Batch processing for efficient handling of multiple field lines
+- Parallel processing for improved performance
+- Memory management for large datasets
+- Enhanced progress tracking and benchmarking
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 try:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -15,7 +22,7 @@ try:
 except ImportError:
     PLOTLY_AVAILABLE = False
 
-# Import the vector field tracer
+# Import the optimized vector field tracer
 import kamodo_ccmc.tools.vectorfieldtracer as vft
 
 
@@ -44,193 +51,146 @@ def _is_field_line_closed(trace_result):
         if 'backward' in trace_result:
             stop_reasons.append(trace_result['backward']['stop_reason'])
 
-    # Count how many ends hit Earth's surface
-    earth_hits = sum(1 for reason in stop_reasons if 'Earth_surface' in reason)
-
-    # Field line is closed if both ends hit Earth
-    is_closed = earth_hits >= 2
-
-    return is_closed
+    # Count how many ends hit Earth's surface (minimum altitude)
+    earth_hits = sum(1 for reason in stop_reasons if 'min_altitude' in reason or 'Earth_surface' in reason)
+    
+    # A closed field line should have both ends hitting Earth
+    return earth_hits >= 2
 
 
-def _find_boundary_bisection(mag_tracer, lon_rad, time_hours, r_start, r_max,
-                            tolerance, max_iter, initial_step, max_steps, step_size_re,
-                            verbose=False):
+def _find_last_closed_radius_bisection(tracer, longitude_deg, time_hours, 
+                                     r_min=2.0, r_max=15.0, tolerance=0.1,
+                                     max_iterations=20, verbose=False):
     """
-    Use bisection method to find the last closed field line boundary accurately.
-
+    Find the last closed field line radius at a given longitude using bisection method.
+    
     Parameters:
     -----------
-    mag_tracer : KamodoVectorFieldTracer
+    tracer : vft.KamodoVectorFieldTracer
         Magnetic field tracer
-    lon_rad : float
-        Longitude in radians
+    longitude_deg : float
+        Longitude in degrees
     time_hours : float
         Time in hours
-    r_start, r_max : float
-        Search range in RE
+    r_min : float
+        Minimum radius to search
+    r_max : float
+        Maximum radius to search
     tolerance : float
-        Desired accuracy in RE
-    max_iter : int
-        Maximum bisection iterations
-    initial_step : float
-        Initial step for coarse search
-    max_steps : int
-        Max integration steps per trace
-    step_size_re : float
-        Integration step size
+        Tolerance for bisection method
+    max_iterations : int
+        Maximum number of bisection iterations
     verbose : bool
-        Print detailed progress
-
+        Whether to print detailed progress
+        
     Returns:
     --------
-    boundary_r : float
-        Last closed field line radius (NaN if not found)
-    final_accuracy : float
-        Achieved accuracy
+    last_closed_r : float
+        Radius of last closed field line (NaN if not found)
+    accuracy : float
+        Estimated accuracy of the result
     """
-    # Step 1: Coarse search to bracket the boundary
-    if verbose:
-        print(f"      Coarse search from {r_start:.1f} to {r_max:.1f} RE...")
-
-    r_closed = None  # Last known closed radius
-    r_open = None    # First known open radius
-
-    # Search with initial step size to bracket the boundary
-    r_test = r_start
-    while r_test <= r_max:
-        x_test = r_test * np.cos(lon_rad)
-        y_test = r_test * np.sin(lon_rad)
-        z_test = 0.0
-
+    longitude_rad = np.deg2rad(longitude_deg)
+    
+    # Test function to check if field line at radius r is closed
+    def is_closed_at_radius(r):
+        start_pos = [r * np.cos(longitude_rad), r * np.sin(longitude_rad), 0.0]
         try:
-            trace_result = mag_tracer.trace_vector_line(
-                (x_test, y_test, z_test), time_hours,
-                max_steps=max_steps,
-                step_size_re=step_size_re,
-                direction='both',
-                adaptive_step=True
+            trace_result = tracer.trace_vector_line(
+                start_pos, time_hours,
+                max_steps=2000,
+                step_size_re=0.05,
+                direction='both'
             )
-
-            is_closed = _is_field_line_closed(trace_result)
-
-            if is_closed:
-                r_closed = r_test
-                if verbose:
-                    print(f"        R={r_test:.2f} RE: CLOSED")
-            else:
-                r_open = r_test
-                if verbose:
-                    print(f"        R={r_test:.2f} RE: OPEN")
-                break  # Found first open field line
-
+            return _is_field_line_closed(trace_result)
         except Exception as e:
             if verbose:
-                print(f"        R={r_test:.2f} RE: ERROR ({e})")
-            break
-
-        r_test += initial_step
-
-    # Check if we found a valid bracket
-    if r_closed is None or r_open is None:
+                print(f"    Error tracing at r={r:.2f}: {e}")
+            return False
+    
+    # Check if we have any closed field lines in the range
+    if not is_closed_at_radius(r_min):
         if verbose:
-            print(f"      Could not bracket boundary (closed={r_closed}, open={r_open})")
+            print(f"    No closed field lines found at minimum radius {r_min:.2f}")
         return np.nan, np.nan
-
-    # Step 2: Bisection method for accurate boundary finding
-    if verbose:
-        print(f"      Bisection between {r_closed:.3f} and {r_open:.3f} RE...")
-
-    r_low = r_closed    # Known closed
-    r_high = r_open     # Known open
-
-    for iteration in range(max_iter):
+    
+    # Check if all field lines are closed up to maximum radius
+    if is_closed_at_radius(r_max):
+        if verbose:
+            print(f"    All field lines closed up to maximum radius {r_max:.2f}")
+        return r_max, tolerance
+    
+    # Bisection method
+    r_low = r_min
+    r_high = r_max
+    
+    for iteration in range(max_iterations):
         r_mid = (r_low + r_high) / 2.0
-        current_accuracy = (r_high - r_low) / 2.0
-
-        if current_accuracy <= tolerance:
-            if verbose:
-                print(f"      Converged after {iteration} iterations: "
-                      f"{r_mid:.4f} ± {current_accuracy:.4f} RE")
-            return r_mid, current_accuracy
-
-        # Test the midpoint
-        x_mid = r_mid * np.cos(lon_rad)
-        y_mid = r_mid * np.sin(lon_rad)
-        z_mid = 0.0
-
-        try:
-            trace_result = mag_tracer.trace_vector_line(
-                (x_mid, y_mid, z_mid), time_hours,
-                max_steps=max_steps,
-                step_size_re=step_size_re,
-                direction='both',
-                adaptive_step=True
-            )
-
-            is_closed = _is_field_line_closed(trace_result)
-
-            if is_closed:
-                r_low = r_mid  # Midpoint is closed, move lower bound up
-                if verbose:
-                    print(f"        Iter {iteration+1}: R={r_mid:.4f} RE CLOSED, "
-                          f"bracket=[{r_low:.4f}, {r_high:.4f}], acc=±{current_accuracy:.4f}")
-            else:
-                r_high = r_mid  # Midpoint is open, move upper bound down
-                if verbose:
-                    print(f"        Iter {iteration+1}: R={r_mid:.4f} RE OPEN, "
-                          f"bracket=[{r_low:.4f}, {r_high:.4f}], acc=±{current_accuracy:.4f}")
-
-        except Exception as e:
-            if verbose:
-                print(f"        Iter {iteration+1}: R={r_mid:.4f} RE ERROR: {e}")
-            # On error, assume open (conservative approach)
-            r_high = r_mid
-
-    # Return best estimate after max iterations
-    final_r = (r_low + r_high) / 2.0
-    final_accuracy = (r_high - r_low) / 2.0
-
+        
+        if verbose:
+            print(f"    Iteration {iteration+1}: testing r={r_mid:.3f} RE")
+        
+        if is_closed_at_radius(r_mid):
+            r_low = r_mid  # Last closed is at least r_mid
+        else:
+            r_high = r_mid  # Last closed is less than r_mid
+        
+        # Check convergence
+        if (r_high - r_low) < tolerance:
+            break
+    
+    last_closed_r = (r_low + r_high) / 2.0
+    accuracy = (r_high - r_low) / 2.0
+    
     if verbose:
-        print(f"      Max iterations reached: {final_r:.4f} ± {final_accuracy:.4f} RE")
+        print(f"    Found last closed at r={last_closed_r:.3f} ± {accuracy:.3f} RE")
+    
+    return last_closed_r, accuracy
 
-    return final_r, final_accuracy
 
-
-def find_last_closed_field_lines(ko, time_hours, n_traces=18, r_start=2.0, r_max=20.0,
-                                tolerance=0.02, max_bisection_iter=10, initial_step=4.0,
-                                max_steps=5000, step_size_re=0.1,
-                                coord_system='GSM', verbose=True):
+def find_last_closed_field_lines(kamodo_object, time_hours,
+                                n_traces=36, r_start=3.0, r_max=100.0, r_step=8.0,
+                                tolerance=0.1, coord_system='GSM',
+                                use_parallel=False, use_numba=True, n_jobs=-1,
+                                use_batches=None, max_memory_mb=2000,
+                                show_progress=True, verbose=False):
     """
-    Find the last closed magnetic field lines using bisection method for accurate boundary detection.
-    Seeds points are placed in the equatorial plane at evenly spaced longitudes.
-
+    Find last closed magnetic field lines and approximate magnetopause boundary.
+    
+    Uses optimized batch processing and parallel computation for improved performance.
+    
     Parameters:
     -----------
-    ko : Kamodo object
+    kamodo_object : object
         Kamodo object containing magnetic field data
     time_hours : float
-        Time in hours since midnight of first day of data
-    n_traces : int
-        Number of traces (default 18 for 20-degree spacing)
-    r_start : float
-        Starting radial distance in RE (default 2.0 RE)
-    r_max : float
-        Maximum radial distance to search in RE (default 20.0 RE)
-    tolerance : float
-        Tolerance for bisection method in RE (default 0.02 RE)
-    max_bisection_iter : int
-        Maximum iterations for bisection method (default 10)
-    initial_step : float
-        Initial step size for coarse search in RE (default 4.0 RE)
-    max_steps : int
-        Maximum integration steps per trace
-    step_size_re : float
-        Integration step size in RE
-    coord_system : str
-        Coordinate system ('GSM', 'GSE', 'SM', etc.)
-    verbose : bool
-        Whether to print progress information
+        Time in hours since midnight of first day
+    n_traces : int, optional (default=36)
+        Number of longitude traces (evenly spaced around equator)
+    r_start : float, optional (default=3.0)
+        Starting radius for search in RE
+    r_max : float, optional (default=100.0)
+        Maximum radius to search in RE
+    r_step : float, optional (default=8.0)
+        Initial step size for coarse search in RE
+    tolerance : float, optional (default=0.1)
+        Tolerance for bisection method in RE
+    coord_system : str, optional (default='GSM')
+        Coordinate system for field tracing
+    use_parallel : bool, optional (default=False)
+        Whether to use parallel processing
+    use_numba : bool, optional (default=True)
+        Whether to use numba optimization
+    n_jobs : int, optional (default=-1)
+        Number of parallel jobs (-1 uses all cores)
+    use_batches : bool, optional
+        Whether to use batch processing (auto-determined if None)
+    max_memory_mb : float, optional (default=2000)
+        Maximum memory usage for batch processing in MB
+    show_progress : bool, optional (default=True)
+        Whether to show progress bars
+    verbose : bool, optional (default=False)
+        Whether to print detailed progress information
 
     Returns:
     --------
@@ -242,17 +202,26 @@ def find_last_closed_field_lines(ko, time_hours, n_traces=18, r_start=2.0, r_max
         - 'longitudes': Array of longitude values in degrees
         - 'magnetopause_points': Array of approximate magnetopause boundary points
         - 'boundary_accuracy': Array of estimated accuracy for each boundary point
+        - 'performance_stats': Dictionary with timing and performance information
+        - 'summary': Dictionary with summary statistics
     """
     if verbose:
         print(f"Finding last closed field lines at t={time_hours:.2f} hours")
         print(f"Using bisection method with tolerance {tolerance:.3f} RE")
         print(f"Searching from {r_start} to {r_max} RE")
         print(f"Using {n_traces} traces at {360/n_traces:.1f}° intervals")
+        print(f"Optimization settings: parallel={use_parallel}, numba={use_numba}")
 
-    # Create magnetic field tracer
-    mag_tracer = vft.KamodoVectorFieldTracer(
-        ko, vector_components=('B_x', 'B_y', 'B_z'),
-        coord_system=coord_system, field_type='magnetic')
+    start_time = time.time()
+
+    # Create optimized magnetic field tracer
+    mag_tracer = vft.create_magnetic_tracer(
+        kamodo_object,
+        use_numba=use_numba,
+        use_parallel=use_parallel,
+        n_jobs=n_jobs,
+        verbose=verbose
+    )
 
     # Generate longitude angles (evenly spaced)
     longitudes = np.linspace(0, 360, n_traces, endpoint=False)
@@ -267,125 +236,515 @@ def find_last_closed_field_lines(ko, time_hours, n_traces=18, r_start=2.0, r_max
     if verbose:
         progress_interval = max(1, n_traces // 10)
 
-    # For each longitude direction
-    for i, lon_deg in enumerate(longitudes):
-        if verbose and (i + 1) % progress_interval == 0:
-            print(f"  Processing longitude {i+1}/{n_traces} ({lon_deg:.1f}°)")
+    # Process each longitude
+    print(f"Processing {n_traces} longitude slices...")
+    
+    # Use tqdm for progress if available and requested
+    longitude_iter = enumerate(longitudes)
+    if show_progress and vft.TQDM_AVAILABLE:
+        from tqdm import tqdm
+        longitude_iter = tqdm(longitude_iter, total=n_traces, desc="Finding last closed lines")
 
-        lon_rad = np.radians(lon_deg)
+    for i, longitude_deg in longitude_iter:
+        if verbose and (i % progress_interval == 0):
+            print(f"Processing longitude {longitude_deg:.1f}° ({i+1}/{n_traces})")
 
-        # Find boundary using bisection method
-        boundary_r, final_accuracy = _find_boundary_bisection(
-            mag_tracer, lon_rad, time_hours, r_start, r_max,
-            tolerance, max_bisection_iter, initial_step,
-            max_steps, step_size_re, verbose and i < 3  # Only show details for first few
+        # Find last closed radius at this longitude using bisection
+        last_r, accuracy = _find_last_closed_radius_bisection(
+            mag_tracer, longitude_deg, time_hours,
+            r_min=r_start, r_max=r_max, tolerance=tolerance,
+            verbose=verbose
+        )
+        
+        last_closed_r[i] = last_r
+        boundary_accuracy[i] = accuracy
+
+        # Create magnetopause boundary point
+        if not np.isnan(last_r):
+            longitude_rad = np.deg2rad(longitude_deg)
+            boundary_point = [
+                last_r * np.cos(longitude_rad),
+                last_r * np.sin(longitude_rad),
+                0.0
+            ]
+            magnetopause_points.append(boundary_point)
+
+    # Convert magnetopause points to array
+    magnetopause_points = np.array(magnetopause_points) if magnetopause_points else np.array([]).reshape(0, 3)
+
+    # Now trace some example field lines for visualization
+    if verbose:
+        print("\nTracing example field lines for visualization...")
+
+    # Select a subset of positions for detailed tracing
+    n_example_traces = min(18, n_traces)  # Limit for visualization
+    example_indices = np.linspace(0, n_traces-1, n_example_traces, dtype=int)
+    
+    # Prepare start points for batch tracing
+    closed_start_points = []
+    open_start_points = []
+    
+    for idx in example_indices:
+        longitude_deg = longitudes[idx]
+        longitude_rad = np.deg2rad(longitude_deg)
+        last_r = last_closed_r[idx]
+        
+        if not np.isnan(last_r):
+            # Add a closed field line (slightly inside last closed)
+            r_closed = max(r_start, last_r - 0.5)
+            closed_start_points.append([
+                r_closed * np.cos(longitude_rad),
+                r_closed * np.sin(longitude_rad),
+                0.0
+            ])
+            
+            # Add an open field line (slightly outside last closed)
+            r_open = last_r + 0.5
+            open_start_points.append([
+                r_open * np.cos(longitude_rad),
+                r_open * np.sin(longitude_rad),
+                0.0
+            ])
+
+    # Batch trace closed field lines
+    if closed_start_points:
+        if verbose:
+            print(f"Batch tracing {len(closed_start_points)} closed field lines...")
+        
+        closed_traces = mag_tracer.trace_multiple_lines(
+            closed_start_points,
+            time_hours,
+            max_steps=3000,
+            step_size_re=0.1,
+            show_progress=show_progress and not vft.TQDM_AVAILABLE,
+            use_batches=use_batches,
+            max_memory_mb=max_memory_mb
         )
 
-        if not np.isnan(boundary_r):
-            last_closed_r[i] = boundary_r
-            boundary_accuracy[i] = final_accuracy
+    # Batch trace open field lines
+    if open_start_points:
+        if verbose:
+            print(f"Batch tracing {len(open_start_points)} open field lines...")
+        
+        open_traces = mag_tracer.trace_multiple_lines(
+            open_start_points,
+            time_hours,
+            max_steps=3000,
+            step_size_re=0.1,
+            show_progress=show_progress and not vft.TQDM_AVAILABLE,
+            use_batches=use_batches,
+            max_memory_mb=max_memory_mb
+        )
 
-            # Get the final closed field line trace
-            x_closed = boundary_r * np.cos(lon_rad)
-            y_closed = boundary_r * np.sin(lon_rad)
-            z_closed = 0.0
-            closed_start_point = (x_closed, y_closed, z_closed)
+    # Calculate execution time and performance stats
+    total_time = time.time() - start_time
+    tracer_stats = mag_tracer.get_performance_stats()
+    
+    performance_stats = {
+        'total_execution_time': total_time,
+        'n_longitudes_processed': n_traces,
+        'n_closed_traces': len(closed_traces),
+        'n_open_traces': len(open_traces),
+        'longitudes_per_second': n_traces / total_time,
+        'tracer_stats': tracer_stats
+    }
 
-            try:
-                closed_trace = mag_tracer.trace_vector_line(
-                    closed_start_point, time_hours,
-                    max_steps=max_steps,
-                    step_size_re=step_size_re,
-                    direction='both',
-                    adaptive_step=True
-                )
-
-                closed_traces.append({
-                    'trace': closed_trace,
-                    'longitude': lon_deg,
-                    'radius': boundary_r,
-                    'start_point': closed_start_point,
-                    'accuracy': final_accuracy
-                })
-
-                # Get the first open field line trace (slightly beyond boundary)
-                open_r = boundary_r + 2 * tolerance  # Slightly beyond closed boundary
-                x_open = open_r * np.cos(lon_rad)
-                y_open = open_r * np.sin(lon_rad)
-                z_open = 0.0
-                open_start_point = (x_open, y_open, z_open)
-
-                open_trace = mag_tracer.trace_vector_line(
-                    open_start_point, time_hours,
-                    max_steps=max_steps,
-                    step_size_re=step_size_re,
-                    direction='both',
-                    adaptive_step=True
-                )
-
-                open_traces.append({
-                    'trace': open_trace,
-                    'longitude': lon_deg,
-                    'radius': open_r,
-                    'start_point': open_start_point
-                })
-
-                # Add magnetopause point (use the open field line starting point)
-                magnetopause_points.append([x_open, y_open, z_open])
-
-                if verbose:
-                    print(f"    Lon {lon_deg:.1f}°: Last closed at {boundary_r:.3f} RE "
-                          f"(±{final_accuracy:.3f} RE)")
-
-            except Exception as e:
-                if verbose:
-                    print(f"    Error getting final traces at lon={lon_deg:.1f}°: {e}")
-        else:
-            if verbose:
-                print(f"    Lon {lon_deg:.1f}°: No boundary found in search range")
-
-    # Create magnetopause boundary estimate
-    magnetopause_points = (np.array(magnetopause_points)
-                           if magnetopause_points else np.array([]).reshape(0, 3))
-
-    # Summary statistics
-    valid_last_closed = last_closed_r[~np.isnan(last_closed_r)]
-    valid_accuracy = boundary_accuracy[~np.isnan(boundary_accuracy)]
+    # Create summary statistics
+    valid_radii = last_closed_r[~np.isnan(last_closed_r)]
+    summary = {
+        'n_longitudes': n_traces,
+        'n_valid_boundaries': len(valid_radii),
+        'mean_boundary_radius': np.mean(valid_radii) if len(valid_radii) > 0 else np.nan,
+        'std_boundary_radius': np.std(valid_radii) if len(valid_radii) > 0 else np.nan,
+        'min_boundary_radius': np.min(valid_radii) if len(valid_radii) > 0 else np.nan,
+        'max_boundary_radius': np.max(valid_radii) if len(valid_radii) > 0 else np.nan,
+        'mean_accuracy': np.mean(boundary_accuracy[~np.isnan(boundary_accuracy)]),
+        'execution_time': total_time
+    }
 
     if verbose:
-        print(f"\nSummary:")
-        print(f"  Found closed field lines at {len(valid_last_closed)}/{n_traces} longitudes")
-        if len(valid_last_closed) > 0:
-            print(f"  Last closed radius: mean={np.mean(valid_last_closed):.3f} RE, "
-                  f"range=[{np.min(valid_last_closed):.3f}, {np.max(valid_last_closed):.3f}] RE")
-            print(f"  Average accuracy: {np.mean(valid_accuracy):.4f} RE")
-            print(f"  Magnetopause points: {len(magnetopause_points)}")
-        else:
-            print(f"  No closed field lines found in search range")
-        print(f"  Number of traces computed: {mag_tracer.report_trace_usage(value=True)}")
+        print(f"\nCompleted in {total_time:.2f} seconds")
+        print(f"Found {len(valid_radii)}/{n_traces} valid boundary points")
+        if len(valid_radii) > 0:
+            print(f"Mean boundary radius: {summary['mean_boundary_radius']:.2f} ± {summary['std_boundary_radius']:.2f} RE")
+            print(f"Range: {summary['min_boundary_radius']:.2f} - {summary['max_boundary_radius']:.2f} RE")
 
-    results = {
+    return {
         'closed_traces': closed_traces,
         'open_traces': open_traces,
         'last_closed_r': last_closed_r,
         'longitudes': longitudes,
         'magnetopause_points': magnetopause_points,
         'boundary_accuracy': boundary_accuracy,
-        'summary': {
-            'n_closed': len(valid_last_closed),
-            'n_total': n_traces,
-            'mean_radius': np.mean(valid_last_closed) if len(valid_last_closed) > 0 else np.nan,
-            'min_radius': np.min(valid_last_closed) if len(valid_last_closed) > 0 else np.nan,
-            'max_radius': np.max(valid_last_closed) if len(valid_last_closed) > 0 else np.nan,
-            'mean_accuracy': np.mean(valid_accuracy) if len(valid_accuracy) > 0 else np.nan,
-            'time_hours': time_hours,
-            'coord_system': coord_system,
-            'tolerance': tolerance,
-            'trace_calls': mag_tracer.report_trace_usage(value=True)
-        }
+        'performance_stats': performance_stats,
+        'summary': summary
     }
 
-    return results
+
+def plot_last_closed_field_lines(results, backend='matplotlib', show_earth=True, 
+                                interactive=True, figsize=(16, 12)):
+    """
+    Plot last closed field lines and magnetopause boundary.
+    
+    Parameters:
+    -----------
+    results : dict
+        Results from find_last_closed_field_lines
+    backend : str, optional (default='matplotlib')
+        Plotting backend ('matplotlib' or 'plotly')
+    show_earth : bool, optional (default=True)
+        Whether to show Earth
+    interactive : bool, optional (default=True)
+        Whether to make plots interactive (for plotly)
+    figsize : tuple, optional (default=(16, 12))
+        Figure size for matplotlib
+        
+    Returns:
+    --------
+    fig : matplotlib.figure.Figure or plotly.graph_objects.Figure
+        The generated figure
+    """
+    if backend.lower() == 'plotly' and PLOTLY_AVAILABLE:
+        return _plot_last_closed_field_lines_plotly(results, show_earth, interactive)
+    else:
+        return _plot_last_closed_field_lines_matplotlib(results, show_earth, figsize)
+
+
+def _plot_last_closed_field_lines_matplotlib(results, show_earth=True, figsize=(16, 12)):
+    """
+    Create matplotlib plots of last closed field lines.
+    """
+    fig = plt.figure(figsize=figsize)
+    
+    # Create subplots: 3D view, XY plane, boundary profile, performance stats
+    ax1 = fig.add_subplot(221, projection='3d')  # 3D view
+    ax2 = fig.add_subplot(222)  # XY plane
+    ax3 = fig.add_subplot(223)  # Boundary radius vs longitude
+    ax4 = fig.add_subplot(224)  # Performance stats
+
+    # Extract data
+    closed_traces = results['closed_traces']
+    open_traces = results['open_traces']
+    magnetopause_points = results['magnetopause_points']
+    longitudes = results['longitudes']
+    last_closed_r = results['last_closed_r']
+    summary = results['summary']
+    
+    # Draw Earth
+    if show_earth:
+        r_earth = 1.0
+        
+        # Earth in 3D
+        u = np.linspace(0, 2 * np.pi, 50)
+        v = np.linspace(0, np.pi, 50)
+        x = r_earth * np.outer(np.cos(u), np.sin(v))
+        y = r_earth * np.outer(np.sin(u), np.sin(v))
+        z = r_earth * np.outer(np.ones(np.size(u)), np.cos(v))
+        ax1.plot_surface(x, y, z, color='lightblue', alpha=0.3)
+        
+        # Earth in XY plane
+        circle = plt.Circle((0, 0), r_earth, color='lightblue', alpha=0.3)
+        ax2.add_patch(circle)
+
+    # Plot closed field lines in blue
+    for trace in closed_traces:
+        if 'combined' in trace:
+            coords = trace['combined']['coordinates']
+        elif 'forward' in trace:
+            coords = trace['forward']['coordinates']
+        else:
+            continue
+            
+        ax1.plot(coords[:, 0], coords[:, 1], coords[:, 2], 'b-', alpha=0.7, linewidth=1)
+        ax2.plot(coords[:, 0], coords[:, 1], 'b-', alpha=0.7, linewidth=1)
+
+    # Plot open field lines in red
+    for trace in open_traces:
+        if 'combined' in trace:
+            coords = trace['combined']['coordinates']
+        elif 'forward' in trace:
+            coords = trace['forward']['coordinates']
+        else:
+            continue
+            
+        ax1.plot(coords[:, 0], coords[:, 1], coords[:, 2], 'r-', alpha=0.7, linewidth=1)
+        ax2.plot(coords[:, 0], coords[:, 1], 'r-', alpha=0.7, linewidth=1)
+
+    # Plot magnetopause boundary
+    if len(magnetopause_points) > 0:
+        # Close the boundary by connecting last point to first
+        boundary_closed = np.vstack([magnetopause_points, magnetopause_points[0]])
+        
+        ax1.plot(boundary_closed[:, 0], boundary_closed[:, 1], boundary_closed[:, 2], 
+                'g-', linewidth=3, label='Magnetopause')
+        ax2.plot(boundary_closed[:, 0], boundary_closed[:, 1], 
+                'g-', linewidth=3, label='Magnetopause')
+        ax2.scatter(magnetopause_points[:, 0], magnetopause_points[:, 1], 
+                   c='green', s=30, alpha=0.7)
+
+    # Plot boundary radius vs longitude
+    valid_mask = ~np.isnan(last_closed_r)
+    if np.any(valid_mask):
+        ax3.plot(longitudes[valid_mask], last_closed_r[valid_mask], 'go-', 
+                linewidth=2, markersize=4)
+        ax3.fill_between(longitudes[valid_mask], 
+                        last_closed_r[valid_mask] - results['boundary_accuracy'][valid_mask],
+                        last_closed_r[valid_mask] + results['boundary_accuracy'][valid_mask],
+                        alpha=0.3, color='green')
+
+    # Performance statistics
+    perf_stats = results['performance_stats']
+    stats_text = [
+        f"Total time: {perf_stats['total_execution_time']:.2f} s",
+        f"Longitudes/sec: {perf_stats['longitudes_per_second']:.2f}",
+        f"Closed traces: {perf_stats['n_closed_traces']}",
+        f"Open traces: {perf_stats['n_open_traces']}",
+        f"Valid boundaries: {summary['n_valid_boundaries']}/{summary['n_longitudes']}",
+        f"Mean radius: {summary['mean_boundary_radius']:.2f} ± {summary['std_boundary_radius']:.2f} RE",
+        f"Range: {summary['min_boundary_radius']:.2f} - {summary['max_boundary_radius']:.2f} RE"
+    ]
+    
+    ax4.text(0.05, 0.95, '\n'.join(stats_text), transform=ax4.transAxes, 
+            verticalalignment='top', fontfamily='monospace', fontsize=10)
+    ax4.set_xlim(0, 1)
+    ax4.set_ylim(0, 1)
+    ax4.axis('off')
+
+    # Set labels and titles
+    ax1.set_xlabel('X (RE)')
+    ax1.set_ylabel('Y (RE)')
+    ax1.set_zlabel('Z (RE)')
+    ax1.set_title('3D View: Last Closed Magnetic Field Lines')
+
+    ax2.set_xlabel('X (RE)')
+    ax2.set_ylabel('Y (RE)')
+    ax2.set_title('XY Plane View')
+    ax2.set_aspect('equal')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+
+    ax3.set_xlabel('Longitude (degrees)')
+    ax3.set_ylabel('Last Closed Radius (RE)')
+    ax3.set_title('Magnetopause Boundary Profile')
+    ax3.grid(True, alpha=0.3)
+    ax3.set_xlim(0, 360)
+
+    ax4.set_title('Performance Statistics')
+
+    plt.tight_layout()
+    return fig
+
+
+def _plot_last_closed_field_lines_plotly(results, show_earth=True, interactive=True):
+    """
+    Create plotly plots of last closed field lines.
+    """
+    # Create subplots
+    fig = make_subplots(
+        rows=2, cols=2,
+        specs=[[{'type': 'scene'}, {'type': 'xy'}],
+               [{'type': 'xy'}, {'type': 'xy'}]],
+        subplot_titles=('3D View: Last Closed Magnetic Field Lines',
+                       'XY Plane View',
+                       'Magnetopause Boundary Profile',
+                       'Performance Summary')
+    )
+
+    # Extract data
+    closed_traces = results['closed_traces']
+    open_traces = results['open_traces']
+    magnetopause_points = results['magnetopause_points']
+    longitudes = results['longitudes']
+    last_closed_r = results['last_closed_r']
+    summary = results['summary']
+
+    # Draw Earth
+    if show_earth:
+        r_earth = 1.0
+        
+        # Earth sphere in 3D
+        theta = np.linspace(0, 2 * np.pi, 50)
+        phi = np.linspace(0, np.pi, 50)
+        x = r_earth * np.outer(np.cos(theta), np.sin(phi))
+        y = r_earth * np.outer(np.sin(theta), np.sin(phi))
+        z = r_earth * np.outer(np.ones(np.size(theta)), np.cos(phi))
+        
+        fig.add_trace(
+            go.Surface(x=x, y=y, z=z, 
+                      colorscale=[[0, 'lightblue'], [1, 'lightblue']],
+                      opacity=0.3, showscale=False, name='Earth'),
+            row=1, col=1
+        )
+        
+        # Earth circle in XY plane
+        theta_circle = np.linspace(0, 2*np.pi, 100)
+        x_circle = r_earth * np.cos(theta_circle)
+        y_circle = r_earth * np.sin(theta_circle)
+        
+        fig.add_trace(
+            go.Scatter(x=x_circle, y=y_circle, mode='lines',
+                      line=dict(color='lightblue', width=2),
+                      fill='toself', fillcolor='rgba(173, 216, 230, 0.3)',
+                      showlegend=False, name='Earth'),
+            row=1, col=2
+        )
+
+    # Plot closed field lines
+    for i, trace in enumerate(closed_traces):
+        if 'combined' in trace:
+            coords = trace['combined']['coordinates']
+        elif 'forward' in trace:
+            coords = trace['forward']['coordinates']
+        else:
+            continue
+        
+        # 3D plot
+        fig.add_trace(
+            go.Scatter3d(x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
+                        mode='lines', line=dict(color='blue', width=2),
+                        showlegend=(i==0), name='Closed field lines'),
+            row=1, col=1
+        )
+        
+        # XY plane
+        fig.add_trace(
+            go.Scatter(x=coords[:, 0], y=coords[:, 1], mode='lines',
+                      line=dict(color='blue', width=2),
+                      showlegend=False),
+            row=1, col=2
+        )
+
+    # Plot open field lines
+    for i, trace in enumerate(open_traces):
+        if 'combined' in trace:
+            coords = trace['combined']['coordinates']
+        elif 'forward' in trace:
+            coords = trace['forward']['coordinates']
+        else:
+            continue
+        
+        # 3D plot
+        fig.add_trace(
+            go.Scatter3d(x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
+                        mode='lines', line=dict(color='red', width=2),
+                        showlegend=(i==0), name='Open field lines'),
+            row=1, col=1
+        )
+        
+        # XY plane
+        fig.add_trace(
+            go.Scatter(x=coords[:, 0], y=coords[:, 1], mode='lines',
+                      line=dict(color='red', width=2),
+                      showlegend=False),
+            row=1, col=2
+        )
+
+    # Plot magnetopause boundary
+    if len(magnetopause_points) > 0:
+        # Close the boundary
+        boundary_closed = np.vstack([magnetopause_points, magnetopause_points[0]])
+        
+        # 3D boundary
+        fig.add_trace(
+            go.Scatter3d(x=boundary_closed[:, 0], y=boundary_closed[:, 1], z=boundary_closed[:, 2],
+                        mode='lines', line=dict(color='green', width=4),
+                        name='Magnetopause'),
+            row=1, col=1
+        )
+        
+        # XY boundary
+        fig.add_trace(
+            go.Scatter(x=boundary_closed[:, 0], y=boundary_closed[:, 1],
+                      mode='lines+markers', 
+                      line=dict(color='green', width=4),
+                      marker=dict(color='green', size=6),
+                      showlegend=False),
+            row=1, col=2
+        )
+
+    # Boundary profile
+    valid_mask = ~np.isnan(last_closed_r)
+    if np.any(valid_mask):
+        # Main boundary line
+        fig.add_trace(
+            go.Scatter(x=longitudes[valid_mask], y=last_closed_r[valid_mask],
+                      mode='lines+markers',
+                      line=dict(color='green', width=3),
+                      marker=dict(color='green', size=6),
+                      name='Boundary radius',
+                      showlegend=False),
+            row=2, col=1
+        )
+        
+        # Error band
+        upper_bound = last_closed_r[valid_mask] + results['boundary_accuracy'][valid_mask]
+        lower_bound = last_closed_r[valid_mask] - results['boundary_accuracy'][valid_mask]
+        
+        fig.add_trace(
+            go.Scatter(x=np.concatenate([longitudes[valid_mask], longitudes[valid_mask][::-1]]),
+                      y=np.concatenate([upper_bound, lower_bound[::-1]]),
+                      fill='toself', fillcolor='rgba(0,255,0,0.3)',
+                      line=dict(color='rgba(255,255,255,0)'),
+                      showlegend=False),
+            row=2, col=1
+        )
+
+    # Performance summary
+    perf_stats = results['performance_stats']
+    summary_text = (
+        f"<b>Performance Summary</b><br><br>"
+        f"Total execution time: {perf_stats['total_execution_time']:.2f} s<br>"
+        f"Longitudes processed/sec: {perf_stats['longitudes_per_second']:.2f}<br>"
+        f"Closed field lines traced: {perf_stats['n_closed_traces']}<br>"
+        f"Open field lines traced: {perf_stats['n_open_traces']}<br><br>"
+        f"<b>Boundary Statistics</b><br><br>"
+        f"Valid boundary points: {summary['n_valid_boundaries']}/{summary['n_longitudes']}<br>"
+        f"Mean radius: {summary['mean_boundary_radius']:.2f} ± {summary['std_boundary_radius']:.2f} RE<br>"
+        f"Range: {summary['min_boundary_radius']:.2f} - {summary['max_boundary_radius']:.2f} RE<br>"
+        f"Mean accuracy: {summary['mean_accuracy']:.3f} RE"
+    )
+    
+    fig.add_annotation(
+        text=summary_text,
+        xref="paper", yref="paper", xshift=0, yshift=100,
+        x=0.5, y=1.0, xanchor='center', yanchor='top',
+        showarrow=False,
+        font=dict(size=12, family="monospace"),
+        row=2, col=2
+    )
+
+    # Update layout
+    fig.update_scenes(
+        xaxis_title='X (RE)', yaxis_title='Y (RE)', zaxis_title='Z (RE)',
+        aspectmode='data',
+        row=1, col=1
+    )
+    
+    fig.update_xaxes(title_text='X (RE)', scaleanchor='y', scaleratio=1, row=1, col=2)
+    fig.update_yaxes(title_text='Y (RE)', row=1, col=2)
+    
+    fig.update_xaxes(title_text='Longitude (degrees)', range=[0, 360], row=2, col=1)
+    fig.update_yaxes(title_text='Last Closed Radius (RE)', row=2, col=1)
+    
+    # Empty axes for the summary panel
+    fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False, row=2, col=2)
+    fig.update_yaxes(showticklabels=False, showgrid=False, zeroline=False, row=2, col=2)
+    
+    # Overall layout settings
+    fig.update_layout(
+        title='Last Closed Magnetic Field Lines and Magnetopause Boundary',
+        height=800,
+        width=1200,
+        hovermode='closest' if interactive else False,
+        legend=dict(
+            x=0.01, y=0.99,
+            bgcolor='rgba(255,255,255,0.7)',
+            bordercolor='rgba(0,0,0,0.5)',
+            borderwidth=1
+        )
+    )
+    
+    return fig
 
 
 def find_last_closed_field_lines_auto_bounds(ko, time_hours, n_traces=36,
@@ -393,7 +752,9 @@ def find_last_closed_field_lines_auto_bounds(ko, time_hours, n_traces=36,
                                             tolerance=0.01, max_bisection_iter=10,
                                             initial_step=1.0, max_steps=5000,
                                             step_size_re=0.1, coord_system='GSM',
-                                            verbose=True):
+                                            use_parallel=True, use_numba=True, n_jobs=-1,
+                                            use_batches=None, max_memory_mb=2000,
+                                            show_progress=True, verbose=False):
     """
     Find last closed magnetic field lines with automatic bound detection.
     
@@ -421,40 +782,104 @@ def find_last_closed_field_lines_auto_bounds(ko, time_hours, n_traces=36,
         Integration step size in RE
     coord_system : str
         Coordinate system ('GSM', 'GSE', 'SM', etc.)
+    use_parallel : bool
+        Whether to use parallel processing
+    use_numba : bool
+        Whether to use numba optimization
+    n_jobs : int
+        Number of parallel jobs (-1 uses all cores)
+    use_batches : bool, optional
+        Whether to use batch processing (auto-determined if None)
+    max_memory_mb : float
+        Maximum memory usage for batch processing in MB
+    show_progress : bool
+        Whether to show progress bars
     verbose : bool
-        Whether to print progress information
+        Whether to print detailed information during execution
     
     Returns:
     --------
     results : dict
-        Dictionary containing trace results and model bounds information
+        Dictionary containing found field lines and boundary points
     """
-    # Get model bounds automatically
-    vector_components = ('B_x', 'B_y', 'B_z')
-    bounds = vft.get_model_bounds(ko, vector_components, verbose=verbose)
+    # Create tracer to detect model bounds
+    test_tracer = vft.create_magnetic_tracer(
+        ko,
+        use_numba=use_numba,
+        use_parallel=use_parallel,
+        n_jobs=n_jobs,
+        verbose=False
+    )
+
+    # Try to determine model bounds by sampling test points
+    try:
+        bounds = {'x_range': [-30, 30], 'y_range': [-30, 30], 'z_range': [-30, 30]}
+        test_radius = 25.0
+        test_points = []
+        
+        # Generate test points at different radii
+        for r in [5.0, 10.0, 15.0, 20.0, test_radius]:
+            for theta in [0, np.pi/2, np.pi, 3*np.pi/2]:
+                test_points.append([r * np.cos(theta), r * np.sin(theta), 0.0])
+        
+        # Test which points are within model bounds
+        valid_points = []
+        for point in test_points:
+            try:
+                test_trace = test_tracer.trace_vector_line(
+                    point, time_hours, max_steps=10
+                )
+                if test_trace is not None:
+                    valid_points.append(point)
+            except Exception:
+                pass  # If error, assume point is outside model bounds
+                
+        # Estimate bounds from valid points
+        if valid_points:
+            valid_points = np.array(valid_points)
+            max_r = np.max(np.sqrt(np.sum(valid_points[:, :2]**2, axis=1)))
+            bounds = {
+                'x_range': [-max_r, max_r],
+                'y_range': [-max_r, max_r],
+                'z_range': [-10, 10]  # Conservative z-range
+            }
+            if verbose:
+                print(f"Detected model bounds: r_max={max_r:.1f} RE")
+        else:
+            if verbose:
+                print(f"Could not detect model bounds, using defaults")
+    except Exception as e:
+        if verbose:
+            print(f"Error detecting bounds: {e}, using defaults")
     
-    # Calculate search parameters based on model bounds
-    max_extent = bounds['max_extent']
-    r_max = min(r_max_factor * max_extent, max_extent * 0.9)  # Don't go to edge
+    # Calculate maximum radius for searching
+    x_extent = bounds['x_range'][1] - bounds['x_range'][0]
+    y_extent = bounds['y_range'][1] - bounds['y_range'][0]
+    model_radius = min(x_extent, y_extent) / 2
+    r_max = min(r_max_factor * model_radius, 20.0)  # Limit to 20 RE
     
     if verbose:
-        print(f"\nAutomatic search parameter calculation:")
-        print(f"  Model max extent: {max_extent:.1f} RE")
-        print(f"  Search range: {r_start:.1f} to {r_max:.1f} RE")
-        print(f"  r_start: {r_start:.1f} RE (fixed starting radius)")
-        print(f"  r_max_factor: {r_max_factor} -> r_max: {r_max:.1f} RE")
+        print(f"Using r_max = {r_max:.1f} RE (model_radius = {model_radius:.1f} RE)")
     
-    # Use the main function with calculated bounds
+    # Call the standard function with the determined bounds
     results = find_last_closed_field_lines(
-        ko, time_hours, n_traces=n_traces,
-        r_start=r_start, r_max=r_max,
-        tolerance=tolerance, max_bisection_iter=max_bisection_iter,
-        initial_step=initial_step, max_steps=max_steps,
-        step_size_re=step_size_re, coord_system=coord_system,
+        ko, time_hours,
+        n_traces=n_traces,
+        r_start=r_start,
+        r_max=r_max,
+        r_step=initial_step,
+        tolerance=tolerance,
+        coord_system=coord_system,
+        use_parallel=use_parallel,
+        use_numba=use_numba,
+        n_jobs=n_jobs,
+        use_batches=use_batches,
+        max_memory_mb=max_memory_mb,
+        show_progress=show_progress,
         verbose=verbose
     )
     
-    # Add bounds information to results
+    # Add bounds information
     results['model_bounds'] = bounds
     results['search_parameters'] = {
         'r_start': r_start,
@@ -465,438 +890,168 @@ def find_last_closed_field_lines_auto_bounds(ko, time_hours, n_traces=36,
     return results
 
 
-def plot_last_closed_field_lines(results, backend='matplotlib', show_magnetopause=True):
+def analyze_magnetopause_shape(results):
     """
-    Plot the last closed field lines and magnetopause boundary.
+    Analyze the shape of the magnetopause boundary.
     
     Parameters:
     -----------
     results : dict
         Results from find_last_closed_field_lines
-    backend : str
-        'matplotlib' or 'plotly'
-    show_magnetopause : bool
-        Whether to show estimated magnetopause boundary
-    
+        
     Returns:
     --------
-    fig : matplotlib or plotly figure
-        The generated plot
+    analysis : dict
+        Dictionary with magnetopause shape analysis
     """
-    if backend.lower() == 'plotly':
-        if not PLOTLY_AVAILABLE:
-            print("Plotly is not available. Install with: pip install plotly")
-            backend = 'matplotlib'
-        else:
-            return _plot_last_closed_field_lines_plotly(results, show_magnetopause)
-    
-    return _plot_last_closed_field_lines_matplotlib(results, show_magnetopause)
-
-
-def _plot_last_closed_field_lines_matplotlib(results, show_magnetopause=True):
-    """Create matplotlib plot of last closed field lines with aspect ratio 1."""
-    
-    fig = plt.figure(figsize=(18, 12))
-    
-    # Create subplots
-    ax1 = fig.add_subplot(221, projection='3d')  # 3D view
-    ax2 = fig.add_subplot(222)  # XY plane (equatorial)
-    ax3 = fig.add_subplot(223)  # Radial distance vs longitude
-    ax4 = fig.add_subplot(224)  # XZ plane (meridional)
-    
-    closed_traces = results['closed_traces']
-    open_traces = results['open_traces']
     magnetopause_points = results['magnetopause_points']
     longitudes = results['longitudes']
     last_closed_r = results['last_closed_r']
     
-    # Collect all coordinates for aspect ratio calculation
-    all_coords = []
+    if len(magnetopause_points) == 0 or not np.any(~np.isnan(last_closed_r)):
+        return {
+            'status': 'error',
+            'message': 'No valid magnetopause boundary points found'
+        }
     
-    # Plot closed field lines
-    for i, trace_data in enumerate(closed_traces):
-        if trace_data is None:
-            continue
-            
-        trace = trace_data['trace']
-        trace_coords = trace.get('combined', trace.get('forward', {})).get('coordinates', np.array([]))
-        
-        if len(trace_coords) < 2:
-            continue
-        
-        all_coords.extend(trace_coords)
-        x, y, z = trace_coords.T
-        color = plt.cm.viridis(i / len(closed_traces))
-        
-        # 3D plot
-        ax1.plot(x, y, z, color=color, alpha=0.8, linewidth=1.5)
-        ax1.scatter(*trace_data['start_point'], color=color, s=50, marker='o')
-        
-        # XY projection
-        ax2.plot(x, y, color=color, alpha=0.8, linewidth=1.5)
-        ax2.scatter(*trace_data['start_point'][:2], color=color, s=50, marker='o')
-        
-        # XZ projection  
-        ax4.plot(x, z, color=color, alpha=0.8, linewidth=1.5)
-    
-    # Plot open field lines (first open field line at each longitude)
-    for i, trace_data in enumerate(open_traces):
-        if trace_data is None:
-            continue
-            
-        trace = trace_data['trace']
-        trace_coords = trace.get('combined', trace.get('forward', {})).get('coordinates', np.array([]))
-        
-        if len(trace_coords) < 2:
-            continue
-        
-        all_coords.extend(trace_coords)
-        x, y, z = trace_coords.T
-        
-        # Plot in red to distinguish from closed field lines
-        ax1.plot(x, y, z, color='red', alpha=0.6, linewidth=1, linestyle='--')
-        ax2.plot(x, y, color='red', alpha=0.6, linewidth=1, linestyle='--')
-        ax4.plot(x, z, color='red', alpha=0.6, linewidth=1, linestyle='--')
-    
-    # Plot magnetopause boundary estimate
-    if show_magnetopause and len(magnetopause_points) > 0:
-        mp_x, mp_y, mp_z = magnetopause_points.T
-        
-        # 3D scatter
-        ax1.scatter(mp_x, mp_y, mp_z, color='orange', s=100, marker='s', 
-                   label='Magnetopause', alpha=0.8)
-        
-        # XY projection with curve fit
-        ax2.scatter(mp_x, mp_y, color='orange', s=100, marker='s', alpha=0.8)
-        
-        # Try to fit a smooth curve through magnetopause points
-        if len(mp_x) > 3:
-            try:
-                # Sort by angle for smooth curve
-                angles = np.arctan2(mp_y, mp_x)
-                sort_idx = np.argsort(angles)
-                
-                # Add first point at end to close the curve
-                mp_x_sorted = np.append(mp_x[sort_idx], mp_x[sort_idx[0]])
-                mp_y_sorted = np.append(mp_y[sort_idx], mp_y[sort_idx[0]])
-                
-                ax2.plot(mp_x_sorted, mp_y_sorted, 'orange', linewidth=3, 
-                        alpha=0.7, label='Magnetopause boundary')
-            except Exception:
-                pass  # Silently handle any curve fitting errors
-    
-    # Plot radial distance vs longitude with error bars
+    # Filter valid points
     valid_mask = ~np.isnan(last_closed_r)
-    if np.any(valid_mask):
-        boundary_accuracy = results.get('boundary_accuracy', np.full_like(last_closed_r, 0.01))
-        ax3.errorbar(longitudes[valid_mask], last_closed_r[valid_mask], 
-                    yerr=boundary_accuracy[valid_mask],
-                    fmt='bo-', linewidth=2, markersize=6, capsize=3,
-                    label='Last closed radius')
-        ax3.set_xlabel('Longitude [degrees]')
-        ax3.set_ylabel('Last Closed Radius [RE]')
-        ax3.set_title('Last Closed Field Line Radius vs Longitude')
-        ax3.grid(True, alpha=0.3)
-        ax3.legend()
+    valid_longitudes = longitudes[valid_mask]
+    valid_radii = last_closed_r[valid_mask]
+    valid_points = magnetopause_points
     
-    # Add Earth to 3D and 2D plots
-    # 3D Earth
-    u = np.linspace(0, 2 * np.pi, 20)
-    v = np.linspace(0, np.pi, 20)
-    x_earth = np.outer(np.cos(u), np.sin(v))
-    y_earth = np.outer(np.sin(u), np.sin(v))
-    z_earth = np.outer(np.ones(np.size(u)), np.cos(v))
-    ax1.plot_surface(x_earth, y_earth, z_earth, alpha=0.3, color='blue')
+    # 1. Calculate basic statistics
+    mean_radius = np.mean(valid_radii)
+    std_radius = np.std(valid_radii)
+    min_radius = np.min(valid_radii)
+    min_long = valid_longitudes[np.argmin(valid_radii)]
+    max_radius = np.max(valid_radii)
+    max_long = valid_longitudes[np.argmax(valid_radii)]
     
-    # Set aspect ratio to 1 for 3D plot
-    if all_coords:
-        all_coords = np.array(all_coords)
-        max_range = np.array([all_coords[:, 0].max()-all_coords[:, 0].min(),
-                             all_coords[:, 1].max()-all_coords[:, 1].min(),
-                             all_coords[:, 2].max()-all_coords[:, 2].min()]).max() / 2.0
-        mid_x = (all_coords[:, 0].max()+all_coords[:, 0].min()) * 0.5
-        mid_y = (all_coords[:, 1].max()+all_coords[:, 1].min()) * 0.5
-        mid_z = (all_coords[:, 2].max()+all_coords[:, 2].min()) * 0.5
-        ax1.set_xlim(mid_x - max_range, mid_x + max_range)
-        ax1.set_ylim(mid_y - max_range, mid_y + max_range)
-        ax1.set_zlim(mid_z - max_range, mid_z + max_range)
+    # 2. Day/night asymmetry
+    day_mask = (valid_longitudes >= 270) | (valid_longitudes <= 90)
+    night_mask = ~day_mask
     
-    # 2D Earth circles with aspect ratio 1
-    theta = np.linspace(0, 2*np.pi, 100)
-    for ax in [ax2, ax4]:
-        ax.plot(np.cos(theta), np.sin(theta), 'b-', linewidth=2, alpha=0.7)
-        ax.set_aspect('equal')  # Aspect ratio 1
-        ax.grid(True, alpha=0.3)
+    day_mean = np.mean(valid_radii[day_mask]) if np.any(day_mask) else np.nan
+    night_mean = np.mean(valid_radii[night_mask]) if np.any(night_mask) else np.nan
+    day_night_ratio = day_mean / night_mean if not np.isnan(night_mean) and night_mean > 0 else np.nan
     
-    # Set labels and titles
-    coord_sys = results['summary']['coord_system']
-    time_hours = results['summary']['time_hours']
-    tolerance = results['summary'].get('tolerance', 0.01)
+    # 3. Dawn/dusk asymmetry
+    dawn_mask = (valid_longitudes >= 0) & (valid_longitudes <= 180)
+    dusk_mask = ~dawn_mask
     
-    ax1.set_xlabel(f'X ({coord_sys}) [RE]')
-    ax1.set_ylabel(f'Y ({coord_sys}) [RE]')
-    ax1.set_zlabel(f'Z ({coord_sys}) [RE]')
-    ax1.set_title(f'Last Closed Field Lines 3D (t={time_hours:.1f}h, tol={tolerance:.3f})')
+    dawn_mean = np.mean(valid_radii[dawn_mask]) if np.any(dawn_mask) else np.nan
+    dusk_mean = np.mean(valid_radii[dusk_mask]) if np.any(dusk_mask) else np.nan
+    dawn_dusk_ratio = dawn_mean / dusk_mean if not np.isnan(dusk_mean) and dusk_mean > 0 else np.nan
     
-    ax2.set_xlabel(f'X ({coord_sys}) [RE]')
-    ax2.set_ylabel(f'Y ({coord_sys}) [RE]')
-    ax2.set_title('Equatorial Plane View')
+    # 4. Subsolar point (approximation)
+    subsolar_idx = np.abs(valid_longitudes - 0).argmin()
+    subsolar_r = valid_radii[subsolar_idx]
     
-    ax4.set_xlabel(f'X ({coord_sys}) [RE]')
-    ax4.set_ylabel(f'Z ({coord_sys}) [RE]')
-    ax4.set_title('Meridional Plane View')
-    
-    plt.tight_layout()
-    return fig
+    return {
+        'status': 'success',
+        'n_boundary_points': len(valid_points),
+        'mean_radius': mean_radius,
+        'std_radius': std_radius,
+        'min_radius': {'value': min_radius, 'longitude': min_long},
+        'max_radius': {'value': max_radius, 'longitude': max_long},
+        'subsolar_point': {'radius': subsolar_r, 'longitude': valid_longitudes[subsolar_idx]},
+        'asymmetry': {
+            'day_mean': day_mean,
+            'night_mean': night_mean,
+            'day_night_ratio': day_night_ratio,
+            'dawn_mean': dawn_mean,
+            'dusk_mean': dusk_mean,
+            'dawn_dusk_ratio': dawn_dusk_ratio,
+        }
+    }
 
 
-def _plot_last_closed_field_lines_plotly(results, show_magnetopause=True):
-    """Create Plotly plot of last closed field lines with aspect ratio 1."""
+def benchmark_last_closed_finder(ko, time_hours, n_traces=18,
+                               use_numba_options=[True, False], 
+                               use_parallel_options=[True, False],
+                               verbose=True):
+    """
+    Benchmark different configurations of the last closed field line finder.
     
-    # Create subplots
-    fig = make_subplots(
-        rows=2, cols=2,
-        specs=[[{"type": "scene", "rowspan": 2}, {"type": "xy"}],
-               [None, {"type": "xy"}]],
-        subplot_titles=[
-            'Last Closed Field Lines 3D',
-            'Equatorial Plane View',
-            'Last Closed Radius vs Longitude'
-        ],
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1
-    )
+    Parameters:
+    -----------
+    ko : Kamodo object
+        Kamodo object with magnetic field components
+    time_hours : float
+        Time in hours
+    n_traces : int
+        Number of longitude slices to trace
+    use_numba_options : list
+        List of boolean options to test for numba usage
+    use_parallel_options : list
+        List of boolean options to test for parallel processing
+    verbose : bool
+        Whether to print detailed information
+        
+    Returns:
+    --------
+    results : dict
+        Dictionary of benchmark results
+    """
+    print(f"Starting benchmark with {n_traces} longitude slices")
     
-    closed_traces = results['closed_traces']
-    open_traces = results['open_traces']
-    magnetopause_points = results['magnetopause_points']
-    longitudes = results['longitudes']
-    last_closed_r = results['last_closed_r']
+    results = {}
     
-    # Plot closed field lines
-    for i, trace_data in enumerate(closed_traces):
-        if trace_data is None:
-            continue
+    for use_numba in use_numba_options:
+        for use_parallel in use_parallel_options:
+            # Skip if required features aren't available
+            if use_numba and not vft.NUMBA_AVAILABLE:
+                continue
+            if use_parallel and not vft.JOBLIB_AVAILABLE:
+                continue
+                
+            config_name = f"numba={use_numba}_parallel={use_parallel}"
+            print(f"\nTesting configuration: {config_name}")
             
-        trace = trace_data['trace']
-        trace_coords = trace.get('combined', trace.get('forward', {})).get('coordinates', np.array([]))
-        
-        if len(trace_coords) < 2:
-            continue
-        
-        x, y, z = trace_coords.T
-        color = px.colors.sample_colorscale('Viridis', [i / len(closed_traces)])[0]
-        accuracy = trace_data.get('accuracy', 0.01)
-        
-        # 3D plot
-        fig.add_trace(
-            go.Scatter3d(
-                x=x, y=y, z=z,
-                mode='lines',
-                line=dict(color=color, width=4),
-                name=f'Closed {trace_data["longitude"]:.0f}°',
-                showlegend=False,
-                hovertemplate=(f'Longitude: {trace_data["longitude"]:.1f}°<br>'
-                             f'Radius: {trace_data["radius"]:.3f} RE<br>'
-                             f'Accuracy: ±{accuracy:.3f} RE<extra></extra>')
-            ),
-            row=1, col=1
-        )
-        
-        # Starting point
-        fig.add_trace(
-            go.Scatter3d(
-                x=[trace_data['start_point'][0]], 
-                y=[trace_data['start_point'][1]], 
-                z=[trace_data['start_point'][2]],
-                mode='markers',
-                marker=dict(color=color, size=8),
-                name=f'Start {trace_data["longitude"]:.0f}°',
-                showlegend=False,
-                hovertemplate=(f'Start: {trace_data["longitude"]:.1f}°<br>'
-                             f'R: {trace_data["radius"]:.3f} RE<br>'
-                             f'Accuracy: ±{accuracy:.3f} RE<extra></extra>')
-            ),
-            row=1, col=1
-        )
-        
-        # XY projection
-        fig.add_trace(
-            go.Scatter(
-                x=x, y=y,
-                mode='lines',
-                line=dict(color=color, width=3),
-                name=f'Closed {trace_data["longitude"]:.0f}°',
-                showlegend=False,
-                hovertemplate=f'Longitude: {trace_data["longitude"]:.1f}°<extra></extra>'
-            ),
-            row=1, col=2
-        )
-    
-    # Plot open field lines
-    for i, trace_data in enumerate(open_traces):
-        if trace_data is None:
-            continue
+            start_time = time.time()
             
-        trace = trace_data['trace']
-        trace_coords = trace.get('combined', trace.get('forward', {})).get('coordinates', np.array([]))
+            # Run the finder with limited scope for benchmark
+            result = find_last_closed_field_lines(
+                ko, time_hours,
+                n_traces=n_traces,
+                r_start=2.0,
+                r_max=12.0,
+                r_step=1.0,
+                tolerance=0.2,  # Use coarse tolerance for speed
+                use_numba=use_numba,
+                use_parallel=use_parallel,
+                verbose=verbose
+            )
+            
+            end_time = time.time()
+            execution_time = end_time - start_time
+            
+            # Store results
+            results[config_name] = {
+                'execution_time': execution_time,
+                'valid_boundaries': result['summary']['n_valid_boundaries'],
+                'mean_radius': result['summary']['mean_boundary_radius'],
+                'longitudes_per_second': n_traces / execution_time
+            }
+            
+            print(f"Execution time: {execution_time:.2f} seconds")
+            print(f"Performance: {n_traces / execution_time:.2f} longitudes/second")
+            print(f"Valid boundaries: {result['summary']['n_valid_boundaries']}/{n_traces}")
+    
+    # Print summary
+    if results:
+        print("\n===== BENCHMARK SUMMARY =====")
+        baseline = results.get("numba=False_parallel=False", None)
+        baseline_time = baseline['execution_time'] if baseline else None
         
-        if len(trace_coords) < 2:
-            continue
-        
-        x, y, z = trace_coords.T
-        
-        # Plot in red with dashed lines
-        fig.add_trace(
-            go.Scatter3d(
-                x=x, y=y, z=z,
-                mode='lines',
-                line=dict(color='red', width=2, dash='dash'),
-                name=f'Open {trace_data["longitude"]:.0f}°',
-                showlegend=False,
-                opacity=0.6
-            ),
-            row=1, col=1
-        )
-        
-        fig.add_trace(
-            go.Scatter(
-                x=x, y=y,
-                mode='lines',
-                line=dict(color='red', width=2, dash='dash'),
-                name=f'Open {trace_data["longitude"]:.0f}°',
-                showlegend=False,
-                opacity=0.6
-            ),
-            row=1, col=2
-        )
+        for config_name, data in results.items():
+            speedup = baseline_time / data['execution_time'] if baseline_time else 1.0
+            print(f"{config_name}: {data['execution_time']:.2f} sec, "
+                  f"{speedup:.2f}x speedup, "
+                  f"{data['longitudes_per_second']:.2f} longitudes/sec")
     
-    # Plot magnetopause boundary
-    if show_magnetopause and len(magnetopause_points) > 0:
-        mp_x, mp_y, mp_z = magnetopause_points.T
-        
-        # 3D scatter
-        fig.add_trace(
-            go.Scatter3d(
-                x=mp_x, y=mp_y, z=mp_z,
-                mode='markers',
-                marker=dict(color='orange', size=10, symbol='square'),
-                name='Magnetopause',
-                showlegend=True
-            ),
-            row=1, col=1
-        )
-        
-        # XY projection
-        fig.add_trace(
-            go.Scatter(
-                x=mp_x, y=mp_y,
-                mode='markers+lines',
-                marker=dict(color='orange', size=10, symbol='square'),
-                line=dict(color='orange', width=4),
-                name='Magnetopause',
-                showlegend=False
-            ),
-            row=1, col=2
-        )
-    
-    # Plot radial distance vs longitude with error bars
-    valid_mask = ~np.isnan(last_closed_r)
-    if np.any(valid_mask):
-        boundary_accuracy = results.get('boundary_accuracy', np.full_like(last_closed_r, 0.01))
-        
-        fig.add_trace(
-            go.Scatter(
-                x=longitudes[valid_mask], 
-                y=last_closed_r[valid_mask],
-                error_y=dict(
-                    type='data',
-                    array=boundary_accuracy[valid_mask],
-                    visible=True,
-                    thickness=2,
-                    width=3
-                ),
-                mode='lines+markers',
-                line=dict(color='blue', width=3),
-                marker=dict(color='blue', size=8),
-                name='Last Closed Radius',
-                showlegend=True,
-                hovertemplate=('Longitude: %{x:.1f}°<br>'
-                             'Radius: %{y:.3f} RE<br>'
-                             'Accuracy: ±%{error_y.array:.3f} RE<extra></extra>')
-            ),
-            row=2, col=2
-        )
-    
-    # Add Earth
-    # 3D Earth sphere
-    u = np.linspace(0, 2 * np.pi, 20)
-    v = np.linspace(0, np.pi, 20)
-    x_earth = np.outer(np.cos(u), np.sin(v))
-    y_earth = np.outer(np.sin(u), np.sin(v))
-    z_earth = np.outer(np.ones(np.size(u)), np.cos(v))
-    
-    fig.add_trace(
-        go.Surface(
-            x=x_earth, y=y_earth, z=z_earth,
-            colorscale=[[0, 'blue'], [1, 'blue']],
-            opacity=0.3,
-            showscale=False,
-            name='Earth',
-            hoverinfo='skip'
-        ),
-        row=1, col=1
-    )
-    
-    # 2D Earth circle
-    theta = np.linspace(0, 2*np.pi, 100)
-    earth_x = np.cos(theta)
-    earth_y = np.sin(theta)
-    
-    fig.add_trace(
-        go.Scatter(
-            x=earth_x, y=earth_y,
-            mode='lines',
-            line=dict(color='blue', width=4),
-            name='Earth',
-            hoverinfo='skip',
-            showlegend=False
-        ),
-        row=1, col=2
-    )
-    
-    # Update layout with aspect ratio 1
-    coord_sys = results['summary']['coord_system']
-    time_hours = results['summary']['time_hours']
-    tolerance = results['summary'].get('tolerance', 0.01)
-    
-    fig.update_layout(
-        title=f'Last Closed Field Lines (t={time_hours:.1f}h, tol={tolerance:.3f} RE)',
-        height=800,
-        width=1400,
-        scene_aspectmode='data'  # This sets aspect ratio to 1 for 3D plot
-    )
-    
-    # Update 3D scene
-    fig.update_scenes(
-        xaxis_title=f'X ({coord_sys}) [RE]',
-        yaxis_title=f'Y ({coord_sys}) [RE]',
-        zaxis_title=f'Z ({coord_sys}) [RE]'
-    )
-    
-    # Update 2D plots with aspect ratio 1
-    fig.update_xaxes(title_text=f'X ({coord_sys}) [RE]', row=1, col=2)
-    fig.update_yaxes(title_text=f'Y ({coord_sys}) [RE]', row=1, col=2, 
-                     scaleanchor="x", scaleratio=1)  # Aspect ratio 1
-    
-    fig.update_xaxes(title_text='Longitude [degrees]', row=2, col=2)
-    fig.update_yaxes(title_text='Last Closed Radius [RE]', row=2, col=2)
-    
-    # Add grids
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-    
-    return fig
+    return results
 
 
 def example_find_last_closed_field_lines(ko, time_hours=12.0):
@@ -913,15 +1068,19 @@ def example_find_last_closed_field_lines(ko, time_hours=12.0):
     print("Example: Finding Last Closed Field Lines")
     print("=" * 40)
     
-    # Find last closed field lines
-    results = find_last_closed_field_lines(
+    # Find last closed field lines using auto-bounds
+    results = find_last_closed_field_lines_auto_bounds(
         ko, time_hours,
         n_traces=36,      # 36 traces at 10° intervals
         r_start=2.0,      # Start searching at 2 RE
-        r_max=15.0,       # Search up to 15 RE
-        r_step=0.5,       # 0.5 RE steps
-        verbose=True
+        verbose=True,
+        show_progress=True,
+        use_numba=True,
+        use_parallel=True
     )
+    
+    # Analyze the shape
+    shape_analysis = analyze_magnetopause_shape(results)
     
     # Create plots
     print("\nCreating plots...")
@@ -945,28 +1104,40 @@ def example_find_last_closed_field_lines(ko, time_hours=12.0):
     # Print summary
     summary = results['summary']
     print(f"\nResults Summary:")
-    print(f"Found closed field lines: {summary['n_closed']}/{summary['n_total']}")
-    if summary['n_closed'] > 0:
-        print(f"Mean last closed radius: {summary['mean_radius']:.2f} RE")
-        print(f"Range: [{summary['min_radius']:.2f}, {summary['max_radius']:.2f}] RE")
+    print(f"  Execution time: {summary['execution_time']:.2f} seconds")
+    print(f"  Valid boundary points: {summary['n_valid_boundaries']}/{summary['n_longitudes']}")
+    print(f"  Mean boundary radius: {summary['mean_boundary_radius']:.2f} ± {summary['std_boundary_radius']:.2f} RE")
+    print(f"  Range: {summary['min_boundary_radius']:.2f} - {summary['max_boundary_radius']:.2f} RE")
     
-    return results
+    if shape_analysis['status'] == 'success':
+        print("\nMagnetopause Shape Analysis:")
+        asym = shape_analysis['asymmetry']
+        print(f"  Subsolar point: {shape_analysis['subsolar_point']['radius']:.2f} RE")
+        print(f"  Day/night asymmetry: {asym['day_night_ratio']:.2f}")
+        print(f"  Dawn/dusk asymmetry: {asym['dawn_dusk_ratio']:.2f}")
+    
+    return results, fig_mpl
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("LAST CLOSED MAGNETIC FIELD LINE FINDER")
-    print("For use with Kamodo magnetospheric models")
-    print("All coordinates in Earth radii (RE)")
-    print("=" * 60)
+    # This code runs when the script is executed directly
+    print("Kamodo Last Closed Field Line Finder")
+    print("To use this module, import it and call its functions.")
+    print("For an example, use:")
+    print("  results = find_last_closed_field_lines(kamodo_object, time_hours)")
+    print("  fig = plot_last_closed_field_lines(results)")
     
-    print("\n🚀 QUICK START GUIDE:")
-    print("1. Load your Kamodo object: ko = your_kamodo_model")
-    print("2. Find last closed field lines: results = find_last_closed_field_lines(ko, time_hours=12)")  
-    print("3. Plot results: fig = plot_last_closed_field_lines(results)")
+    # Check available optimizations
+    print("\nAvailable optimizations:")
+    print(f"  Numba JIT compilation: {'✓' if vft.NUMBA_AVAILABLE else '✗'}")
+    print(f"  Parallel processing:   {'✓' if vft.JOBLIB_AVAILABLE else '✗'}")
+    print(f"  Progress bars (tqdm):  {'✓' if vft.TQDM_AVAILABLE else '✗'}")
     
-    print("\n🔧 USAGE EXAMPLE:")
-    print("import kamodo_ccmc.tools.lastclosedmag as lcm")
-    print("results = lcm.find_last_closed_field_lines(ko, time_hours=12.0)")
-    print("lcm.plot_last_closed_field_lines(results).show()")
+    if not vft.NUMBA_AVAILABLE:
+        print("\n⚠️  For best performance, install numba:")
+        print("    pip install numba")
+    
+    if not vft.JOBLIB_AVAILABLE:
+        print("\n⚠️  For parallel processing, install joblib:")
+        print("    pip install joblib")
 
