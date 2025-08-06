@@ -60,7 +60,7 @@ except ImportError:
 
 def get_colormap(name):
     """
-    Get colormap in a way that's compatible with different matplotlib versions.
+    Get colormap in a way that is compatible with different matplotlib versions.
 
     Parameters:
     -----------
@@ -263,7 +263,7 @@ class KamodoVectorFieldTracer:
             'step_size_re': 0.05,
             'direction': 'both',
             'min_altitude_re': 1.0,
-            'max_altitude_re': 30.0,
+            'max_altitude_re': 50.0,
             'adaptive_stepping': True,
             'batch_size': 100,  # For batch processing
             'max_memory_mb': 2000  # For memory management
