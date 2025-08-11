@@ -20,6 +20,7 @@ import time
 import warnings
 from functools import lru_cache
 import gc
+import kamodo_ccmc.flythrough.model_wrapper as MW
 
 # Import numba components with error handling
 try:
@@ -311,13 +312,41 @@ class KamodoVectorFieldTracer:
         Determine the correct method to call Kamodo functions.
         Kamodo functions typically accept [time, x, y, z] arrays.
         """
-        # Default calling method (works with most Kamodo models)
+        # Try default calling method (works with most Kamodo models)
         self._call_method = 'array_with_time'
+        t_c = self.component_names[0]
+        t_cr = MW.Coord_Range(self.kamodo_object, [t_c], print_output=False, return_dict=True)
+        coords = [t_cr[t_c]['time'][0], t_cr[t_c]['x'][0], t_cr[t_c]['y'][0], t_cr[t_c]['z'][0]]
+        t_e = False
+        try:
+            value = np.array(self.kamodo_object[t_c](coords))
+        except Exception as e:
+            raise ValueError(f"Error evaluating ko: {e}")
+            t_e = True
+        if len(value.shape) == 0 and not t_e:
+            if self.verbose:
+                print(f"Using Kamodo calling method: {self._call_method}")
+                print(f"For format: component([time, x, y, z])")
+            return
         
-        if self.verbose:
-            print(f"Using Kamodo calling method: {self._call_method}")
-            print(f"For format: component([time, x, y, z])")
-    
+        # The default didn't work, try gridded
+        self._call_method = 'gridded'
+        t_e = False
+        try:
+            value = np.array(self.kamodo_object[t_c](time=t_cr[t_c]['time'][0],
+                x=t_cr[t_c]['x'][0], y=t_cr[t_c]['y'][0], z=t_cr[t_c]['z'][0]))
+        except Exception as e:
+            raise ValueError(f"Error evaluating ko : {e}")
+            t_e = True
+        if len(value.shape) == 0 and not t_e:
+            if self.verbose:
+                print(f"Using Kamodo calling method: {self._call_method}")
+                print(f"For format: component(time=t, x=x, y=y, z=z)")
+            return
+        
+        self._call_method = 'array_with_time'
+        print('STILL ERRORS! leaving call_method as default: ',self._call_method)
+
     def get_field_vector(self, position_re, time_hours):
         """
         Get field vector at given position and time.
@@ -346,7 +375,10 @@ class KamodoVectorFieldTracer:
         field_components_values = []
         for i, component in enumerate(self.field_components):
             try:
-                value = component(coords)
+                if self._call_method == 'array_with_time':
+                    value = component(coords)
+                else: # gridded
+                    value = component(time=time_hours, x=x, y=y, z=z)
                 field_components_values.append(float(value))
             except Exception as e:
                 raise ValueError(f"Error evaluating {self.component_names[i]} at "
@@ -389,9 +421,14 @@ class KamodoVectorFieldTracer:
         
         # Create coordinate array for Kamodo: [[time, x, y, z], [time, x, y, z], ...]
         coords_array = []
+        if self._call_method == 'gridded': ax, ay, az = [], [], []
         for i in range(n_points):
             x, y, z = positions_re[i]
             coords_array.append([time_hours, x, y, z])
+            if self._call_method == 'gridded':
+                ax.append(x)
+                ay.append(y)
+                az.append(z)
         
         # Get field components for all points
         field_components_values = []
@@ -399,9 +436,15 @@ class KamodoVectorFieldTracer:
             try:
                 # Handle both single and multiple points
                 if n_points == 1:
-                    values = [component(coords_array[0])]
+                    if self._call_method == 'array_with_time':
+                        values = [component(coords_array[0])]
+                    else: # gridded
+                        values = [component(time=time_hours, x=ax, y=ay, z=az)]
                 else:
-                    values = component(coords_array)
+                    if self._call_method == 'array_with_time':
+                        values = component(coords_array)
+                    else: #gridded
+                        values = component(time=time_hours, x=ax, y=ay, z=az)
                 
                 # Ensure we have a list/array of values
                 if not isinstance(values, (list, np.ndarray)):
