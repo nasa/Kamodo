@@ -1915,6 +1915,88 @@ def B3Dfig(fullfile, showE = True):
     return fig
 
 ### ====================================================================================== ###
+def LastClosedBfig(ko, time_hours, n_traces=36, showE=True, showIT=True):
+    '''
+    Function to take a Kamodo object and compute last closed fieldline traces
+      and generate a plotly figure of it. This can be displayed as is or added
+      to other figures.
+
+    Parameters:
+    -----------
+    ko : object
+        Kamodo object containing magnetic field data
+    time_hours : float
+        Time in hours since midnight of first day
+    n_traces : int, optional (default=36)
+        Number of longitude traces (evenly spaced around equator)
+    showE : bool, optional (default=True)
+        True/False for showing an Earth sphere in the figure
+    showIT : bool, optional (default=True)
+        True/False for adding invisible trace to keep view consistent
+
+    Returns:
+    --------
+    fig : plotly figure object
+    '''
+    import numpy as np
+    import plotly.graph_objects as go
+    import kamodo_ccmc.tools.lastclosedmag as lcm
+
+    # Extract last close field lines
+    results = lcm.find_last_closed_field_lines(ko, time_hours=time_hours, n_traces=n_traces)
+
+    # Combine output into arrays for figure
+    xx = np.array(None)
+    yy = np.array(None)
+    zz = np.array(None)
+    for i in range(len(results['closed_traces'])):
+        xx = np.append(xx, results['closed_traces'][i]['combined']['coordinates'][:,0])
+        yy = np.append(yy, results['closed_traces'][i]['combined']['coordinates'][:,1])
+        zz = np.append(zz, results['closed_traces'][i]['combined']['coordinates'][:,2])
+        xx = np.append(xx, None)
+        yy = np.append(yy, None)
+        zz = np.append(zz, None)
+    xx.astype(np.float16)
+    yy.astype(np.float16)
+    zz.astype(np.float16)
+
+    # Make the figure
+    fig = go.Figure()
+    fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines',
+        line=dict(color="#000000", width=2), hoverinfo='skip', name='Last Closed B'))
+
+    # Create Earth sphere
+    if showE:
+        elon = np.linspace(-180, 180, 181)
+        elat = np.linspace(-90, 90, 91)
+        elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+        ex = -1.*(np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.))
+        ey = -1.*(np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.))
+        ez = +1.*(np.sin(elat_mg*np.pi/180.))
+        colorse = np.zeros(shape=ex.shape)
+        colorse[ex<0.]=1  # Option to make day side a lighter color
+        colorscalee = ['rgb(199,199,199)', 'rgb(0,0,0)']
+        fig.add_surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+                        cmin=0, cmax=1, colorscale=colorscalee,
+                        showlegend=False, showscale=False, hoverinfo='skip')
+
+    # add invisible trace to keep view consistent
+    if showIT:
+        ix = [-99, None, 25]
+        iy = [-35, None, 35]
+        iz = [-35, None, 35]
+        fig.add_scatter3d(x=np.array(ix), y=np.array(iy), z=np.array(iz), mode='markers',
+            marker=dict(size=1, color='red', opacity=0.10),
+            showlegend=False, hoverinfo='skip', name='FixedRange' )
+
+    # Set 3D view
+    camera = dict(up=dict(x=0, y=0, z=1), eye=dict(x=1.1, y=0.85, z=0.25) )
+    fig.update_layout(title='Last Closed B', scene_camera=camera)
+    fig.update_layout(scene_aspectmode='data')
+
+    return fig
+
+### ====================================================================================== ###
 def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
                   pco='', upperlabel='', lowerlabel='', colorscale='RdBu',
                   addTraceTime=False, showGrid=False, showE=False,
