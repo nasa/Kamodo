@@ -2735,7 +2735,7 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
         y = np.full((Gridsize,Gridsize), None)
         z = np.full((Gridsize,Gridsize), None)
         a1 = np.linspace(-np.pi/2., np.pi/2., Gridsize)
-        a2 = np.linspace(-np.pi/(12./7.), np.pi/(12./7.), Gridsize) # +/- 7 hrs from noon
+        a2 = np.linspace(-np.pi/(12./6.), np.pi/(12./6.), Gridsize) # +/- 6 hrs from noon
         for i, a in enumerate(a1):
             for j, b in enumerate(a2):
                 xval = np.cos(b)
@@ -2751,20 +2751,25 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
                         if dr < 0.: dr = -0.5 * dr
                     r += dr
                     newx, newy, newz = r*xval, r*yval, r*zval
+                    if xval < -5.: break
                     if newx < x1 or newx > x2: break
                     if newy < y1 or newy > y2: break
                     if newz < z1 or newz > z2: break
-                    #\\ TEST NEW STUFF
-                    if newx > 15.: break
+                    if newx > 20.: break
                     newr = np.sqrt(newx*newx + newy*newy + newz*newz)
-                    if newr > 22.: break
-                    #//
+                    if newr > 25.: break
                     v = interpMP([timeHrs, newx, newy, newz])
                     if abs(dr) < 1.e-3:
                         x[i, j] = newx
                         y[i, j] = newy
                         z[i, j] = newz
                         break
+        # For None values anywhere on ring, remove all of them.
+        for j, b in enumerate(a2):
+            if None in x[:, j]:
+                x[:, j] = None
+                y[:, j] = None
+                z[:, j] = None
         return x,y,z
     elif what == 'BS':
         # Make sure the 'v_x' variable is in the Kamodo object and create interpolator.
@@ -2807,6 +2812,7 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
                     else:
                         if dx > 0.: dx = -0.5 * dx
                     xval += dx
+                    if xval < -5.: break
                     if xval < x1 or xval > x2: break
                     if yval < y1 or yval > y2: break
                     if zval < z1 or zval > z2: break
@@ -2817,6 +2823,12 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
                         y[i, j] = yval
                         z[i, j] = zval
                         break
+        # For None values anywhere on ring, remove all of them.
+        for j, b in enumerate(a2):
+            if None in x[:, j]:
+                x[:, j] = None
+                y[:, j] = None
+                z[:, j] = None
         return x,y,z
 
     # Default if it somehow falls through to the end
