@@ -1,6 +1,6 @@
 jupyter
 ipython
-kaleido
+kaleido<1.0.0
 build
 twine
 mkdocs
