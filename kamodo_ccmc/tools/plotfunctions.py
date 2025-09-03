@@ -3667,3 +3667,513 @@ def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
 
     return PCBN, PCBS
 
+### ====================================================================================== ###
+def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
+        doJustShell=False, doJustSlices=False, doSlices2surface=True, doLog=False,
+        savePNG=False, savePNGrotations=-1, eyedist=1., wLat=45., wLon=-95., wWidth=45.,
+        returnFig=True, printFig=False, cmin=None, cmax=None):
+    """
+    Extract the height of the second to last pressure level or max height and plot a quantity
+    on that surface with 1/8 of the sphere cut out and the sides of the hole filled with
+    vertical values at that lat or lon.
+
+    If ptime is positive, the resulting interpolation uses ptime, otherwise it step is used.
+
+    This functions works for TIEGCM, CTIPe, GITM, DTM, IRI, WACCMX
+    
+    Parameters:
+    ko (Kamodo object): Passed in valid Kamodo object
+    var (string): Variable name to plot
+    it (int): Iteration number to use from the list of valid times in the Kamodo object
+        Only used when ptime is negative
+    ptime (float): Time in hours from the beginning of data in Kamodo object to make plot
+    hfactor (float): Stretch factor for the height (altitude) of plotted quantities
+    runID (string): Run name to include on plot title
+    doJustShell (bool): Logical to include the 7/8 shell portion on plot
+    doJustSlices (bool): Logical to include the interior sides of the cutout on plot
+    doSlices2surface (bool): Logical, when doSlices=True go down to altitude=0 instead of model min
+    doLog (bool): Logical to adjust plotted variable to Log scale
+    savePNG (bool): Logical to save a PNG file of the resulting figure
+    savePNGrotations (int): When > 0, number of steps in rotation to save individual PNG files
+    eyedist (float): Eye distances is a zoom scaling factor for the plot, larger value is smaller plot
+    wLat (float): Window latitude position (degrees) for center of cutout window
+    wLon (float): Window longitude position (degrees) for center of cutout window
+    wWidth (float): Window half width, ie. 45 degrees will be +/- 45 degrees from window center
+    returnFig (bool): Logical to determine whether the created figure is returned
+    printFig (bool): Logical to print the content of the figure for debugging
+    cmin (float): Set value of the minimum contour value on the plot
+    cmax (float): Set value of the maximum contour value on the plot
+    
+    Returns:
+    Either nothing or a plotly figure object, depending on value of returnFig
+    """
+    from kamodo import Kamodo, get_defaults
+    from kamodo_ccmc.tools.shoreline import shoreline
+    import numpy as np
+    import plotly.graph_objects as go
+    import datetime as dt
+    progress = True
+    try:
+        #from tqdm import tqdm
+        from tqdm.notebook import tqdm  #version for jupyter notebooks
+    except ImportError:
+        progress = False
+
+    model = ko.modelname
+    if model not in ['TIEGCM', 'CTIPe', 'GITM', 'DTM', 'IRI', 'WACCMX']:
+        print('ERROR, plot not supported for passed Kamodo object model. ',model)
+        return
+
+    ptitle = model + ' data from CCMC run ' + runID
+    if model in ['TIEGCM', 'CTIPe']:
+        varH = 'H_ilev1_ijk'
+        varHu = ko.variables['H_ilev1']['units']
+        varI = var+'_ilev_ijk'
+        defaults = get_defaults(ko[varH])
+    elif model in ['WACCMX']:
+        varH = 'H_geopot_ilev_ijk'
+        varHu = ko.variables['H_geopot_ilev']['units']
+        varI = var+'_ilev_ijk'
+        defaults = get_defaults(ko[varH])
+    else:
+        varI = var+'_ijk'
+        defaults = get_defaults(ko[varI])
+    # ptime is in hours from start of first day of data
+    if ptime < 0.:
+        # If negative, then use time from it integer. Check validity first.
+        if it < 0:
+            print('ERROR, it value is negative.',it)
+            return
+        if it >= len(defaults['time']):
+            print('ERROR, it value too large.',it,len(defaults['time']))
+            return
+        ptime = float(defaults['time'][it])
+    else:
+        # Check for valid time
+        if ptime < float(defaults['time'][0]) or ptime > float(defaults['time'][-1]):
+            print('ERROR, time outside range.',ptime,defaults['time'][0],defaults['time'][-1])
+            return
+
+    varu = ko.variables[var]['units'] 
+    pvtitle = var+' ['+varu+']'
+    if doLog:
+        pvtitle = 'log10('+pvtitle+')'
+
+    # Create blank inner boundary
+    elon = np.linspace(-180, 180, 181)
+    elat = np.linspace(-90, 90, 91)
+    elon_mg, elat_mg = np.meshgrid(np.array(elon), np.array(elat))
+    ex = np.cos(elat_mg*np.pi/180.)*np.cos(elon_mg*np.pi/180.)
+    ey = np.cos(elat_mg*np.pi/180.)*np.sin(elon_mg*np.pi/180.)
+    ez = np.sin(elat_mg*np.pi/180.)
+    colorse = np.zeros(shape=ex.shape)
+    # colorse[ex<0.]=1  # Option to make day side a lighter color
+    colorscalee = ['rgb(99,99,99)', 'rgb(0,0,0)']
+    figF = go.Figure(data=[go.Surface(x=ex, y=ey, z=ez, surfacecolor=colorse,
+        cmin=0, cmax=1, colorscale=colorscalee, showlegend=False, showscale=False, 
+        hoverinfo='skip', name='blankbody')])
+    figF.update_layout(scene_aspectmode='data')
+
+    # Add shorelines
+    pos = shoreline(rscale=1.001)
+    figF.add_scatter3d(x=pos[:,0], y=pos[:,1], z=pos[:,2], 
+        mode='lines', line=dict(width=2, color='white'),
+        showlegend=False, hoverinfo='skip', name='shorelines')
+    
+    # Add poles to plot with markers every 100km
+    altt = (100. / 6.3781E3)
+    xt = np.zeros(22)
+    yt = np.zeros(22)
+    zt0 = np.linspace(0, 10, 11)
+    zt1 = 1.+hfactor*altt*zt0
+    zt = np.concatenate((-zt1[::-1],zt1))
+    figF.add_scatter3d(mode='lines+markers', x=xt, y=yt, z=zt,
+        line=dict(width=4, color='black'),
+        marker=dict(size=3, color='dimgrey'),
+        showlegend=False, hovertemplate=' Pole<extra></extra>', name='poles')
+    
+    # Add outer points to keep plot position fixed.
+    xt = [-3., -3., -3., -3.,  3.,  3.]
+    yt = [-3.,  3.,  3., -3., -3., -3.]
+    zt = [-3., -3.,  3.,  3.,  3., -3.]
+    figF.add_scatter3d(mode='markers', x=xt, y=yt, z=zt,
+        marker=dict(size=1, color='white', opacity=0.1),
+        showlegend=False, hoverinfo='skip', name='fixedposition')
+
+    # Outer Shell Prep
+    if model in ['TIEGCM', 'CTIPe', 'WACCMX']:
+        # outer ilev shell (2nd to last ilev1 value, last ilev1 is sometimes problematic)
+        if model in ['TIEGCM', 'CTIPe']:
+            fig1a = ko.plot(varI, plot_partial={varI: {'time': ptime, 'ilev': defaults['ilev1'][-2] }})
+            fig1b = ko.plot(varH, plot_partial={varH: {'time': ptime, 'ilev1': defaults['ilev1'][-2] }})
+            fig1c = ko.plot(varH, plot_partial={varH: {'time': ptime, 'ilev1': defaults['ilev1'][0] }})
+        else:  # WACCMX has reversed ilev values and slightly different names
+            fig1a = ko.plot(varI, plot_partial={varI: {'time': ptime, 'ilev': defaults['ilev'][0] }})
+            fig1b = ko.plot(varH, plot_partial={varH: {'time': ptime, 'ilev': defaults['ilev'][0] }})
+            fig1c = ko.plot(varH, plot_partial={varH: {'time': ptime, 'ilev': defaults['ilev'][-1] }})
+        # pull out position lon/lat as 1D and height/value as 2D
+        lon1 = fig1b.data[0].x
+        lat1 = fig1b.data[0].y
+        val1 = fig1a.data[0].z
+        if varHu == 'cm':  # TIEGCM
+            height0km = fig1c.data[0].z / 100000.
+            height1km = fig1b.data[0].z / 100000.
+        elif varHu == 'm':  # CTIPe
+            height0km = fig1c.data[0].z / 1000.
+            height1km = fig1b.data[0].z / 1000.
+        else:
+            print('ERROR, unanticipated units. ',varHu)
+            return
+    else:  # GITM, DTM, IRI
+        # Create these equivalent arrays: lon1, lat1, height0km, height1km, val1
+        fig1a = ko.plot(varI, plot_partial={varI: {'time': ptime, 'height': defaults['height'][-1] }})
+        lon1 = fig1a.data[0].x
+        lat1 = fig1a.data[0].y
+        val1 = fig1a.data[0].z
+        height0km = np.full(val1.shape, defaults['height'][0])
+        height1km = np.full(val1.shape, defaults['height'][-1])
+    height0re = (hfactor*height0km + 6.3781E3)/6.3781E3
+    height1re = (hfactor*height1km + 6.3781E3)/6.3781E3
+    # put lon/lat into same 2D grid
+    lon1_mg, lat1_mg = np.meshgrid(np.array(lon1), np.array(lat1))
+    # Convert to X/Y/Z with 'stretched' altitude (hfactor)
+    x1 = height1re*(np.cos(lat1_mg*np.pi/180.)*np.cos(lon1_mg*np.pi/180.))
+    y1 = height1re*(np.cos(lat1_mg*np.pi/180.)*np.sin(lon1_mg*np.pi/180.))
+    z1 = height1re*(np.sin(lat1_mg*np.pi/180.))
+    if doLog:
+        val1 = np.log10(val1)
+    cmin1 = np.nanmin(val1)
+    cmax1 = np.nanmax(val1)
+    # Set integer values for slicing output to cut out 1/8 of sphere
+    if model in ['TIEGCM', 'CTIPe', 'WACCMX']:
+        lonbreak = int((len(defaults['lon'])-1)/4)
+        latbreak = int((len(defaults['lat'])  )/2)
+    else:  # GITM, DTM, IRI do not have constand dlon, needs a shift of 1
+        lonbreak = int((len(defaults['lon'])  )/4)
+        latbreak = int((len(defaults['lat'])  )/2)
+
+    # Determine which lon/lat values to block out for the window, and what edges to keep to plot
+    indLon = np.where((lon1 > (wLon - wWidth)) & (lon1 < (wLon + wWidth)))[0]
+    preLon = indLon[0]-1
+    postLon = indLon[-1]+1
+    if (wLon - wWidth) < -180:
+        indTmp = np.where((lon1 > (wLon - wWidth + 360.)))[0]
+        indLon = np.append(indLon, indTmp)
+        preLon = indTmp[0]-1
+    if (wLon + wWidth) > 180.:
+        indTmp = np.where((lon1 < (wLon + wWidth - 360.)))[0]
+        indLon = np.append(indLon, indTmp)
+        postLon = indTmp[-1]+1
+    indLat = np.where((lat1 > (wLat - wWidth)) & (lat1 < (wLat + wWidth)))[0]
+    preLat = indLat[0]-1
+    if preLat < 0: preLat = 0
+    postLat = indLat[-1]+1
+    if postLat >= (len(lat1)-1): postLat = (len(lat1)-1)
+    
+    # Easiest to open windwo by setting a value in the window to None
+    for i in range(x1.shape[0]):
+        for j in range(x1.shape[1]):
+            if (i in indLat) & (j in indLon): x1[i,j] = None
+
+    if doJustShell:
+        if doJustSlices: doJustSlices = False
+        # Make temporary figure and add to composite figure
+        fig1 = go.Figure(data=[go.Surface(x=x1, y=y1, z=z1, surfacecolor=val1)])
+        fig1.update_traces(
+            colorbar=dict(title=pvtitle, ),# tickformat=".3g",
+            customdata=np.dstack((
+                np.transpose(lon1_mg, axes=[1, 0]),
+                np.transpose(lat1_mg, axes=[1, 0]),
+                np.transpose(height1km, axes=[1, 0]),
+                np.transpose(val1, axes=[1, 0]),)),
+            hovertemplate="<b>Outer Shell</b><br>" +
+                #"X: %{x:.3f} <br>" + "Y: %{y:.3f} <br>" + "Z: %{z:.4g} <br>" +
+                "Lon: %{customdata[0]:.2f}&#176; <br>" +
+                "Lat: %{customdata[1]:.2f}&#176; <br>" +
+                "Alt: %{customdata[2]:.2f} km<br>" +
+                var + ": %{customdata[3]:.3f} " + varu + "<br>" +
+                "<extra></extra>",
+        )
+        fig1.data[0]['name'] = 'part1'
+        figF.add_trace(fig1.data[0])
+
+    ## Now setup for slices
+    n1d = np.array([None], dtype=np.float64)  # 1D array with just a None value
+    # 1: preLon slice
+    lon2a = lon1_mg[preLat:postLat+1,preLon]
+    lat2a = lat1_mg[preLat:postLat+1,preLon]
+    alt2a = height1km[preLat:postLat+1,preLon]
+    alt2aL = height0km[preLat:postLat+1,preLon]
+    lon2a_r = lon2a[::-1]  # make reversed array copies
+    lat2a_r = lat2a[::-1]
+    alt2a_r = alt2a[::-1]
+    alt2aL_r = alt2aL[::-1]
+    # 2: postLon slice
+    lon2b = lon1_mg[preLat:postLat+1,postLon]
+    lat2b = lat1_mg[preLat:postLat+1,postLon]
+    alt2b = height1km[preLat:postLat+1,postLon]
+    alt2bL = height0km[preLat:postLat+1,postLon]
+    # 3: preLat slice
+    if preLon < postLon:
+        lon2c = lon1_mg[preLat,preLon:postLon+1]
+        lat2c = lat1_mg[preLat,preLon:postLon+1]
+        alt2c = height1km[preLat,preLon:postLon+1]
+        alt2cL = height0km[preLat,preLon:postLon+1]
+    else:
+        lon2c1 = lon1_mg[preLat,preLon:]
+        lat2c1 = lat1_mg[preLat,preLon:]
+        alt2c1 = height1km[preLat,preLon:]
+        alt2c1L = height0km[preLat,preLon:]
+        lon2c2 = lon1_mg[preLat,:postLon+1]
+        lat2c2 = lat1_mg[preLat,:postLon+1]
+        alt2c2 = height1km[preLat,:postLon+1]
+        alt2c2L = height0km[preLat,:postLon+1]
+        lon2c = np.concatenate([lon2c1, lon2c2])
+        lat2c = np.concatenate([lat2c1, lat2c2])
+        alt2c = np.concatenate([alt2c1, alt2c2])
+        alt2cL = np.concatenate([alt2c1L, alt2c2L])
+    # 4: postLat slice
+    if preLon < postLon:
+        lon2d = lon1_mg[postLat,preLon:postLon+1]
+        lat2d = lat1_mg[postLat,preLon:postLon+1]
+        alt2d = height1km[postLat,preLon:postLon+1]
+        alt2dL = height0km[postLat,preLon:postLon+1]
+    else:
+        lon2d1 = lon1_mg[postLat,preLon:]
+        lat2d1 = lat1_mg[postLat,preLon:]
+        alt2d1 = height1km[postLat,preLon:]
+        alt2d1L = height0km[postLat,preLon:]
+        lon2d2 = lon1_mg[postLat,:postLon+1]
+        lat2d2 = lat1_mg[postLat,:postLon+1]
+        alt2d2 = height1km[postLat,:postLon+1]
+        alt2d2L = height0km[postLat,:postLon+1]
+        lon2d = np.concatenate([lon2d1, lon2d2])
+        lat2d = np.concatenate([lat2d1, lat2d2])
+        alt2d = np.concatenate([alt2d1, alt2d2])
+        alt2dL = np.concatenate([alt2d1L, alt2d2L])
+    lon2d_r = lon2d[::-1]  # make reversed array copies
+    lat2d_r = lat2d[::-1]
+    alt2d_r = alt2d[::-1]
+    alt2dL_r = alt2dL[::-1]
+    # Combine into single arrays 
+    lon2 = np.concatenate([lon2a_r, lon2c, lon2b, lon2d_r])
+    lat2 = np.concatenate([lat2a_r, lat2c, lat2b, lat2d_r])
+    alt2 = np.concatenate([alt2a_r, alt2c, alt2b, alt2d_r])
+    alt2L = np.concatenate([alt2aL_r, alt2cL, alt2bL, alt2dL_r])
+
+    # Base alt grid for array size, not value and make 2D arrays
+    alt = np.linspace(0., 1., 75)
+    lon2_mg, alt2_mg = np.meshgrid(np.array(lon2), np.array(alt))
+    lat2_mg, alt2_mg = np.meshgrid(np.array(lat2), np.array(alt))
+    # Loop over points to compute proper distribution of heights
+    for i in range(len(alt2)):
+        if alt2[i] is None: continue
+        if doSlices2surface:
+            alt2_mg[:,i] = np.linspace(0., alt2[i], 75)
+        else:
+            alt2_mg[:,i] = np.linspace(alt2L[i], alt2[i], 75)
+    saveshape = alt2_mg.shape
+    # Collapse 2D to big 1D to use to build interpolator as 4D positions array
+    biglon = np.reshape(lon2_mg, -1)
+    biglat = np.reshape(lat2_mg, -1)
+    bigalt = np.reshape(alt2_mg, -1)
+    tt = np.full(biglon.shape, ptime)
+    positions = np.transpose([tt,biglon,biglat,bigalt])
+    # Interpolate and reshape results
+    ko_interp = getattr(ko, var)
+    values = ko_interp(positions)
+    val2 = np.reshape(values, saveshape)
+    if doLog:
+        val2 = np.log10(val2)
+    cmin2 = np.nanmin(val2)
+    cmax2 = np.nanmax(val2)
+    # Convert values into X/Y/Z
+    height2re = (hfactor*alt2_mg + 6.3781E3)/6.3781E3
+    x2 = height2re*(np.cos(lat2_mg*np.pi/180.)*np.cos(lon2_mg*np.pi/180.))
+    y2 = height2re*(np.cos(lat2_mg*np.pi/180.)*np.sin(lon2_mg*np.pi/180.))
+    z2 = height2re*(np.sin(lat2_mg*np.pi/180.))
+
+    if doJustSlices:
+        fig2 = go.Figure(data=[go.Surface(x=x2, y=y2, z=z2, surfacecolor=val2)])
+        fig2.update_traces(
+            colorbar=dict(title=pvtitle, ),# tickformat=".3g",
+            customdata=np.dstack((
+                np.transpose(lon2_mg, axes=[1, 0]),
+                np.transpose(lat2_mg, axes=[1, 0]),
+                np.transpose(alt2_mg, axes=[1, 0]),
+                np.transpose(val2, axes=[1, 0]),)),
+            hovertemplate="<b>Vertical Slices</b><br>" +
+                #"X: %{x:.3f} <br>" + "Y: %{y:.3f} <br>" + "Z: %{z:.4g} <br>" +
+                "Lon: %{customdata[0]:.2f}&#176; <br>" +
+                "Lat: %{customdata[1]:.2f}&#176; <br>" +
+                "Alt: %{customdata[2]:.2f} km<br>" +
+                var + ": %{customdata[3]:.3f} " + varu + "<br>" +
+                "<extra></extra>",
+        )
+        fig2.data[0]['name'] = 'part2'
+        figF.add_trace(fig2.data[0])
+
+    if not doJustShell and not doJustSlices:
+        # Create a single Mesh3d trace
+        custD=np.array(np.dstack((
+            np.concatenate([lon1_mg.ravel(),lon2_mg.ravel()]),
+            np.concatenate([lat1_mg.ravel(),lat2_mg.ravel()]),
+            np.concatenate([height1km.ravel(),alt2_mg.ravel()]),
+            np.concatenate([val1.ravel(),val2.ravel()]),)) )
+        cdMT = np.reshape(custD, (custD.shape[1],custD.shape[2]))
+        mesh_trace = _combine_surfaces_to_mesh3d(x1, y1, z1, val1, x2, y2, z2, val2)
+        fig3 = go.Figure(data=[mesh_trace])
+        fig3.update_traces(
+            colorbar=dict(title=pvtitle, ),# tickformat=".3g",
+            customdata=cdMT,
+            hovertemplate="<b>Cut Values</b><br>" +
+                #"X: %{x:.3f} <br>" + "Y: %{y:.3f} <br>" + "Z: %{z:.4g} <br>" +
+                "Lon: %{customdata[0]:.2f}&#176; <br>" +
+                "Lat: %{customdata[1]:.2f}&#176; <br>" +
+                "Alt: %{customdata[2]:.2f} km<br>" +
+                var + ": %{customdata[3]:.3f} " + varu + "<br>" +
+                "<extra></extra>",
+        )
+        fig3.data[0]['name'] = 'part3'
+        figF.add_trace(fig3.data[0])
+
+    # Create Date and Time string
+    dd = ko.filedate
+    dd = dd + dt.timedelta(hours=ptime)
+    timestr = dd.strftime("%Y/%m/%d %H:%M")
+    
+    # The eyedist variable zooms out or in with same perspective
+    wLonr = np.radians(wLon)
+    wLatr = np.radians(wLat)/2.  # half value to keep view closer to equator
+    eyex = eyedist*np.cos(wLatr)*np.cos(wLonr)
+    eyey = eyedist*np.cos(wLatr)*np.sin(wLonr)
+    eyez = eyedist*np.sin(wLatr)
+    figF.update_layout(
+        title=dict(text=ptitle+'<br>',
+            yref="container", yanchor="top", x=0.05, y=0.95,
+            font=dict(size=16, family="sans serif", color="#000000")),
+        annotations=[
+            dict(text='Time: '+timestr, 
+                 x=0.05, y=0.04, ax=0, ay=0, xanchor="left",
+                 xshift=0, yshift=-26, xref="paper", yref="paper",
+                 font=dict(size=14, family="sans serif", color="#000000")),
+            dict(text='Altitude stretch factor = '+str(hfactor), 
+                 x=1., y=0.04, ax=0, ay=0, xanchor="right",
+                 xshift=0, yshift=-26, xref="paper", yref="paper",
+                 font=dict(size=14, family="sans serif", color="#000000"))
+        ],
+        scene_camera=dict(eye=dict(x=eyex, y=eyey, z=eyez), center=dict(x=0., y=0., z=0.)),
+        scene=dict(xaxis=dict(visible=False),
+                   yaxis=dict(visible=False),
+                   zaxis=dict(visible=False)),
+        margin=dict(l=0,t=28,b=20),
+        width=600, height=500
+    )
+
+    if cmin is  None or cmax is None:
+        # If either unset, then use min/max from actual values
+        if doJustShell:
+            cmin, cmax = cmin1, cmax1
+        elif doJustSlices:
+            cmin, cmax = cmin2, cmax2
+        else:
+            cmin = min(cmin1,cmin2)
+            cmax = max(cmax1,cmax2)
+    for i in range(len(figF.data)):
+        name = figF.data[i]['name']
+        if 'part' in name:
+            figF.update_traces(cmin=cmin, cmax=cmax, selector={'name': name})
+
+    if savePNG:
+        iis = str(int(1000.*ptime)).zfill(8)  # create zero padded string from time
+        figF.write_image("cutout"+iis+".png", scale=2)
+
+    if savePNGrotations > 0:
+        iis = str(int(1000.*ptime)).zfill(8)  # create zero padded string from time
+        deg = np.linspace(360., 0., savePNGrotations+1)
+        if progress: pbar = tqdm(total=len(deg)-1, desc="Saving rotation images")
+        for i in range(len(deg)):
+            if deg[i] == 0.: continue
+            xyz = _rotate_point_around_z(eyex, eyey, eyez, deg[i])
+            iid = str(int(i)).zfill(3)  # create zero padded string from iteration
+            figF.update_layout(scene_camera=dict(eye=dict(x=xyz[0], y=xyz[1], z=xyz[2]), center=dict(x=0., y=0., z=0.)))
+            figF.write_image("cutout"+iis+"_"+iid+".png", scale=2)
+            if progress: pbar.update(1)
+        if progress: pbar.close()
+
+    if printFig:
+        print(figF)
+
+    if returnFig:
+        return figF
+    else:
+        return
+
+def _rotate_point_around_z(x, y, z, degrees):
+    """
+    Rotate a 3D point around the z-axis.
+
+    Args:
+        x (float): X-coordinate of the point.
+        y (float): Y-coordinate of the point.
+        z (float): Z-coordinate of the point.
+        degrees (float): Rotation angle in degrees.
+
+    Returns:
+        numpy.ndarray: New coordinates [x', y', z'] after rotation.
+    """
+    import numpy as np
+    
+    radians = np.radians(degrees)
+    rotation_matrix = np.array([
+        [np.cos(radians), -np.sin(radians), 0],
+        [np.sin(radians),  np.cos(radians), 0],
+        [0,                0,               1]
+    ])
+    
+    point = np.array([x, y, z])
+    return rotation_matrix @ point
+
+def _combine_surfaces_to_mesh3d(x1, y1, z1, val1, x2, y2, z2, val2):
+    import numpy as np
+    import plotly.graph_objects as go
+
+    # Usage example:
+    # mesh_trace = combine_surfaces_to_mesh3d(x1, y1, z1, val1, x2, y2, z2, val2)
+    # fig = go.Figure(data=[mesh_trace])
+    # fig.show()
+
+    # Combine coordinates
+    x = np.concatenate([x1.ravel(), x2.ravel()])
+    y = np.concatenate([y1.ravel(), y2.ravel()])
+    z = np.concatenate([z1.ravel(), z2.ravel()])
+
+    # Combine color values
+    intensity = np.concatenate([val1.ravel(), val2.ravel()])
+
+    # Calculate indices for triangles
+    def mesh_indices(shape):
+        rows, cols = shape
+        indices = []
+        for i in range(rows - 1):
+            for j in range(cols - 1):
+                base = i * cols + j
+                indices.extend([base, base + 1, base + cols])
+                indices.extend([base + 1, base + cols + 1, base + cols])
+        return indices
+
+    # Get indices for both surfaces
+    i1 = mesh_indices(x1.shape)
+    i2 = mesh_indices(x2.shape)
+
+    # Offset indices for the second surface
+    i2 = [i + x1.size for i in i2]
+
+    # Combine indices
+    i = i1 + i2
+
+    # Create the Mesh3d trace
+    mesh_trace = go.Mesh3d(x=x, y=y, z=z, i=i[0::3], j=i[1::3], k=i[2::3],
+        intensity=intensity, intensitymode='vertex' )
+
+    return mesh_trace
