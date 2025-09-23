@@ -2588,7 +2588,7 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
     ko:           Kamodo object
     timeHrs:      time to interpolate values (hrs from midnight of 1st day of data)
     wireframe:     logical to set wireframe or opaque surface for returned plot
-    Gridsize:     surface grid size, default is 21x21 grid of points
+    Gridsize:     surface grid size, default is 42x21 grid of points
     what:         string with what to retrieve from: BS, MP
     traceTime:    logical to add time to trace label
     sfile:        string of relative directory path to read surface file
@@ -2618,11 +2618,11 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
             titleStr = p[0]+' Surface for '+DateStr
             what = p[0]
         if what == 'MP':
-            color, name = '#0000c1', 'Magnetopause'
+            color, colorRGB, name = '#0000c1', 'rgb(0, 0, 193)', 'Magnetopause'
         elif what == 'BS':
-            color, name = '#00ff00', 'Bow Shock'
+            color, colorRGB, name = '#161616', 'rgb(22, 22, 22)', 'Bow Shock'
         elif what == 'CS':
-            color, name = '#223344', 'Tail Current Sheet'
+            color, colorRGB, name = '#223344', 'rgb(34, 51, 68)', 'Tail Current Sheet'
             return None,False
         if traceTime:
             name2 = name+'<br>'+DateStr
@@ -2633,18 +2633,18 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
         return None,False
 
     Tpts = x.shape[0]
-    if Tpts < 3:
+    if x.shape[0] < 3 or x.shape[1] < 3:
         # Grid size must be at least 3x3
         return None,False
         
     if wireframe:
-        # Create wire mesh view of BS
+        # Create wire mesh view
         xx, yy, zz = [], [], []
-        for i in range(Tpts):
-            xx = np.concatenate((xx, [None], x[:,i]))
-            yy = np.concatenate((yy, [None], y[:,i]))
-            zz = np.concatenate((zz, [None], z[:,i]))
-        for i in range(Tpts):
+        for j in range(x.shape[1]):
+            xx = np.concatenate((xx, [None], x[:,j]))
+            yy = np.concatenate((yy, [None], y[:,j]))
+            zz = np.concatenate((zz, [None], z[:,j]))
+        for i in range(x.shape[0]):
             xx = np.concatenate((xx, [None], x[i,:]))
             yy = np.concatenate((yy, [None], y[i,:]))
             zz = np.concatenate((zz, [None], z[i,:]))
@@ -2652,21 +2652,12 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
         fig2.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines', name=name2,
             line=dict(color=color, width=2), hoverinfo='skip'))
     else:
-        # Create transparent shell view of BS
-        iv, jv, kv = [], [], []
-        for iy in range(Tpts-1):
-            for ix in range(Tpts-1):
-                # For each cell, create two triangular connectivity entries
-                iv.append(ix   +  iy   *Tpts)
-                jv.append(ix+1 +  iy   *Tpts)
-                kv.append(ix   + (iy+1)*Tpts)
-                iv.append(ix   + (iy+1)*Tpts)
-                jv.append(ix+1 + (iy+1)*Tpts)
-                kv.append(ix+1 +  iy   *Tpts)
-        fig2 = go.Figure(data=[go.Mesh3d(name=name2, flatshading=True, 
-            x=x.reshape(-1), y=y.reshape(-1), z=z.reshape(-1), i=iv, j=jv, k=kv, 
-            color=color, opacity=0.40, hoverinfo='skip', showlegend=True, showscale=False,
-        )])
+        # Create transparent shell view
+        custom_colorscale = [ [0, colorRGB], [0.5, colorRGB], [1, colorRGB] ]
+        v = np.full_like(x, 0.)
+        fig2 = go.Figure(data=[go.Surface(x=x, y=y, z=z, surfacecolor=v, opacity=0.4,
+            colorscale=custom_colorscale, showscale=False, cmin=-1., cmax=1.,
+            hoverinfo='skip', showlegend=True, name=name2, )])
 
     # put an Earth sphere on plot
     elon = np.linspace(-180, 180, 181)
@@ -2706,7 +2697,7 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
 
     ko:           Kamodo object
     timeHrs:      time to interpolate values (hrs from midnight of 1st day of data)
-    Gridsize:     surface grid size, default is 21x21 grid of points
+    Gridsize:     surface grid size, default is 42x21 grid of points
     what:         string with what to retrieve from: BS, MP
     '''
     import numpy as np
@@ -2731,11 +2722,11 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
         z1, z2 = cr['status']['Z'][0], cr['status']['Z'][1]
 
         # Look at status=0.5
-        x = np.full((Gridsize,Gridsize), None)
-        y = np.full((Gridsize,Gridsize), None)
-        z = np.full((Gridsize,Gridsize), None)
-        a1 = np.linspace(-np.pi/2., np.pi/2., Gridsize)
-        a2 = np.linspace(-np.pi/(12./6.), np.pi/(12./6.), Gridsize) # +/- 6 hrs from noon
+        x = np.full((2*Gridsize,Gridsize), None)
+        y = np.full((2*Gridsize,Gridsize), None)
+        z = np.full((2*Gridsize,Gridsize), None)
+        a1 = np.linspace(-np.pi, np.pi, 2*Gridsize)
+        a2 = np.linspace(0., np.pi/(12./6.), Gridsize) # +/- 6 hrs from noon
         for i, a in enumerate(a1):
             for j, b in enumerate(a2):
                 xval = np.cos(b)
@@ -2787,14 +2778,14 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
         z1, z2 = cr['v_x']['Z'][0], cr['v_x']['Z'][1]
 
         # Shock looking at v_x where it drops to 85% of value upstream (note v_x negative in SW)
-        x = np.full((Gridsize,Gridsize), None)
-        y = np.full((Gridsize,Gridsize), None)
-        z = np.full((Gridsize,Gridsize), None)
-        a1 = np.linspace(-np.pi/2., np.pi/2., Gridsize)
-        a2 = np.linspace(-np.pi/3., np.pi/3., Gridsize)
+        x = np.full((2*Gridsize,Gridsize), None)
+        y = np.full((2*Gridsize,Gridsize), None)
+        z = np.full((2*Gridsize,Gridsize), None)
+        a1 = np.linspace(-np.pi, np.pi, 2*Gridsize)
+        a2 = np.linspace(-np.pi/3., 0., Gridsize)
         Npts = 200
         rbs = np.linspace(x2-1., -10., Npts)
-        Rfactor = 25./np.sin(a2[0]) # R=25 from X axis for surface
+        Rfactor = 25.
         ii = 0
         for i, a in enumerate(a1):
             for j, b in enumerate(a2):
@@ -2841,7 +2832,7 @@ def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', runname='unkno
 
     ko:           Kamodo object
     timeHrs:      time to interpolate values (hrs from midnight of 1st day of data)
-    Gridsize:     surface grid size, default is 21x21 grid of points
+    Gridsize:     surface grid size, default is 42x21 grid of points
     what:         string with what to save from: BS, MP
     where:        string of directory path to save output
     '''
@@ -2857,10 +2848,9 @@ def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', runname='unkno
     else:
         print('ERROR, unknown surface in gmSaveSurface.')
         return
-    Tpts = x.shape[0]
-    if Tpts < 3:
+    if x.shape[0] < 3 or x.shape[1] < 3:
         # An error occured
-        print('ERROR, ',what,' surface could not be computed.')
+        print('ERROR, ',what,' surface could not be computed, bad grid.')
         return False
 
     # Set some metadata
