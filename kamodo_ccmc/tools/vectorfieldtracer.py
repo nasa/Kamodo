@@ -316,14 +316,15 @@ class KamodoVectorFieldTracer:
         self._call_method = 'array_with_time'
         t_c = self.component_names[0]
         t_cr = MW.Coord_Range(self.kamodo_object, [t_c], print_output=False, return_dict=True)
-        coords = [t_cr[t_c]['time'][0], t_cr[t_c]['x'][0], t_cr[t_c]['y'][0], t_cr[t_c]['z'][0]]
+        coords = [t_cr[t_c]['time'][0], t_cr[t_c]['X'][0], 
+                  t_cr[t_c]['Y'][0], t_cr[t_c]['Z'][0]]
         t_e = False
         try:
             value = np.array(self.kamodo_object[t_c](coords))
         except Exception as e:
             raise ValueError(f"Error evaluating ko: {e}")
             t_e = True
-        if len(value.shape) == 0 and not t_e:
+        if len(value.shape) == 1 and not t_e:
             if self.verbose:
                 print(f"Using Kamodo calling method: {self._call_method}")
                 print(f"For format: component([time, x, y, z])")
@@ -334,7 +335,7 @@ class KamodoVectorFieldTracer:
         t_e = False
         try:
             value = np.array(self.kamodo_object[t_c](time=t_cr[t_c]['time'][0],
-                x=t_cr[t_c]['x'][0], y=t_cr[t_c]['y'][0], z=t_cr[t_c]['z'][0]))
+                x=t_cr[t_c]['X'][0], y=t_cr[t_c]['Y'][0], z=t_cr[t_c]['Z'][0]))
         except Exception as e:
             raise ValueError(f"Error evaluating ko : {e}")
             t_e = True
