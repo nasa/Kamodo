@@ -422,7 +422,7 @@ def ConvertCoord(inTime, c1, c2, c3, inCoord, inType, outCoord, outType,
             print(f'Elapsed time: {toc-tic:.4f} seconds.')
         return c1, c2, c3, units
     if len(c1) > 10000 or verbose:
-        print(f'Converting {len(c1)} positions into {outCoord+outType} ' +
+        print(f'Converting {len(c1)} positions from {inCoord+inType} to {outCoord+outType} ' +
               'coordinates...', end="")
     # Create coordinate object
     if inCoord in spacepy_coordlist:
