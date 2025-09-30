@@ -4099,6 +4099,7 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
     else:
         return
 
+### ====================================================================================== ###
 def _rotate_point_around_z(x, y, z, degrees):
     """
     Rotate a 3D point around the z-axis.
@@ -4124,6 +4125,7 @@ def _rotate_point_around_z(x, y, z, degrees):
     point = np.array([x, y, z])
     return rotation_matrix @ point
 
+### ====================================================================================== ###
 def _combine_surfaces_to_mesh3d(x1, y1, z1, val1, x2, y2, z2, val2):
     import numpy as np
     import plotly.graph_objects as go
@@ -4167,3 +4169,5 @@ def _combine_surfaces_to_mesh3d(x1, y1, z1, val1, x2, y2, z2, val2):
         intensity=intensity, intensitymode='vertex' )
 
     return mesh_trace
+
+### ====================================================================================== ###
