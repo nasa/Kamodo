@@ -61,8 +61,10 @@ def convert_all(file_dir):
     print('NetCDF version of data not found. Converting tec files in ' +
           f'{file_dir} to netCDF.')
     ftic, nfiles = perf_counter(), 0
-    files = sorted(glob(file_dir + '*.tec'))  # want YYYYMMDD
-    files_idl = sorted(glob(file_dir + '*.idl'))  # want YYYYMMDD
+    files = sorted([f for f in glob(file_dir+'*.tec') 
+        if not f.endswith(('_b1.tec', '_b2.tec'))])
+    files_idl = sorted([f for f in glob(file_dir+'*.idl') 
+        if not f.endswith(('_b1.idl', '_b2.idl'))])
     files.extend(files_idl)
     if len(files) == 0:
         print('No original files found.')

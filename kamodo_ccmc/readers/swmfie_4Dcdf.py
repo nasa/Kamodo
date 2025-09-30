@@ -136,10 +136,12 @@ def MODEL():
             time_file = file_dir + self.modelname + '_times.txt'
             self.times, self.pattern_files = {}, {}
             if not RU._isfile(list_file) or not RU._isfile(time_file):
-                # find unconverted files and convert them
+                # find unconverted files and convert them (excluding _b1 _b2 files)
                 nc_files = sorted(RU.glob(file_dir+'*.nc'))
-                tec_files = sorted(RU.glob(file_dir+'*.tec'))
-                idl_files = sorted(RU.glob(file_dir+'*.idl'))
+                tec_files = sorted([f for f in RU.glob(file_dir+'*.tec') 
+                    if not f.endswith(('_b1.tec', '_b2.tec'))])
+                idl_files = sorted([f for f in RU.glob(file_dir+'*.idl') 
+                    if not f.endswith(('_b1.idl', '_b2.idl'))])
                 tec_files.append(idl_files)
                 if len(nc_files) != len(tec_files) and len(tec_files) > 0:
                     from kamodo_ccmc.readers.swmfie_tocdf import \
