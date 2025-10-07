@@ -236,7 +236,8 @@ def create_funcsig(coord_data, coord_str, bounds):
 
 def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                           data_dict, gridded_int, coord_str, interp_flag=0,
-                          func=None, times_dict=None, func_default='data'):
+                          func=None, times_dict=None, func_default='data',
+                          use_nearest_time=False):
     '''Determine and call the correct functionalize routine.
     Inputs:
         kamodo_object: the previously created kamodo object.
@@ -306,6 +307,15 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
             The default is 'data', indicating that the returned object is a
             numpy array. Set this to 'custom' to indicate that func returns
             a custom interpolator.
+        use_nearest_time: a logical to enable only using the nearest time slice
+            for interpolation. When an array is sent to interpolate, all times
+            slices nearest to a any time in array will be used, which may
+            result in some or all values still interpolating in time. Most 
+            useful for cases when a large number of points at one time that is
+            known to be near a time slice is requested, resulting in time and
+            memory savings. Default value is False, and only available when
+            individual model reader enables it. 
+            (Currently only SWMF_IE and interp_flag=1)
 
     Output: A kamodo object with the functionalized dataset added.
     '''
@@ -328,7 +338,8 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
                                func_default=func_default)
     elif interp_flag == 1:
         interp = time_interp(coord_dict, data_dict, func,
-                             func_default=func_default)
+                             func_default=func_default,
+                             use_nearest_time=use_nearest_time)
     elif interp_flag == 2:
         interp = multitime_interp(coord_dict, data_dict, times_dict, func,
                                   func_default=func_default)
@@ -349,7 +360,7 @@ def Functionalize_Dataset(kamodo_object, coord_dict, variable_name,
     return kamodo_object
 
 
-def time_interp(coord_dict, data_dict, func, func_default='data'):
+def time_interp(coord_dict, data_dict, func, func_default='data', use_nearest_time=False):
     '''Create a functionalized interpolator by splitting into timesteps.
     interp_flag=1 uses this function.
     Inputs:
@@ -371,6 +382,7 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
             The default is 'data', indicating that the returned object is a
             numpy array. Set this to 'custom' to indicate that func returns
             a custom interpolator.
+        use_nearest_time: see Functionalize_Dataset
     Output: A lazy time interpolator.
     '''
 
@@ -395,7 +407,7 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
             time_interps.append(func(i))
         return time_interps
 
-    def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
+    def interp_i(*args, time_interps=time_interps, idx_map=idx_map, use_nearest_time=use_nearest_time):
 
         position = array([*args])  # time coordinate value must be first
         times = position[0]
@@ -422,6 +434,21 @@ def time_interp(coord_dict, data_dict, func, func_default='data'):
                     continue
             if len(st_idx) == 0:  # skip if none
                 continue
+            elif use_nearest_time and len(idx_list) == 2:
+                nearest_idx = []
+                for j in st_idx:
+                    if isinstance(times, ndarray):
+                        d1 = abs(times[j] - coord_list[0][idx_list[0]])
+                        d2 = abs(times[j] - coord_list[0][idx_list[1]])
+                    else:
+                        d1 = abs(times - coord_list[0][idx_list[0]])
+                        d2 = abs(times - coord_list[0][idx_list[1]])
+                    if d1 < d2:
+                        if idx_list[0] not in nearest_idx: nearest_idx.append(idx_list[0])
+                    else:
+                        if idx_list[1] not in nearest_idx: nearest_idx.append(idx_list[1])
+                #print('=> use_nearest_time=True, idx_list before:',idx_list,'  after:',nearest_idx)
+                idx_list = nearest_idx
 
             # Interpolate values for chosen time grid values
             for i in idx_list:

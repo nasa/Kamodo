@@ -171,9 +171,10 @@ def MODEL():
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, **kwargs):
+                     printfiles=False, use_nearest_time=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'SWMF_GM'
+            self.use_nearest_time = use_nearest_time
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
@@ -576,6 +577,7 @@ def MODEL():
             tmp['data'] = zeros((2, 2, 2, 2))  # saves execution time
             self = RU.Functionalize_Dataset(
                 self, coord_dict, varname, tmp, gridded_int, coord_str,
-                interp_flag=1, func=func, func_default='custom')
+                interp_flag=1, func=func, func_default='custom',
+                use_nearest_time=self.use_nearest_time)
             return
     return MODEL
