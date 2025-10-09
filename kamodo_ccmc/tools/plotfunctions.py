@@ -4171,3 +4171,49 @@ def _combine_surfaces_to_mesh3d(x1, y1, z1, val1, x2, y2, z2, val2):
     return mesh_trace
 
 ### ====================================================================================== ###
+def fig2darkmode(figIN, colormap=None):
+    '''
+    Function to change colors to fit a "dark mode" style plot.
+
+    Takes a passed in plotly figure and returns a new updated plotly figure.
+    Optional argument to change colormap, takes plotly colormap name or
+        new custom "BlueBlackOrange" darkmode colormap for plots centered on zero.
+    '''
+    import plotly.graph_objects as go
+
+    # duplicate incoming figure
+    fig = go.Figure(figIN)
+
+    # apply plotly default dark mode
+    fig.update_layout(template="plotly_dark")
+
+    # set text colors
+    color1 = "#565656"
+    fig.layout.title.font.color = color1
+    if 'annotations' in fig.layout:
+        for i in range(len(fig.layout.annotations)):
+            fig.layout.annotations[i].font.color = color1
+    if 'shapes' in fig.layout:
+        for i in range(len(fig.layout.shapes)):
+            fig.layout.shapes[i].line.color = color1
+    color2 = "#ababab"
+    fig.layout.xaxis.title.font.color = color2
+    fig.layout.yaxis.title.font.color = color2
+    fig.layout.xaxis.tickfont.color = color2
+    fig.layout.yaxis.tickfont.color = color2
+    for i in range(len(fig.data)):
+        if 'colorbar' in fig.data[i]:
+            fig.data[i].colorbar.titlefont.color = color2
+            fig.data[i].colorbar.tickfont.color = color2
+
+    # Optional change to colormap
+    BlueBlackOrange = [[0.0, 'rgb(0, 0, 255)'], [0.5, 'rgb(0, 0, 0)'], [1.0, 'rgb(255, 165, 0)']]
+    if colormap is not None:
+        for i in range(len(fig.data)):
+            if 'colorscale' in fig.data[i]:
+                if colormap == 'BlueBlackOrange':
+                    fig.data[i].colorscale = BlueBlackOrange
+                else:
+                    fig.data[i].colorscale = colormap
+
+    return fig
