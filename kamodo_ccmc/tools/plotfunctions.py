@@ -3660,7 +3660,8 @@ def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
 ### ====================================================================================== ###
 def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
         doJustShell=False, doJustSlices=False, doSlices2surface=True, doLog=False,
-        savePNG=False, savePNGrotations=-1, eyedist=1., wLat=45., wLon=-95., wWidth=45.,
+        savePNG=False, savePNGrotations=-1, savePNGpathprefix='', 
+        eyedist=1., wLat=45., wLon=-95., wWidth=45., darkmode=False, 
         returnFig=True, printFig=False, cmin=None, cmax=None):
     """
     Extract the height of the second to last pressure level or max height and plot a quantity
@@ -3685,10 +3686,12 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
     doLog (bool): Logical to adjust plotted variable to Log scale
     savePNG (bool): Logical to save a PNG file of the resulting figure
     savePNGrotations (int): When > 0, number of steps in rotation to save individual PNG files
+    savePNGpathprefix (string): File path with trailing / for saving PNG output
     eyedist (float): Eye distances is a zoom scaling factor for the plot, larger value is smaller plot
     wLat (float): Window latitude position (degrees) for center of cutout window
     wLon (float): Window longitude position (degrees) for center of cutout window
     wWidth (float): Window half width, ie. 45 degrees will be +/- 45 degrees from window center
+    darkmode (bool): Logical to trigger converting image with fig2darkmode() function
     returnFig (bool): Logical to determine whether the created figure is returned
     printFig (bool): Logical to print the content of the figure for debugging
     cmin (float): Set value of the minimum contour value on the plot
@@ -4074,9 +4077,12 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
         if 'part' in name:
             figF.update_traces(cmin=cmin, cmax=cmax, selector={'name': name})
 
+    if darkmode:
+        figF = fig2darkmode(figF)
+
     if savePNG:
         iis = str(int(1000.*ptime)).zfill(8)  # create zero padded string from time
-        figF.write_image("cutout"+iis+".png", scale=2)
+        figF.write_image(savePNGpathprefix+"cutout"+iis+".png", scale=2)
 
     if savePNGrotations > 0:
         iis = str(int(1000.*ptime)).zfill(8)  # create zero padded string from time
@@ -4087,7 +4093,7 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
             xyz = _rotate_point_around_z(eyex, eyey, eyez, deg[i])
             iid = str(int(i)).zfill(3)  # create zero padded string from iteration
             figF.update_layout(scene_camera=dict(eye=dict(x=xyz[0], y=xyz[1], z=xyz[2]), center=dict(x=0., y=0., z=0.)))
-            figF.write_image("cutout"+iis+"_"+iid+".png", scale=2)
+            figF.write_image(savePNGpathprefix+"cutout"+iis+"_"+iid+".png", scale=2)
             if progress: pbar.update(1)
         if progress: pbar.close()
 
