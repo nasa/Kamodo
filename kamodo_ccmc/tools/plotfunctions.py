@@ -324,7 +324,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
                showshore=True, shorewidth=2, shorecolor='white'):
     """
     Takes a gridified 2D lon/lat figure and creates new plots
-    in 3D and for chosen coordinate systems.
+    in 2D/3D and for chosen coordinate systems.
     """
 
     import numpy as np
@@ -3594,18 +3594,36 @@ def getIEPCB(model, file_dir, time, coord='SM', coordT='sph'):
       coord       Coordinate system of output (SM, GSM, GSE, GEO, etc.)
       coordT      Coordinate type of output (sph or car)
     '''
+    import kamodo_ccmc.flythrough.model_wrapper as MW
+
+    reader = MW.Model_Reader(model)
+    koPCB = reader(file_dir, variables_requested=['Binv_RT'])
+
+    return getIEPCBk(koPCB, time, coord, coordT)
+
+def getIEPCBk(ko, time, coord='SM', coordT='sph'):
+    '''
+    Function to extract the Polar Cap Boundary (PCB) from SWMF_IE model output
+
+    Arguments:
+      ko          Kamodo object
+      time        A floating point hour value
+      coord       Coordinate system of output (SM, GSM, GSE, GEO, etc.)
+      coordT      Coordinate type of output (sph or car)
+    '''
     import numpy as np
     from datetime import datetime
     import kamodo_ccmc.flythrough.model_wrapper as MW
     from kamodo_ccmc.flythrough.utils import ConvertCoord
 
-    tmp = list(MW.Model_Variables(model, return_dict=True).values())[0][2:4]
+    tmp = list(MW.Model_Variables(ko.modelname, return_dict=True).values())[0][2:4]
     co = tmp[0]
     cot = tmp[1]
-    reader = MW.Model_Reader(model)
-    koPCB = reader(file_dir, variables_requested=['Binv_RT'])
-    timets = datetime.timestamp(koPCB.filedate) + 3600.*float(time)
-    figPCB=koPCB.plot('Binv_RT_ijk', plot_partial={'Binv_RT_ijk': {'time': float(time), }})
+    if 'Binv_RT' not in ko:
+        #print('getIEPCB ERROR, variable Binv_RT is not in Kamodo object.')
+        return np.ones((0,3)), np.ones((0,3))
+    timets = datetime.timestamp(ko.filedate) + 3600.*float(time)
+    figPCB=ko.plot('Binv_RT_ijk', plot_partial={'Binv_RT_ijk': {'time': float(time), }})
     lons = figPCB.data[0].x
     lats = figPCB.data[0].y
     zz = figPCB.data[0].z  # f(lats,lons)
@@ -4221,5 +4239,11 @@ def fig2darkmode(figIN, colormap=None):
                     fig.data[i].colorscale = BlueBlackOrange
                 else:
                     fig.data[i].colorscale = colormap
+
+    # PCB scatter plot marker and line color black to white
+    for i in range(len(fig.data)):
+        if 'PCB' in fig.data[i].name:
+            if fig.data[i].marker.color == 'black':
+                fig.data[i].marker.color = 'white'
 
     return fig
