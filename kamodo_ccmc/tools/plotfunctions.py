@@ -4242,8 +4242,9 @@ def fig2darkmode(figIN, colormap=None):
 
     # PCB scatter plot marker and line color black to white
     for i in range(len(fig.data)):
-        if 'PCB' in fig.data[i].name:
-            if fig.data[i].marker.color == 'black':
-                fig.data[i].marker.color = 'white'
+        if fig.data[i].name is not None:
+            if 'PCB' in fig.data[i].name:
+                if fig.data[i].marker.color == 'black':
+                    fig.data[i].marker.color = 'white'
 
     return fig
