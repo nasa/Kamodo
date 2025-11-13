@@ -4229,6 +4229,7 @@ def fig2darkmode(figIN, colormap=None):
         if 'colorbar' in fig.data[i]:
             fig.data[i].colorbar.titlefont.color = color2
             fig.data[i].colorbar.tickfont.color = color2
+    fig.update_layout(legend=dict(font=dict(color=color2)))
 
     # Optional change to colormap
     BlueBlackOrange = [[0.0, 'rgb(0, 0, 255)'], [0.5, 'rgb(0, 0, 0)'], [1.0, 'rgb(255, 165, 0)']]
@@ -4239,6 +4240,18 @@ def fig2darkmode(figIN, colormap=None):
                     fig.data[i].colorscale = BlueBlackOrange
                 else:
                     fig.data[i].colorscale = colormap
+
+    # Bow shock surface color
+    for i in range(len(fig.data)):
+        if fig.data[i].name is not None:
+            if 'Bow Shock' in fig.data[i].name:
+                fig.data[i].colorscale = [[0.0, color2], [0.5, color2], [1.0, color2]]
+
+    # Last closed B color
+    for i in range(len(fig.data)):
+        if fig.data[i].name is not None:
+            if 'Last Closed B' in fig.data[i].name:
+                fig.data[i].line.color = color2
 
     # PCB scatter plot marker and line color black to white
     for i in range(len(fig.data)):
