@@ -332,6 +332,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     import pytz
     from kamodo import Kamodo
     import kamodo_ccmc.flythrough.model_wrapper as MW
+    import kamodo_ccmc.tools.timefunctions as tf
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     from kamodo_ccmc.tools.shoreline import shoreline
     import plotly.graph_objs as go
@@ -424,7 +425,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
         # verified rotations for GEO, GSM, GSE, SM, GEI
         degRotate = 90.
         if plotCoord == 'GEO':
-            tmpHr = pytz.utc.localize(dt.datetime.utcfromtimestamp(plotts)).hour
+            tmpHr = tf.timeTStoDT(plotts).hour
             degRotate = (360.*tmpHr/24.) - 90.
 
         # Constants for lat/lon lines on plot
@@ -1605,6 +1606,7 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     import plotly.graph_objects as go
     from kamodo_ccmc.readers.hapi import HAPI
     from kamodo_ccmc.readers.hapi import hapi_get_dataset_title
+    import kamodo_ccmc.tools.timefunctions as tf
     from datetime import datetime, timedelta
 
     # Set values to get data from the HAPI server
@@ -1635,7 +1637,7 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     zz = ko_sat.variables[sat_vars[2]]['interpolator'](tss)
 
     # datetime strings for hover labels
-    timestrings = [datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S") for t in tss]
+    timestrings = [tf.timeTStoDT(t).strftime("%Y-%m-%d %H:%M:%S") for t in tss]
 
     fig = go.Figure()
     fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines+markers',
@@ -1693,6 +1695,7 @@ def SatOrbitPlane(satid, refDT, coord='GSM', color='#d6d622'):
     import numpy as np
     from kamodo_ccmc.readers.hapi import HAPI
     from kamodo_ccmc.readers.hapi import hapi_get_dataset_title
+    import kamodo_ccmc.tools.timefunctions as tf
     from datetime import datetime, timedelta
     import plotly.graph_objects as go
 
@@ -1764,7 +1767,7 @@ def SatOrbitPlane(satid, refDT, coord='GSM', color='#d6d622'):
                  stopDT=found2DT, stopTS=found2TS,
                  orbitPoint=[aveX, aveY, aveZ], orbitNormal=vecNormal)
 
-    timestrings = [datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S") for t in Oko.tsarray]
+    timestrings = [tf.timeTStoDT(t).strftime("%Y-%m-%d %H:%M:%S") for t in Oko.tsarray]
     Ofig = go.Figure()
     Ofig.add_trace(go.Scatter3d(x=Oko.variables[vars[0]]['data'], 
                                 y=Oko.variables[vars[1]]['data'], 
@@ -2108,8 +2111,8 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     zrange[1] = min(z2, zrange[1])
 
     # Set multiple representations of time
-    plotTS = ko.filedate.timestamp() + timeHrs*3600.
-    plotDT = datetime.utcfromtimestamp(plotTS)
+    plotTS = tf.timeKOtoTS(ko, sOffset=timeHrs*3600.)
+    plotDT = tf.timeTStoDT(plotTS)
     plotDateStr = plotDT.strftime("%Y-%m-%d %H:%M:%S UT")
 
     # Set label for slice type
@@ -2596,6 +2599,7 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
     import os
     import numpy as np
     import plotly.graph_objs as go
+    import kamodo_ccmc.tools.timefunctions as tf
     from datetime import datetime
 
     surfaces = ['MP', 'BS', 'CS']
@@ -2603,7 +2607,7 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
         color, name = '#666666', 'ERROR'
         if sfile == '':
             x,y,z = gmComputeSurface(ko,timeHrs,Gridsize=Gridsize,what=what)
-            DT = datetime.utcfromtimestamp( ko.filedate.timestamp() + timeHrs*3600. )
+            DT = tf.timeTStoDT(tf.timeKOtoTS(ko, sOffset=timeHrs*3600.))
             DateStr = DT.strftime("%Y/%m/%d %H:%M:%S UT")
             titleStr = what+' Surface for '+DateStr
         else:
@@ -2838,6 +2842,7 @@ def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', runname='unkno
     '''
     from datetime import datetime
     import kamodo_ccmc.flythrough.model_wrapper as MW
+    import kamodo_ccmc.tools.timefunctions as tf
     import json
 
     # Error checks
@@ -2863,7 +2868,7 @@ def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', runname='unkno
         title = 'Tail Current Sheet Surface Extraction'
     model = ko.modelname
     coord = MW.Variable_Search('', model=model, return_dict=True)['v_x'][2]
-    DT = datetime.utcfromtimestamp( ko.filedate.timestamp() + timeHrs*3600. )
+    DT = tf.timeTStoDT(tf.timeKOtoTS(ko, sOffset=timeHrs*3600.))
     DateStr = DT.strftime("%Y-%m-%dT%H:%M:%SZ")
     FileStr = DT.strftime("_%Y%m%d_%H%M%S")
     DTnow = datetime.now()
@@ -3331,6 +3336,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     from kamodo_ccmc.tools.plotfunctions import XYC
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     import kamodo_ccmc.flythrough.model_wrapper as MW
+    import kamodo_ccmc.tools.timefunctions as tf
 
     tic0 = time.perf_counter()
     tic = time.perf_counter()
@@ -3515,7 +3521,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
 
     # Plot values
     pTS = ko.filedate.timestamp() + timeHrs*3600.
-    pDT = datetime.utcfromtimestamp(pTS)
+    pDT = tf.timeTStoDT(pTS)
     pDateStr = pDT.strftime("%Y-%m-%d %H:%M:%S UT")
     label1 = slicedir+' = '+str(sliceval)+' slice at  '+pDateStr
     label2 = 'Model: '+ko.modelname
