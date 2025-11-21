@@ -64,9 +64,10 @@ def timeTStoDT(inTS):
     OUT: 2005-06-01 13:33:00.100000+00:00
     '''
     import pytz
-    from datetime import datetime
+    from datetime import datetime, timezone
 
-    DT = pytz.utc.localize(datetime.utcfromtimestamp(inTS))
+    DT = datetime.fromtimestamp(inTS, tz=timezone.utc)
+
     return DT
 
 def timeTStoSTR(inTS):
@@ -77,9 +78,9 @@ def timeTStoSTR(inTS):
     OUT: 2005/06/01 13:33:00
     '''
     import pytz
-    from datetime import datetime
+    from datetime import datetime, timezone
 
-    DT = pytz.utc.localize(datetime.utcfromtimestamp(inTS))
+    DT = datetime.fromtimestamp(inTS, tz=timezone.utc)
     STR = DT.strftime("%Y/%m/%d %H:%M:%S")
     return STR
 
