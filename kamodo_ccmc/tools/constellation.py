@@ -24,6 +24,7 @@ from kamodo import Kamodo, kamodofy, gridify
 import kamodo_ccmc.flythrough.SatelliteFlythrough as SF
 from scipy.interpolate import RegularGridInterpolator
 import kamodo_ccmc.flythrough.model_wrapper as MW
+import kamodo_ccmc.tools.timefunctions as tf
 
 
 def read_GDC_sattraj(filename):
@@ -56,13 +57,13 @@ def time_to_utcts(year, month, day, hour, minute, second):
 
 def ts_to_dt(time_val):
     '''Convert UTC timestamp to a UTC datetime object.'''
-    return datetime.utcfromtimestamp(time_val).replace(tzinfo=timezone.utc)
+    return tf.timeTStoDT(time_val)
 
 
 @np.vectorize
 def ts_to_hours(time_val):
     '''return the utc hour from a utc timestamp.'''
-    return datetime.utcfromtimestamp(time_val).hour
+    return tf.timeTStoDT(time_val).hour
 
 
 def ts_to_LT(time_val, longitude):
