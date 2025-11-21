@@ -6,7 +6,7 @@ Most needed functions to support the SatelliteFlythrough software.
 """
 from numpy import vectorize, array, diff, where, unique
 from time import perf_counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from os.path import isfile
 import kamodo_ccmc.flythrough.model_wrapper as MW
 from kamodo_ccmc.readers.reader_utilities import read_timelist
@@ -21,7 +21,7 @@ def ts_to_hrs(utcts, filedate):
 
 def ts_to_ISOstring(utc_ts):
     '''Convert timestamp to string of format 2017-05-28T00:00:00'''
-    return datetime.utcfromtimestamp(utc_ts).isoformat()
+    return datetime.fromtimestamp(utc_ts, tz=timezone.utc).isoformat()
 
 
 def sat_tracks(sat_time, c1, c2, c3, z_dependencies, verbose=False):

@@ -70,7 +70,7 @@ def convert_to_array(value):
 @np.vectorize
 def ts_to_spacepystr(ts):
     '''Convert from utc timestamp to datetime string.'''
-    return dt.strftime(dt.utcfromtimestamp(int(ts)), '%Y-%m-%dT%H:%M:%S')
+    return dt.strftime(dt.fromtimestamp(int(ts), tz=timezone.utc), '%Y-%m-%dT%H:%M:%S')
 
 
 # Steve Morley recommended converting to something other than a string to

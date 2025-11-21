@@ -336,9 +336,8 @@ def File_Times(model, file_dir, print_output=True):
     # get time ranges from data
     from kamodo_ccmc.flythrough.SF_utilities import File_UTCTimes
     start_utcts, end_utcts, filedate = File_UTCTimes(model, file_dir)
-    start_dt = datetime.utcfromtimestamp(start_utcts).replace(
-        tzinfo=timezone.utc)
-    end_dt = datetime.utcfromtimestamp(end_utcts).replace(tzinfo=timezone.utc)
+    start_dt = datetime.fromtimestamp(start_utcts, tz=timezone.utc)
+    end_dt = datetime.fromtimestamp(end_utcts, tz=timezone.utc)
 
     # print time ranges for given file groups: file_pattern, beg time, end time
     if print_output:

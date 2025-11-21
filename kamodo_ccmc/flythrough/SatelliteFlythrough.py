@@ -204,7 +204,7 @@ def TLETrajectory(tle_file, start_utcts, stop_utcts, time_cadence,
         Output: Julian date calculated by pandas.
         '''
 
-        dt = datetime.utcfromtimestamp(UTC_ts).replace(tzinfo=timezone.utc)
+        dt = datetime.fromtimestamp(UTC_ts, tz=timezone.utc)
         pd_dt = to_datetime(dt)
         return pd_dt.to_julian_date()
     julian_dates = UTCtstoJulianDate(UTCtimestamps)

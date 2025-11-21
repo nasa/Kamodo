@@ -14,8 +14,7 @@ from kamodo_ccmc.readers.reader_utilities import _open
 @np.vectorize
 def ts_to_datetime(time_val):
     '''Convert from utc timestamp to datetime object.'''
-    return datetime.utcfromtimestamp(int(time_val)).replace(
-        tzinfo=timezone.utc)
+    return datetime.fromtimestamp(int(time_val), tz=timezone.utc)
 
 
 @np.vectorize

@@ -173,7 +173,7 @@ if 'vector' in params_list:
 @vectorize
 def ts_iso(utc_timestamp):
     '''Converts UTC timestamp from flythrough into datetime object.'''
-    return datetime.utcfromtimestamp(utc_timestamp).isoformat()+'Z'
+    return datetime.fromtimestamp(utc_timestamp, tz=timezone.utc).isoformat()+'Z'
 
 
 # rearrange output from RealFlight into an array for easier output
