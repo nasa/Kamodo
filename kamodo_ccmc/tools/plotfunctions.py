@@ -340,7 +340,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
     from plotly.subplots import make_subplots
 
     if plotCoord == 'GDZ':
-        plotCoord = 'GEO';
+        plotCoord = 'GEO'
     if useCo != '' and useCot != '':
         co = useCo
         cot = useCot
@@ -421,7 +421,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
 
     # \\\ Start of 2Dpolar
     #   -this plot will return and other plot types will continue
-    if plotType == '2Dpolar':
+    if '2Dpolar' in plotType:
         # verified rotations for GEO, GSM, GSE, SM, GEI
         degRotate = 90.
         if plotCoord == 'GEO':
@@ -516,7 +516,7 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
             plotlat3S = griddata((xxS, yyS), latSplot, (xx3, yy3), method='linear')
             figS.update_traces(zmin=cmin, zmax=cmax,
                 colorbar=dict(title=varn2, tickformat=".3g"),
-                customdata=np.dstack((z3S, lon3S, lat3S, plotlon3N, plotlat3N)),
+                customdata=np.dstack((z3S, lon3S, lat3S, plotlon3S, plotlat3S)),
                 hovertemplate="<b>" + model + " <> SOUTH</b><br>" +
                     "Model Lon: %{customdata[1]:.2f} " + co + "<br>" +
                     "Model Lat: %{customdata[2]:.2f} " + co + "<br>" +
@@ -547,67 +547,154 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
             figS.add_scattergl(mode='lines', x=posS[:,0], y=posS[:,1], 
                               hoverinfo='skip', showlegend=False, name='S Shoreline',
                               line=dict(width=1, color=shorecolor))
+            # These are traces that won't show to force outer range of values
+            figN.add_scattergl(mode='lines', x=[-.68, None, .68], y=[-.68, None, .68], 
+                              hoverinfo='skip', showlegend=False, name='Outer Range Values',
+                              line=dict(width=1, color=shorecolor))
+            figS.add_scattergl(mode='lines', x=[-.68, None, .68], y=[-.68, None, .68], 
+                              hoverinfo='skip', showlegend=False, name='Outer Range Values',
+                              line=dict(width=1, color=shorecolor))
 
-        fig = make_subplots(rows=1, cols=2)
-        for i in range(len(figN.data)):
-            fig.add_trace(figN.data[i], row=1, col=1)
-        for i in range(len(figS.data)):
-            fig.add_trace(figS.data[i], row=1, col=2)
+        if '2Dpolar2' in plotType:
+            figN.data[0].showscale = True
 
-        fig.update_layout(
-            xaxis  = dict(scaleanchor="y", scaleratio=1, range=[-.6, .6], visible=False,
-                domain = [0.0, 0.47]),
-            xaxis2 = dict(scaleanchor="y", scaleratio=1, range=[-.6, .6], visible=False,
-                domain = [0.53, 1.0], autorange="reversed"),
-            yaxis  = dict(scaleanchor="x", scaleratio=1, range=[-.6, .6], visible=False),
-            yaxis2 = dict(scaleanchor="x", scaleratio=1, range=[-.6, .6], visible=False),
-            title_text="2D Polar Plots, North and South",
-            width=800, height=400,
-            margin=dict(t=50, b=60, l=25, r=120),
-        )
-        fig.add_annotation(xref='paper', yref='paper', x=.485, y=.50, textangle=90,
-                           yanchor='middle', showarrow=False, text='Dawn')
-        fig.add_annotation(xref='paper', yref='paper', x=.515, y=.50, textangle=-90,
-                           yanchor='middle', showarrow=False, text='Dawn')
-        fig.add_annotation(xref='paper', yref='paper', x=1.03, y=.50, textangle=90,
-                           yanchor='middle', showarrow=False, text='Dusk')
-        fig.add_annotation(xref='paper', yref='paper', x=-.03, y=.50, textangle=-90,
-                           yanchor='middle', showarrow=False, text='Dusk')
-        fig.add_annotation(xref='paper', yref='paper', x=.235, y=1.06,
-                           xanchor='center', showarrow=False, text='Noon')
-        fig.add_annotation(xref='paper', yref='paper', x=.765, y=1.06,
-                           xanchor='center', showarrow=False, text='Noon')
-        fig.add_annotation(xref='paper', yref='paper', x=.235, y=-.06,
-                           xanchor='center', showarrow=False, text='Midnight')
-        fig.add_annotation(xref='paper', yref='paper', x=.765, y=-.06,
-                           xanchor='center', showarrow=False, text='Midnight')
-        fig.add_annotation(xref='paper', yref='paper', x=.4, y=1.06,
-                           showarrow=False, text='<b>NORTH</b>')
-        fig.add_annotation(xref='paper', yref='paper', x=.6, y=1.06,
-                           showarrow=False, text='<b>SOUTH</b>')
+            figN.add_annotation(xref='paper', yref='paper', x=1.015, y=.5, textangle=90,
+                               yanchor='middle', showarrow=False, text='Dawn')
+            figN.add_annotation(xref='paper', yref='paper', x=0.015, y=.5, textangle=-90,
+                               yanchor='middle', showarrow=False, text='Dusk')
+            figN.add_annotation(xref='paper', yref='paper', x=.515, y=1.,
+                               xanchor='center', showarrow=False, text='Noon')
+            figN.add_annotation(xref='paper', yref='paper', x=.515, y=0.,
+                               xanchor='center', showarrow=False, text='Midnight')
+            figN.add_annotation(xref='paper', yref='paper', x=.9, y=1.,
+                               showarrow=False, text='<b>NORTH</b>')
 
-        for i in range(2):
-            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+            figS.add_annotation(xref='paper', yref='paper', x=0.015, y=.5, textangle=-90,
+                               yanchor='middle', showarrow=False, text='Dawn')
+            figS.add_annotation(xref='paper', yref='paper', x=1.015, y=.5, textangle=90,
+                               yanchor='middle', showarrow=False, text='Dusk')
+            figS.add_annotation(xref='paper', yref='paper', x=0.515, y=1.,
+                               xanchor='center', showarrow=False, text='Noon')
+            figS.add_annotation(xref='paper', yref='paper', x=0.515, y=0.,
+                               xanchor='center', showarrow=False, text='Midnight')
+            figS.add_annotation(xref='paper', yref='paper', x=0.1, y=1.,
+                               showarrow=False, text='<b>SOUTH</b>')
+
+            figN.add_shape(type="circle", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80 )
-            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+            figN.add_shape(type="circle", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70 )
-            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+            figN.add_shape(type="circle", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60 )
-            fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+            figN.add_shape(type="circle", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50 )
-            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+            figN.add_shape(type="line", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=.0 )
-            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+            figN.add_shape(type="line", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50 )
-            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+            figN.add_shape(type="line", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d )
-            fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+            figN.add_shape(type="line", line=dict(color="black", width=1),
                 xref="x", yref="y", x0=c50d, y0=-c50d, x1=-c50d, y1=c50d )
 
-        # Set colorscale
-        fig = figMods(fig, colorscale=colorscale, ncont=200, resetAnnotations=False) 
+            figS.add_shape(type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80 )
+            figS.add_shape(type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70 )
+            figS.add_shape(type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60 )
+            figS.add_shape(type="circle", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50 )
+            figS.add_shape(type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=.0 )
+            figS.add_shape(type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50 )
+            figS.add_shape(type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d )
+            figS.add_shape(type="line", line=dict(color="black", width=1),
+                xref="x", yref="y", x0=c50d, y0=-c50d, x1=-c50d, y1=c50d )
 
-        return fig
+            # Set colorscale
+            figN = figMods(figN, colorscale=colorscale, ncont=200, resetAnnotations=False)
+            figS = figMods(figS, colorscale=colorscale, ncont=200, resetAnnotations=False)
+
+            figN.update_layout(title_text="2D Polar Plot North",
+                xaxis=dict(scaleanchor="y", scaleratio=1, visible=False),
+                yaxis=dict(scaleanchor="x", scaleratio=1, visible=False),
+                width=500, height=400,
+                margin=dict(t=28, b=0, l=0, r=130),
+                plot_bgcolor='rgb(255, 255, 255)',
+            )
+            figS.update_layout(title_text="2D Polar Plot South",
+                xaxis=dict(scaleanchor="y", scaleratio=1, visible=False, autorange="reversed"),
+                yaxis=dict(scaleanchor="x", scaleratio=1, visible=False),
+                width=500, height=400,
+                margin=dict(t=28, b=0, l=0, r=130),
+                plot_bgcolor='rgb(255, 255, 255)',
+            )
+
+            return figN, figS
+        else:
+            fig = make_subplots(rows=1, cols=2)
+            for i in range(len(figN.data)):
+                fig.add_trace(figN.data[i], row=1, col=1)
+            for i in range(len(figS.data)):
+                fig.add_trace(figS.data[i], row=1, col=2)
+
+            fig.update_layout(
+                xaxis  = dict(scaleanchor="y", scaleratio=1, range=[-.6, .6], visible=False,
+                    domain = [0.0, 0.47]),
+                xaxis2 = dict(scaleanchor="y", scaleratio=1, range=[-.6, .6], visible=False,
+                    domain = [0.53, 1.0], autorange="reversed"),
+                yaxis  = dict(scaleanchor="x", scaleratio=1, range=[-.6, .6], visible=False),
+                yaxis2 = dict(scaleanchor="x", scaleratio=1, range=[-.6, .6], visible=False),
+                title_text="2D Polar Plots, North and South",
+                width=800, height=400,
+                margin=dict(t=50, b=60, l=25, r=120),
+            )
+            fig.add_annotation(xref='paper', yref='paper', x=.485, y=.50, textangle=90,
+                               yanchor='middle', showarrow=False, text='Dawn')
+            fig.add_annotation(xref='paper', yref='paper', x=.515, y=.50, textangle=-90,
+                               yanchor='middle', showarrow=False, text='Dawn')
+            fig.add_annotation(xref='paper', yref='paper', x=1.03, y=.50, textangle=90,
+                               yanchor='middle', showarrow=False, text='Dusk')
+            fig.add_annotation(xref='paper', yref='paper', x=-.03, y=.50, textangle=-90,
+                               yanchor='middle', showarrow=False, text='Dusk')
+            fig.add_annotation(xref='paper', yref='paper', x=.235, y=1.06,
+                               xanchor='center', showarrow=False, text='Noon')
+            fig.add_annotation(xref='paper', yref='paper', x=.765, y=1.06,
+                               xanchor='center', showarrow=False, text='Noon')
+            fig.add_annotation(xref='paper', yref='paper', x=.235, y=-.06,
+                               xanchor='center', showarrow=False, text='Midnight')
+            fig.add_annotation(xref='paper', yref='paper', x=.765, y=-.06,
+                               xanchor='center', showarrow=False, text='Midnight')
+            fig.add_annotation(xref='paper', yref='paper', x=.4, y=1.06,
+                               showarrow=False, text='<b>NORTH</b>')
+            fig.add_annotation(xref='paper', yref='paper', x=.6, y=1.06,
+                               showarrow=False, text='<b>SOUTH</b>')
+
+            for i in range(2):
+                fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=-c80, y0=-c80, x1=c80, y1=c80 )
+                fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=-c70, y0=-c70, x1=c70, y1=c70 )
+                fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=-c60, y0=-c60, x1=c60, y1=c60 )
+                fig.add_shape(row=1, col=i+1, type="circle", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=-c50, y0=-c50, x1=c50, y1=c50 )
+                fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=-c50, y0=0., x1=c50, y1=.0 )
+                fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=0., y0=-c50, x1=0., y1=c50 )
+                fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=-c50d, y0=-c50d, x1=c50d, y1=c50d )
+                fig.add_shape(row=1, col=i+1, type="line", line=dict(color="black", width=1),
+                    xref="x", yref="y", x0=c50d, y0=-c50d, x1=-c50d, y1=c50d )
+
+            # Set colorscale
+            fig = figMods(fig, colorscale=colorscale, ncont=200, resetAnnotations=False) 
+
+            return fig
     # /// End of 2Dpolar
 
     # Generate initial figure to build upon
@@ -770,7 +857,6 @@ def LLChangeCoord(figIn, model, altkm, plotts, inCoord, plotCoord):
 
     import numpy as np
     from kamodo_ccmc.flythrough.utils import ConvertCoord
-    from kamodo_ccmc.tools.shoreline import shoreline
     import plotly.graph_objs as go
     from scipy.interpolate import griddata
 
@@ -1126,7 +1212,6 @@ def swmfgm3D(ko, var, time=0., title='',
     '''
     import re
     import numpy as np
-    import pandas as pd
     from kamodo import Kamodo
     import plotly.graph_objs as go
 
@@ -1607,7 +1692,7 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     from kamodo_ccmc.readers.hapi import HAPI
     from kamodo_ccmc.readers.hapi import hapi_get_dataset_title
     import kamodo_ccmc.tools.timefunctions as tf
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     # Set values to get data from the HAPI server
     server = 'https://hapi-server.org/servers/SSCWeb/hapi'
@@ -1627,8 +1712,9 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
 
     # set array of marker size
     deg = np.linspace(-np.pi/2., np.pi/2., nPts2)
-    msize = 2.+4*(np.cos(deg)**2)
-    msize[nPts+1] = 15.
+    msize = 4.+4*(np.cos(deg)**2)
+    msize[nPts] = 10.
+    msize[nPts+1:] = 4.
 
     # timestamps to interpolate positions
     tss=(plotDT.timestamp() + delt)
@@ -1669,7 +1755,7 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
                         showlegend=False, showscale=False, hoverinfo='skip')
 
     fig.update_layout(scene_aspectmode='data',
-        title='Plot of '+satname+' at '+timestrings[0]+'<br>(with '+str(padHR)+
+        title='Plot of '+satname+' at '+timestrings[nPts]+'<br>(with '+str(padHR)+
               ' hours before and after in '+coord+' coordinates)')
     
     return fig
@@ -1696,7 +1782,7 @@ def SatOrbitPlane(satid, refDT, coord='GSM', color='#d6d622'):
     from kamodo_ccmc.readers.hapi import HAPI
     from kamodo_ccmc.readers.hapi import hapi_get_dataset_title
     import kamodo_ccmc.tools.timefunctions as tf
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     import plotly.graph_objects as go
 
     # NOTE, max +/- 48 hours on orbit for now
@@ -1837,12 +1923,18 @@ def fixFigOrigin(fig, setX='', setY='', setZ=''):
     aveY = (minY + maxY)/2.
     aveZ = (minZ + maxZ)/2.
     # These factors below do not work for all plots, but do for effectively Y=0 plots.
-    if maxX != aveX: newX = 2.35*(0. - aveX)/(maxX - aveX)
-    if maxY != aveY: newY = 2.35*(0. - aveY)/(maxY - aveY)
-    if maxZ != aveZ: newZ = 2.35*(0. - aveZ)/(maxZ - aveZ)
-    if setX != '': newX = float(setX)
-    if setY != '': newY = float(setY)
-    if setZ != '': newZ = float(setZ)
+    if maxX != aveX:
+        newX = 2.35*(0. - aveX)/(maxX - aveX)
+    if maxY != aveY:
+        newY = 2.35*(0. - aveY)/(maxY - aveY)
+    if maxZ != aveZ:
+        newZ = 2.35*(0. - aveZ)/(maxZ - aveZ)
+    if setX != '':
+        newX = float(setX)
+    if setY != '':
+        newY = float(setY)
+    if setZ != '':
+        newZ = float(setZ)
     camera = dict(center=dict(x=newX, y=newY, z=newZ))
     fig.update_layout(scene_camera=camera)
 
@@ -2045,7 +2137,6 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     import kamodo_ccmc.flythrough.model_wrapper as MW
     import kamodo_ccmc.tools.timefunctions as tf
     from kamodo_ccmc.flythrough.utils import ConvertCoord
-    from datetime import datetime
 
     # Error checking  =============================================== Validate
     if showCarpet:
@@ -2076,7 +2167,6 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
         elif var[:-2]+'_x' in ko and var[-2:] == '_r':
             # Compute radial component of vector variable
             varbase = var[:-2]
-            varend = var.replace(varbase,'')  # just '_r' for now, but this is more flexible
             vRad = True
         else:
             print('Error, variable not in Kamodo object')
@@ -2097,7 +2187,8 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
         xunits = cr[var2]['X'][2]
         coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var][2]
     varlabel = var+" ["+vunits+"]"
-    if pco == '': pco = coord
+    if pco == '':
+        pco = coord
 
     # Make sure range is not larger than actual data range
     x1, x2 = cr[var2]['X'][0], cr[var2]['X'][1]
@@ -2117,10 +2208,14 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
 
     # Set label for slice type
     sliceDir = '3D '
-    #if normal[0] == 1: sliceDir = 'X '
-    #if normal[1] == 1: sliceDir = 'Y '
-    #if normal[2] == 1: sliceDir = 'Z '
-    if showCarpet: sliceDir = 'MC '
+    #if normal[0] == 1:
+    #  sliceDir = 'X '
+    #if normal[1] == 1:
+    #  sliceDir = 'Y '
+    #if normal[2] == 1:
+    #  sliceDir = 'Z '
+    if showCarpet:
+        sliceDir = 'MC '
 
     # Compute base 1D grid values  ====================================== Grid
     # Compute max radius of range box
@@ -2128,7 +2223,8 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     ym = max(abs(yrange[0]),abs(yrange[1]))
     zm = max(abs(zrange[0]),abs(zrange[1]))
     rmax = np.sqrt(xm*xm + ym*ym + zm*zm)
-    if showCarpet: rmax = 100.
+    if showCarpet:
+        rmax = 100.
 
     # Compute values from pos, normal values
     uvec = normal/np.linalg.norm(normal)  # unit normal vector
@@ -2304,7 +2400,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     vmax = np.nanmax(value)
     
     # Contour Symmetry 
-    if csym and not log10: 
+    if csym and not log10:
         vmm = max(abs(vmin),abs(vmax))
         crange = [-vmm, vmm]
 
@@ -2370,7 +2466,6 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
         ix = [xrange[0], None, xrange[1]]
         iy = [yrange[0], None, yrange[1]]
         iz = [zrange[0], None, zrange[1]]
-        sz = [0.1, 0.1, 0.1]
         fig.add_scatter3d(x=np.array(ix), y=np.array(iy), z=np.array(iz), mode='markers',
             marker=dict(size=1, color='red', opacity=0.10),
             showlegend=False, hoverinfo='skip', name='FixedRange' )
@@ -2473,11 +2568,13 @@ def MCpoint(ko,xV,yV,zStart,zRange,timeHrs=0.,pco='',ignoreBz=False,dbg=False):
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     import kamodo_ccmc.tools.timefunctions as tf
 
-    if dbg: print('MCpoint input',xV,yV,zStart,zRange,' time',timeHrs)
+    if dbg:
+        print('MCpoint input',xV,yV,zStart,zRange,' time',timeHrs)
     # Get model coordinate system
     var='B_x'
     coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var][2]
-    if pco == '': pco = coord
+    if pco == '':
+        pco = coord
 
     # Get interpolators for B
     interpBx = getattr(ko, 'B_x')
@@ -2505,7 +2602,8 @@ def MCpoint(ko,xV,yV,zStart,zRange,timeHrs=0.,pco='',ignoreBz=False,dbg=False):
     valueBy = interpBy(g3)
     valueBz = interpBz(g3)
     bN = vec2radial(g3[:,1],g3[:,2],g3[:,3],valueBx,valueBy,valueBz)
-    if dbg: print('bN',bN)
+    if dbg:
+        print('bN',bN)
 
     # Make shifted grids to make evaluation of sign change more automatic
     bN1 = np.append(bN[0],bN)
@@ -2523,8 +2621,10 @@ def MCpoint(ko,xV,yV,zStart,zRange,timeHrs=0.,pco='',ignoreBz=False,dbg=False):
         value = z3[k] + frac*(z3[k]-z3[k-1])
     else:
         value = np.nan
-    if dbg: print('MCpoint found value ',value)
-    if ignoreBz: return value
+    if dbg:
+        print('MCpoint found value ',value)
+    if ignoreBz:
+        return value
 
     # Start computing grid to determine B_z, overwriting some values used above
     x3 = np.full((1), xV)
@@ -2541,7 +2641,8 @@ def MCpoint(ko,xV,yV,zStart,zRange,timeHrs=0.,pco='',ignoreBz=False,dbg=False):
     bb = valueBz[0]
     # If negative B_z, then outside MC area, set to nan
     if bb < 0.:
-        if dbg: print('MCpoint negative Bz so returning nan')
+        if dbg:
+            print('MCpoint negative Bz so returning nan')
         value = np.nan
 
     return value
@@ -2565,7 +2666,7 @@ def vec2radial(x,y,z,Vx,Vy,Vz):
     import numpy as np
 
     # If input is scalar, make as one element arrays to keep array syntax
-    if np.isscalar(x): 
+    if np.isscalar(x):
         x = np.array([x])
         y = np.array([y])
         z = np.array([z])
@@ -2600,7 +2701,6 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
     import numpy as np
     import plotly.graph_objs as go
     import kamodo_ccmc.tools.timefunctions as tf
-    from datetime import datetime
 
     surfaces = ['MP', 'BS', 'CS']
     if what in surfaces:
@@ -2636,7 +2736,6 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
         print('ERROR, unknown surface in gmGetSurfacePlot.')
         return None,False
 
-    Tpts = x.shape[0]
     if x.shape[0] < 3 or x.shape[1] < 3:
         # Grid size must be at least 3x3
         return None,False
@@ -2681,7 +2780,6 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
     ix = [-15., None, 35.]
     iy = [-25., None, 25.]
     iz = [-25., None, 25.]
-    sz = [0.1, 0.1, 0.1]
     fig2.add_scatter3d(x=ix, y=iy, z=iz, mode='markers',
         marker=dict(size=1, color='red', opacity=0.10),
         showlegend=False, hoverinfo='skip' )
@@ -2715,7 +2813,6 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
         if 'status' in ko:
             interpMP = getattr(ko, 'status')
         else:
-            showBS = False
             print('Warning, no status variable in Kamodo object. No magnetopause computed.')
             return e,e,e
 
@@ -2741,18 +2838,26 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
                 v = interpMP([timeHrs, newx, newy, newz])
                 for _ in range(300):
                     if v[0] < 0.5:
-                        if dr > 0.: dr = -0.5 * dr
+                        if dr > 0.:
+                            dr = -0.5 * dr
                     else:
-                        if dr < 0.: dr = -0.5 * dr
+                        if dr < 0.:
+                            dr = -0.5 * dr
                     r += dr
                     newx, newy, newz = r*xval, r*yval, r*zval
-                    if xval < -5.: break
-                    if newx < x1 or newx > x2: break
-                    if newy < y1 or newy > y2: break
-                    if newz < z1 or newz > z2: break
-                    if newx > 20.: break
+                    if xval < -5.:
+                        break
+                    if newx < x1 or newx > x2:
+                        break
+                    if newy < y1 or newy > y2:
+                        break
+                    if newz < z1 or newz > z2:
+                        break
+                    if newx > 20.:
+                        break
                     newr = np.sqrt(newx*newx + newy*newy + newz*newz)
-                    if newr > 25.: break
+                    if newr > 25.:
+                        break
                     v = interpMP([timeHrs, newx, newy, newz])
                     if abs(dr) < 1.e-3:
                         x[i, j] = newx
@@ -2771,7 +2876,6 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
         if 'v_x' in ko:
             interpBS = getattr(ko, 'v_x')
         else:
-            showBS = False
             print('Warning, no v_x variable in Kamodo object. No bow shock computed.')
             return e,e,e
 
@@ -2787,10 +2891,7 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
         z = np.full((2*Gridsize,Gridsize), None)
         a1 = np.linspace(-np.pi, np.pi, 2*Gridsize)
         a2 = np.linspace(-np.pi/3., 0., Gridsize)
-        Npts = 200
-        rbs = np.linspace(x2-1., -10., Npts)
         Rfactor = 25.
-        ii = 0
         for i, a in enumerate(a1):
             for j, b in enumerate(a2):
                 xval = x2-1.
@@ -2803,15 +2904,22 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
                 v = interpBS([timeHrs, xval, yval, zval])
                 for _ in range(300):
                     if v[0] > (0.85*basevalue):
-                        if dx < 0.: dx = -0.5 * dx
+                        if dx < 0.:
+                            dx = -0.5 * dx
                     else:
-                        if dx > 0.: dx = -0.5 * dx
+                        if dx > 0.:
+                            dx = -0.5 * dx
                     xval += dx
-                    if xval < -5.: break
-                    if xval < x1 or xval > x2: break
-                    if yval < y1 or yval > y2: break
-                    if zval < z1 or zval > z2: break
-                    if xval < -10.: break
+                    if xval < -5.:
+                        break
+                    if xval < x1 or xval > x2:
+                        break
+                    if yval < y1 or yval > y2:
+                        break
+                    if zval < z1 or zval > z2:
+                        break
+                    if xval < -10.:
+                        break
                     v = interpBS([timeHrs, xval, yval, zval])
                     if abs(dx) < 1.e-3:
                         x[i, j] = xval
@@ -2844,6 +2952,7 @@ def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', runname='unkno
     import kamodo_ccmc.flythrough.model_wrapper as MW
     import kamodo_ccmc.tools.timefunctions as tf
     import json
+    import numpy as np
 
     # Error checks
     surfaces = ['MP', 'BS', 'CS']
@@ -2903,7 +3012,7 @@ def gmLoadSurface(sfile):
     sfile:  string of relative directory path and filename to load surface
     '''
     import numpy as np
-    from os.path import isfile,isdir
+    from os.path import isfile
     import json
 
     # Error checks
@@ -2929,7 +3038,7 @@ def gmLoadBtraces(sfile):
     sfile:  string of relative directory path and filename to load surface
     '''
     import numpy as np
-    from os.path import isfile,isdir
+    from os.path import isfile
     import json
 
     # Error checks
@@ -2949,7 +3058,7 @@ def gmLoadBtraces(sfile):
     return True,x,y,z
 
 ### ====================================================================================== ###
-def BlinesFig(fullfile, showE = True): 
+def BlinesFig(fullfile, showE = True):
     '''
     Function to take a specially generated file of last closed fieldline traces
       and generate a plotly figure of it. This can be displayed as is or added
@@ -2960,9 +3069,7 @@ def BlinesFig(fullfile, showE = True):
       showE:     A logical for showing an Earth sphere in the figure
     '''
     import numpy as np
-    import pandas as pd
     import plotly.graph_objects as go
-    from os.path import isfile,isdir
     import json
 
     # Get filename for labels
@@ -2980,7 +3087,6 @@ def BlinesFig(fullfile, showE = True):
     nlines = contents['nlines']
     typ = contents['type']
     typset = set(typ)
-    colors = ["#a1a1a1", "#e1a1a1", "#a1e1a1", "#a1a1e1"]
     k = 23
     for j in typset:
         label = 'B '+j
@@ -3135,7 +3241,7 @@ def BlinesMovie(where='.', showSW=False, showDate=''):
         p = p1[1]
         DateStr = p[0:4]+'-'+p[4:6]+'-'+p[6:8]+' '+p[9:11]+':'+p[11:13]+':'+p[13:15]+' UT'
         frame = {"data": [], "name": sfile}
-        fig1 = pf.BlinesFig(sfile, showE=False)
+        fig1 = BlinesFig(sfile, showE=False)
         for i in range(len(fig1.data)):
             if len(fig1.data[i]['x'].shape) == 1:
                 minX = min(minX, min(v for v in fig1.data[i]['x'] if v is not None))
@@ -3152,7 +3258,8 @@ def BlinesMovie(where='.', showSW=False, showDate=''):
                 if 'solar wind' not in fig1.data[i]['name']:
                     frame["data"].append(fig1.data[i])
                 else:
-                    if showSW: frame["data"].append(fig1.data[i])
+                    if showSW:
+                        frame["data"].append(fig1.data[i])
         fig_dict["frames"].append(frame)
         slider_step = {"args": [[sfile],
             {"frame": {"duration": 0, "redraw": True},
@@ -3172,13 +3279,14 @@ def BlinesMovie(where='.', showSW=False, showDate=''):
     xx[0], xx[2] = minX, maxX
     yy[0], yy[2] = minY, maxY
     zz[0], zz[2] = minZ, maxZ
-    fig1 = pf.BlinesFig(sfiles[0], showE=True)
+    fig1 = BlinesFig(sfiles[0], showE=True)
     fig1.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='markers', name='newbounds',
         marker=dict(color="black", size=1, opacity=0.1), showlegend=False, hoverinfo='skip' ))
 
     fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # First one gets replaced with animation (make small)
     for i in range(len(fig1.data)):
-        if 'Earth' in fig1.data[i]['name']: fig_dict["data"].append(fig1.data[i])  # Earth
+        if 'Earth' in fig1.data[i]['name']:
+            fig_dict["data"].append(fig1.data[i])  # Earth
     fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # Bounds
     fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # Bounds
     fig_dict["data"].append(fig1.data[len(fig1.data)-1])  # Bounds
@@ -3195,7 +3303,6 @@ def BlinesMovie(where='.', showSW=False, showDate=''):
 ### ====================================================================================== ###
 def gmSurfaceMovie(where='.', where2='', wireframe=False):
     import os
-    import numpy as np
     import plotly.graph_objects as go
     import glob
 
@@ -3271,9 +3378,6 @@ def gmSurfaceMovie(where='.', where2='', wireframe=False):
     for sfile in sfiles:
         bname = os.path.basename(sfile)
         bname = bname[:-5]
-        p = bname.split("_")
-        DateStr = p[1][0:4]+'/'+p[1][4:6]+'/'+p[1][6:8]+\
-            ' '+p[2][0:2]+':'+p[2][2:4]+':'+p[2][4:6]+' UT'
         frame = {"data": [], "name": sfile}
         fig1,success = gmGetSurfacePlot(sfile=sfile, wireframe=wireframe)
         if where2 != '':
@@ -3301,7 +3405,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
                 runname='UNKNOWN', resolution=0.25, showBS=True, showMP=True,
                 xrange=[-95., 25.], yrange=[-30., 30.], crange='', csym=False,
                 xtic=10., ytic=10., log10=False, logCustom=True, 
-                colorscale='Viridis', showtiming=False):
+                colorscale='Viridis', showtiming=False, makeSquare=False, hideText=False):
     '''
     Function to create a 2D slice for a Y or Z constant value. It will interpolate
       from a Kamodo object onto that grid in given coordinate system.
@@ -3332,7 +3436,6 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
 
     import time
     import numpy as np
-    from datetime import datetime
     from kamodo_ccmc.tools.plotfunctions import XYC
     from kamodo_ccmc.flythrough.utils import ConvertCoord
     import kamodo_ccmc.flythrough.model_wrapper as MW
@@ -3348,26 +3451,31 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         print('ERROR: Invalid slice passed.')
         return
 
-    # Pad range to make plot nice for 800x400 size
+    # Pad range to make range fit plot window
+    optimal_ratio = 2.05
+    if makeSquare:
+        optimal_ratio = 1.
     xmin, xmax = xrange[0], xrange[1]
     ymin, ymax = yrange[0], yrange[1]
     ratio = (xmax - xmin)/(ymax - ymin)
-    if ratio > 2.05:
+    if ratio > optimal_ratio:
         # extend Y
-        pad = 0.5*(((xmax - xmin)/2.05)-(ymax - ymin))
+        pad = 0.5*(((xmax-xmin)/optimal_ratio)-(ymax-ymin))
         ymin += -pad
         ymax += pad
-    elif ratio < 2.05:
+    elif ratio < optimal_ratio:
         # extend X
-        pad = 0.5*(-(2.05*(ymax-ymin)-xmax)-xmin)
+        pad = 0.5*(optimal_ratio*(ymax-ymin)-(xmax-xmin))
         xmin += -pad
         xmax += pad
-    xmin = int(xmin-6.)
-    xmax = int(xmax+6.)
-    ymin = int(ymin-3.)
-    ymax = int(ymax+3.)
+    ppad = 10.
+    xmin -= ppad
+    xmax += ppad
+    ymin -= ppad
+    ymax += ppad
     xpts = 1+int((xmax-xmin)/resolution)
     ypts = 1+int((ymax-ymin)/resolution)
+    print('gm2DSliceFig: ',xpts,xmin,xmax,'   ',ypts,ymin,ymax)
 
     # Get current coordinate system and type from Kamodo object
     tmp = list(MW.Model_Variables(model=ko.modelname, return_dict=True).values())[0][2:4]
@@ -3386,7 +3494,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
             var2 = var+'_x_ijk'
             cr = MW.Coord_Range(ko, [var2], return_dict=True, print_output=False)
             xunits = cr[var2]['X'][2]
-            coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var+'_x'][2]
+            #coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var+'_x'][2]
         else:
             print('Error, variable not in Kamodo object')
             return
@@ -3396,7 +3504,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         var2 = var+'_ijk' 
         cr = MW.Coord_Range(ko, [var2], return_dict=True, print_output=False)
         xunits = cr[var2]['X'][2] 
-        coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var][2]
+        #coord = MW.Variable_Search('', model=ko.modelname, return_dict=True)[var][2]
     varlabel = var+" ["+vunits+"]"
     if 'v_x' in ko:
         interpBS = getattr(ko, 'v_x') 
@@ -3408,7 +3516,8 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         showMP = False
 
     toc = time.perf_counter()
-    if showtiming: print(f"  Setup Time: {toc - tic:0.4f} seconds")
+    if showtiming:
+        print(f"  Setup Time: {toc - tic:0.4f} seconds")
     tic = toc
 
     # Make base grid
@@ -3441,7 +3550,8 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         g2 = np.stack((t1, x2, y2, z2), axis=-1)  # nx4 grid
 
     toc = time.perf_counter()
-    if showtiming: print(f"  Grid Time: {toc - tic:0.4f} seconds")
+    if showtiming:
+        print(f"  Grid Time: {toc - tic:0.4f} seconds")
     tic = toc
 
     # Interpolate
@@ -3474,14 +3584,16 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         crange = [-vmm, vmm]
 
     toc = time.perf_counter()
-    if showtiming: print(f"  Interpolate Time: {toc - tic:0.4f} seconds")
+    if showtiming:
+        print(f"  Interpolate Time: {toc - tic:0.4f} seconds")
     tic = toc
 
     # Bow shock
     if showBS:
         valueVX = interpBS(g2)
         toc = time.perf_counter()
-        if showtiming: print(f"  BS Interp Time: {toc - tic:0.4f} seconds")
+        if showtiming:
+            print(f"  BS Interp Time: {toc - tic:0.4f} seconds")
         tic = toc
         vx = np.reshape(valueVX, (len(x),len(y)))
         bsx = np.full((len(y)), None)
@@ -3489,6 +3601,15 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         for j in range(len(y)):
             bsy[j] = y[j]
             refVX = vx[-1,j]
+            # need to check for nan as first value
+            if np.isnan(refVX):
+                alljVX = vx[:,j]
+                kk = len(alljVX)
+                for k in range(kk):
+                    k2 = kk-1-k
+                    if ~np.isnan(alljVX[k2]):
+                        refVX = alljVX[k2]
+                        break
             for ii in range(len(x)):
                 i = len(x)-1-ii
                 if x[i] < 1.:
@@ -3497,7 +3618,8 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
                     bsx[j] = x[i]
                     break
         toc = time.perf_counter()
-        if showtiming: print(f"  BS Other Time: {toc - tic:0.4f} seconds")
+        if showtiming:
+            print(f"  BS Other Time: {toc - tic:0.4f} seconds")
         tic = toc
 
     # Magnetopause
@@ -3516,7 +3638,8 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
                     mpx[j] = x[i]
                     break
         toc = time.perf_counter()
-        if showtiming: print(f"  MP Time: {toc - tic:0.4f} seconds")
+        if showtiming:
+            print(f"  MP Time: {toc - tic:0.4f} seconds")
         tic = toc
 
     # Plot values
@@ -3526,9 +3649,12 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
     label1 = slicedir+' = '+str(sliceval)+' slice at  '+pDateStr
     label2 = 'Model: '+ko.modelname
     ptitle = 'CCMC Run: '+runname
+    if hideText:
+        label2 = ''
+        ptitle = ''
 
     fig = XYC(xlabel,x,ylabel,y,varlabel,c,title=ptitle,crange=crange)
-    fig.update_traces(colorscale=colorscale)
+    fig.update_traces(colorscale=colorscale, name='2Dplot')
     if log10 and logCustom:
         fig.update_traces(colorbar=dict(
             tickvals=[-5,-4,-3,-2,-1,0,1,2],
@@ -3537,33 +3663,33 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
 
     if showBS:
         fig.add_scatter(x=bsx, y=bsy, showlegend=False, hoverinfo='skip',
-                       line=dict(color="grey", width=2))
+                       line=dict(color="grey", width=2), name='BS')
     if showMP:
         fig.add_scatter(x=mpx, y=mpy, showlegend=False, hoverinfo='skip',
-                       line=dict(color="grey", width=2))
+                       line=dict(color="grey", width=2), name='MP')
     degs = np.linspace(-180, 180, 181)
     ex = np.cos(degs*np.pi/180.)
     ey = np.sin(degs*np.pi/180.)
     if abs(sliceval) < 2.5:
         r = np.sqrt(2.5**2 - sliceval**2)
         fig.add_scatter(x=r*ex, y=r*ey, fill='toself', showlegend=False, hoverinfo='skip',
-                       fillcolor="black", line=dict(color="black", width=1))
+                       fillcolor="black", line=dict(color="black", width=1), name='2.5black')
     if sliceval == 0.0:
         # Only show when slicing through 0
         r = np.sqrt(1. - sliceval**2)
         fig.add_scatter(x=r*ex, y=r*ey, showlegend=False, hoverinfo='skip',
-                       fillcolor="black", line=dict(color="white", width=1))
+                       fillcolor="black", line=dict(color="white", width=1), name='1.0black')
         degs = np.linspace(-90, 90, 91)
         ex = np.cos(degs*np.pi/180.)
         ey = np.sin(degs*np.pi/180.)
         fig.add_scatter(x=r*ex, y=r*ey, fill='toself', showlegend=False, hoverinfo='skip',
-                       fillcolor="white", line=dict(color="white", width=1))
+                       fillcolor="white", line=dict(color="white", width=1), name='1.0white')
 
     fig.update_layout(
         xaxis=dict(scaleanchor="y", scaleratio=1, tick0 = 0., dtick = xtic,
-                   range=[xrange[0], xrange[1]]),
+                   range=[xmin+ppad, xmax-ppad]),
         yaxis=dict(scaleanchor="x", scaleratio=1, tick0 = 0., dtick = ytic,
-                   range=[yrange[0], yrange[1]]),
+                   range=[ymin+ppad, ymax-ppad]),
         annotations=[
             dict(text=label1, x=1.18, y=1.07, ax=0, ay=0, xanchor="right",
                  xshift=0, yshift=0, xref="paper", yref="paper",
@@ -3573,18 +3699,21 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
                  font=dict(size=16, family="sans serif", color="#000000")),
         ],
         width=800, height=400,
-    )
-    fig.update_layout(margin=dict(r=120))
+        margin=dict(r=120), )
+    if makeSquare:
+        fig.update_layout(width=490)
     fig.data[0]['colorbar']['xpad'] = 5
     fig.data[0]['colorbar']['y'] = -.03
     fig.data[0]['colorbar']['yanchor'] = 'bottom'
 
     toc = time.perf_counter()
-    if showtiming: print(f"  Fig Time: {toc - tic:0.4f} seconds")
+    if showtiming:
+        print(f"  Fig Time: {toc - tic:0.4f} seconds")
     tic = toc
 
     toc = time.perf_counter()
-    if showtiming: print(f"  Total Time: {toc - tic0:0.4f} seconds")
+    if showtiming:
+        print(f"  Total Time: {toc - tic0:0.4f} seconds")
 
     return fig
 
@@ -3724,7 +3853,7 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
     Returns:
     Either nothing or a plotly figure object, depending on value of returnFig
     """
-    from kamodo import Kamodo, get_defaults
+    from kamodo import get_defaults
     from kamodo_ccmc.tools.shoreline import shoreline
     import numpy as np
     import plotly.graph_objects as go
@@ -3849,7 +3978,6 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
         val1 = fig1a.data[0].z
         height0km = np.full(val1.shape, defaults['height'][0])
         height1km = np.full(val1.shape, defaults['height'][-1])
-    height0re = (hfactor*height0km + 6.3781E3)/6.3781E3
     height1re = (hfactor*height1km + 6.3781E3)/6.3781E3
     # put lon/lat into same 2D grid
     lon1_mg, lat1_mg = np.meshgrid(np.array(lon1), np.array(lat1))
@@ -3862,12 +3990,6 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
     cmin1 = np.nanmin(val1)
     cmax1 = np.nanmax(val1)
     # Set integer values for slicing output to cut out 1/8 of sphere
-    if model in ['TIEGCM', 'CTIPe', 'WACCMX']:
-        lonbreak = int((len(defaults['lon'])-1)/4)
-        latbreak = int((len(defaults['lat'])  )/2)
-    else:  # GITM, DTM, IRI do not have constand dlon, needs a shift of 1
-        lonbreak = int((len(defaults['lon'])  )/4)
-        latbreak = int((len(defaults['lat'])  )/2)
 
     # Determine which lon/lat values to block out for the window, and what edges to keep to plot
     indLon = np.where((lon1 > (wLon - wWidth)) & (lon1 < (wLon + wWidth)))[0]
@@ -3883,17 +4005,21 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
         postLon = indTmp[-1]+1
     indLat = np.where((lat1 > (wLat - wWidth)) & (lat1 < (wLat + wWidth)))[0]
     preLat = indLat[0]-1
-    if preLat < 0: preLat = 0
+    if preLat < 0:
+        preLat = 0
     postLat = indLat[-1]+1
-    if postLat >= (len(lat1)-1): postLat = (len(lat1)-1)
+    if postLat >= (len(lat1)-1):
+        postLat = (len(lat1)-1)
     
     # Easiest to open windwo by setting a value in the window to None
     for i in range(x1.shape[0]):
         for j in range(x1.shape[1]):
-            if (i in indLat) & (j in indLon): x1[i,j] = None
+            if (i in indLat) & (j in indLon):
+                x1[i,j] = None
 
     if doJustShell:
-        if doJustSlices: doJustSlices = False
+        if doJustSlices:
+            doJustSlices = False
         # Make temporary figure and add to composite figure
         fig1 = go.Figure(data=[go.Surface(x=x1, y=y1, z=z1, surfacecolor=val1)])
         fig1.update_traces(
@@ -3915,7 +4041,6 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
         figF.add_trace(fig1.data[0])
 
     ## Now setup for slices
-    n1d = np.array([None], dtype=np.float64)  # 1D array with just a None value
     # 1: preLon slice
     lon2a = lon1_mg[preLat:postLat+1,preLon]
     lat2a = lat1_mg[preLat:postLat+1,preLon]
@@ -3984,7 +4109,8 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
     lat2_mg, alt2_mg = np.meshgrid(np.array(lat2), np.array(alt))
     # Loop over points to compute proper distribution of heights
     for i in range(len(alt2)):
-        if alt2[i] is None: continue
+        if alt2[i] is None:
+            continue
         if doSlices2surface:
             alt2_mg[:,i] = np.linspace(0., alt2[i], 75)
         else:
@@ -4111,15 +4237,19 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
     if savePNGrotations > 0:
         iis = str(int(1000.*ptime)).zfill(8)  # create zero padded string from time
         deg = np.linspace(360., 0., savePNGrotations+1)
-        if progress: pbar = tqdm(total=len(deg)-1, desc="Saving rotation images")
+        if progress:
+            pbar = tqdm(total=len(deg)-1, desc="Saving rotation images")
         for i in range(len(deg)):
-            if deg[i] == 0.: continue
+            if deg[i] == 0.:
+                continue
             xyz = _rotate_point_around_z(eyex, eyey, eyez, deg[i])
             iid = str(int(i)).zfill(3)  # create zero padded string from iteration
             figF.update_layout(scene_camera=dict(eye=dict(x=xyz[0], y=xyz[1], z=xyz[2]), center=dict(x=0., y=0., z=0.)))
             figF.write_image(savePNGpathprefix+"cutout"+iis+"_"+iid+".png", scale=2)
-            if progress: pbar.update(1)
-        if progress: pbar.close()
+            if progress:
+                pbar.update(1)
+        if progress:
+            pbar.close()
 
     if printFig:
         print(figF)
@@ -4216,6 +4346,9 @@ def fig2darkmode(figIN, colormap=None):
 
     # apply plotly default dark mode
     fig.update_layout(template="plotly_dark")
+
+    # set background color inside plot area black
+    fig.update_layout(plot_bgcolor='rgb(0, 0, 0)')
 
     # set text colors
     color1 = "#565656"

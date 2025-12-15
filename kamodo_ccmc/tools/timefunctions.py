@@ -63,7 +63,6 @@ def timeTStoDT(inTS):
     IN:  1117632780.1
     OUT: 2005-06-01 13:33:00.100000+00:00
     '''
-    import pytz
     from datetime import datetime, timezone
 
     DT = datetime.fromtimestamp(inTS, tz=timezone.utc)
@@ -77,7 +76,6 @@ def timeTStoSTR(inTS):
     IN:  1117632780.1
     OUT: 2005/06/01 13:33:00
     '''
-    import pytz
     from datetime import datetime, timezone
 
     DT = datetime.fromtimestamp(inTS, tz=timezone.utc)
