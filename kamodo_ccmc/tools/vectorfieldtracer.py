@@ -237,6 +237,7 @@ class KamodoVectorFieldTracer:
         self.use_parallel = use_parallel and JOBLIB_AVAILABLE
         self.n_jobs = n_jobs
         self.verbose = verbose
+        self.xyztype = 'xyz'
         
         # Set up component names based on field type
         if component_names is None:
@@ -316,8 +317,15 @@ class KamodoVectorFieldTracer:
         self._call_method = 'array_with_time'
         t_c = self.component_names[0]
         t_cr = MW.Coord_Range(self.kamodo_object, [t_c], print_output=False, return_dict=True)
-        coords = [t_cr[t_c]['time'][0], t_cr[t_c]['X'][0], 
-                  t_cr[t_c]['Y'][0], t_cr[t_c]['Z'][0]]
+        # default self.xyztype = 'xyz' unless changed here
+        if 'X' in t_cr[t_c]:
+            self.xyztype = 'XYZ'
+        if self.xyztype == 'xyz':
+            coords = [t_cr[t_c]['time'][0], t_cr[t_c]['x'][0], t_cr[t_c]['y'][0], t_cr[t_c]['z'][0]]
+        elif self.xyztype == 'XYZ':
+            coords = [t_cr[t_c]['time'][0], t_cr[t_c]['X'][0], t_cr[t_c]['Y'][0], t_cr[t_c]['Z'][0]]
+        else:
+            raise ValueError(f"Error, unknown xyztype")
         t_e = False
         try:
             value = np.array(self.kamodo_object[t_c](coords))
@@ -334,8 +342,12 @@ class KamodoVectorFieldTracer:
         self._call_method = 'gridded'
         t_e = False
         try:
-            value = np.array(self.kamodo_object[t_c](time=t_cr[t_c]['time'][0],
-                x=t_cr[t_c]['X'][0], y=t_cr[t_c]['Y'][0], z=t_cr[t_c]['Z'][0]))
+            if self.xyztype == 'xyz':
+                value = np.array(self.kamodo_object[t_c](time=t_cr[t_c]['time'][0],
+                    x=t_cr[t_c]['x'][0], y=t_cr[t_c]['y'][0], z=t_cr[t_c]['z'][0]))
+            elif self.xyztype == 'XYZ':
+                value = np.array(self.kamodo_object[t_c](time=t_cr[t_c]['time'][0],
+                    x=t_cr[t_c]['X'][0], y=t_cr[t_c]['Y'][0], z=t_cr[t_c]['Z'][0]))
         except Exception as e:
             raise ValueError(f"Error evaluating ko : {e}")
             t_e = True
