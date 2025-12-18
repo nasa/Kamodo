@@ -268,9 +268,9 @@ class SATEXTRACT(Kamodo):
             ser_interpolated = ser_.interpolate(method='time')
             result = ser_interpolated.reindex(ts)
             if isiterable:
-                return result.values
+                return result.to_numpy()
             else:
-                return result.values[0]
+                return result.to_numpy()[0]
 
         # store the interpolator
         self.variables[varname]['interpolator'] = interpolate

@@ -392,7 +392,7 @@ class KamodoVectorFieldTracer:
                     value = component(coords)
                 else: # gridded
                     value = component(time=time_hours, x=x, y=y, z=z)
-                field_components_values.append(float(value[0]))
+                field_components_values.append(float(value))
             except Exception as e:
                 raise ValueError(f"Error evaluating {self.component_names[i]} at "
                                f"coords [t={time_hours:.3f}, x={x:.3f}, y={y:.3f}, z={z:.3f}]: {e}")

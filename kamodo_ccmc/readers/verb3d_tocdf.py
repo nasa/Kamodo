@@ -206,7 +206,7 @@ def convert_all(file_dir, start_date=None):
 
         for var_str in variables:
             var = ncfile.createVariable(var_str, np.float64, ('time'))
-            var[:] = df[var_str].values
+            var[:] = df[var_str].to_numpy()
 
     modelname = 'VERB-3D'
     # List of files for Kamodo reader

@@ -25,9 +25,9 @@ def time_to_tsyg(time):
     date_int = time.dt.strftime('%Y%m%d').astype(int)
     ut = time.dt.hour + time.dt.minute/60 + (time.dt.second + 1e-6*time.dt.microsecond)/3600
     if len(time) > 1:
-        return date_int.values, ut.values
+        return date_int.to_numpy(), ut.to_numpy()
     else:
-        return date_int.values[0], ut.values[0]
+        return date_int.to_numpy()[0], ut.to_numpy()[0]
 
 def get_component(obj, component, coord):
     return getattr(obj, component + coord)
