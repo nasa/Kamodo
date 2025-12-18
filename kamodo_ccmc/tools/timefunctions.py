@@ -11,7 +11,7 @@ Kamodo time conversion functions in this file:
  timeTStoKOoffset
 '''
 
-def timeDTtoSTR(inDT):
+def timeDTtoSTR(inDT, datesep=None):
     '''
     UTC time conversion from datetime to formatted string
     
@@ -20,6 +20,8 @@ def timeDTtoSTR(inDT):
     '''
     
     STR = inDT.strftime("%Y/%m/%d %H:%M:%S")
+    if datesep is not None:
+        STR = STR.replace("/", datesep)
     return STR
 
 def timeDTtoISO(inDT):
@@ -65,11 +67,11 @@ def timeTStoDT(inTS):
     '''
     from datetime import datetime, timezone
 
-    DT = datetime.fromtimestamp(inTS, tz=timezone.utc)
+    DT = datetime.fromtimestamp(float(inTS), tz=timezone.utc)
 
     return DT
 
-def timeTStoSTR(inTS):
+def timeTStoSTR(inTS, datesep=None):
     '''
     UTC time conversion from timestamp to formatted string
     
@@ -78,8 +80,10 @@ def timeTStoSTR(inTS):
     '''
     from datetime import datetime, timezone
 
-    DT = datetime.fromtimestamp(inTS, tz=timezone.utc)
+    DT = datetime.fromtimestamp(float(inTS), tz=timezone.utc)
     STR = DT.strftime("%Y/%m/%d %H:%M:%S")
+    if datesep is not None:
+        STR = STR.replace("/", datesep)
     return STR
 
 def timeKOtoTS(ko, sOffset=0.):
@@ -105,6 +109,6 @@ def timeTStoKOoffset(ko, inTS):
     OUT:
       returns floating point hours from start of Kamodo object
     '''
-    Hrs = (inTS - ko.filedate.timestamp()) / 3600.
+    Hrs = (float(inTS) - ko.filedate.timestamp()) / 3600.
     return Hrs
 
