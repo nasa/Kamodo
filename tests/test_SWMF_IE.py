@@ -16,28 +16,28 @@ def test00():
     p = Path(file_dir+model+"_list.txt")
     assert p.is_file()
 
-def test01_SWMF_IE_exists():
+def test01_exists():
     '''
-    This tests whether SWMF_IE exists as a model in kamodo
+    This tests whether the model exists in kamodo
     '''
     assert type(MW.Choose_Model(model=model)) == types.ModuleType
 
-def test02_SWMF_IE_variable():
+def test02_variable():
     '''
-    This tests whether a SWMF_IE variable search that includes "Hall"
+    This tests whether a variable search that includes "Hall"
     has a variable "Sigma_H" with units "S"
     '''
     vs = MW.Variable_Search('Hall', model, return_dict=True)
     assert vs['Sigma_H'][3] == 'S'
 
-def test03_SWMF_IE_var_in_files():
+def test03_var_in_files():
     '''
     This tests that the variable "Sigma_H" is in the test files
     '''
     vs = MW.Variable_Search('Hall', model, file_dir, return_dict=True)
     assert vs['Sigma_H'][3] == 'S'
 
-def test04_SWMF_IE_times():
+def test04_times():
     '''
     This tests that proper start and end times are returned
     '''
@@ -46,7 +46,7 @@ def test04_SWMF_IE_times():
     ft = MW.File_Times(model, file_dir)
     assert ft[0] == dt1 and ft[1] == dt2
 
-def test05_SWMF_IE_interpolation():
+def test05_interpolation():
     '''
     This tests creating a kamodo object, ko, and interpolating two different ways
     '''
@@ -59,7 +59,7 @@ def test05_SWMF_IE_interpolation():
     if not ko.Sigma_H([5.2, 10., 60.]) == ko.Sigma_H_ijk(time=5.2, lon=10., lat=60.):
         raise AttributeError('Values are not equal.')
 
-def test06_SWMF_IE_coord_range():
+def test06_coord_range():
     '''
     This tests coordinate range logic
     '''
@@ -70,7 +70,7 @@ def test06_SWMF_IE_coord_range():
     cr = MW.Coord_Range(ko, varijk_list, return_dict=True)
     assert cr['Sigma_H']['time'][1] == 23.0
 
-def test07_SWMF_IE_plot_value():
+def test07_plot_value():
     '''
     This test makes a plotly figure and pulls a value out to compare to reference
     '''
@@ -81,7 +81,3 @@ def test07_SWMF_IE_plot_value():
            fig.data[0]['y'][3] == pytest.approx(-88.0, abs=.000001) and \
            fig.data[0]['z'][4,5] == pytest.approx(2.34784800, abs=.000001)
 
-def test08_SWMF_IE_flythrough():
-    '''
-    This tests simple flythrough extraction for a couple of points
-    '''

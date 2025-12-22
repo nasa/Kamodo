@@ -17,28 +17,28 @@ def test00():
     p = Path(file_dir+model+"_list.txt")
     assert p.is_file()
 
-def test01_GITM_exists():
+def test01_exists():
     '''
-    This tests whether GITM exists as a model in kamodo
+    This tests whether the model exists in kamodo
     '''
     assert type(MW.Choose_Model(model=model)) == types.ModuleType
 
-def test02_GITM_variable():
+def test02_variable():
     '''
-    This tests whether a GITM variable search that includes "Temperature"
+    This tests whether a variable search that includes "Temperature"
     has a variable "T_n" with units "K"
     '''
     vs = MW.Variable_Search('Temperature', model, return_dict=True)
     assert vs['T_n'][3] == 'K'
 
-def test03_GITM_var_in_files():
+def test03_var_in_files():
     '''
     This tests that the variable "T_n" is in the test files
     '''
     vs = MW.Variable_Search('Temperature', model, file_dir, return_dict=True)
     assert vs['T_n'][3] == 'K'
 
-def test04_GITM_times():
+def test04_times():
     '''
     This tests that proper start and end times are returned
     '''
@@ -47,7 +47,7 @@ def test04_GITM_times():
     ft = MW.File_Times(model, file_dir)
     assert ft[0] == dt1 and ft[1] == dt2
 
-def test05_GITM_interpolation():
+def test05_interpolation():
     '''
     This tests creating a kamodo object, ko, and interpolating two different ways
     '''
@@ -60,7 +60,7 @@ def test05_GITM_interpolation():
     if not ko.T_n([5.2, 10., 60., 350.]) == ko.T_n_ijk(time=5.2, lon=10., lat=60., height=350.):
         raise AttributeError('Values are not equal.')
 
-def test06_GITM_coord_range():
+def test06_coord_range():
     '''
     This tests coordinate range logic
     '''
@@ -71,7 +71,7 @@ def test06_GITM_coord_range():
     cr = MW.Coord_Range(ko, varijk_list, return_dict=True)
     assert cr['T_n']['time'][1] == pytest.approx(33.00027847, abs=.000001)
 
-def test07_GITM_plot_value():
+def test07_plot_value():
     '''
     This test makes a plotly figure and pulls a value out to compare to reference
     '''

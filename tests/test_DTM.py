@@ -1,17 +1,18 @@
 import kamodo_ccmc.flythrough.model_wrapper as MW
+import kamodo_ccmc.flythrough.SatelliteFlythrough as SF
 import types
 import datetime
 import pytest
 from pathlib import Path
 from math import isnan
 
-model = 'SWMF_GM'
+model = 'DTM'
 file_dir = 'TestData/'+model+'/'
-variables_requested = ['B_z', 'B_y', 'B_x', 'theta_Btilt']
+variables_requested = ['T', 'T_exo']
 
 def test00():
     '''
-    This tests a file can be found in output directory
+    This tests a list file can be found in output directory
     '''
     p = Path(file_dir+model+"_list.txt")
     assert p.is_file()
@@ -24,25 +25,25 @@ def test01_exists():
 
 def test02_variable():
     '''
-    This tests whether a variable search that includes "magnetic"
-    has a variable "B_z" with units "nT"
+    This tests whether a variable search that includes "Temperature"
+    has a variable "T" with units "K"
     '''
-    vs = MW.Variable_Search('magnetic', model, return_dict=True)
-    assert vs['B_z'][3] == 'nT'
+    vs = MW.Variable_Search('Temperature', model, return_dict=True)
+    assert vs['T'][3] == 'K'
 
 def test03_var_in_files():
     '''
-    This tests that the variable "B_z" is in the test files
+    This tests that the variable "T" is in the test files
     '''
-    vs = MW.Variable_Search('magnetic', model, file_dir, return_dict=True)
-    assert vs['B_z'][3] == 'nT'
+    vs = MW.Variable_Search('Temperature', model, file_dir, return_dict=True)
+    assert vs['T'][3] == 'K'
 
 def test04_times():
     '''
     This tests that proper start and end times are returned
     '''
-    dt1 = datetime.datetime(2010, 12, 18, 0, 0, 0, tzinfo=datetime.timezone.utc)
-    dt2 = datetime.datetime(2010, 12, 19, 23, 0, 0, tzinfo=datetime.timezone.utc)
+    dt1 = datetime.datetime(2005, 5, 7, 0, 0, tzinfo=datetime.timezone.utc)
+    dt2 = datetime.datetime(2005, 5, 8, 23, 45, tzinfo=datetime.timezone.utc)
     ft = MW.File_Times(model, file_dir)
     assert ft[0] == dt1 and ft[1] == dt2
 
@@ -52,11 +53,11 @@ def test05_interpolation():
     '''
     reader = MW.Model_Reader(model)
     ko = reader(file_dir, variables_requested=variables_requested[:1])
-    if isnan(ko.B_z([1.2, 10., 60., 50.])[0]):
+    if isnan(ko.T([5.2, 10., 60., 350.])[0]):
         raise AttributeError('Returned value is a NaN.')
-    if isnan(ko.B_z_ijk(time=1.2, X=10., Y=60., Z=50.)):
+    if isnan(ko.T_ijk(time=5.2, lon=10., lat=60., height=350.)):
         raise AttributeError('Returned value is a NaN.')
-    if not ko.B_z([1.2, 10., 60., 50.]) == ko.B_z_ijk(time=1.2, X=10., Y=60., Z=50.):
+    if not ko.T([5.2, 10., 60., 350.]) == ko.T_ijk(time=5.2, lon=10., lat=60., height=350.):
         raise AttributeError('Values are not equal.')
 
 def test06_coord_range():
@@ -68,7 +69,7 @@ def test06_coord_range():
     var_list = list(MW.Variable_Search('', model, file_dir, return_dict=True).keys())
     varijk_list = sorted(var_list + [item+'_ijk' for item in var_list])
     cr = MW.Coord_Range(ko, varijk_list, return_dict=True)
-    assert cr['B_z']['time'][1] == 47.0
+    assert cr['T']['time'][1] == pytest.approx(47.75, abs=.000001)
 
 def test07_plot_value():
     '''
@@ -76,8 +77,8 @@ def test07_plot_value():
     '''
     reader = MW.Model_Reader(model)
     ko = reader(file_dir, variables_requested=variables_requested)
-    fig = ko.plot('B_z_ijk', plot_partial={'B_z_ijk': {'time': 1.5, 'Z': 15.5}})
-    assert fig.data[0]['x'][2] == pytest.approx(-204.0, abs=.000001) and \
-           fig.data[0]['y'][3] == pytest.approx(-118.0, abs=.000001) and \
-           fig.data[0]['z'][4,5] == pytest.approx(1.92658597, abs=.000001)
+    fig = ko.plot('T_exo_ijk', plot_partial={'T_exo_ijk': {'time': 24.0}})
+    assert fig.data[0]['x'][2] == pytest.approx(-170.0, abs=.000001) and \
+           fig.data[0]['y'][3] == pytest.approx(-75.0, abs=.000001) and \
+           fig.data[0]['z'][4,5] == pytest.approx(930.41375732, abs=.000001)
 
