@@ -5,9 +5,9 @@ import pytest
 from pathlib import Path
 from math import isnan
 
-model = 'SWMF_GM'
+model = 'SWMF_IE'
 file_dir = 'TestData/'+model+'/'
-variables_requested = ['B_z', 'B_y', 'B_x', 'theta_Btilt']
+variables_requested = ['Sigma_H', 'W_JouleH']
 
 def test00():
     '''
@@ -16,50 +16,50 @@ def test00():
     p = Path(file_dir+model+"_list.txt")
     assert p.is_file()
 
-def test01_SWMF_GM_exists():
+def test01_SWMF_IE_exists():
     '''
-    This tests whether SWMF_GM exists as a model in kamodo
+    This tests whether SWMF_IE exists as a model in kamodo
     '''
     assert type(MW.Choose_Model(model=model)) == types.ModuleType
 
-def test02_SWMF_GM_variable():
+def test02_SWMF_IE_variable():
     '''
-    This tests whether a SWMF_GM variable search that includes "magnetic"
-    has a variable "B_z" with units "nT"
+    This tests whether a SWMF_IE variable search that includes "Hall"
+    has a variable "Sigma_H" with units "S"
     '''
-    vs = MW.Variable_Search('magnetic', model, return_dict=True)
-    assert vs['B_z'][3] == 'nT'
+    vs = MW.Variable_Search('Hall', model, return_dict=True)
+    assert vs['Sigma_H'][3] == 'S'
 
-def test03_SWMF_GM_var_in_files():
+def test03_SWMF_IE_var_in_files():
     '''
-    This tests that the variable "B_z" is in the test files
+    This tests that the variable "Sigma_H" is in the test files
     '''
-    vs = MW.Variable_Search('magnetic', model, file_dir, return_dict=True)
-    assert vs['B_z'][3] == 'nT'
+    vs = MW.Variable_Search('Hall', model, file_dir, return_dict=True)
+    assert vs['Sigma_H'][3] == 'S'
 
-def test04_SWMF_GM_times():
+def test04_SWMF_IE_times():
     '''
     This tests that proper start and end times are returned
     '''
-    dt1 = datetime.datetime(2010, 12, 18, 0, 0, 0, tzinfo=datetime.timezone.utc)
-    dt2 = datetime.datetime(2010, 12, 19, 23, 0, 0, tzinfo=datetime.timezone.utc)
+    dt1 = datetime.datetime(2008, 5, 2, 0, 0, tzinfo=datetime.timezone.utc)
+    dt2 = datetime.datetime(2008, 5, 2, 23, 0, tzinfo=datetime.timezone.utc)
     ft = MW.File_Times(model, file_dir)
     assert ft[0] == dt1 and ft[1] == dt2
 
-def test05_SWMF_GM_interpolation():
+def test05_SWMF_IE_interpolation():
     '''
     This tests creating a kamodo object, ko, and interpolating two different ways
     '''
     reader = MW.Model_Reader(model)
     ko = reader(file_dir, variables_requested=variables_requested[:1])
-    if isnan(ko.B_z([1.2, 10., 60., 50.])[0]):
+    if isnan(ko.Sigma_H([5.2, 10., 60.])[0]):
         raise AttributeError('Returned value is a NaN.')
-    if isnan(ko.B_z_ijk(time=1.2, X=10., Y=60., Z=50.)):
+    if isnan(ko.Sigma_H_ijk(time=5.2, lon=10., lat=60.)):
         raise AttributeError('Returned value is a NaN.')
-    if not ko.B_z([1.2, 10., 60., 50.]) == ko.B_z_ijk(time=1.2, X=10., Y=60., Z=50.):
+    if not ko.Sigma_H([5.2, 10., 60.]) == ko.Sigma_H_ijk(time=5.2, lon=10., lat=60.):
         raise AttributeError('Values are not equal.')
 
-def test06_SWMF_GM_coord_range():
+def test06_SWMF_IE_coord_range():
     '''
     This tests coordinate range logic
     '''
@@ -68,20 +68,20 @@ def test06_SWMF_GM_coord_range():
     var_list = list(MW.Variable_Search('', model, file_dir, return_dict=True).keys())
     varijk_list = sorted(var_list + [item+'_ijk' for item in var_list])
     cr = MW.Coord_Range(ko, varijk_list, return_dict=True)
-    assert cr['B_z']['time'][1] == 47.0
+    assert cr['Sigma_H']['time'][1] == 23.0
 
-def test07_SWMF_GM_plot_value():
+def test07_SWMF_IE_plot_value():
     '''
     This test makes a plotly figure and pulls a value out to compare to reference
     '''
     reader = MW.Model_Reader(model)
     ko = reader(file_dir, variables_requested=variables_requested)
-    fig = ko.plot('B_z_ijk', plot_partial={'B_z_ijk': {'time': 1.5, 'Z': 15.5}})
-    assert fig.data[0]['x'][2] == pytest.approx(-204.0, abs=.000001) and \
-           fig.data[0]['y'][3] == pytest.approx(-118.0, abs=.000001) and \
-           fig.data[0]['z'][4,5] == pytest.approx(1.92658597, abs=.000001)
+    fig = ko.plot('Sigma_H_ijk', plot_partial={'Sigma_H_ijk': {'time': 13.345}})
+    assert fig.data[0]['x'][2] == pytest.approx(-176.0, abs=.000001) and \
+           fig.data[0]['y'][3] == pytest.approx(-88.0, abs=.000001) and \
+           fig.data[0]['z'][4,5] == pytest.approx(2.34784800, abs=.000001)
 
-def test08_SWMF_GM_flythrough():
+def test08_SWMF_IE_flythrough():
     '''
     This tests simple flythrough extraction for a couple of points
     '''
