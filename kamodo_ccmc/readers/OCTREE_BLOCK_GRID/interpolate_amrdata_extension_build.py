@@ -229,8 +229,24 @@ if (NZ==1){return(-6);}
              'find_octree_block.c','find_in_block.c','find_block.c','trace_fieldline.c'],
     libraries=libraries)
 
+def build_extension():
+    """
+    Build the OCTREE_BLOCK_GRID C extension.
+
+    Returns:
+        bool: True if compilation succeeded, False otherwise
+    """
+    try:
+        ffibuilder.compile(verbose=True, debug=False)
+        return True
+    except Exception as e:
+        print(f"ERROR: OCTREE_BLOCK_GRID compilation failed: {e}")
+        return False
+
+
 if __name__ == "__main__":
-    ffibuilder.compile(verbose=True,debug=False)
-    #ffibuilder.compile(verbose=True)
-    #ffibuilder.compile()
+    success = build_extension()
+    if not success:
+        import sys
+        sys.exit(1)
 

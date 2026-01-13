@@ -13,8 +13,20 @@ import scipy.interpolate as spint
 import scipy.spatial.qhull as qhull
 
 from kamodo import Kamodo, kamodofy, gridify,pointlike
-from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi as OCTREE_BLOCK_GRID_FFI
-from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib as OCTREE_BLOCK_GRID_LIB
+
+# Try to import OCTREE_BLOCK_GRID C extension
+try:
+    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi as OCTREE_BLOCK_GRID_FFI
+    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib as OCTREE_BLOCK_GRID_LIB
+    OCTREE_AVAILABLE = True
+except ImportError as e:
+    OCTREE_AVAILABLE = False
+    import warnings
+    warnings.warn(
+        "SWMF-GM octree reader unavailable: OCTREE_BLOCK_GRID C extension not compiled. "
+        "To fix, install gcc and reinstall kamodo-ccmc. "
+        f"(ImportError: {e})"
+    )
 
 import time
 import glob

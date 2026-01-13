@@ -65,9 +65,20 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
     import kamodo_ccmc.readers.gameragm_grids as G
 
-    from readers.Tri2D._interpolate_tri2d import ffi as tri2d_ffi
-    from readers.Tri2D._interpolate_tri2d import lib as tri2d_lib
-    
+    # Try to import Tri2D C extension
+    try:
+        from readers.Tri2D._interpolate_tri2d import ffi as tri2d_ffi
+        from readers.Tri2D._interpolate_tri2d import lib as tri2d_lib
+        TRI2D_AVAILABLE = True
+    except ImportError as e:
+        TRI2D_AVAILABLE = False
+        import warnings
+        warnings.warn(
+            "GAMER-AM reader unavailable: Tri2D C extension not compiled. "
+            "To fix, install gcc and reinstall kamodo-ccmc. "
+            f"(ImportError: {e})"
+        )
+
     class MODEL(Kamodo):
         '''GAMERA GM model data reader.
 

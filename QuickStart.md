@@ -1,25 +1,58 @@
 ## Kamodo Installation Instructions
-Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.  
 
-In your Python environment: 
-1. If you wish to create a new Python environment, use this command (replace Kamodo_env as desired):  
-Note that Anaconda, MiniConda, etc. are not free for all to use, unfortunately. We recommend using [Micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html) instead. Just replace 'conda' with 'micromamba' in the commands below.
-> conda create -n Kamodo_env python=3.10  
-> conda activate Kamodo_env  
-2. Install Kamodo from pip (without SWMF-GM): Note this is currently out of date, use step 3.
-> python -m pip install kamodo-ccmc  
-3. Or you can download the latest Kamodo to the current directory and build: 
-> git clone https://github.com/nasa/Kamodo.git  
-> python -m pip install ./Kamodo
-4. To build the SWMF-GM reader from the git clone (currently requires an editable pip install):  
-> cd ./Kamodo/kamodo_ccmc/readers/OCTREE_BLOCK_GRID  
-> python interpolate_amrdata_extension_build.py  
-> cd ../../../..  
-> python -m pip install -e ./Kamodo
-5. To work with Kamodo you may also need iPython and/or Jupyter notebooks.  
-> python -m pip install ipython jupyter  
--OR-  
-> python -m pip install -r ./Kamodo/requirements.txt  
+Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.
+
+### Quick Install (Recommended)
+
+**Step 1:** Create a Python environment (optional but recommended)
+
+Note that Anaconda, MiniConda, etc. are not free for all to use. We recommend using [Micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html) instead. Just replace 'conda' with 'micromamba' in the commands below.
+
+```bash
+conda create -n Kamodo_env python=3.10
+conda activate Kamodo_env
+```
+
+**Step 2:** Install Kamodo
+
+Choose one of the following options:
+
+**Option A: Install from PyPI** (when available - coming soon!)
+```bash
+pip install kamodo-ccmc
+```
+
+**Option B: Install from Git Repository** (current recommended method)
+```bash
+git clone https://github.com/nasa/Kamodo.git
+pip install ./Kamodo
+```
+
+**Option C: Developer Installation** (for contributing to Kamodo)
+```bash
+git clone https://github.com/nasa/Kamodo.git
+pip install -e ./Kamodo
+```
+
+**That's it!** C and Fortran extensions will be automatically compiled during installation if you have the appropriate compilers installed (gcc for C, gfortran for Fortran).
+
+**Step 3:** (Optional) Install Jupyter for interactive work
+```bash
+pip install ipython jupyter
+```
+
+### Compiler Requirements
+
+**For full functionality**, you need:
+- **gcc** (C compiler) - Required for SWMF-GM and GAMER-AM readers
+- **gfortran** (Fortran compiler) - Required for OpenGGCM reader
+
+**If you don't have compilers:** Don't worry! Kamodo will still install successfully. You'll see warnings about which readers are unavailable, but all other model readers will work normally.
+
+**To install compilers:**
+- **Linux:** `sudo apt-get install gcc gfortran`
+- **macOS:** `xcode-select --install` (for gcc), `brew install gcc` (for gfortran)
+- **Windows:** `conda install -c conda-forge m2w64-gcc-fortran libpython`  
 
 ### Testing commands:
 ```

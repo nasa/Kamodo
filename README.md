@@ -40,36 +40,64 @@ Kamodo is an official NASA open-source python package built upon the functionali
 - Weimer: Weimer Ionosphere model, https://doi.org/10.1029/2005JA011270  
 - It also supports any data available through the HAPI interface.
 
-## Kamodo Installation Instructions   
-Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.  
+## Kamodo Installation Instructions
 
-### Conda prompt commands: 
-- Move to the directory where you want the Kamodo package to be stored or if you wish to create a new environment, use this command:
+Kamodo is built to run with at least 16 GB of RAM. Attempting to run Kamodo with less memory may result in errors.
 
-> conda create -n Kamodo_env python=3.7  
+### Simple Installation (Recommended)
 
-- Add the packages needed by the CCMC readers to the desired environment (replace 'Kamodo_env' with your environment name):
+For most users, a simple pip install will work:
 
-> conda install -n Kamodo_env -c conda-forge netCDF4 cdflib astropy ipython jupyter h5py sgp4
+```bash
+pip install kamodo-ccmc
+```
 
-- Activate the desired environment. 
+**System Requirements:**
+- Python >= 3.10
+- At least 16 GB RAM
+- C compiler (gcc on Linux/Mac, MSVC on Windows) for compiling C extensions
+  - SWMF-GM reader requires OCTREE_BLOCK_GRID C extension
+  - GAMER-AM reader requires Tri2D C extension
+- Fortran compiler (gfortran) for OpenGGCM reader (optional)
 
-> conda activate Kamodo_env
+**Note:** If you don't have a C compiler installed, `kamodo-ccmc` will still install successfully, but SWMF-GM and GAMER-AM model readers will be unavailable. Other model readers will work normally. You'll see warnings during installation about which readers are unavailable.
 
-- Install remaining dependencies:
+### Installation from Source (Developers)
 
-> python -m pip install --upgrade spacepy  
-> python -m pip install hapiclient    
+For development or to get the latest version:
 
-- Download CCMC Kamodo to the current directory:
+```bash
+# Clone the repository
+git clone https://github.com/nasa/Kamodo.git
+cd Kamodo
 
-> git clone https://github.com/nasa/Kamodo.git
+# Install in editable mode (recommended for developers)
+pip install -e .
+```
 
-- Install the CCMC Kamodo package. (Check the directory structure before using this command. The ./Kamodo directory should contain the kamodo_ccmc directory.)
+C and Fortran extensions will be automatically compiled during installation if the appropriate compilers are available.
 
-> python -m pip install ./Kamodo 
+### Installing Compilers
 
-Note: Developers should install CCMC Kamodo with the -e option
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install gcc gfortran
+```
+
+**macOS:**
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# Install gfortran (optional, for OpenGGCM)
+brew install gcc
+```
+
+**Windows:**
+```bash
+# Install mingw-w64 via conda
+conda install -c conda-forge m2w64-gcc-fortran libpython
+```
 
 ### Testing commands from an ipython or notebook session
 

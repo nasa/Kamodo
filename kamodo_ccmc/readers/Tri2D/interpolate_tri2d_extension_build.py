@@ -61,8 +61,24 @@ ffibuilder.set_source("_interpolate_tri2d",  # name of the output C extension
              'setup_tri.c','find_tri.c','hunt.c'],
     libraries=libraries)
 
+def build_extension():
+    """
+    Build the Tri2D C extension.
+
+    Returns:
+        bool: True if compilation succeeded, False otherwise
+    """
+    try:
+        ffibuilder.compile(verbose=True, debug=False)
+        return True
+    except Exception as e:
+        print(f"ERROR: Tri2D compilation failed: {e}")
+        return False
+
+
 if __name__ == "__main__":
-    ffibuilder.compile(verbose=True,debug=False)
-    #ffibuilder.compile(verbose=True)
-    #ffibuilder.compile()
+    success = build_extension()
+    if not success:
+        import sys
+        sys.exit(1)
 

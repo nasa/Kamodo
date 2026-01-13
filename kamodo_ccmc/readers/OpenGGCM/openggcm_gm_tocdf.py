@@ -10,7 +10,19 @@ from numpy import zeros, flip,array,float32,NaN
 from glob import glob
 #import kamodo_ccmc.readers.OpenGGCM.read_b_grids as rbg
 #import kamodo_ccmc.readers.OpenGGCM.readmagfile3d as rmhd
-import kamodo_ccmc.readers.OpenGGCM.readOpenGGCM as ropgm
+
+# Try to import OpenGGCM Fortran extension
+try:
+    import kamodo_ccmc.readers.OpenGGCM.readOpenGGCM as ropgm
+    OPENGGCM_AVAILABLE = True
+except ImportError as e:
+    OPENGGCM_AVAILABLE = False
+    import warnings
+    warnings.warn(
+        "OpenGGCM reader unavailable: OpenGGCM Fortran extension not compiled. "
+        "To fix, install gfortran and reinstall kamodo-ccmc. "
+        f"(ImportError: {e})"
+    )
 
 from os.path import sep,isfile,isdir,dirname,exists
 from os import remove
