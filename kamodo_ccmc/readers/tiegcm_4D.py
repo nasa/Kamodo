@@ -765,13 +765,24 @@ def MODEL():
                 file = self.pattern_files[p][i]
                 ncdf_filetype = RU.netcdf_type(file)
                 cdf_data = RU.Dataset(file,filetype=ncdf_filetype)
-                data = array(cdf_data[gvar])
+                missingValue = cdf_data[gvar].missing_value
+                if missingValue > 1e30:  # Avoid warnings for casting large values
+                    cdf_data[gvar].set_auto_mask(False)
+                    data = array(cdf_data[gvar])
+                    data = where(data >= missingValue, NaN, data)
+                else:
+                    data = array(cdf_data[gvar])
                 cdf_data.close()
                 if data.shape[0] > 1 and file != self.pattern_files[p][-1]:
                     # if not the last file, tack on first time from next
                     next_file = self.pattern_files[p][i+1]
                     cdf_data = RU.Dataset(next_file,filetype=ncdf_filetype)
-                    data_slice = array(cdf_data[gvar][0])
+                    if missingValue > 1e30:  # Avoid warnings for casting large values
+                        cdf_data[gvar].set_auto_mask(False)
+                        data_slice = array(cdf_data[gvar][0])
+                        data_slice = where(data_slice >= missingValue, NaN, data_slice)
+                    else:
+                        data_slice = array(cdf_data[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
 
@@ -821,13 +832,24 @@ def MODEL():
                 file = self.pattern_files[p][i]
                 ncdf_filetype = RU.netcdf_type(file)
                 cdf_data = RU.Dataset(file,filetype=ncdf_filetype)
-                data = array(cdf_data[gvar])
+                missingValue = cdf_data[gvar].missing_value
+                if missingValue > 1e30:  # Avoid warnings for casting large values
+                    cdf_data[gvar].set_auto_mask(False)
+                    data = array(cdf_data[gvar])
+                    data = where(data >= missingValue, NaN, data)
+                else:
+                    data = array(cdf_data[gvar])
                 cdf_data.close()
                 if data.shape[0] > 1 and file != self.pattern_files[p][-1]:
                     # if not the last file, tack on first time from next
                     next_file = self.pattern_files[p][i+1]
                     cdf_data = RU.Dataset(next_file,filetype=ncdf_filetype)
-                    data_slice = array(cdf_data[gvar][0])
+                    if missingValue > 1e30:  # Avoid warnings for casting large values
+                        cdf_data[gvar].set_auto_mask(False)
+                        data_slice = array(cdf_data[gvar][0])
+                        data_slice = where(data_slice >= missingValue, NaN, data_slice)
+                    else:
+                        data_slice = array(cdf_data[gvar][0])
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
 
