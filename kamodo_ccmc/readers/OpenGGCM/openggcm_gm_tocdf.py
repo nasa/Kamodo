@@ -75,11 +75,20 @@ openggcm_gm_varnames={
 
 
 def openggcm_combine_magnetosphere_files(full_file_prefix,cadence=None,requested_variables=None,verbose=False):
+    """Combine OpenGGCM magnetosphere files into NetCDF format."""
+    # Check if required Fortran extension is available
+    if not OPENGGCM_AVAILABLE:
+        raise ImportError(
+            "OpenGGCM reader requires the readOpenGGCM Fortran extension, "
+            "which is not compiled. To fix: install gfortran and reinstall "
+            "kamodo-ccmc with 'pip install --force-reinstall kamodo-ccmc'"
+        )
+
     # file prefix includes everything including '3df' for magnetosphere and intended year,month,day (and hour)
     # read matching dates, times from 3df_list to generate list of raw files.
     # coadence: Default: None -- use all available times, otherwise use cadence as input starting with first time in simualtion.
     # requested_variables default: None -- convert all available 3D fields, otherwise use only the requested variables to generate smaller NetCDF files.
-    
+
     tic=perf_counter()
     file_prefix,file_datetime = full_file_prefix.split('.3df')
     file_path=dirname(file_prefix)+sep

@@ -36,15 +36,22 @@ import os
 from os import path
 from datetime import datetime, timedelta
 
-class SWMF_GM(Kamodo): 
-    def __init__(self, 
-                 filename, 
-                 runpath = "./", 
-                 runname = "noname", 
+class SWMF_GM(Kamodo):
+    def __init__(self,
+                 filename,
+                 runpath = "./",
+                 runname = "noname",
                  start_time = "1000/01/01 00:00",
                  setup_interpolators=True,
                  variables_requested = None,
                  **kwargs):
+        # Check if required C extension is available
+        if not OCTREE_AVAILABLE:
+            raise ImportError(
+                "SWMF_GM reader requires the OCTREE_BLOCK_GRID C extension, "
+                "which is not compiled. To fix: install gcc and reinstall "
+                "kamodo-ccmc with 'pip install --force-reinstall kamodo-ccmc'"
+            )
         # Start timer
         tic = time.perf_counter()
 

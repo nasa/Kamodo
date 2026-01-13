@@ -183,6 +183,13 @@ def MODEL():
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
                      printfiles=False, use_nearest_time=False, **kwargs):
+            # Check if required C extension is available
+            if not OCTREE_AVAILABLE:
+                raise ImportError(
+                    "SWMF-GM reader requires the OCTREE_BLOCK_GRID C extension, "
+                    "which is not compiled. To fix: install gcc and reinstall "
+                    "kamodo-ccmc with 'pip install --force-reinstall kamodo-ccmc'"
+                )
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'SWMF_GM'
             self.use_nearest_time = use_nearest_time

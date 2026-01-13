@@ -136,6 +136,13 @@ def MODEL():
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
                      verbose=False, **kwargs):
+            # Check if required C extension is available
+            if not TRI2D_AVAILABLE:
+                raise ImportError(
+                    "GAMER-AM reader requires the Tri2D C extension, "
+                    "which is not compiled. To fix: install gcc and reinstall "
+                    "kamodo-ccmc with 'pip install --force-reinstall kamodo-ccmc'"
+                )
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'GAMERA_GM'
             t0 = perf_counter()
