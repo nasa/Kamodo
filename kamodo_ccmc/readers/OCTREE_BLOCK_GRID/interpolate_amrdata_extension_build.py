@@ -1,5 +1,16 @@
 import os
 from cffi import FFI
+
+# Get the directory containing this script (where the C source files are)
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Compute paths relative to the current working directory (package root during build)
+# This is needed because setuptools doesn't allow absolute paths in sources
+def _rel_path(filename):
+    """Get path relative to CWD, for setuptools compatibility."""
+    abs_path = os.path.join(_THIS_DIR, filename)
+    return os.path.relpath(abs_path)
+
 ffibuilder = FFI()
 
 ffibuilder.cdef("""
@@ -42,7 +53,7 @@ libraries=[]
 if os.name == 'posix':
     libraries=['m']
 
-ffibuilder.set_source("_interpolate_amrdata",  # name of the output C extension
+ffibuilder.set_source("kamodo_ccmc.readers.OCTREE_BLOCK_GRID._interpolate_amrdata",  # name of the output C extension
 """
 // always add any public function declaration in the separate ffibuilder.cdef declaration!
     #include <stdlib.h>
@@ -225,8 +236,17 @@ if (NZ==1){return(-6);}
     }
 
 """,
-    sources=['interpolate_amrdata.c', 'setup_parent.c', 'setup_octree.c', 'interpolate_in_block.c',
-             'find_octree_block.c','find_in_block.c','find_block.c','trace_fieldline.c'],
+    sources=[
+        _rel_path('interpolate_amrdata.c'),
+        _rel_path('setup_parent.c'),
+        _rel_path('setup_octree.c'),
+        _rel_path('interpolate_in_block.c'),
+        _rel_path('find_octree_block.c'),
+        _rel_path('find_in_block.c'),
+        _rel_path('find_block.c'),
+        _rel_path('trace_fieldline.c'),
+    ],
+    include_dirs=[_THIS_DIR],
     libraries=libraries)
 
 def build_extension():
