@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gfortran (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran
+
+      - name: Install gfortran (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gcc
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: Test imports
+        run: |
+          python -c "
+          import kamodo_ccmc
+          print(f'kamodo_ccmc version: {kamodo_ccmc.__version__}')
+
+          # Test C extensions
+          from kamodo_ccmc.readers import swmfgm_4D
+          print('SWMF-GM reader: OK')
+
+          from kamodo_ccmc.readers import gameragm_4D
+          print('GAMER-AM reader: OK')
+
+          # Test Fortran extension
+          from kamodo_ccmc.readers.OpenGGCM import openggcm_gm_tocdf
+          print(f'OpenGGCM available: {openggcm_gm_tocdf.OPENGGCM_AVAILABLE}')
+
+          print('All extensions loaded successfully!')
+          "
+
+  # Quick syntax check for the wheel build workflow
+  validate-wheel-workflow:
+    name: Validate wheel build workflow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate workflow syntax
+        run: |
+          pip install check-jsonschema
+          check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/build-wheels.yml
