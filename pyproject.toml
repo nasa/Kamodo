@@ -28,12 +28,8 @@ manylinux-aarch64-image = "manylinux2014"
 
 [tool.cibuildwheel.macos]
 # gfortran is installed via brew in the GitHub Actions workflow
-# Set minimum macOS version for compatibility
-environment = { MACOSX_DEPLOYMENT_TARGET = "10.9" }
-
-[tool.cibuildwheel.macos.environment]
-# For ARM Macs, use macOS 11.0 minimum
-MACOSX_DEPLOYMENT_TARGET = "11.0"
+# Set minimum macOS version for compatibility (11.0 for ARM compatibility)
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
 # Windows uses MSYS2 gfortran, configured in GitHub Actions workflow
