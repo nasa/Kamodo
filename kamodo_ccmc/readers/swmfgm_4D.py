@@ -116,10 +116,9 @@ def MODEL():
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 
-    # Try to import OCTREE_BLOCK_GRID C extension
+    # Try to import OCTREE_BLOCK_GRID C extension (using relative import)
     try:
-        from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi
-        from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib
+        from .OCTREE_BLOCK_GRID._interpolate_amrdata import ffi, lib
         OCTREE_AVAILABLE = True
     except ImportError as e:
         OCTREE_AVAILABLE = False

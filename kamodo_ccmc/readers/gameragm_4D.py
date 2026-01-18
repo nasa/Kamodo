@@ -65,10 +65,10 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
     import kamodo_ccmc.readers.gameragm_grids as G
 
-    # Try to import Tri2D C extension
+    # Try to import Tri2D C extension (using relative import)
     try:
-        from readers.Tri2D._interpolate_tri2d import ffi as tri2d_ffi
-        from readers.Tri2D._interpolate_tri2d import lib as tri2d_lib
+        from .Tri2D._interpolate_tri2d import ffi as tri2d_ffi
+        from .Tri2D._interpolate_tri2d import lib as tri2d_lib
         TRI2D_AVAILABLE = True
     except ImportError as e:
         TRI2D_AVAILABLE = False

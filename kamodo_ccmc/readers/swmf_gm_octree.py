@@ -14,10 +14,10 @@ import scipy.spatial.qhull as qhull
 
 from kamodo import Kamodo, kamodofy, gridify,pointlike
 
-# Try to import OCTREE_BLOCK_GRID C extension
+# Try to import OCTREE_BLOCK_GRID C extension (using relative import)
 try:
-    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi as OCTREE_BLOCK_GRID_FFI
-    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib as OCTREE_BLOCK_GRID_LIB
+    from .OCTREE_BLOCK_GRID._interpolate_amrdata import ffi as OCTREE_BLOCK_GRID_FFI
+    from .OCTREE_BLOCK_GRID._interpolate_amrdata import lib as OCTREE_BLOCK_GRID_LIB
     OCTREE_AVAILABLE = True
 except ImportError as e:
     OCTREE_AVAILABLE = False

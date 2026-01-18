@@ -168,6 +168,25 @@ def _add_macos_rpath(path, strict=False):
         warnings.warn(f"Failed adding rpath to {path}; runtime libs may not load.")
 
 
+def _clean_source_artifacts():
+    """Remove intermediate .o and .so files from source tree after build.
+
+    This prevents stale build artifacts from being accidentally included
+    in source distributions or contaminating future builds.
+    """
+    readers_dir = os.path.join(ROOT, "kamodo_ccmc", "readers")
+    for root, _, files in os.walk(readers_dir):
+        for filename in files:
+            if filename.endswith((".o", ".so")) and not filename.startswith("_"):
+                # Don't remove CFFI-generated .so files (they start with _)
+                filepath = os.path.join(root, filename)
+                try:
+                    os.remove(filepath)
+                    print(f"Cleaned: {filepath}")
+                except OSError:
+                    pass
+
+
 class build_ext(_build_ext):
     """Custom build_ext that compiles OpenGGCM Fortran extension via f2py.
 
@@ -192,6 +211,9 @@ class build_ext(_build_ext):
 
         # Bundle runtime libraries for portable wheels
         self._bundle_runtime_libs()
+
+        # Clean intermediate build artifacts from source tree
+        _clean_source_artifacts()
 
     def compile_openggcm(self):
         """Compile OpenGGCM Fortran extension using f2py."""
