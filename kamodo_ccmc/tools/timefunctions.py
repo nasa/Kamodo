@@ -50,13 +50,23 @@ def timeISOtoDT(inISO):
     '''
     UTC time conversion from ISO string to datetime
     
-    IN:  2005-06-01T13:33:00.1Z
+    IN:  2005-06-01T13:33:00.1Z  or  2005-152T13:33:00.1Z
     OUT: 2005-06-01 13:33:00.100000+00:00
     '''
-    from dateutil import parser
+    import dateutil.parser
+    from datetime import datetime
 
-    DT = parser.parse(inISO)
-    return DT
+    try:
+        return dateutil.parser.parse(inISO)
+    except (ValueError, dateutil.parser.ParserError):
+        # Handle the YYYY-DDD format manually
+        if '-' in inISO and 'T' in inISO:
+            date_part, time_part = inISO.split('T')
+            year, day_of_year = date_part.split('-')
+            # Convert ordinal to standard date
+            standard_date = datetime.strptime(f"{year}-{day_of_year}", "%Y-%j").strftime("%Y-%m-%d")
+            return dateutil.parser.parse(f"{standard_date}T{time_part}")
+        raise
 
 def timeTStoDT(inTS):
     '''
