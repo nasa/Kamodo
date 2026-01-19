@@ -1672,8 +1672,8 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
     return fig
 
 ### ====================================================================================== ###
-def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
-              color='#d6d622', showE=True):
+def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200, nPtsS=None,
+              color='#d6d622', color2=None, showE=True):
     '''
     Function to create a simple plotly figure from a satellite ID via SSCWeb HAPI
     
@@ -1694,6 +1694,9 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     import kamodo_ccmc.tools.timefunctions as tf
     from datetime import timedelta
 
+    # Start with empty figure
+    fig = go.Figure()
+
     # Set values to get data from the HAPI server
     server = 'https://hapi-server.org/servers/SSCWeb/hapi'
     dataset = satid
@@ -1705,6 +1708,39 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     tmp = satname.split("(")
     satname = tmp[0].strip()
     sat_vars = [*ko_sat.variables]
+
+    if nPtsS is not None:
+        # array of times, +/- padHR hours with 2*nPtsS+1 total points
+        nPts2 = 1 + 2*nPtsS
+        delt = np.linspace(-3600.*padHR, 3600.*padHR, nPts2)
+
+        # set array of marker size
+        deg = np.linspace(-np.pi/2., np.pi/2., nPts2)
+        msize = 4.+4*(np.cos(deg)**2)
+        msize[nPtsS] = 10.
+        msize[nPtsS+1:] = 10.
+
+        # timestamps to interpolate positions
+        tss=(plotDT.timestamp() + delt)
+        xx = ko_sat.variables[sat_vars[0]]['interpolator'](tss)
+        yy = ko_sat.variables[sat_vars[1]]['interpolator'](tss)
+        zz = ko_sat.variables[sat_vars[2]]['interpolator'](tss)
+
+        # datetime strings for hover labels
+        timestrings = [tf.timeTStoDT(t).strftime("%Y-%m-%d %H:%M:%S") for t in tss]
+
+        if color2 is not None:
+            # set array of marker color
+            mcolor = [color] * nPts2
+            mcolor[nPtsS] = color2
+
+            fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='markers',
+                marker=dict(color=mcolor, size=msize, line=dict(color=color, width=1)),
+                name=satname, showlegend=True))
+        else:
+            fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='markers',
+                marker=dict(color=color, size=msize, line=dict(color=color, width=1)),
+                name=satname, showlegend=True))
 
     # array of times, +/- padHR hours with 2*nPts+1 total points
     nPts2 = 1 + 2*nPts
@@ -1725,11 +1761,16 @@ def SatPosFig(satid, plotDT, coord='GSM', padHR=6, nPts=200,
     # datetime strings for hover labels
     timestrings = [tf.timeTStoDT(t).strftime("%Y-%m-%d %H:%M:%S") for t in tss]
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines+markers',
-        line=dict(color=color, width=2),
-        marker=dict(color=color, size=msize, line=dict(color=color, width=1)),
-        name=satname, showlegend=True))
+    if nPtsS is None:
+        fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines+markers',
+            line=dict(color=color, width=2),
+            marker=dict(color=color, size=msize, line=dict(color=color, width=1)),
+            name=satname, showlegend=True))
+    else:
+        fig.add_trace(go.Scatter3d(x=xx, y=yy, z=zz, mode='lines',
+            line=dict(color=color, width=2),
+            name=satname, showlegend=True))
+
     fig.update_traces(
         customdata = timestrings,
         hovertemplate=coord + " Coordinates:<br>" +
