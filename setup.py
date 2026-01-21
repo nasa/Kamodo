@@ -249,7 +249,6 @@ class build_ext(_build_ext):
             os.chdir(srcdir)
 
             c_files = [
-                'globals.c',
                 'interpolate_amrdata.c',
                 'setup_parent.c',
                 'setup_octree.c',
@@ -316,7 +315,6 @@ class build_ext(_build_ext):
             os.chdir(srcdir)
 
             c_files = [
-                'globals.c',
                 'interpolate_tri2d_plus_1d.c',
                 'setup_tri.c',
                 'find_tri.c',
