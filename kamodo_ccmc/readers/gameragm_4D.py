@@ -65,19 +65,9 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
     import kamodo_ccmc.readers.gameragm_grids as G
 
-    # Try to import Tri2D C extension (using relative import)
-    try:
-        from .Tri2D._interpolate_tri2d import ffi as tri2d_ffi
-        from .Tri2D._interpolate_tri2d import lib as tri2d_lib
-        TRI2D_AVAILABLE = True
-    except ImportError as e:
-        TRI2D_AVAILABLE = False
-        import warnings
-        warnings.warn(
-            "GAMER-AM reader unavailable: Tri2D C extension not compiled. "
-            "To fix, install gcc and reinstall kamodo-ccmc. "
-            f"(ImportError: {e})"
-        )
+    # Import Tri2D shared library (ctypes-based, SpacePy-style)
+    from .Tri2D import lib as tri2d_lib, TRI2D_AVAILABLE
+    import ctypes
 
     class MODEL(Kamodo):
         '''GAMERA GM model data reader.
@@ -378,26 +368,26 @@ def MODEL():
                                  'dr_sg':dr_sg,
                                  'nr_sg':nr_sg,
                                  'start_index_sg':start_index_sg,
-                                 # pointers
-                                 'X2D_p':tri2d_ffi.new("float[]",list(X2D.flatten())),
-                                 'R2D_p':tri2d_ffi.new("float[]",list(R2D.flatten())),
-                                 'PHI_p':tri2d_ffi.new("float[]",list(PHI)),
-                                 'RAD2D_p':tri2d_ffi.new("float[]",list(RAD2D.flatten())),
-                                 'THETA2D_p':tri2d_ffi.new("float[]",list(THETA2D.flatten())),
-                                 'n1_p':tri2d_ffi.new("int[]",[nr_grid]),
-                                 'n2_p':tri2d_ffi.new("int[]",[nth_grid]),
-                                 'nphi_p':tri2d_ffi.new("int[]",[nphi_grid]),
-                                 'ntri_p':tri2d_ffi.new("int[]",[(nth_grid-1)*(nr_grid-1)*2]),
-                                 'tri_vertices_p':tri2d_ffi.new("int[]",list(tri_vertices.flatten())),
-                                 'tri_neighbors_p':tri2d_ffi.new("int[]",list(tri_neighbors.flatten())),
-                                 'tri_ij_p':tri2d_ffi.new("int[]",list(tri_ij.flatten())),
-                                 'xmin_sg_p':tri2d_ffi.new("float[]",[xmin_sg]),
-                                 'dx_sg_p':tri2d_ffi.new("float[]",[dx_sg]),
-                                 'nx_sg_p':tri2d_ffi.new("int[]",[nx_sg]),
-                                 'rmin_sg_p':tri2d_ffi.new("float[]",[rmin_sg]),
-                                 'dr_sg_p':tri2d_ffi.new("float[]",[dr_sg]),
-                                 'nr_sg_p':tri2d_ffi.new("int[]",[nr_sg]),
-                                 'start_index_sg_p':tri2d_ffi.new("int[]",list(start_index_sg.flatten())),
+                                 # ctypes arrays (replacing CFFI)
+                                 'X2D_p':np.ascontiguousarray(X2D.flatten(), dtype=np.float32),
+                                 'R2D_p':np.ascontiguousarray(R2D.flatten(), dtype=np.float32),
+                                 'PHI_p':np.ascontiguousarray(PHI, dtype=np.float32),
+                                 'RAD2D_p':np.ascontiguousarray(RAD2D.flatten(), dtype=np.float32),
+                                 'THETA2D_p':np.ascontiguousarray(THETA2D.flatten(), dtype=np.float32),
+                                 'n1_p':np.array([nr_grid], dtype=np.int32),
+                                 'n2_p':np.array([nth_grid], dtype=np.int32),
+                                 'nphi_p':np.array([nphi_grid], dtype=np.int32),
+                                 'ntri_p':np.array([(nth_grid-1)*(nr_grid-1)*2], dtype=np.int32),
+                                 'tri_vertices_p':np.ascontiguousarray(tri_vertices.flatten(), dtype=np.int32),
+                                 'tri_neighbors_p':np.ascontiguousarray(tri_neighbors.flatten(), dtype=np.int32),
+                                 'tri_ij_p':np.ascontiguousarray(tri_ij.flatten(), dtype=np.int32),
+                                 'xmin_sg_p':np.array([xmin_sg], dtype=np.float32),
+                                 'dx_sg_p':np.array([dx_sg], dtype=np.float32),
+                                 'nx_sg_p':np.array([nx_sg], dtype=np.int32),
+                                 'rmin_sg_p':np.array([rmin_sg], dtype=np.float32),
+                                 'dr_sg_p':np.array([dr_sg], dtype=np.float32),
+                                 'nr_sg_p':np.array([nr_sg], dtype=np.int32),
+                                 'start_index_sg_p':np.ascontiguousarray(start_index_sg.flatten(), dtype=np.int32),
                                  }
             
 
@@ -439,26 +429,26 @@ def MODEL():
                                  'dr_sg':dr_sg_c,
                                  'nr_sg':nr_sg_c,
                                  'start_index_sg':start_index_sg_c,
-                                 # pointers
-                                 'X2D_p':tri2d_ffi.new("float[]",list(X2D_c.flatten())),
-                                 'R2D_p':tri2d_ffi.new("float[]",list(R2D_c.flatten())),
-                                 'PHI_p':tri2d_ffi.new("float[]",list(PHI_c.flatten())),
-                                 'RAD2D_p':tri2d_ffi.new("float[]",list(RAD2D_c.flatten())),
-                                 'THETA2D_p':tri2d_ffi.new("float[]",list(THETA2D_c.flatten())),
-                                 'n1_p':tri2d_ffi.new("int[]",[nr_grid_c]),
-                                 'n2_p':tri2d_ffi.new("int[]",[nth_grid_c]),
-                                 'nphi_p':tri2d_ffi.new("int[]",[nphi_grid_c]),
-                                 'ntri_p':tri2d_ffi.new("int[]",[(nth_grid_c-1)*(nr_grid_c-1)*2]),
-                                 'tri_vertices_p':tri2d_ffi.new("int[]",list(tri_vertices_c.flatten())),
-                                 'tri_neighbors_p':tri2d_ffi.new("int[]",list(tri_neighbors_c.flatten())),
-                                 'tri_ij_p':tri2d_ffi.new("int[]",list(tri_ij_c.flatten())),
-                                 'xmin_sg_p':tri2d_ffi.new("float[]",[xmin_sg_c]),
-                                 'dx_sg_p':tri2d_ffi.new("float[]",[dx_sg_c]),
-                                 'nx_sg_p':tri2d_ffi.new("int[]",[nx_sg_c]),
-                                 'rmin_sg_p':tri2d_ffi.new("float[]",[rmin_sg_c]),
-                                 'dr_sg_p':tri2d_ffi.new("float[]",[dr_sg_c]),
-                                 'nr_sg_p':tri2d_ffi.new("int[]",[nr_sg_c]),
-                                 'start_index_sg_p':tri2d_ffi.new("int[]",list(start_index_sg_c.flatten())),
+                                 # ctypes arrays (replacing CFFI)
+                                 'X2D_p':np.ascontiguousarray(X2D_c.flatten(), dtype=np.float32),
+                                 'R2D_p':np.ascontiguousarray(R2D_c.flatten(), dtype=np.float32),
+                                 'PHI_p':np.ascontiguousarray(PHI_c.flatten(), dtype=np.float32),
+                                 'RAD2D_p':np.ascontiguousarray(RAD2D_c.flatten(), dtype=np.float32),
+                                 'THETA2D_p':np.ascontiguousarray(THETA2D_c.flatten(), dtype=np.float32),
+                                 'n1_p':np.array([nr_grid_c], dtype=np.int32),
+                                 'n2_p':np.array([nth_grid_c], dtype=np.int32),
+                                 'nphi_p':np.array([nphi_grid_c], dtype=np.int32),
+                                 'ntri_p':np.array([(nth_grid_c-1)*(nr_grid_c-1)*2], dtype=np.int32),
+                                 'tri_vertices_p':np.ascontiguousarray(tri_vertices_c.flatten(), dtype=np.int32),
+                                 'tri_neighbors_p':np.ascontiguousarray(tri_neighbors_c.flatten(), dtype=np.int32),
+                                 'tri_ij_p':np.ascontiguousarray(tri_ij_c.flatten(), dtype=np.int32),
+                                 'xmin_sg_p':np.array([xmin_sg_c], dtype=np.float32),
+                                 'dx_sg_p':np.array([dx_sg_c], dtype=np.float32),
+                                 'nx_sg_p':np.array([nx_sg_c], dtype=np.int32),
+                                 'rmin_sg_p':np.array([rmin_sg_c], dtype=np.float32),
+                                 'dr_sg_p':np.array([dr_sg_c], dtype=np.float32),
+                                 'nr_sg_p':np.array([nr_sg_c], dtype=np.int32),
+                                 'start_index_sg_p':np.ascontiguousarray(start_index_sg_c.flatten(), dtype=np.int32),
                                  }
                 
             # GAMERA data has all the timestamps in all the files in each set)
@@ -521,24 +511,26 @@ def MODEL():
                 #                               self._gridcenters['nphi']
                 #                               )
 
-                tri2d_lib.setup_tri_pointers(self._gridcorners['X2D_p'],
-                                             self._gridcorners['R2D_p'],
-                                             self._gridcorners['n1_p'],
-                                             self._gridcorners['n2_p'],
-                                             self._gridcorners['ntri_p'],
-                                             self._gridcorners['tri_vertices_p'],
-                                             self._gridcorners['tri_ij_p'],
-                                             self._gridcorners['tri_neighbors_p'],
-                                             self._gridcorners['xmin_sg_p'],
-                                             self._gridcorners['rmin_sg_p'],
-                                             self._gridcorners['dx_sg_p'],
-                                             self._gridcorners['dr_sg_p'],
-                                             self._gridcorners['nx_sg_p'],
-                                             self._gridcorners['nr_sg_p'],
-                                             self._gridcorners['start_index_sg_p'],
-                                             self._gridcorners['PHI_p'],
-                                             self._gridcorners['nphi_p']
-                                             )
+                # Call setup_tri_pointers with ctypes pointers
+                tri2d_lib.setup_tri_pointers(
+                    self._gridcorners['X2D_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['R2D_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['n1_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['n2_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['ntri_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['tri_vertices_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['tri_ij_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['tri_neighbors_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['xmin_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['rmin_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['dx_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['dr_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['nx_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['nr_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['start_index_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['PHI_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['nphi_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+                )
 
                 def func(i, fi):  # i = file# (always 0), fi = slice# (= Step#)
                     # interpolate cell-centered data
@@ -561,22 +553,27 @@ def MODEL():
                             Y = array(list(Y),dtype=float32)
                             Z = array(list(Z),dtype=float32)
 
-                        # call custom interpolator here
-                        X_ptr = tri2d_ffi.new("float[]",list(X))
+                        # call custom interpolator here with ctypes
+                        X_arr = np.ascontiguousarray(X, dtype=np.float32)
                         R = sqrt(Y*Y+Z*Z)
-                        R_ptr = tri2d_ffi.new("float[]",list(R))
+                        R_arr = np.ascontiguousarray(R, dtype=np.float32)
                         PHI = mod(arctan2(Z,Y)+2*pi,2*pi) # have to test whether we cover all angles
-                        PHI_ptr = tri2d_ffi.new("float[]",list(PHI))
+                        PHI_arr = np.ascontiguousarray(PHI, dtype=np.float32)
 
                         return_data = zeros(len(X),dtype=float32)
                         return_data[:] = NaN
-                        #return_data_ffi = tri2d_ffi.new("float[]",list(return_data))
-                        return_data_ffi = tri2d_ffi.cast("float *",return_data.ctypes.data)
-                        data_pointer = tri2d_ffi.cast("float *",data.ctypes.data)
+                        # Ensure data is contiguous float32 for C call
+                        data = np.ascontiguousarray(data, dtype=np.float32)
                         is_cell_centered = 1
                         # zero-order interpolation returns value at cell center
                         failure = tri2d_lib.interpolate_tri2d_plus_1d_multipos(
-                            X_ptr,R_ptr,PHI_ptr,len(X),data_pointer,return_data_ffi,is_cell_centered) 
+                            X_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            R_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            PHI_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            len(X),
+                            data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            return_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            is_cell_centered) 
                         
                         toc = perf_counter()
                         # print('interpolation done in ',toc-tic,' seconds')
@@ -597,24 +594,26 @@ def MODEL():
                 coord_dict = {'X': {'units': 'R_E', 'data': self._X},
                               'Y': {'units': 'R_E', 'data': self._Y},
                               'Z': {'units': 'R_E', 'data': self._Z}}
-                tri2d_lib.setup_tri_pointers(self._gridcorners['X2D_p'],
-                                             self._gridcorners['R2D_p'],
-                                             self._gridcorners['n1_p'],
-                                             self._gridcorners['n2_p'],
-                                             self._gridcorners['ntri_p'],
-                                             self._gridcorners['tri_vertices_p'],
-                                             self._gridcorners['tri_ij_p'],
-                                             self._gridcorners['tri_neighbors_p'],
-                                             self._gridcorners['xmin_sg_p'],
-                                             self._gridcorners['rmin_sg_p'],
-                                             self._gridcorners['dx_sg_p'],
-                                             self._gridcorners['dr_sg_p'],
-                                             self._gridcorners['nx_sg_p'],
-                                             self._gridcorners['nr_sg_p'],
-                                             self._gridcorners['start_index_sg_p'],
-                                             self._gridcorners['PHI_p'],
-                                             self._gridcorners['nphi_p']
-                                             )
+                # Call setup_tri_pointers with ctypes pointers
+                tri2d_lib.setup_tri_pointers(
+                    self._gridcorners['X2D_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['R2D_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['n1_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['n2_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['ntri_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['tri_vertices_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['tri_ij_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['tri_neighbors_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['xmin_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['rmin_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['dx_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['dr_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['nx_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['nr_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['start_index_sg_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._gridcorners['PHI_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                    self._gridcorners['nphi_p'].ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+                )
 
                 def func_const():
                     # interpolate data on cell corners.
@@ -643,20 +642,27 @@ def MODEL():
                             Z = array(list(Z),dtype=float32)
 
 
-                        X_ptr = tri2d_ffi.new("float[]",list(X))
+                        # call custom interpolator here with ctypes
+                        X_arr = np.ascontiguousarray(X, dtype=np.float32)
                         R = sqrt(Y*Y+Z*Z)
-                        R_ptr = tri2d_ffi.new("float[]",list(R))
-                        PHI = mod(arctan2(Z,Y)+2*pi,2*pi) 
-                        PHI_ptr = tri2d_ffi.new("float[]",list(PHI))
-                        
+                        R_arr = np.ascontiguousarray(R, dtype=np.float32)
+                        PHI = mod(arctan2(Z,Y)+2*pi,2*pi)
+                        PHI_arr = np.ascontiguousarray(PHI, dtype=np.float32)
+
                         return_data = zeros(len(X),dtype=float32)
                         return_data[:] = NaN
-                        return_data_ffi = tri2d_ffi.cast("float *",return_data.ctypes.data)
-                        data_pointer = tri2d_ffi.cast("float *",data.ctypes.data)
+                        # Ensure data is contiguous float32 for C call
+                        data = np.ascontiguousarray(data, dtype=np.float32)
 
                         # first-order interpolation on triangles
                         failure = tri2d_lib.interpolate_tri2d_plus_1d_multipos(
-                            X_ptr,R_ptr,PHI_ptr,len(X),data_pointer,return_data_ffi,is_cell_centered) 
+                            X_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            R_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            PHI_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            len(X),
+                            data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            return_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                            is_cell_centered) 
                         toc = perf_counter()
 
                         #print('interpolation done in ',toc-tic,' seconds')

@@ -14,19 +14,9 @@ import scipy.spatial.qhull as qhull
 
 from kamodo import Kamodo, kamodofy, gridify,pointlike
 
-# Try to import OCTREE_BLOCK_GRID C extension (using relative import)
-try:
-    from .OCTREE_BLOCK_GRID._interpolate_amrdata import ffi as OCTREE_BLOCK_GRID_FFI
-    from .OCTREE_BLOCK_GRID._interpolate_amrdata import lib as OCTREE_BLOCK_GRID_LIB
-    OCTREE_AVAILABLE = True
-except ImportError as e:
-    OCTREE_AVAILABLE = False
-    import warnings
-    warnings.warn(
-        "SWMF-GM octree reader unavailable: OCTREE_BLOCK_GRID C extension not compiled. "
-        "To fix, install gcc and reinstall kamodo-ccmc. "
-        f"(ImportError: {e})"
-    )
+# Import OCTREE_BLOCK_GRID shared library (ctypes-based, SpacePy-style)
+from .OCTREE_BLOCK_GRID import lib as OCTREE_BLOCK_GRID_LIB, OCTREE_AVAILABLE
+import ctypes
 
 import time
 import glob
@@ -231,22 +221,44 @@ class SWMF_GM(Kamodo):
         return
     
     def setup_octree(self):
+        from .OCTREE_BLOCK_GRID import octree_block
         tic=time.time()
         N_4=int(self.Ncell/4)
-        # initialize cffi arrays with Python lists may be slightly faster
-        x=OCTREE_BLOCK_GRID_FFI.new("float[]",list(self.x)) 
-        y=OCTREE_BLOCK_GRID_FFI.new("float[]",list(self.y))
-        z=OCTREE_BLOCK_GRID_FFI.new("float[]",list(self.z))
-        self.xr_blk=OCTREE_BLOCK_GRID_FFI.new("float[]",N_4) # 2 elemts per block, smallest blocks have 2x2x2=8 positions
-        self.yr_blk=OCTREE_BLOCK_GRID_FFI.new("float[]",N_4) # at cell corners (GUMICS), so maximum array size is N/4
-        self.zr_blk=OCTREE_BLOCK_GRID_FFI.new("float[]",N_4) # BATSRUS blocks have at least 4x4x4 cell centers
-        self.x_blk=OCTREE_BLOCK_GRID_FFI.new("float[]",N_4) # 2 elements per block, smallest blocks have 2x2x2=8 positions
-        self.y_blk=OCTREE_BLOCK_GRID_FFI.new("float[]",N_4) # at cell corners (GUMICS), so maximum array size is N/4
-        self.z_blk=OCTREE_BLOCK_GRID_FFI.new("float[]",N_4) # BATSRUS blocks have at least 4x4x4 cell centers
-        box_range=OCTREE_BLOCK_GRID_FFI.new("float[]",6)
-        self.N_blks=N_blks=OCTREE_BLOCK_GRID_LIB.xyz_ranges(self.Ncell,x,y,z,self.xr_blk,self.yr_blk,self.zr_blk,self.x_blk,self.y_blk,self.z_blk,box_range,1)
+        # Create ctypes arrays (replacing CFFI)
+        x = np.ascontiguousarray(self.x, dtype=np.float32)
+        y = np.ascontiguousarray(self.y, dtype=np.float32)
+        z = np.ascontiguousarray(self.z, dtype=np.float32)
+        self.xr_blk = np.zeros(N_4, dtype=np.float32)
+        self.yr_blk = np.zeros(N_4, dtype=np.float32)
+        self.zr_blk = np.zeros(N_4, dtype=np.float32)
+        self.x_blk = np.zeros(N_4, dtype=np.float32)
+        self.y_blk = np.zeros(N_4, dtype=np.float32)
+        self.z_blk = np.zeros(N_4, dtype=np.float32)
+        box_range = np.zeros(7, dtype=np.float32)
+        self.NX_arr = np.array([4], dtype=np.int32)  # Default block size
+        self.NY_arr = np.array([4], dtype=np.int32)
+        self.NZ_arr = np.array([4], dtype=np.int32)
+
+        # Call C function with ctypes pointers
+        self.N_blks = N_blks = OCTREE_BLOCK_GRID_LIB.xyz_ranges(
+            self.Ncell,
+            x.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            y.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            z.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.xr_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.yr_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.zr_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.x_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.y_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.z_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            box_range.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.NX_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            self.NY_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            self.NZ_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            1
+        )
         N_octree=int(N_blks*8/7)
-        self.octree_blocklist=OCTREE_BLOCK_GRID_FFI.new("octree_block[]",N_octree)
+        self.octree_blocklist = (octree_block * N_octree)()
         # calculate maximum AMR level from box size in X and the minimum size of a block in X:
         self.XMIN=XMIN=float(box_range[0])
         self.XMAX=XMAX=float(box_range[1])
@@ -278,10 +290,24 @@ class SWMF_GM(Kamodo):
 
         MAX_AMRLEVEL=int(np.log((XMAX-XMIN)/(p1*dxmin_blk))/np.log(2.)+0.5 )
         print("p1,p2,p3: ",p1,p2,p3," MAX_AMRLEVEL:",MAX_AMRLEVEL)
-        self.numparents_at_AMRlevel=OCTREE_BLOCK_GRID_FFI.new("int[]",N_blks*(MAX_AMRLEVEL+1))
-        self.block_at_AMRlevel=OCTREE_BLOCK_GRID_FFI.new("int[]",N_blks*(MAX_AMRLEVEL+1))
-        success=int(-1)
-        success=OCTREE_BLOCK_GRID_LIB.setup_octree(N_blks,self.xr_blk,self.yr_blk,self.zr_blk,MAX_AMRLEVEL,box_range,self.octree_blocklist,N_octree,self.numparents_at_AMRlevel,self.block_at_AMRlevel)
+        self.numparents_at_AMRlevel = np.zeros(N_blks*(MAX_AMRLEVEL+1), dtype=np.int32)
+        self.block_at_AMRlevel = np.zeros(N_blks*(MAX_AMRLEVEL+1), dtype=np.int32)
+        self.box_range = box_range  # Store for later use
+
+        # Call setup_octree with ctypes pointers
+        OCTREE_BLOCK_GRID_LIB.setup_octree(
+            N_blks,
+            self.xr_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.yr_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            self.zr_blk.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            MAX_AMRLEVEL,
+            box_range.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            ctypes.cast(self.octree_blocklist, ctypes.POINTER(octree_block)),
+            N_octree,
+            self.numparents_at_AMRlevel.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            self.block_at_AMRlevel.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        )
+        self.MAX_AMRLEVEL = MAX_AMRLEVEL
         toc=time.time()
         print('setup_octree: ',toc-tic,'seconds elapsed')
 
@@ -289,26 +315,27 @@ class SWMF_GM(Kamodo):
         """register variables into Kamodo for this model, SWMF-GM"""
         def interpolator(xvec):
               tic=time.time()
-              var_data=OCTREE_BLOCK_GRID_FFI.new("float[]",list(self.variables[varname]['data']))
-              xvec=np.array(xvec)
-              xpos=OCTREE_BLOCK_GRID_FFI.new("float[]",list(xvec[:,0]))
-              ypos=OCTREE_BLOCK_GRID_FFI.new("float[]",list(xvec[:,1]))
-              zpos=OCTREE_BLOCK_GRID_FFI.new("float[]",list(xvec[:,2]))
-              npos=len(list(xvec[:,0]))
-              return_data=list(np.zeros(npos,dtype=np.float))
-              return_data_ffi=OCTREE_BLOCK_GRID_FFI.new("float[]",return_data)
- #             print(xpos,ypos,zpos,npos)
- #             print(var_data,return_data_ffi)
-              python_loop=False
-              if python_loop:
-                  for i in range(npos):
-                      return_data[i]=OCTREE_BLOCK_GRID_LIB.interpolate_amrdata(xvec[i,0],xvec[i,1],xvec[i,2],var_data,1)
-              else:
-                  IS_OK=OCTREE_BLOCK_GRID_LIB.interpolate_amrdata_multipos(xpos,ypos,zpos,npos,var_data,return_data_ffi)
-                  return_data[:]=list(return_data_ffi)
+              # Convert to float32 numpy arrays for C compatibility
+              var_data = np.ascontiguousarray(self.variables[varname]['data'], dtype=np.float32)
+              xvec = np.array(xvec)
+              xpos = np.ascontiguousarray(xvec[:,0], dtype=np.float32)
+              ypos = np.ascontiguousarray(xvec[:,1], dtype=np.float32)
+              zpos = np.ascontiguousarray(xvec[:,2], dtype=np.float32)
+              npos = len(xvec[:,0])
+              return_data = np.zeros(npos, dtype=np.float32)
+
+              # Call C function with ctypes pointers
+              IS_OK = OCTREE_BLOCK_GRID_LIB.interpolate_amrdata_multipos(
+                  xpos.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                  ypos.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                  zpos.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                  npos,
+                  var_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                  return_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+              )
               toc=time.time()
 #              print(varname,' interpolator: ',toc-tic,'seconds elapsed')
-              return return_data
+              return list(return_data)
               
 #        interpolator = self.get_grid_interpolator(varname)
         
@@ -401,48 +428,65 @@ class SWMF_GM(Kamodo):
 #        return np.einsum('nj,nj->n', np.take(values, vtx), wts)
 
     def trace_fieldline(self,x0,y0,z0,vector,dn,max_step,tilt=None,bdp=None):
-        # bi-directional fiel line tracer using teh C program trace_fieldline_octree and interpolate_amrdata modified for Python
+        # bi-directional field line tracer using the C program trace_fieldline_octree
         # Lutz Rastaetter, Nov. 30, 2021
-        #
-        #int trace_fieldline_octree(float x_start,float y_start,float z_start, float r_end,
-        #			   IDL_LONG nf, 
-        #                           float *bx, float *by, float *bz,
-        #//IDL_LONG *v_indices,
-        #                           float *flx, float *fly, float *flz, IDL_LONG *step_max,
-        #                           float dn, float bdp, float *tilt, float spherical_deg2rad);
-        from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi as OCTREE_BLOCK_GRID_FFI
-        from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib as OCTREE_BLOCK_GRID_LIB
+        # Updated to use ctypes instead of CFFI
 
-        flx0=OCTREE_BLOCK_GRID_FFI.new("float[]",max_step)
-        fly0=OCTREE_BLOCK_GRID_FFI.new("float[]",max_step)
-        flz0=OCTREE_BLOCK_GRID_FFI.new("float[]",max_step)
-        flx1=OCTREE_BLOCK_GRID_FFI.new("float[]",max_step)
-        fly1=OCTREE_BLOCK_GRID_FFI.new("float[]",max_step)
-        flz1=OCTREE_BLOCK_GRID_FFI.new("float[]",max_step)
+        # Create ctypes arrays for output
+        flx0 = np.zeros(max_step, dtype=np.float32)
+        fly0 = np.zeros(max_step, dtype=np.float32)
+        flz0 = np.zeros(max_step, dtype=np.float32)
+        flx1 = np.zeros(max_step, dtype=np.float32)
+        fly1 = np.zeros(max_step, dtype=np.float32)
+        flz1 = np.zeros(max_step, dtype=np.float32)
 
         if vector is None:
             vector=['bx','by','bz']
-    
-        bx=OCTREE_BLOCK_GRID_FFI.new("float[]",list(self.variables[vector[0]]['data']))
-        by=OCTREE_BLOCK_GRID_FFI.new("float[]",list(self.variables[vector[1]]['data']))
-        bz=OCTREE_BLOCK_GRID_FFI.new("float[]",list(self.variables[vector[2]]['data']))
-            
-        step_max0=OCTREE_BLOCK_GRID_FFI.new("int[]",[max_step])
+
+        # Convert field data to float32 numpy arrays
+        bx = np.ascontiguousarray(self.variables[vector[0]]['data'], dtype=np.float32)
+        by = np.ascontiguousarray(self.variables[vector[1]]['data'], dtype=np.float32)
+        bz = np.ascontiguousarray(self.variables[vector[2]]['data'], dtype=np.float32)
+
+        step_max0 = np.array([max_step], dtype=np.int32)
         if tilt is None:
-            tilt=OCTREE_BLOCK_GRID_FFI.new("float[]",[0.,0.])
+            tilt_arr = np.array([0., 0.], dtype=np.float32)
+        else:
+            tilt_arr = np.ascontiguousarray(tilt, dtype=np.float32)
         if bdp is None:
-            bdp=0. # nonzero only if using perturbation field bx1,by1,bz1 
+            bdp = 0.  # nonzero only if using perturbation field bx1,by1,bz1
         if dn is None:
-            dn=0.2 # iteration step as fraction of cell size
-        # forward tracing
-        status0=OCTREE_BLOCK_GRID_LIB.trace_fieldline_octree(x0,y0,z0,self.meta['R'],
-                                                             bx,by,bz,flx0,fly0,flz0,step_max0,
-                                                             dn,bdp,tilt,0.)
+            dn = 0.2  # iteration step as fraction of cell size
+
+        # forward tracing with ctypes pointers
+        status0 = OCTREE_BLOCK_GRID_LIB.trace_fieldline_octree(
+            x0, y0, z0, self.meta['R'],
+            bx.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            by.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            bz.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            flx0.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            fly0.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            flz0.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            step_max0.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            dn, bdp,
+            tilt_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            0.
+        )
         # backward tracing
-        step_max1=OCTREE_BLOCK_GRID_FFI.new("int[]",[max_step])
-        status1=OCTREE_BLOCK_GRID_LIB.trace_fieldline_octree(x0,y0,z0,self.meta['R'],
-                                                             bx,by,bz,flx1,fly1,flz1,step_max1,
-                                                             -dn,bdp,tilt,0.)
+        step_max1 = np.array([max_step], dtype=np.int32)
+        status1 = OCTREE_BLOCK_GRID_LIB.trace_fieldline_octree(
+            x0, y0, z0, self.meta['R'],
+            bx.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            by.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            bz.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            flx1.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            fly1.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            flz1.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            step_max1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+            -dn, bdp,
+            tilt_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+            0.
+        )
         # return values: number of vertices and vertex positions (x,y,z)
         step_max=step_max0[0]+step_max1[0]-1
         flx=np.zeros(step_max)

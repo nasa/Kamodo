@@ -1,13 +1,15 @@
 [build-system]
-requires = ["setuptools", "wheel", "cffi>=1.15.0", "numpy>=1.20.0"]
+# No CFFI or numpy needed - we compile directly with gcc/gfortran to shared libraries
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 # ============================================================================
 # cibuildwheel configuration for building cross-platform wheels
 # ============================================================================
 [tool.cibuildwheel]
-# Build for Python 3.10+
-build = "cp310-* cp311-* cp312-* cp313-*"
+# Build Python-version-independent wheels (shared libraries loaded via ctypes)
+# Only need to build for one Python version per platform
+build = "cp310-*"
 
 # Skip 32-bit, musllinux, and PyPy
 skip = "*-win32 *-manylinux_i686 *-musllinux_* pp*"
