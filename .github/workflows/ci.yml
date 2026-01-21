@@ -51,24 +51,39 @@ jobs:
       - name: Install package
         run: |
           pip install --upgrade pip
-          pip install -e .
+          pip install .
 
       - name: Test imports
         run: |
           python -c "
+          import sys
           import kamodo_ccmc
           print(f'kamodo_ccmc version: {kamodo_ccmc.__version__}')
 
-          # Test C extensions
-          from kamodo_ccmc.readers import swmfgm_4D
-          print('SWMF-GM reader: OK')
+          # Test C extensions (OCTREE)
+          from kamodo_ccmc.readers.OCTREE_BLOCK_GRID import OCTREE_AVAILABLE
+          print(f'OCTREE (SWMF-GM): {OCTREE_AVAILABLE}')
+          if not OCTREE_AVAILABLE:
+              print('ERROR: OCTREE extension failed to compile')
+              sys.exit(1)
 
-          from kamodo_ccmc.readers import gameragm_4D
-          print('GAMER-AM reader: OK')
+          # Test C extensions (Tri2D)
+          from kamodo_ccmc.readers.Tri2D import TRI2D_AVAILABLE
+          print(f'Tri2D (GAMERA-GM): {TRI2D_AVAILABLE}')
+          if not TRI2D_AVAILABLE:
+              print('ERROR: Tri2D extension failed to compile')
+              sys.exit(1)
 
-          # Test Fortran extension
-          from kamodo_ccmc.readers.OpenGGCM import openggcm_gm_tocdf
-          print(f'OpenGGCM available: {openggcm_gm_tocdf.OPENGGCM_AVAILABLE}')
+          # Test Fortran extension (OpenGGCM)
+          from kamodo_ccmc.readers.OpenGGCM import OPENGGCM_AVAILABLE
+          print(f'OpenGGCM (Fortran): {OPENGGCM_AVAILABLE}')
+          if not OPENGGCM_AVAILABLE:
+              print('ERROR: OpenGGCM extension failed to compile')
+              sys.exit(1)
+
+          # Test reader modules can import
+          from kamodo_ccmc.readers import swmfgm_4D, gameragm_4D
+          print('Reader modules: OK')
 
           print('All extensions loaded successfully!')
           "

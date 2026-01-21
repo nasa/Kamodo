@@ -71,11 +71,21 @@ For development or to get the latest version:
 git clone https://github.com/nasa/Kamodo.git
 cd Kamodo
 
-# Install in editable mode (recommended for developers)
-pip install -e .
+# Option 1: Regular install (extensions auto-compiled)
+pip install .
+
+# Option 2: Editable install (recommended for active development)
+# NOTE: With modern setuptools (64+), editable installs require a manual build step
+python setup.py build_ext --inplace
+pip install -e . --no-build-isolation
 ```
 
-C and Fortran extensions will be automatically compiled during installation if the appropriate compilers are available.
+**About editable installs:** Due to [PEP 660 changes](https://peps.python.org/pep-0660/) in setuptools 64+, custom build commands (like our C/Fortran compilation) don't run automatically in editable mode. You must build extensions explicitly first with `python setup.py build_ext --inplace`.
+
+**After code changes:** If you modify any C/Fortran source files during development, re-run:
+```bash
+python setup.py build_ext --inplace --force
+```
 
 ### Installing Compilers
 
