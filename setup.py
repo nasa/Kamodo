@@ -8,7 +8,7 @@ This setup.py follows the SpacePy approach (PR #749) to compile native extension
 - Portable wheels with bundled runtime libraries
 """
 
-from setuptools import setup
+from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext as _build_ext
 import subprocess
 import sys
@@ -433,7 +433,18 @@ class build_ext(_build_ext):
         return outputs
 
 
+# Dummy extensions to trigger build_ext
+# The actual compilation is handled by our custom build_ext.run() method.
+# Without these, setuptools skips build_ext entirely.
+ext_modules = [
+    Extension('kamodo_ccmc.readers.OCTREE_BLOCK_GRID.interpolate_amrdata', []),
+    Extension('kamodo_ccmc.readers.Tri2D.interpolate_tri2d', []),
+    Extension('kamodo_ccmc.readers.OpenGGCM.readOpenGGCM', []),
+]
+
+
 if __name__ == "__main__":
     setup(
         cmdclass={'build_ext': build_ext},
+        ext_modules=ext_modules,
     )
