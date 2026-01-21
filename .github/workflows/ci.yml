@@ -51,7 +51,36 @@ jobs:
       - name: Install package
         run: |
           pip install --upgrade pip
-          pip install .
+          pip install . -v
+
+      - name: Debug - List installed package contents
+        run: |
+          echo "=== Installed package location ==="
+          python -c "import kamodo_ccmc; print(kamodo_ccmc.__file__)"
+          echo ""
+          echo "=== OCTREE_BLOCK_GRID directory contents ==="
+          python -c "
+          import os
+          import kamodo_ccmc.readers.OCTREE_BLOCK_GRID as octree
+          pkg_dir = os.path.dirname(octree.__file__)
+          print(f'Directory: {pkg_dir}')
+          for f in sorted(os.listdir(pkg_dir)):
+              fpath = os.path.join(pkg_dir, f)
+              size = os.path.getsize(fpath) if os.path.isfile(fpath) else 'DIR'
+              print(f'  {f}: {size}')
+          "
+          echo ""
+          echo "=== Tri2D directory contents ==="
+          python -c "
+          import os
+          import kamodo_ccmc.readers.Tri2D as tri2d
+          pkg_dir = os.path.dirname(tri2d.__file__)
+          print(f'Directory: {pkg_dir}')
+          for f in sorted(os.listdir(pkg_dir)):
+              fpath = os.path.join(pkg_dir, f)
+              size = os.path.getsize(fpath) if os.path.isfile(fpath) else 'DIR'
+              print(f'  {f}: {size}')
+          "
 
       - name: Test imports
         # Run from a different directory to ensure we import from site-packages,
