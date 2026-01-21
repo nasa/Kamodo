@@ -54,6 +54,9 @@ jobs:
           pip install .
 
       - name: Test imports
+        # Run from a different directory to ensure we import from site-packages,
+        # not from the local source directory which lacks compiled extensions
+        working-directory: ${{ runner.temp }}
         run: |
           python -c "
           import sys
