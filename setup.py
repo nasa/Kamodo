@@ -223,7 +223,8 @@ class build_ext(_build_ext):
         if self.inplace:
             outdir = srcdir
         else:
-            outdir = os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'OCTREE_BLOCK_GRID')
+            # Must use absolute path since we'll chdir during compilation
+            outdir = os.path.abspath(os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'OCTREE_BLOCK_GRID'))
             os.makedirs(outdir, exist_ok=True)
 
         # Determine shared library filename
@@ -289,7 +290,8 @@ class build_ext(_build_ext):
         if self.inplace:
             outdir = srcdir
         else:
-            outdir = os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'Tri2D')
+            # Must use absolute path since we'll chdir during compilation
+            outdir = os.path.abspath(os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'Tri2D'))
             os.makedirs(outdir, exist_ok=True)
 
         # Determine shared library filename
@@ -357,7 +359,8 @@ class build_ext(_build_ext):
         if self.inplace:
             outdir = srcdir
         else:
-            outdir = os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'OpenGGCM')
+            # Must use absolute path since we'll chdir during compilation
+            outdir = os.path.abspath(os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'OpenGGCM'))
             os.makedirs(outdir, exist_ok=True)
 
         # Determine shared library filename
