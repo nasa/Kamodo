@@ -3,10 +3,6 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-# Ensure extensions are built in editable installs (PEP 660 compatibility)
-zip-safe = false
-
 # ============================================================================
 # cibuildwheel configuration for building cross-platform wheels
 # ============================================================================
