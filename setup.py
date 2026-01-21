@@ -249,6 +249,7 @@ class build_ext(_build_ext):
             os.chdir(srcdir)
 
             c_files = [
+                'globals.c',
                 'interpolate_amrdata.c',
                 'setup_parent.c',
                 'setup_octree.c',
@@ -257,9 +258,11 @@ class build_ext(_build_ext):
                 'find_in_block.c',
                 'find_block.c',
                 'trace_fieldline.c',
+                'ctypes_wrappers.c',
             ]
 
-            gcc_cmd = ['gcc', '-c', '-O2', '-fPIC'] + c_files
+            # -Dno_idl ensures we use the ctypes-compatible function signatures
+            gcc_cmd = ['gcc', '-c', '-O2', '-fPIC', '-Dno_idl'] + c_files
             subprocess.check_call(gcc_cmd)
 
             # Link to shared library
@@ -313,10 +316,12 @@ class build_ext(_build_ext):
             os.chdir(srcdir)
 
             c_files = [
+                'globals.c',
                 'interpolate_tri2d_plus_1d.c',
                 'setup_tri.c',
                 'find_tri.c',
                 'hunt.c',
+                'ctypes_wrappers.c',
             ]
 
             gcc_cmd = ['gcc', '-c', '-O2', '-fPIC'] + c_files
