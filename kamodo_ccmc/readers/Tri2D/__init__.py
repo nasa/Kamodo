@@ -20,8 +20,9 @@ def _load_tri2d_lib():
     libdir = os.path.dirname(os.path.abspath(__file__))
 
     # Try different library naming conventions across platforms
+    # Note: distutils creates .so on macOS (not .dylib) when using gcc/clang
     libnames = {
-        'darwin': ['libinterpolate_tri2d.dylib', 'interpolate_tri2d.so'],
+        'darwin': ['libinterpolate_tri2d.dylib', 'libinterpolate_tri2d.so', 'interpolate_tri2d.so'],
         'win32': ['interpolate_tri2d.dll', 'libinterpolate_tri2d.dll'],
         'linux': ['libinterpolate_tri2d.so'],
     }.get(sys.platform, ['libinterpolate_tri2d.so'])
