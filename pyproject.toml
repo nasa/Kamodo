@@ -1,14 +1,19 @@
 [build-system]
-# No CFFI or numpy needed - we compile directly with gcc/gfortran to shared libraries
+# No CFFI or numpy needed — shared libraries compiled via distutils/subprocess
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+# Secondary abi3 declaration (authoritative config is in setup.py options)
+[tool.distutils.bdist_wheel]
+py-limited-api = "cp310"
 
 # ============================================================================
 # cibuildwheel configuration for building cross-platform wheels
 # ============================================================================
 [tool.cibuildwheel]
-# Build Python-version-independent wheels (shared libraries loaded via ctypes)
-# Only need to build for one Python version per platform
+# Build one wheel per platform with abi3 tag (cp310-abi3-*).
+# The py-limited-api config in setup.py tells bdist_wheel to emit abi3 tags,
+# so a single cp310 build per platform serves all Python 3.10+ versions.
 build = "cp310-*"
 
 # Skip 32-bit, musllinux, and PyPy

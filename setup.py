@@ -1,11 +1,13 @@
-"""Kamodo-CCMC setup script with shared library compilation.
+"""Kamodo-CCMC setup script with shared library compilation (SpacePy-style).
 
-This setup.py follows the SpacePy approach (PR #749) to compile native extensions:
-- Compiles C/Fortran code directly to shared libraries (.so/.dll/.dylib)
-- No CFFI, no f2py, no numpy build dependency
-- Python-version-independent wheels (cp36-abi3)
-- Libraries loaded via ctypes at runtime
-- Portable wheels with bundled runtime libraries
+Compiles C/Fortran code directly to shared libraries (.so/.dll/.dylib) that
+are loaded via ctypes at runtime. No CFFI, no f2py, no numpy build dependency.
+
+Wheels are tagged cp310-abi3 (Stable ABI / Limited API) so a single wheel
+per platform serves Python 3.10+. The authoritative abi3 declaration is
+the ``options={'bdist_wheel': {'py_limited_api': 'cp310'}}`` passed to
+setup() at the bottom of this file; pyproject.toml carries a secondary
+belt-and-suspenders declaration.
 """
 
 from setuptools import setup, Extension
@@ -16,6 +18,9 @@ import os
 import shutil
 import glob
 import warnings
+
+# distutils is provided by setuptools' vendored copy on Python 3.12+
+# (stdlib distutils removed in 3.12; pyproject.toml ensures setuptools is present)
 import distutils.ccompiler
 import distutils.sysconfig
 
@@ -24,8 +29,55 @@ KAMODO_RELEASE = os.environ.get("KAMODO_RELEASE", "").lower() in {"1", "true", "
 KAMODO_SKIP_NATIVE = os.environ.get("KAMODO_SKIP_NATIVE", "").lower() in {"1", "true", "yes"}
 
 
+def _rewrite_macos_libgcc_dependency(libgcc_path, strict=False):
+    """Rewrite hardcoded libgcc_s.1.1 path inside copied libgcc_s.1.
+
+    Some GCC toolchains ship libgcc_s.1 with an absolute dependency on
+    libgcc_s.1.1. When bundled in wheels, that absolute path can break on
+    user machines. Rewrite to @loader_path-relative, matching SpacePy's guard.
+    """
+    basename = os.path.basename(libgcc_path)
+    if sys.platform != "darwin" or not basename.startswith("libgcc_s.1"):
+        return
+
+    try:
+        proc = subprocess.run(
+            ["otool", "-L", libgcc_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        if strict:
+            raise RuntimeError("otool not found while validating libgcc_s linkage.")
+        return
+
+    if proc.returncode != 0:
+        if strict:
+            raise RuntimeError("Failed to inspect libgcc_s dependencies with otool.")
+        return
+
+    hardcoded = [
+        line.strip().split()[0]
+        for line in proc.stdout.splitlines()
+        if line.startswith("\t/") and "libgcc_s.1.1" in line
+    ]
+
+    if not hardcoded:
+        return
+
+    new_path = os.path.join("@loader_path", os.path.basename(hardcoded[0]))
+    cmd = ["install_name_tool", "-change", hardcoded[0], new_path, libgcc_path]
+    try:
+        subprocess.check_call(cmd)
+        print(f"Rewrote libgcc_s dependency: {hardcoded[0]} -> {new_path}")
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        if strict:
+            raise RuntimeError(f"Failed rewriting hardcoded libgcc path in {libgcc_path}.")
+
+
 def _copy_macos_fortran_libs(outdir, strict=False):
-    """Copy Fortran runtime libraries for portable macOS wheels (SpacePy-style).
+    """Copy Fortran runtime libraries for portable macOS wheels.
 
     Args:
         outdir: Directory to copy libraries into (kamodo_ccmc package dir)
@@ -66,6 +118,8 @@ def _copy_macos_fortran_libs(outdir, strict=False):
             libpath = os.path.realpath(libpath)
             dest = os.path.join(outlibdir, os.path.basename(libpath))
             shutil.copy2(libpath, dest)
+            if lib.startswith("libgcc_s"):
+                _rewrite_macos_libgcc_dependency(dest, strict=strict)
             outputs.append(dest)
             print(f"Bundled: {os.path.basename(libpath)}")
 
@@ -78,7 +132,7 @@ def _copy_macos_fortran_libs(outdir, strict=False):
 
 
 def _copy_windows_fortran_libs(outdir, strict=False):
-    """Copy Fortran runtime DLLs for portable Windows wheels (SpacePy-style).
+    """Copy Fortran runtime DLLs for portable Windows wheels.
 
     Args:
         outdir: Directory to copy libraries into (kamodo_ccmc package dir)
@@ -130,47 +184,56 @@ def _copy_windows_fortran_libs(outdir, strict=False):
     return outputs
 
 
-def _add_macos_rpath(path, strict=False):
-    """Add rpath to compiled extension so it finds bundled libs.
-
-    Args:
-        path: Path to the .so/.dylib file
-        strict: If True, raise errors; if False, warn and continue
-    """
-    cmd = ["install_name_tool", "-add_rpath", "@loader_path/../libs", path]
-    try:
-        subprocess.check_call(cmd)
-        print(f"Added rpath to: {os.path.basename(path)}")
-    except (OSError, subprocess.CalledProcessError) as exc:
-        if strict:
-            raise RuntimeError(f"Failed adding rpath to {path}.") from exc
-        warnings.warn(f"Failed adding rpath to {path}; runtime libs may not load.")
-
-
 def _clean_source_artifacts():
-    """Remove intermediate .o and .so files from source tree after build.
+    """Remove intermediate .o files from source tree after build.
 
-    This prevents stale build artifacts from being accidentally included
-    in source distributions or contaminating future builds.
+    Only cleans known build intermediates from the three extension source
+    directories. This prevents stale object files from contaminating
+    future builds without risking deletion of legitimate library outputs.
     """
-    readers_dir = os.path.join(ROOT, "kamodo_ccmc", "readers")
-    for root, _, files in os.walk(readers_dir):
-        for filename in files:
-            if filename.endswith((".o", ".so", ".dylib", ".dll")) and not filename.startswith("lib"):
-                filepath = os.path.join(root, filename)
+    for subdir in ['OCTREE_BLOCK_GRID', 'Tri2D', 'OpenGGCM']:
+        srcdir = os.path.join(ROOT, 'kamodo_ccmc', 'readers', subdir)
+        if not os.path.isdir(srcdir):
+            continue
+        for filename in os.listdir(srcdir):
+            if filename.endswith('.o'):
                 try:
-                    os.remove(filepath)
-                    print(f"Cleaned: {filepath}")
+                    os.remove(os.path.join(srcdir, filename))
                 except OSError:
                     pass
 
 
 class build_ext(_build_ext):
-    """Custom build_ext that compiles extensions to shared libraries (SpacePy-style).
+    """Custom build_ext that compiles C/Fortran to shared libraries.
 
-    Unlike CFFI/f2py approach, this compiles C/Fortran directly with gcc/gfortran
-    to shared libraries (.so/.dll/.dylib) that are loaded via ctypes at runtime.
+    C code is compiled via distutils.ccompiler (honours CC env var and
+    platform defaults). Fortran is compiled via subprocess with gfortran
+    (or the FC env var) since distutils has no Fortran abstraction.
     """
+
+    def finalize_options(self):
+        super().finalize_options()
+        # Match SpacePy behavior: prefer MinGW toolchain by default on Windows.
+        if self.compiler is None and sys.platform == "win32":
+            self.compiler = "mingw32"
+
+    @staticmethod
+    def _configure_c_compiler(compiler_name):
+        """Create and customize a distutils C compiler with Windows tweaks."""
+        comp = distutils.ccompiler.new_compiler(compiler=compiler_name)
+        if sys.platform == "win32":
+            # Avoid MSVC runtime coupling when building with mingw.
+            comp.dll_libraries = []
+        distutils.sysconfig.customize_compiler(comp)
+        return comp
+
+    @staticmethod
+    def _c_build_args(comp):
+        """Return compile/link args compatible with active C compiler."""
+        is_msvc = getattr(comp, "compiler_type", "") == "msvc"
+        compile_args = [] if is_msvc else ["-O2"]
+        link_libs = [] if is_msvc else ["m"]
+        return compile_args, link_libs
 
     def run(self):
         self._extension_outputs = []
@@ -217,24 +280,27 @@ class build_ext(_build_ext):
         _clean_source_artifacts()
 
     def compile_octree(self):
-        """Compile OCTREE_BLOCK_GRID as shared library (SpacePy-style)."""
+        """Compile OCTREE_BLOCK_GRID as shared library."""
         srcdir = os.path.join(ROOT, 'kamodo_ccmc', 'readers', 'OCTREE_BLOCK_GRID')
 
         if self.inplace:
             outdir = srcdir
         else:
-            # Must use absolute path since we'll chdir during compilation
             outdir = os.path.abspath(os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'OCTREE_BLOCK_GRID'))
             os.makedirs(outdir, exist_ok=True)
 
-        # Determine shared library filename
-        ccomp = distutils.ccompiler.new_compiler(compiler=self.compiler)
-        distutils.sysconfig.customize_compiler(ccomp)
-        libname = ccomp.library_filename('interpolate_amrdata', lib_type='shared')
+        # Use distutils compiler abstraction (honours CC env var)
+        comp = self._configure_c_compiler(self.compiler)
+        libname = comp.library_filename('interpolate_amrdata', lib_type='shared')
         libpath = os.path.join(outdir, libname)
 
         # Check if up-to-date
-        sources = glob.glob(os.path.join(srcdir, '*.c'))
+        source_files = [
+            'interpolate_amrdata.c', 'setup_parent.c', 'setup_octree.c',
+            'interpolate_in_block.c', 'find_octree_block.c', 'find_in_block.c',
+            'find_block.c', 'trace_fieldline.c', 'ctypes_wrappers.c',
+        ]
+        sources = [os.path.join(srcdir, f) for f in source_files]
         if os.path.exists(libpath):
             src_newest = max(os.path.getmtime(s) for s in sources)
             lib_mtime = os.path.getmtime(libpath)
@@ -244,64 +310,50 @@ class build_ext(_build_ext):
 
         print("Compiling OCTREE_BLOCK_GRID as shared library...")
 
-        # Compile .c files to .o files
-        original_dir = os.getcwd()
-        try:
-            os.chdir(srcdir)
+        # Compile C sources via distutils (no hardcoded gcc)
+        # -Dno_idl ensures we use the ctypes-compatible function signatures
+        compile_args, link_libs = self._c_build_args(comp)
+        compile_kwargs = {
+            "output_dir": self.build_temp,
+            "macros": [('no_idl', None)],
+        }
+        if compile_args:
+            compile_kwargs["extra_preargs"] = compile_args
+        objects = comp.compile(sources, **compile_kwargs)
 
-            c_files = [
-                'interpolate_amrdata.c',
-                'setup_parent.c',
-                'setup_octree.c',
-                'interpolate_in_block.c',
-                'find_octree_block.c',
-                'find_in_block.c',
-                'find_block.c',
-                'trace_fieldline.c',
-                'ctypes_wrappers.c',
-            ]
+        # Link to shared library; set rpath at link time on macOS
+        extra_link_args = []
+        if sys.platform == 'darwin':
+            extra_link_args = ['-Wl,-rpath,@loader_path/../libs']
 
-            # -Dno_idl ensures we use the ctypes-compatible function signatures
-            gcc_cmd = ['gcc', '-c', '-O2', '-fPIC', '-Dno_idl'] + c_files
-            subprocess.check_call(gcc_cmd)
+        comp.link_shared_lib(objects, 'interpolate_amrdata',
+                             libraries=link_libs, output_dir=outdir,
+                             extra_postargs=extra_link_args)
 
-            # Link to shared library
-            link_cmd = ['gcc', '-shared', '-fPIC'] + glob.glob('*.o') + ['-o', libname, '-lm']
-            subprocess.check_call(link_cmd)
-
-            # Move to output directory
-            if outdir != srcdir:
-                shutil.move(libname, libpath)
-
-            # Add rpath on macOS
-            if sys.platform == 'darwin':
-                _add_macos_rpath(libpath, strict=KAMODO_RELEASE)
-
-            print(f"Compiled: {libpath}")
-            return libpath
-
-        finally:
-            os.chdir(original_dir)
+        print(f"Compiled: {libpath}")
+        return libpath
 
     def compile_tri2d(self):
-        """Compile Tri2D as shared library (SpacePy-style)."""
+        """Compile Tri2D as shared library."""
         srcdir = os.path.join(ROOT, 'kamodo_ccmc', 'readers', 'Tri2D')
 
         if self.inplace:
             outdir = srcdir
         else:
-            # Must use absolute path since we'll chdir during compilation
             outdir = os.path.abspath(os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'Tri2D'))
             os.makedirs(outdir, exist_ok=True)
 
-        # Determine shared library filename
-        ccomp = distutils.ccompiler.new_compiler(compiler=self.compiler)
-        distutils.sysconfig.customize_compiler(ccomp)
-        libname = ccomp.library_filename('interpolate_tri2d', lib_type='shared')
+        # Use distutils compiler abstraction (honours CC env var)
+        comp = self._configure_c_compiler(self.compiler)
+        libname = comp.library_filename('interpolate_tri2d', lib_type='shared')
         libpath = os.path.join(outdir, libname)
 
         # Check if up-to-date
-        sources = glob.glob(os.path.join(srcdir, '*.c'))
+        source_files = [
+            'interpolate_tri2d_plus_1d.c', 'setup_tri.c',
+            'find_tri.c', 'hunt.c', 'ctypes_wrappers.c',
+        ]
+        sources = [os.path.join(srcdir, f) for f in source_files]
         if os.path.exists(libpath):
             src_newest = max(os.path.getmtime(s) for s in sources)
             lib_mtime = os.path.getmtime(libpath)
@@ -311,42 +363,30 @@ class build_ext(_build_ext):
 
         print("Compiling Tri2D as shared library...")
 
-        # Compile .c files to .o files
-        original_dir = os.getcwd()
-        try:
-            os.chdir(srcdir)
+        # Compile C sources via distutils (no hardcoded gcc)
+        compile_args, link_libs = self._c_build_args(comp)
+        compile_kwargs = {"output_dir": self.build_temp}
+        if compile_args:
+            compile_kwargs["extra_preargs"] = compile_args
+        objects = comp.compile(sources, **compile_kwargs)
 
-            c_files = [
-                'interpolate_tri2d_plus_1d.c',
-                'setup_tri.c',
-                'find_tri.c',
-                'hunt.c',
-                'ctypes_wrappers.c',
-            ]
+        # Link to shared library; set rpath at link time on macOS
+        extra_link_args = []
+        if sys.platform == 'darwin':
+            extra_link_args = ['-Wl,-rpath,@loader_path/../libs']
 
-            gcc_cmd = ['gcc', '-c', '-O2', '-fPIC'] + c_files
-            subprocess.check_call(gcc_cmd)
+        comp.link_shared_lib(objects, 'interpolate_tri2d',
+                             libraries=link_libs, output_dir=outdir,
+                             extra_postargs=extra_link_args)
 
-            # Link to shared library
-            link_cmd = ['gcc', '-shared', '-fPIC'] + glob.glob('*.o') + ['-o', libname, '-lm']
-            subprocess.check_call(link_cmd)
-
-            # Move to output directory
-            if outdir != srcdir:
-                shutil.move(libname, libpath)
-
-            # Add rpath on macOS
-            if sys.platform == 'darwin':
-                _add_macos_rpath(libpath, strict=KAMODO_RELEASE)
-
-            print(f"Compiled: {libpath}")
-            return libpath
-
-        finally:
-            os.chdir(original_dir)
+        print(f"Compiled: {libpath}")
+        return libpath
 
     def compile_openggcm(self):
-        """Compile OpenGGCM Fortran as shared library (SpacePy-style)."""
+        """Compile OpenGGCM Fortran as shared library.
+
+        Fortran stays subprocess-based (distutils has no Fortran abstraction).
+        """
         srcdir = os.path.join(ROOT, 'kamodo_ccmc', 'readers', 'OpenGGCM')
 
         # Check if Fortran source files exist
@@ -359,7 +399,6 @@ class build_ext(_build_ext):
         if self.inplace:
             outdir = srcdir
         else:
-            # Must use absolute path since we'll chdir during compilation
             outdir = os.path.abspath(os.path.join(self.build_lib, 'kamodo_ccmc', 'readers', 'OpenGGCM'))
             os.makedirs(outdir, exist_ok=True)
 
@@ -391,10 +430,11 @@ class build_ext(_build_ext):
             compile_cmd = [fc, '-c', '-w', '-O2', '-fPIC', '-ffixed-line-length-none', '-std=legacy'] + fortran_files
             subprocess.check_call(compile_cmd)
 
-            # Link to shared library
+            # Link to shared library; set rpath at link time on macOS
             ldflags = ['-shared', '-fPIC']
             if sys.platform == 'darwin':
-                ldflags.extend(['-mmacosx-version-min=11.0'])
+                ldflags.extend(['-mmacosx-version-min=11.0',
+                                '-Wl,-rpath,@loader_path/../libs'])
 
             link_cmd = [fc] + ldflags + glob.glob('*.o') + ['-o', libname]
             subprocess.check_call(link_cmd)
@@ -403,10 +443,6 @@ class build_ext(_build_ext):
             if outdir != srcdir:
                 shutil.move(libname, libpath)
 
-            # Add rpath on macOS
-            if sys.platform == 'darwin':
-                _add_macos_rpath(libpath, strict=KAMODO_RELEASE)
-
             print(f"Compiled: {libpath}")
             return libpath
 
@@ -414,7 +450,7 @@ class build_ext(_build_ext):
             os.chdir(original_dir)
 
     def _bundle_runtime_libs(self):
-        """Bundle Fortran runtime libraries for portable wheels (SpacePy-style)."""
+        """Bundle Fortran runtime libraries for portable wheels."""
         if self.inplace:
             outdir = os.path.join(ROOT, "kamodo_ccmc")
         else:
@@ -423,19 +459,14 @@ class build_ext(_build_ext):
         if sys.platform == "darwin":
             libs = _copy_macos_fortran_libs(outdir, strict=KAMODO_RELEASE)
             self._extension_outputs.extend(libs)
-            # Add rpath to compiled extensions so they find bundled libs
-            for output in self._extension_outputs:
-                if output.endswith((".so", ".dylib")):
-                    # Only add rpath if not already added
-                    if not any(output.endswith(lib.split('/')[-1]) for lib in libs):
-                        _add_macos_rpath(output, strict=KAMODO_RELEASE)
         elif sys.platform == "win32":
             libs = _copy_windows_fortran_libs(outdir, strict=KAMODO_RELEASE)
             self._extension_outputs.extend(libs)
 
     def get_outputs(self):
         """Return list of output files (for proper wheel inclusion)."""
-        outputs = getattr(self, '_extension_outputs', [])
+        outputs = list(getattr(self, '_extension_outputs', []))
+        outputs.extend(super().get_outputs())
         return outputs
 
 
@@ -453,4 +484,5 @@ if __name__ == "__main__":
     setup(
         cmdclass={'build_ext': build_ext},
         ext_modules=ext_modules,
+        options={'bdist_wheel': {'py_limited_api': 'cp310'}},
     )

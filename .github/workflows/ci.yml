@@ -60,35 +60,6 @@ jobs:
           pip install --upgrade pip
           pip install . -v
 
-      - name: Debug - List installed package contents
-        run: |
-          echo "=== Installed package location ==="
-          python -c "import kamodo_ccmc; print(kamodo_ccmc.__file__)"
-          echo ""
-          echo "=== OCTREE_BLOCK_GRID directory contents ==="
-          python -c "
-          import os
-          import kamodo_ccmc.readers.OCTREE_BLOCK_GRID as octree
-          pkg_dir = os.path.dirname(octree.__file__)
-          print(f'Directory: {pkg_dir}')
-          for f in sorted(os.listdir(pkg_dir)):
-              fpath = os.path.join(pkg_dir, f)
-              size = os.path.getsize(fpath) if os.path.isfile(fpath) else 'DIR'
-              print(f'  {f}: {size}')
-          "
-          echo ""
-          echo "=== Tri2D directory contents ==="
-          python -c "
-          import os
-          import kamodo_ccmc.readers.Tri2D as tri2d
-          pkg_dir = os.path.dirname(tri2d.__file__)
-          print(f'Directory: {pkg_dir}')
-          for f in sorted(os.listdir(pkg_dir)):
-              fpath = os.path.join(pkg_dir, f)
-              size = os.path.getsize(fpath) if os.path.isfile(fpath) else 'DIR'
-              print(f'  {f}: {size}')
-          "
-
       - name: Test imports
         # Run from a different directory to ensure we import from site-packages,
         # not from the local source directory which lacks compiled extensions
@@ -126,6 +97,30 @@ jobs:
 
           print('All extensions loaded successfully!')
           "
+
+      - name: Verify macOS rpath (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          echo "=== Checking rpath on compiled native libraries ==="
+          SITE_PKG=$(python -c "import kamodo_ccmc, os; print(os.path.dirname(kamodo_ccmc.__file__))")
+          FOUND=0
+          # Find all native binaries produced by our build (not Python .pyc etc.)
+          for f in $(find "$SITE_PKG/readers" "$SITE_PKG/libs" -type f 2>/dev/null); do
+            # Check if it's a Mach-O binary (works for .so, .dylib, or any extension)
+            if file "$f" | grep -q "Mach-O"; then
+              FOUND=$((FOUND + 1))
+              echo "--- $f ---"
+              echo "Load commands:"
+              otool -l "$f" | grep -A2 "LC_RPATH" || echo "  (no LC_RPATH)"
+              echo "Linked libraries:"
+              otool -L "$f" | head -10
+              echo ""
+            fi
+          done
+          echo "Inspected $FOUND Mach-O binaries"
+          if [ "$FOUND" -eq 0 ]; then
+            echo "WARNING: No Mach-O binaries found in installed package"
+          fi
 
   # Quick syntax check for the wheel build workflow
   validate-wheel-workflow:

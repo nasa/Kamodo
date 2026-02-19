@@ -57,8 +57,8 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
-          # Build Python-version-independent wheels (shared libraries via ctypes)
-          # Only need to build for one Python version per platform - the wheel works for all
+          # Build one abi3 wheel per platform (cp310-abi3-*).
+          # py-limited-api in setup.py makes bdist_wheel emit abi3 tags.
           CIBW_BUILD: "cp310-*"
           # Skip 32-bit builds and musllinux
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
@@ -72,6 +72,25 @@ jobs:
             python -c "import kamodo_ccmc; print(f'kamodo_ccmc {kamodo_ccmc.__version__} OK')"
           # Use release mode for strict error handling
           CIBW_ENVIRONMENT: "KAMODO_RELEASE=1"
+
+      - name: Verify wheel ABI tags
+        shell: bash
+        run: |
+          echo "=== Verifying wheel ABI tags ==="
+          for whl in wheelhouse/*.whl; do
+            echo "Wheel: $(basename $whl)"
+            # Extract the compatibility tag from the filename
+            tag=$(basename "$whl" | sed 's/.*-\(cp[0-9]*-[^-]*\)-.*/\1/')
+            echo "  Tag: $tag"
+            if echo "$tag" | grep -q "abi3"; then
+              echo "  OK: abi3 wheel"
+            else
+              echo "  ERROR: Expected abi3 tag, got: $tag"
+              echo "  This means py-limited-api config is not taking effect."
+              echo "  Falling back to CP-specific builds may be needed."
+              exit 1
+            fi
+          done
 
       - name: Upload wheels as artifact
         uses: actions/upload-artifact@v4
