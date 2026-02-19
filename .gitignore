@@ -8,12 +8,19 @@ __pycache__/
 
 # C extensions
 *.so
+*.dylib
+*.dll
 # Compilation outputs
 *.o
 *.mod
 
-# cffi C sources written during compilation of shared library)
+# Generated C sources
 _*.c
+
+# Bundled runtime libraries (build artifacts, not committed)
+kamodo_ccmc/libs/*.so
+kamodo_ccmc/libs/*.dylib
+kamodo_ccmc/libs/*.dll
 
 # Emacs editor backup files
 *~
@@ -131,4 +138,3 @@ KAMODO_DATA
 
 # MacOS
 .DS_Store
-

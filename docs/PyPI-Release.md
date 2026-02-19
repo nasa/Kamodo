@@ -2,7 +2,7 @@
 
 This checklist is modeled after SpacePy's `DISTRIBUTE` workflow: build a clean sdist on
 Unix, then build platform wheels, test, and upload. Kamodo includes native
-extensions (CFFI C extensions + f2py Fortran), so wheels are the primary delivery
+extensions (ctypes-loaded shared libraries compiled from C/Fortran sources), so wheels are the primary delivery
 mechanism for "pip install just works."
 
 ## Environment Variables
@@ -91,16 +91,21 @@ python -c "
 import kamodo_ccmc
 print(f'Version: {kamodo_ccmc.__version__}')
 
-# Test C extensions (CFFI)
-from kamodo_ccmc.readers import swmfgm_4D
-print('SWMF-GM reader: OK')
+# Test native shared library availability (ctypes loaders)
+from kamodo_ccmc.readers.OCTREE_BLOCK_GRID import OCTREE_AVAILABLE
+from kamodo_ccmc.readers.Tri2D import TRI2D_AVAILABLE
+from kamodo_ccmc.readers.OpenGGCM import OPENGGCM_AVAILABLE
 
-from kamodo_ccmc.readers import gameragm_4D
-print('GAMER-AM reader: OK')
+print(f'OCTREE available: {OCTREE_AVAILABLE}')
+print(f'Tri2D available: {TRI2D_AVAILABLE}')
+print(f'OpenGGCM available: {OPENGGCM_AVAILABLE}')
 
-# Test Fortran extension (f2py)
-from kamodo_ccmc.readers.OpenGGCM import openggcm_gm_tocdf
-print(f'OpenGGCM available: {openggcm_gm_tocdf.OPENGGCM_AVAILABLE}')
+if not all([OCTREE_AVAILABLE, TRI2D_AVAILABLE, OPENGGCM_AVAILABLE]):
+    raise SystemExit('ERROR: One or more native readers are unavailable')
+
+# Test reader modules import against installed wheel
+from kamodo_ccmc.readers import swmfgm_4D, gameragm_4D
+print('Reader modules: OK')
 
 print('All extensions loaded successfully!')
 "
@@ -142,7 +147,7 @@ Or use GitHub Actions with trusted publishing (OIDC) - no API token needed.
 ### Extension compilation fails
 
 - Ensure gcc/gfortran are installed and in PATH
-- Check that numpy is installed (required for f2py)
+- For source installs, use `pip install . -v` and inspect the native build logs
 - Set `KAMODO_SKIP_NATIVE=1` to skip extensions (for debugging)
 
 ### Wheel missing runtime libraries
