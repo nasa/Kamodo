@@ -65,7 +65,7 @@ def MODEL():
     import kamodo_ccmc.readers.reader_utilities as RU
     import kamodo_ccmc.readers.gameragm_grids as G
 
-    # Import Tri2D shared library (ctypes-based, SpacePy-style)
+    # Import Tri2D shared library (ctypes-based)
     from .Tri2D import lib as tri2d_lib, TRI2D_AVAILABLE
     import ctypes
 
@@ -368,7 +368,7 @@ def MODEL():
                                  'dr_sg':dr_sg,
                                  'nr_sg':nr_sg,
                                  'start_index_sg':start_index_sg,
-                                 # ctypes arrays (replacing CFFI)
+                                 # ctypes arrays
                                  'X2D_p':np.ascontiguousarray(X2D.flatten(), dtype=np.float32),
                                  'R2D_p':np.ascontiguousarray(R2D.flatten(), dtype=np.float32),
                                  'PHI_p':np.ascontiguousarray(PHI, dtype=np.float32),
@@ -429,7 +429,7 @@ def MODEL():
                                  'dr_sg':dr_sg_c,
                                  'nr_sg':nr_sg_c,
                                  'start_index_sg':start_index_sg_c,
-                                 # ctypes arrays (replacing CFFI)
+                                 # ctypes arrays
                                  'X2D_p':np.ascontiguousarray(X2D_c.flatten(), dtype=np.float32),
                                  'R2D_p':np.ascontiguousarray(R2D_c.flatten(), dtype=np.float32),
                                  'PHI_p':np.ascontiguousarray(PHI_c.flatten(), dtype=np.float32),

@@ -14,7 +14,7 @@ import scipy.spatial.qhull as qhull
 
 from kamodo import Kamodo, kamodofy, gridify,pointlike
 
-# Import OCTREE_BLOCK_GRID shared library (ctypes-based, SpacePy-style)
+# Import OCTREE_BLOCK_GRID shared library (ctypes-based)
 from .OCTREE_BLOCK_GRID import lib as OCTREE_BLOCK_GRID_LIB, OCTREE_AVAILABLE
 import ctypes
 
@@ -224,7 +224,7 @@ class SWMF_GM(Kamodo):
         from .OCTREE_BLOCK_GRID import octree_block
         tic=time.time()
         N_4=int(self.Ncell/4)
-        # Create ctypes arrays (replacing CFFI)
+        # Create ctypes arrays
         x = np.ascontiguousarray(self.x, dtype=np.float32)
         y = np.ascontiguousarray(self.y, dtype=np.float32)
         z = np.ascontiguousarray(self.z, dtype=np.float32)
@@ -430,7 +430,7 @@ class SWMF_GM(Kamodo):
     def trace_fieldline(self,x0,y0,z0,vector,dn,max_step,tilt=None,bdp=None):
         # bi-directional field line tracer using the C program trace_fieldline_octree
         # Lutz Rastaetter, Nov. 30, 2021
-        # Updated to use ctypes instead of CFFI
+
 
         # Create ctypes arrays for output
         flx0 = np.zeros(max_step, dtype=np.float32)

@@ -11,7 +11,7 @@ from glob import glob
 #import kamodo_ccmc.readers.OpenGGCM.read_b_grids as rbg
 #import kamodo_ccmc.readers.OpenGGCM.readmagfile3d as rmhd
 
-# Import OpenGGCM shared library (ctypes-based, SpacePy-style)
+# Import OpenGGCM shared library (ctypes-based)
 from kamodo_ccmc.readers.OpenGGCM import (
     OPENGGCM_AVAILABLE,
     read_3d_field,

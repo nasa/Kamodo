@@ -1,7 +1,6 @@
 """OCTREE_BLOCK_GRID shared library loader (ctypes-based, SpacePy-style).
 
-This module replaces the CFFI-based approach with direct ctypes loading
-of the shared library compiled by setup.py.
+Loads the shared library compiled by setup.py via ctypes.
 """
 
 import ctypes
@@ -10,7 +9,7 @@ import sys
 import sysconfig
 import warnings
 
-# C type aliases for clarity (SpacePy pattern)
+# C type aliases for clarity
 c_int_p = ctypes.POINTER(ctypes.c_int)
 c_float_p = ctypes.POINTER(ctypes.c_float)
 
@@ -36,7 +35,7 @@ class octree_block(ctypes.Structure):
 
 
 def _load_octree_lib():
-    """Load OCTREE shared library via ctypes (SpacePy-style)."""
+    """Load OCTREE shared library via ctypes."""
     libdir = os.path.dirname(os.path.abspath(__file__))
 
     # Try different library naming conventions across platforms
@@ -47,7 +46,7 @@ def _load_octree_lib():
         'linux': ['libinterpolate_amrdata.so'],
     }.get(sys.platform, ['libinterpolate_amrdata.so'])
 
-    # Add sysconfig extension suffix variant (SpacePy pattern)
+    # Add sysconfig extension suffix variant
     ext = sysconfig.get_config_var('EXT_SUFFIX')
     if ext is None:
         ext = sysconfig.get_config_var('SO')
@@ -62,7 +61,7 @@ def _load_octree_lib():
             try:
                 lib = ctypes.CDLL(libpath)
 
-                # Set up function signatures (replacing CFFI cdef)
+                # Set up function signatures
                 # int xyz_ranges(int N, float *x, float *y, float *z, ...)
                 lib.xyz_ranges.restype = ctypes.c_int
                 lib.xyz_ranges.argtypes = [

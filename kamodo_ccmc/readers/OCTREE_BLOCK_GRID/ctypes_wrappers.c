@@ -5,7 +5,7 @@
  * (interpolate_amrdata_extension_build.py). They have been extracted here
  * for use with ctypes instead of CFFI.
  *
- * Author: Original CFFI code by Kamodo team, extracted for ctypes by Claude
+ * Extracted from interpolate_amrdata_extension_build.py for standalone compilation.
  */
 
 #include <stdlib.h>

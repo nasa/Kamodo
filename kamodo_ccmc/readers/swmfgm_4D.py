@@ -116,7 +116,7 @@ def MODEL():
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 
-    # Import OCTREE_BLOCK_GRID shared library (ctypes-based, SpacePy-style)
+    # Import OCTREE_BLOCK_GRID shared library (ctypes-based)
     from .OCTREE_BLOCK_GRID import lib, octree_block, OCTREE_AVAILABLE
     import ctypes
 
@@ -162,13 +162,8 @@ def MODEL():
             c is the reduced speed of light, and g is the ratio of specific
             heats. Consult model documentation for more information.
 
-        The reader requires code in readers/OCTREE_BLOCK_GRID/:
-        Compile the library using the command
-          python interpolate_amrdata_extension_build.py
-        inside the anaconda/miniconda3/miniforge3 environment for Kamodo.
-        The shared library file name contains the python version
-        and the name of the operation system, e.g.,
-          _interpolate_amrdata.cpython-39-darwin.so
+        The OCTREE_BLOCK_GRID C extension is compiled automatically
+        during ``pip install``.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
@@ -338,8 +333,7 @@ def MODEL():
 
         def setup_octree(self, x, y, z, verbose=False):
             '''
-            This function requires _interpolate_amrdata*.so in
-            readers/OCTREE_BLOCK_GRID/
+            Requires the OCTREE_BLOCK_GRID shared library (compiled during install).
             '''
             if verbose:
                 tic = time.time()
@@ -369,7 +363,7 @@ def MODEL():
             else:
                 R = 3.0
 
-            # Create ctypes arrays (replacing CFFI)
+            # Create ctypes arrays
             octree = {}
             # Convert to float32 numpy arrays for C compatibility
             x = np.ascontiguousarray(x, dtype=np.float32)

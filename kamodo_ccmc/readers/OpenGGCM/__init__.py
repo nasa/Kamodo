@@ -1,6 +1,6 @@
 """OpenGGCM shared library loader (ctypes-based, SpacePy-style).
 
-This module loads the OpenGGCM Fortran shared library via ctypes.
+Loads the OpenGGCM Fortran shared library compiled by setup.py via ctypes.
 
 COMPILER NOTE: The hidden string length arguments in FORTRAN_FUNCTIONS
 assume gfortran's ABI, where string lengths are passed BY VALUE at the
@@ -18,13 +18,13 @@ import numpy as np
 # Debug mode for array validation (set KAMODO_DEBUG=1 to enable)
 KAMODO_DEBUG = os.environ.get('KAMODO_DEBUG', '').lower() in ('1', 'true', 'yes')
 
-# Fortran type aliases (SpacePy pattern for clarity)
+# Fortran type aliases for clarity
 int4 = ctypes.c_int32      # Fortran INTEGER (4 bytes)
 real4 = ctypes.c_float     # Fortran REAL (4 bytes)
 int4_p = ctypes.POINTER(int4)
 real4_p = ctypes.POINTER(real4)
 
-# Function signatures dictionary (SpacePy pattern)
+# Function signatures dictionary
 # Format: 'name': (restype, [argtypes...])
 # Note: Hidden string lengths included for gfortran ABI
 FORTRAN_FUNCTIONS = {
@@ -94,7 +94,7 @@ def _get_fortran_func(lib, name):
 
 
 def _load_openggcm_lib():
-    """Load OpenGGCM shared library via ctypes (SpacePy-style)."""
+    """Load OpenGGCM shared library via ctypes."""
     libdir = os.path.dirname(os.path.abspath(__file__))
 
     # Try different library naming conventions across platforms
@@ -103,7 +103,7 @@ def _load_openggcm_lib():
         'win32': ['readOpenGGCM.dll', 'libreadOpenGGCM.dll'],
     }.get(sys.platform, ['libreadOpenGGCM.so'])
 
-    # Add sysconfig extension suffix variant (SpacePy pattern)
+    # Add sysconfig extension suffix variant
     ext = sysconfig.get_config_var('EXT_SUFFIX')
     if ext is None:
         ext = sysconfig.get_config_var('SO')
@@ -132,8 +132,7 @@ def _setup_function_signatures(lib):
     """Set up ctypes function signatures for Fortran subroutines.
 
     Resolves Fortran name mangling once and stores canonical function
-    references on the library object. Uses SpacePy's dictionary-based
-    pattern for maintainability.
+    references on the library object.
 
     Note: Hidden string length arguments assume gfortran ABI (lengths
     passed BY VALUE at the END of the argument list). Intel Fortran
@@ -148,7 +147,7 @@ def _setup_function_signatures(lib):
         func = _get_fortran_func(lib, funcname)  # Raises if not found
         func.restype = restype
         func.argtypes = argtypes
-        # Store canonical reference (SpacePy pattern)
+        # Store canonical reference
         setattr(lib, funcname, func)
 
 
@@ -185,7 +184,7 @@ def read_3d_field(filepath, fielddata, varname):
     var_bytes = varname.encode('utf-8').ljust(80, b' ')
     asciitime_buffer = ctypes.create_string_buffer(80)
 
-    # Use stored reference (SpacePy pattern - no re-resolution)
+    # Use stored reference (no re-resolution)
     func = lib.read_3d_field
 
     # Call Fortran subroutine
@@ -241,7 +240,7 @@ def read_2d_field(filepath, fielddata, varname, nbuffer):
     var_bytes = varname.encode('utf-8').ljust(80, b' ')
     asciitime_buffer = ctypes.create_string_buffer(80)
 
-    # Use stored reference (SpacePy pattern - no re-resolution)
+    # Use stored reference (no re-resolution)
     func = lib.read_2d_field
 
     # Call Fortran subroutine
@@ -295,7 +294,7 @@ def read_grid_for_vector(gridfile, vecname, gx, gy, gz):
     file_bytes = gridfile.encode('utf-8').ljust(120, b' ')
     vec_bytes = vecname.encode('utf-8').ljust(7, b' ')
 
-    # Use stored reference (SpacePy pattern - no re-resolution)
+    # Use stored reference (no re-resolution)
     func = lib.read_grid_for_vector
 
     # Call Fortran subroutine
