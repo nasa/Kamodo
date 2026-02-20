@@ -22,7 +22,7 @@ def _load_tri2d_lib():
     # Note: distutils creates .so on macOS (not .dylib) when using gcc/clang
     libnames = {
         'darwin': ['libinterpolate_tri2d.dylib', 'libinterpolate_tri2d.so', 'interpolate_tri2d.so'],
-        'win32': ['interpolate_tri2d.dll', 'libinterpolate_tri2d.dll'],
+        'win32': ['libinterpolate_tri2d.dll.a', 'interpolate_tri2d.dll', 'libinterpolate_tri2d.dll'],
         'linux': ['libinterpolate_tri2d.so'],
     }.get(sys.platform, ['libinterpolate_tri2d.so'])
 

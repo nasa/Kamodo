@@ -42,7 +42,7 @@ def _load_octree_lib():
     # Note: distutils creates .so on macOS (not .dylib) when using gcc/clang
     libnames = {
         'darwin': ['libinterpolate_amrdata.dylib', 'libinterpolate_amrdata.so', 'interpolate_amrdata.so'],
-        'win32': ['interpolate_amrdata.dll', 'libinterpolate_amrdata.dll'],
+        'win32': ['libinterpolate_amrdata.dll.a', 'interpolate_amrdata.dll', 'libinterpolate_amrdata.dll'],
         'linux': ['libinterpolate_amrdata.so'],
     }.get(sys.platform, ['libinterpolate_amrdata.so'])
 
