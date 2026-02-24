@@ -209,7 +209,7 @@ class KamodoVectorFieldTracer:
     
     def __init__(self, kamodo_object, field_type='magnetic',
                  component_names=None, use_numba=True, use_parallel=False, n_jobs=-1,
-                 verbose=False, zeroY=False):
+                 verbose=False, zeroX=False, zeroY=False, zeroZ=False):
         """
         Initialize vector field tracer.
         
@@ -230,8 +230,12 @@ class KamodoVectorFieldTracer:
             Number of jobs for parallel processing (-1 uses all cores)
         verbose : bool, optional (default=False)
             Whether to print detailed information during execution
+        zeroX : bool, optional (default=False)
+            Whether to force the X component of vector to 0.
         zeroY : bool, optional (default=False)
             Whether to force the Y component of vector to 0.
+        zeroZ : bool, optional (default=False)
+            Whether to force the Z component of vector to 0.
         """
         self.kamodo_object = kamodo_object
         self.field_type = field_type.lower()
@@ -240,7 +244,9 @@ class KamodoVectorFieldTracer:
         self.n_jobs = n_jobs
         self.verbose = verbose
         self.xyztype = 'xyz'
+        self.zeroX = zeroX
         self.zeroY = zeroY
+        self.zeroZ = zeroZ
         
         # Set up component names based on field type
         if component_names is None:
@@ -297,7 +303,7 @@ class KamodoVectorFieldTracer:
         print(f"  Number of jobs: {self.n_jobs}")
         print(f"  Default parameters: {self.default_params}")
         print(f"  Kamodo calling method: {self._call_method}")
-        print(f"  Zero out the Y component of vector: {self.zeroY}")
+        print(f"  Zero out the X,Y,Z component of vector: {self.zeroX},{self.zeroY},{self.zeroZ}")
     
     def _cache_field_components(self):
         """Cache field component functions for faster access."""
@@ -410,9 +416,13 @@ class KamodoVectorFieldTracer:
         else:
             field_magnitude = np.sqrt(np.sum(field_vector**2))
         
-        # Zero Y component if option selected
+        # Zero component of vector if option selected
+        if self.zeroX:
+            field_vector[0] = 0.
         if self.zeroY:
             field_vector[1] = 0.
+        if self.zeroZ:
+            field_vector[2] = 0.
 
         return field_vector, field_magnitude
     
@@ -485,9 +495,13 @@ class KamodoVectorFieldTracer:
         else:
             field_magnitudes = np.sqrt(np.sum(field_vectors**2, axis=1))
         
-        # Zero Y component if option selected
+        # Zero component of vector if option selected
+        if self.zeroX:
+            print('Zero of X component not implemented here yet, please fix.')
         if self.zeroY:
             print('Zero of Y component not implemented here yet, please fix.')
+        if self.zeroZ:
+            print('Zero of Z component not implemented here yet, please fix.')
 
         return field_vectors, field_magnitudes
     
@@ -1550,7 +1564,7 @@ def _plot_vector_field_traces_plotly(traces, tracer, title_suffix="", show_earth
 
 def create_magnetic_tracer(kamodo_object, component_names=None, use_numba=True, 
                            use_parallel=False, n_jobs=-1, verbose=False,
-                           zeroY=False):
+                           zeroX=False,zeroY=False,zeroZ=False):
     """
     Create a tracer specifically for magnetic field lines.
     
@@ -1586,7 +1600,9 @@ def create_magnetic_tracer(kamodo_object, component_names=None, use_numba=True,
         use_parallel=use_parallel,
         n_jobs=n_jobs,
         verbose=verbose,
-        zeroY=zeroY
+        zeroX=zeroX,
+        zeroY=zeroY,
+        zeroZ=zeroZ
     )
 
 
