@@ -1606,7 +1606,8 @@ def create_magnetic_tracer(kamodo_object, component_names=None, use_numba=True,
     )
 
 
-def create_velocity_tracer(kamodo_object, component_names=None, use_numba=True, use_parallel=False, n_jobs=-1, verbose=False):
+def create_velocity_tracer(kamodo_object, component_names=None, use_numba=True, use_parallel=False, n_jobs=-1, verbose=False,
+                           zeroX=False,zeroY=False,zeroZ=False):
     """
     Create a tracer specifically for velocity streamlines.
     
@@ -1641,11 +1642,15 @@ def create_velocity_tracer(kamodo_object, component_names=None, use_numba=True, 
         use_numba=use_numba,
         use_parallel=use_parallel,
         n_jobs=n_jobs,
-        verbose=verbose
+        verbose=verbose,
+        zeroX=zeroX,
+        zeroY=zeroY,
+        zeroZ=zeroZ
     )
 
 
-def create_current_tracer(kamodo_object, component_names=None, use_numba=True, use_parallel=False, n_jobs=-1, verbose=False):
+def create_current_tracer(kamodo_object, component_names=None, use_numba=True, use_parallel=False, n_jobs=-1, verbose=False,
+                           zeroX=False,zeroY=False,zeroZ=False):
     """
     Create a tracer specifically for current density streamlines.
     
@@ -1680,11 +1685,15 @@ def create_current_tracer(kamodo_object, component_names=None, use_numba=True, u
         use_numba=use_numba,
         use_parallel=use_parallel,
         n_jobs=n_jobs,
-        verbose=verbose
+        verbose=verbose,
+        zeroX=zeroX,
+        zeroY=zeroY,
+        zeroZ=zeroZ
     )
 
 
-def create_electric_tracer(kamodo_object, component_names=None, use_numba=True, use_parallel=False, n_jobs=-1, verbose=False):
+def create_electric_tracer(kamodo_object, component_names=None, use_numba=True, use_parallel=False, n_jobs=-1, verbose=False,
+                           zeroX=False,zeroY=False,zeroZ=False):
     """
     Create a tracer specifically for electric field lines.
     
@@ -1719,7 +1728,10 @@ def create_electric_tracer(kamodo_object, component_names=None, use_numba=True, 
         use_numba=use_numba,
         use_parallel=use_parallel,
         n_jobs=n_jobs,
-        verbose=verbose
+        verbose=verbose,
+        zeroX=zeroX,
+        zeroY=zeroY,
+        zeroZ=zeroZ
     )
 
 
