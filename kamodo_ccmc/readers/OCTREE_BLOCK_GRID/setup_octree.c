@@ -139,12 +139,12 @@ IDL_LONG   setup_octree(IDL_LONG N_blks_in,
       if (p2_tmp < p2) {p2 = p2_tmp;}
       if (p3_tmp < p3) {p3 = p3_tmp;}
     }
-    printf("P1: %f P2: %f P3: %f DP: %f %f %f\n",
-	   p1, p2, p3,
-	   fabs(p1-floor(p1+0.5)),
-	   fabs(p2-floor(p2+0.5)),
-	   fabs(p3-floor(p3+0.5))
-	   );
+    //printf("P1: %f P2: %f P3: %f DP: %f %f %f\n",
+	//   p1, p2, p3,
+	//   fabs(p1-floor(p1+0.5)),
+	//   fabs(p2-floor(p2+0.5)),
+	//   fabs(p3-floor(p3+0.5))
+	//   );
     
     if (fabs(p1-floor(p1+0.5)) > TOLERANCE) { 
         level_factor=floor(p1+0.5)/p1; // 1./min( ceil(p1)-p1 , p1-floor(p1) );
@@ -176,10 +176,10 @@ IDL_LONG   setup_octree(IDL_LONG N_blks_in,
             p3 /= 2.;
     }
 
-    printf("root outlay: %f %f %f Factor: %f Aspect: %f %f %f\n",
-	    p1, p2, p3, level_factor,
-	    aspect_xy, aspect_yz, aspect_xz);
-    printf("box:: %f %f %f %f %f %f\n", XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX);
+    //printf("root outlay: %f %f %f Factor: %f Aspect: %f %f %f\n",
+	//    p1, p2, p3, level_factor,
+	//    aspect_xy, aspect_yz, aspect_xz);
+    //printf("box:: %f %f %f %f %f %f\n", XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX);
     
     // make integer numbers
     p1 = floor(p1+0.1);
