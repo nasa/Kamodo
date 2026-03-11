@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gfortran (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran
+
+      - name: Install gfortran (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gcc
+          # Create gfortran symlink (brew installs as gfortran-XX)
+          GFORTRAN=$(ls /opt/homebrew/bin/gfortran-* 2>/dev/null | head -1 || ls /usr/local/bin/gfortran-* 2>/dev/null | head -1)
+          if [ -n "$GFORTRAN" ]; then
+            sudo ln -sf "$GFORTRAN" /usr/local/bin/gfortran
+          fi
+          # Verify gfortran is available
+          which gfortran && gfortran --version
+
+      - name: Install gfortran (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc-fortran
+
+      - name: Add MSYS2 to PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: |
+          pip install --upgrade pip
+          pip install . -v
+
+      - name: Test imports
+        # Run from a different directory to ensure we import from site-packages,
+        # not from the local source directory which lacks compiled extensions
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -c "
+          import sys
+          import kamodo_ccmc
+          print(f'kamodo_ccmc version: {kamodo_ccmc.__version__}')
+
+          # Test C extensions (OCTREE)
+          from kamodo_ccmc.readers.OCTREE_BLOCK_GRID import OCTREE_AVAILABLE
+          print(f'OCTREE (SWMF-GM): {OCTREE_AVAILABLE}')
+          if not OCTREE_AVAILABLE:
+              print('ERROR: OCTREE extension failed to compile')
+              sys.exit(1)
+
+          # Test C extensions (Tri2D)
+          from kamodo_ccmc.readers.Tri2D import TRI2D_AVAILABLE
+          print(f'Tri2D (GAMERA-GM): {TRI2D_AVAILABLE}')
+          if not TRI2D_AVAILABLE:
+              print('ERROR: Tri2D extension failed to compile')
+              sys.exit(1)
+
+          # Test Fortran extension (OpenGGCM)
+          from kamodo_ccmc.readers.OpenGGCM import OPENGGCM_AVAILABLE
+          print(f'OpenGGCM (Fortran): {OPENGGCM_AVAILABLE}')
+          if not OPENGGCM_AVAILABLE:
+              print('ERROR: OpenGGCM extension failed to compile')
+              sys.exit(1)
+
+          # Test reader modules can import
+          from kamodo_ccmc.readers import swmfgm_4D, gameragm_4D
+          print('Reader modules: OK')
+
+          print('All extensions loaded successfully!')
+          "
+
+      - name: Verify macOS rpath (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          echo "=== Checking rpath on compiled native libraries ==="
+          SITE_PKG=$(python -c "import kamodo_ccmc, os; print(os.path.dirname(kamodo_ccmc.__file__))")
+          FOUND=0
+          # Find all native binaries produced by our build (not Python .pyc etc.)
+          for f in $(find "$SITE_PKG/readers" "$SITE_PKG/libs" -type f 2>/dev/null); do
+            # Check if it's a Mach-O binary (works for .so, .dylib, or any extension)
+            if file "$f" | grep -q "Mach-O"; then
+              FOUND=$((FOUND + 1))
+              echo "--- $f ---"
+              echo "Load commands:"
+              otool -l "$f" | grep -A2 "LC_RPATH" || echo "  (no LC_RPATH)"
+              echo "Linked libraries:"
+              otool -L "$f" | head -10
+              echo ""
+            fi
+          done
+          echo "Inspected $FOUND Mach-O binaries"
+          if [ "$FOUND" -eq 0 ]; then
+            echo "WARNING: No Mach-O binaries found in installed package"
+          fi
+
+  # Quick syntax check for the wheel build workflow
+  validate-wheel-workflow:
+    name: Validate wheel build workflow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate workflow syntax
+        run: |
+          pip install check-jsonschema
+          check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/build-wheels.yml
