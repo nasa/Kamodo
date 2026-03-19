@@ -1527,7 +1527,7 @@ class Kamodo(UserDict):
             (10, 20, 50, 250)) # match coordinate arrays
 
         # define and kamodofy interpolating function
-        rgi = RegularGridInterpolator((t, lon, lat, ht), variable, bounds_error = False, fill_value=np.NaN)
+        rgi = RegularGridInterpolator((t, lon, lat, ht), variable, bounds_error = False, fill_value=np.nan)
 
         @kamodofy(units='m/s', data=variable)
         def interpolator(xvec):

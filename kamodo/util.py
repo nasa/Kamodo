@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import sympy
 from decorator import decorate
-from numpy.distutils.exec_command import exec_command
+import subprocess
 from scipy.integrate import solve_ivp
 from sympy import Add, Mul, Pow, Tuple, sympify
 from sympy import Function
@@ -139,7 +139,9 @@ def compile_fortran(source, module_name, extra_args='', folder='./'):
                                         extra_args)
         command = 'cd "{}" && "{}" -c "import numpy.f2py as f2py;f2py.main()" {}'.format(
             folder, sys.executable, args)
-        status, output = exec_command(command)
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        status = result.returncode
+        output = result.stdout + result.stderr
         return status, output, command
 
 
