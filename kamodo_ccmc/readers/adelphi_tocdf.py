@@ -130,7 +130,7 @@ def combine_hemispheres(north_file, south_file):
         data[key][:, 1:, :len_lat] = np.flip(data_S[key], axis=2)  # S data
         data[key][:, 1:, len_lat] = data[key][:, 1:, len_lat-1]  # value buffer
         data[key][:, 1:, len_lat+1:len_lat+3] = \
-            np.tile(np.NaN, (new_shape[0], new_shape[1]-1, 2))  # NaN buffer
+            np.tile(np.nan, (new_shape[0], new_shape[1]-1, 2))  # NaN buffer
         data[key][:, 1:, len_lat+3] = data[key][:, 1:, len_lat+4]  # value buff
         data[key][:, 1:, len_lat+4:] = data_N[key]  # N hemisphere data
 
@@ -156,7 +156,7 @@ def combine_hemispheres(north_file, south_file):
             NP_idx -= 1
             zero_check = np.count_nonzero(data[key][:, :, NP_idx])
         # replace 'extra' latitude rows from data with NaNs
-        data[key][:, :, slice_idx] = np.tile(np.NaN, (
+        data[key][:, :, slice_idx] = np.tile(np.nan, (
             new_shape[0], new_shape[1], len(slice_idx)))
 
     # data wrangling complete, return data dictionary

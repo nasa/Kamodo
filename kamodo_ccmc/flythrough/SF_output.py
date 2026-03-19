@@ -43,7 +43,7 @@ def Functionalize_TimeSeries(utc_time, variable_name, variable_units,
 
     # Define an interpolator for the given time series array.
     interp = interp1d(utc_time, variable_data, bounds_error=False,
-                      fill_value=np.NaN)
+                      fill_value=np.nan)
 
     # Functionalize the time series array
     @kamodofy(units=variable_units, data=variable_data)  # units
