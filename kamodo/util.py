@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import sympy
 from decorator import decorate
+import shlex
 import subprocess
 from scipy.integrate import solve_ivp
 from sympy import Add, Mul, Pow, Tuple, sympify
@@ -135,11 +136,12 @@ def compile_fortran(source, module_name, extra_args='', folder='./'):
         fortran_file.write(source)
         fortran_file.flush()
 
-        args = ' -c -m {} {} {}'.format(module_name, fortran_file.name,
-                                        extra_args)
-        command = 'cd "{}" && "{}" -c "import numpy.f2py as f2py;f2py.main()" {}'.format(
-            folder, sys.executable, args)
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        f2py_args = ["-c", "-m", module_name, fortran_file.name]
+        if extra_args:
+            f2py_args.extend(shlex.split(extra_args))
+        cmd = [sys.executable, "-c", "import numpy.f2py as f2py;f2py.main()"] + f2py_args
+        command = " ".join(shlex.quote(a) for a in cmd)
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=folder)
         status = result.returncode
         output = result.stdout + result.stderr
         return status, output, command
