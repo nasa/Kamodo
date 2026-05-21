@@ -2745,7 +2745,16 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
 
     surfaces = ['MP', 'BS', 'CS']
     if what in surfaces:
-        color, name = '#666666', 'ERROR'
+        if what == 'MP':
+            color, colorRGB, name = '#0000c1', 'rgb(0, 0, 193)', 'Magnetopause'
+        elif what == 'BS':
+            color, colorRGB, name = '#161616', 'rgb(22, 22, 22)', 'Bow Shock'
+        elif what == 'CS':
+            color, colorRGB, name = '#223344', 'rgb(34, 51, 68)', 'Tail Current Sheet'
+            return None,False
+        else:
+            print('ERROR, unknown surface name',what)
+            return None,False
         if sfile == '':
             x,y,z = gmComputeSurface(ko,timeHrs,Gridsize=Gridsize,what=what)
             DT = tf.timeTStoDT(tf.timeKOtoTS(ko, sOffset=timeHrs*3600.))
@@ -2762,13 +2771,6 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
                 ' '+p[2][0:2]+':'+p[2][2:4]+':'+p[2][4:6]+' UT'
             titleStr = p[0]+' Surface for '+DateStr
             what = p[0]
-        if what == 'MP':
-            color, colorRGB, name = '#0000c1', 'rgb(0, 0, 193)', 'Magnetopause'
-        elif what == 'BS':
-            color, colorRGB, name = '#161616', 'rgb(22, 22, 22)', 'Bow Shock'
-        elif what == 'CS':
-            color, colorRGB, name = '#223344', 'rgb(34, 51, 68)', 'Tail Current Sheet'
-            return None,False
         if traceTime:
             name2 = name+'<br>'+DateStr
         else:
@@ -2979,21 +2981,25 @@ def gmComputeSurface(ko, timeHrs, Gridsize=21, what='MP'):
     return e,e,e
 
 ### ====================================================================================== ###
-def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', runname='unknown'):
+def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', 
+                  runname='unknown', coord=''):
     '''
     Function to save computed grid points defining a surface.
 
     ko:           Kamodo object
     timeHrs:      time to interpolate values (hrs from midnight of 1st day of data)
     Gridsize:     surface grid size, default is 42x21 grid of points
-    what:         string with what to save from: BS, MP
-    where:        string of directory path to save output
+    what:         string, what to save from: BS, MP
+    where:        string, directory path to save output
+    runname:      string, descriptive name of run
+    coord:        string, desired coordinate system, '' for model coordinates
     '''
     from datetime import datetime
     import kamodo_ccmc.flythrough.model_wrapper as MW
     import kamodo_ccmc.tools.timefunctions as tf
     import json
     import numpy as np
+    from kamodo_ccmc.flythrough.utils import ConvertCoord
 
     # Error checks
     surfaces = ['MP', 'BS', 'CS']
@@ -3017,23 +3023,37 @@ def gmSaveSurface(ko, timeHrs, Gridsize=21, what='MP', where='.', runname='unkno
     elif what == 'CS':
         title = 'Tail Current Sheet Surface Extraction'
     model = ko.modelname
-    coord = MW.Variable_Search('', model=model, return_dict=True)['v_x'][2]
-    DT = tf.timeTStoDT(tf.timeKOtoTS(ko, sOffset=timeHrs*3600.))
+    mcoord = MW.Variable_Search('', model=model, return_dict=True)['v_x'][2]
+    TS = tf.timeKOtoTS(ko, sOffset=timeHrs*3600.)
+    DT = tf.timeTStoDT(TS)
     DateStr = DT.strftime("%Y-%m-%dT%H:%M:%SZ")
-    FileStr = DT.strftime("_%Y%m%d_%H%M%S")
+    FileStr = DT.strftime("%Y%m%d_%H%M%S")
     DTnow = datetime.now()
     NowStr = DTnow.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if coord == mcoord or coord == '':
+        coord = mcoord
+    else:
+        # Coordinate transform
+        xyzshape = x.shape
+        x1 = np.reshape(x, -1)
+        y1 = np.reshape(y, -1)
+        z1 = np.reshape(z, -1)
+        t1 = np.full((x1.size), TS)
+        x2, y2, z2, units = ConvertCoord(t1, x1, y1, z1, mcoord, 'car', coord, 'car')
+        x = np.reshape(x2, xyzshape)
+        y = np.reshape(y2, xyzshape)
+        z = np.reshape(z2, xyzshape)
     # Save file
-    filename = where+'/'+what+FileStr+'.json'
+    filename = where+'/'+what+'-'+coord+'_'+FileStr+'.json'
     data = {}
-    data['Title'] = title
-    data['ExtractDate'] = NowStr
-    data['RunName'] = runname
     data['Model'] = model
+    data['Title'] = title
+    data['RunName'] = runname
     data['CoordinateSystem'] = coord
     data['ExtractedTime'] = DateStr
-    data['ExtractedHours'] = timeHrs
-    data['Gridsize'] = Gridsize
+    data['ExtractedTimestamp'] = TS
+    data['FileCreationTime'] = NowStr
+    data['Gridsize'] = str(2*Gridsize)+'x'+str(Gridsize)
     data['DataArrays'] = ['x','y','z']
     # Positions rounded to 4 digits after decimal. Must make sure
     #   type is not object before around(). Convert to list
@@ -3349,9 +3369,11 @@ def gmSurfaceMovie(where='.', where2='', wireframe=False):
 
     sfiles = glob.glob(where+'/*.json')
     sfiles.sort()
+    what = sfiles[0].rsplit('/', 1)[1][:2]
     if where2 != '':
         sfiles2 = glob.glob(where2+'/*.json')
         sfiles2.sort()
+        what2 = sfiles2[0].rsplit('/', 1)[1][:2]
 
     # make figure
     fig_dict = {
@@ -3361,7 +3383,7 @@ def gmSurfaceMovie(where='.', where2='', wireframe=False):
     }
 
     # make data
-    fig1,success = gmGetSurfacePlot(sfile=sfiles[0], wireframe=wireframe)
+    fig1,success = gmGetSurfacePlot(sfile=sfiles[0], what=what, wireframe=wireframe)
     fig_dict["data"].append(fig1.data[0])  # this one gets replaced with animation
     fig_dict["data"].append(fig1.data[1])
     fig_dict["data"].append(fig1.data[2])
@@ -3420,11 +3442,13 @@ def gmSurfaceMovie(where='.', where2='', wireframe=False):
         bname = os.path.basename(sfile)
         bname = bname[:-5]
         frame = {"data": [], "name": sfile}
-        fig1,success = gmGetSurfacePlot(sfile=sfile, wireframe=wireframe)
-        if where2 != '':
-            fig2,success = gmGetSurfacePlot(sfile=sfiles2[ii], wireframe=wireframe)
+        fig1,success = gmGetSurfacePlot(sfile=sfile, what=what, wireframe=wireframe)
+        fig1.data[0].showlegend = True
         frame["data"].append(fig1.data[0])
-        frame["data"].append(fig2.data[0])
+        if where2 != '':
+            fig2,success = gmGetSurfacePlot(sfile=sfiles2[ii], what=what2, wireframe=wireframe)
+            fig2.data[0].showlegend = True
+            frame["data"].append(fig2.data[0])
         fig_dict["frames"].append(frame)
         slider_step = {"args": [[sfile],  
             {"frame": {"duration": 0, "redraw": True},
@@ -3576,7 +3600,8 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         z1 = np.reshape(yy, -1)
         y1 = np.full((len(x1)), sliceval)
         ylabel = 'Z ['+xunits+'] '+pco
-    t1 = np.full((len(x1)), timeHrs)
+    TS = tf.timeKOtoTS(ko, sOffset=timeHrs*3600.)
+    t1 = np.full((len(x1)), TS)
 
     # Take grid in preferred plot coordinates and transform into model coordinates
     if co == 'GDZ':
@@ -3684,7 +3709,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         tic = toc
 
     # Plot values
-    pTS = ko.filedate.timestamp() + timeHrs*3600.
+    pTS = tf.timeKOtoTS(ko, sOffset=timeHrs*3600.)
     pDT = tf.timeTStoDT(pTS)
     pDateStr = pDT.strftime("%Y-%m-%d %H:%M:%S UT")
     label1 = slicedir+' = '+str(sliceval)+' slice at  '+pDateStr
