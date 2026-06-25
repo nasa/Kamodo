@@ -206,8 +206,15 @@ def MODEL():
             lon = array(cdf_data.variables['lon'])  # 0 to 360
             lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
             lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
+            lon_list = []
+            for ll in lon_ge180:
+                lon_list.append(lon[ll]-360.)
+            for ll in lon_le180:
+                lon_list.append(lon[ll])
+            lon_shift = array(lon_list)
             self._lon_idx = lon_ge180 + lon_le180
-            self._lon = lon - 180.
+            #self._lon = lon - 180.  #old shift
+            self._lon = lon_shift  #new shift
             self._height = array(cdf_data.variables['ht'])  # km
             cdf_data.close()
 
