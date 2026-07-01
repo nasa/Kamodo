@@ -276,7 +276,7 @@ class SWMF_GM(Kamodo):
               ypos=OCTREE_BLOCK_GRID_FFI.new("float[]",list(xvec[:,1]))
               zpos=OCTREE_BLOCK_GRID_FFI.new("float[]",list(xvec[:,2]))
               npos=len(list(xvec[:,0]))
-              return_data=list(np.zeros(npos,dtype=np.float64))
+              return_data=list(np.zeros(npos,dtype=np.float))
               return_data_ffi=OCTREE_BLOCK_GRID_FFI.new("float[]",return_data)
  #             print(xpos,ypos,zpos,npos)
  #             print(var_data,return_data_ffi)
