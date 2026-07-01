@@ -11,9 +11,10 @@ def test_scatter_plot():
     """
     Method for testing scatter plot's trace, layout and plot type.
     """
+    rng = np.random.default_rng(seed=42)
     title = 'test plot title'
     kamodo_obj = Kamodo(f='x**3')
-    result = kamodo_obj.evaluate('f', x=np.random.random((100, 3)))
+    result = kamodo_obj.evaluate('f', x=rng.random((100, 3)))
     titles = dict(variable='x', title=title)
 
     [trace], plot_type, layout = scatter_plot(result, titles, True)
