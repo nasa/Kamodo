@@ -140,7 +140,7 @@ def to_rpc_literal(value):
     elif isinstance(value, float):
         # python standard float is C double
         which = 'float64'
-        value = float(value) # cast np.float as float
+        value = float(value) # cast numpy float as Python float
     elif isinstance(value, str):
         which = 'text'
     elif isinstance(value, list):
