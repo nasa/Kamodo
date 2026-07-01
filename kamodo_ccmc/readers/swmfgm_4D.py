@@ -116,8 +116,9 @@ def MODEL():
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 
-    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import ffi
-    from readers.OCTREE_BLOCK_GRID._interpolate_amrdata import lib
+    # Import OCTREE_BLOCK_GRID shared library (ctypes-based)
+    from .OCTREE_BLOCK_GRID import lib, octree_block, OCTREE_AVAILABLE
+    import ctypes
 
     class MODEL(Kamodo):
         '''SWMF model data reader for magnetosphere outputs.
@@ -161,17 +162,19 @@ def MODEL():
             c is the reduced speed of light, and g is the ratio of specific
             heats. Consult model documentation for more information.
 
-        The reader requires code in readers/OCTREE_BLOCK_GRID/:
-        Compile the library using the command
-          python interpolate_amrdata_extension_build.py
-        inside the anaconda/miniconda3/miniforge3 environment for Kamodo.
-        The shared library file name contains the python version
-        and the name of the operation system, e.g.,
-          _interpolate_amrdata.cpython-39-darwin.so
+        The OCTREE_BLOCK_GRID C extension is compiled automatically
+        during ``pip install``.
         '''
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
                      printfiles=False, use_nearest_time=False, **kwargs):
+            # Check if required C extension is available
+            if not OCTREE_AVAILABLE:
+                raise ImportError(
+                    "SWMF-GM reader requires the OCTREE_BLOCK_GRID C extension, "
+                    "which is not compiled. To fix: install gcc and reinstall "
+                    "kamodo-ccmc with 'pip install --force-reinstall kamodo-ccmc'"
+                )
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'SWMF_GM'
             self.use_nearest_time = use_nearest_time
@@ -330,8 +333,7 @@ def MODEL():
 
         def setup_octree(self, x, y, z, verbose=False):
             '''
-            This function requires _interpolate_amrdata*.so in
-            readers/OCTREE_BLOCK_GRID/
+            Requires the OCTREE_BLOCK_GRID shared library (compiled during install).
             '''
             if verbose:
                 tic = time.time()
@@ -361,31 +363,43 @@ def MODEL():
             else:
                 R = 3.0
 
-            # initialize cffi arrays with Python lists may be slightly faster
+            # Create ctypes arrays
             octree = {}
-            x = ffi.new("float[]", list(x))
-            y = ffi.new("float[]", list(y))
-            z = ffi.new("float[]", list(z))
-            # 2 elements per block, smallest blocks have 2x2x2=8 positions
-            # at cell corners (GUMICS), so maximum array size is N/4
-            # BATSRUS blocks have at least 4x4x4 cell centers
-            octree['xr_blk'] = ffi.new("float[]", 2*N_blks)
-            octree['yr_blk'] = ffi.new("float[]", 2*N_blks)
-            octree['zr_blk'] = ffi.new("float[]", 2*N_blks)
-            octree['x_blk'] = ffi.new("float[]", NX*N_blks)
-            octree['y_blk'] = ffi.new("float[]", NY*N_blks)
-            octree['z_blk'] = ffi.new("float[]", NZ*N_blks)
-            octree['box_range'] = ffi.new("float[]", 7)
-            octree['NX'] = ffi.new("int[]", [NX])
-            octree['NY'] = ffi.new("int[]", [NY])
-            octree['NZ'] = ffi.new("int[]", [NZ])
+            # Convert to float32 numpy arrays for C compatibility
+            x = np.ascontiguousarray(x, dtype=np.float32)
+            y = np.ascontiguousarray(y, dtype=np.float32)
+            z = np.ascontiguousarray(z, dtype=np.float32)
 
-            N_blks = lib.xyz_ranges(Ncell, x, y, z, octree['xr_blk'],
-                                    octree['yr_blk'], octree['zr_blk'],
-                                    octree['x_blk'], octree['y_blk'],
-                                    octree['z_blk'], octree['box_range'],
-                                    octree['NX'], octree['NY'],
-                                    octree['NZ'], 1)
+            # Create output arrays as numpy arrays
+            octree['xr_blk'] = np.zeros(2*N_blks, dtype=np.float32)
+            octree['yr_blk'] = np.zeros(2*N_blks, dtype=np.float32)
+            octree['zr_blk'] = np.zeros(2*N_blks, dtype=np.float32)
+            octree['x_blk'] = np.zeros(NX*N_blks, dtype=np.float32)
+            octree['y_blk'] = np.zeros(NY*N_blks, dtype=np.float32)
+            octree['z_blk'] = np.zeros(NZ*N_blks, dtype=np.float32)
+            octree['box_range'] = np.zeros(7, dtype=np.float32)
+            octree['NX'] = np.array([NX], dtype=np.int32)
+            octree['NY'] = np.array([NY], dtype=np.int32)
+            octree['NZ'] = np.array([NZ], dtype=np.int32)
+
+            # Call C function with ctypes pointers
+            N_blks = lib.xyz_ranges(
+                Ncell,
+                x.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                y.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                z.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['xr_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['yr_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['zr_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['x_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['y_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['z_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['box_range'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['NX'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                octree['NY'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                octree['NZ'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                1
+            )
 
             if N_blks < 0:
                 print('NX:', list(octree['NX']))
@@ -398,10 +412,11 @@ def MODEL():
                 print('Z_blk:', list(octree['z_blk'][0:16]))
                 raise IOError("Block shape and size was not determined.")
 
-            octree['N_blks'] = ffi.new("int[]", [N_blks])
+            octree['N_blks'] = np.array([N_blks], dtype=np.int32)
 
             N_octree = int(N_blks*8/7)
-            octree['octree_blocklist'] = ffi.new("octree_block[]", N_octree)
+            # Create ctypes array of octree_block structures
+            octree['octree_blocklist'] = (octree_block * N_octree)()
 
             dx_blk = zeros(N_blks, dtype=float)
             dy_blk = zeros(N_blks, dtype=float)
@@ -447,18 +462,24 @@ def MODEL():
             if verbose:
                 print("MAX_AMRLEVEL:", MAX_AMRLEVEL)
 
-            octree['numparents_at_AMRlevel'] = ffi.new("int[]",
-                                                       N_blks*(MAX_AMRLEVEL+1))
-            octree['block_at_AMRlevel'] = ffi.new("int[]",
-                                                  N_blks*(MAX_AMRLEVEL+1))
-            success = int(-1)
-            success = lib.setup_octree(N_blks,
-                                       octree['xr_blk'], octree['yr_blk'],
-                                       octree['zr_blk'], MAX_AMRLEVEL,
-                                       octree['box_range'],
-                                       octree['octree_blocklist'], N_octree,
-                                       octree['numparents_at_AMRlevel'],
-                                       octree['block_at_AMRlevel'])
+            octree['numparents_at_AMRlevel'] = np.zeros(
+                N_blks*(MAX_AMRLEVEL+1), dtype=np.int32)
+            octree['block_at_AMRlevel'] = np.zeros(
+                N_blks*(MAX_AMRLEVEL+1), dtype=np.int32)
+
+            # Call setup_octree with ctypes pointers
+            lib.setup_octree(
+                N_blks,
+                octree['xr_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['yr_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                octree['zr_blk'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                MAX_AMRLEVEL,
+                octree['box_range'].ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                ctypes.cast(octree['octree_blocklist'], ctypes.POINTER(octree_block)),
+                N_octree,
+                octree['numparents_at_AMRlevel'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                octree['block_at_AMRlevel'].ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+            )
 
             if verbose:
                 toc = time.time()
@@ -524,10 +545,12 @@ def MODEL():
                                                             verbose=verbose)
 
                 # update which octree arrays the library points to
-                lib.setup_octree_pointers(self.octree[key][i]['MAX_AMRLEVEL'],
-                                          self.octree[key][i]['octree_blocklist'],
-                                          self.octree[key][i]['numparents_at_AMRlevel'],
-                                          self.octree[key][i]['block_at_AMRlevel'])
+                lib.setup_octree_pointers(
+                    self.octree[key][i]['MAX_AMRLEVEL'],
+                    ctypes.cast(self.octree[key][i]['octree_blocklist'], ctypes.POINTER(octree_block)),
+                    self.octree[key][i]['numparents_at_AMRlevel'].ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self.octree[key][i]['block_at_AMRlevel'].ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+                )
                 # get data from file and initialize
                 data = mhd[gvar]
 
@@ -537,7 +560,8 @@ def MODEL():
                 if gvar in ['theta1', 'theta2', 'phi1', 'phi2']:
                     dmask = data < -99.
                     data[dmask] = None
-                var_data = ffi.new("float[]", list(data))
+                # Convert to float32 numpy array for C compatibility
+                var_data = np.ascontiguousarray(data, dtype=np.float32)
 
                 # assign custom interpolator: Lutz Rastaetter 2021
                 def interp(xvec):
@@ -551,19 +575,26 @@ def MODEL():
                         Y = array([Y])
                         Z = array([Z])
 
-                    xpos = ffi.new("float[]", list(X))
-                    ypos = ffi.new("float[]", list(Y))
-                    zpos = ffi.new("float[]", list(Z))
+                    # Convert to float32 numpy arrays for C compatibility
+                    xpos = np.ascontiguousarray(X, dtype=np.float32)
+                    ypos = np.ascontiguousarray(Y, dtype=np.float32)
+                    zpos = np.ascontiguousarray(Z, dtype=np.float32)
                     npos = len(X)
-                    return_data = list(zeros(npos, dtype=float))
-                    return_data_ffi = ffi.new("float[]", return_data)
+                    return_data = np.zeros(npos, dtype=np.float32)
 
+                    # Call C function with ctypes pointers
                     IS_ERROR = lib.interpolate_amrdata_multipos(
-                        xpos, ypos, zpos, npos, var_data, return_data_ffi)
+                        xpos.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                        ypos.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                        zpos.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                        npos,
+                        var_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+                        return_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+                    )
                     if IS_ERROR != 0:
                         print("Warning: SWMF/BATSRUS interpolation failed.")
 
-                    return_data[:] = list(return_data_ffi)
+                    # return_data is already a list-like numpy array
                     toc = perf_counter()
                     if verbose:
                         print(varname, ' interp: ', toc-tic, 'seconds elapsed')

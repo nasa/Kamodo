@@ -10,7 +10,14 @@ from numpy import zeros, flip,array,float32,NaN
 from glob import glob
 #import kamodo_ccmc.readers.OpenGGCM.read_b_grids as rbg
 #import kamodo_ccmc.readers.OpenGGCM.readmagfile3d as rmhd
-import kamodo_ccmc.readers.OpenGGCM.readOpenGGCM as ropgm
+
+# Import OpenGGCM shared library (ctypes-based)
+from kamodo_ccmc.readers.OpenGGCM import (
+    OPENGGCM_AVAILABLE,
+    read_3d_field,
+    read_2d_field,
+    read_grid_for_vector,
+)
 
 from os.path import sep,isfile,isdir,dirname,exists
 from os import remove
@@ -63,11 +70,20 @@ openggcm_gm_varnames={
 
 
 def openggcm_combine_magnetosphere_files(full_file_prefix,cadence=None,requested_variables=None,verbose=False):
+    """Combine OpenGGCM magnetosphere files into NetCDF format."""
+    # Check if required Fortran extension is available
+    if not OPENGGCM_AVAILABLE:
+        raise ImportError(
+            "OpenGGCM reader requires the readOpenGGCM Fortran extension, "
+            "which is not compiled. To fix: install gfortran and reinstall "
+            "kamodo-ccmc with 'pip install --force-reinstall kamodo-ccmc'"
+        )
+
     # file prefix includes everything including '3df' for magnetosphere and intended year,month,day (and hour)
     # read matching dates, times from 3df_list to generate list of raw files.
     # coadence: Default: None -- use all available times, otherwise use cadence as input starting with first time in simualtion.
     # requested_variables default: None -- convert all available 3D fields, otherwise use only the requested variables to generate smaller NetCDF files.
-    
+
     tic=perf_counter()
     file_prefix,file_datetime = full_file_prefix.split('.3df')
     file_path=dirname(file_prefix)+sep
@@ -264,50 +280,50 @@ def openggcm_combine_magnetosphere_files(full_file_prefix,cadence=None,requested
             
         else:
                 
-            gx=zeros(5000)
-            gy=zeros(5000)
-            gz=zeros(5000)
-            nx,ny,nz,gx,gy,gz = ropgm.read_grid_for_vector(grid_file,' ',gx,gy,gz)
+            gx=zeros(5000, dtype=float32)
+            gy=zeros(5000, dtype=float32)
+            gz=zeros(5000, dtype=float32)
+            nx,ny,nz,gx,gy,gz = read_grid_for_vector(grid_file,' ',gx,gy,gz)
             if verbose:
                 print('NX: %i NY: %i N: %i' % (nx,ny,nz) )
             
                 gx=-flip(gx[0:nx])
                 gy=-flip(gy[0:ny])
                 gz=gz[0:nz]
-                gx_bx=zeros(nx)
-                gy_bx=zeros(ny)
-                gz_bx=zeros(nz)
-                gx_by=zeros(nx)
-                gy_by=zeros(ny)
-                gz_by=zeros(nz)
-                gx_bz=zeros(nx)
-                gy_bz=zeros(ny)
-                gz_bz=zeros(nz)
-                gx_ex=zeros(nx)
-                gy_ex=zeros(ny)
-                gz_ex=zeros(nz)
-                gx_ey=zeros(nx)
-                gy_ey=zeros(ny)
-                gz_ey=zeros(nz)
-                gx_ez=zeros(nx)
-                gy_ez=zeros(ny)
-                gz_ez=zeros(nz)
-                
-                nx1,ny1,nz1,gx_bx,gy_bx,gz_bx = ropgm.read_grid_for_vector(grid_file,'bx',gx_bx,gy_bx,gz_bx)
+                gx_bx=zeros(nx, dtype=float32)
+                gy_bx=zeros(ny, dtype=float32)
+                gz_bx=zeros(nz, dtype=float32)
+                gx_by=zeros(nx, dtype=float32)
+                gy_by=zeros(ny, dtype=float32)
+                gz_by=zeros(nz, dtype=float32)
+                gx_bz=zeros(nx, dtype=float32)
+                gy_bz=zeros(ny, dtype=float32)
+                gz_bz=zeros(nz, dtype=float32)
+                gx_ex=zeros(nx, dtype=float32)
+                gy_ex=zeros(ny, dtype=float32)
+                gz_ex=zeros(nz, dtype=float32)
+                gx_ey=zeros(nx, dtype=float32)
+                gy_ey=zeros(ny, dtype=float32)
+                gz_ey=zeros(nz, dtype=float32)
+                gx_ez=zeros(nx, dtype=float32)
+                gy_ez=zeros(ny, dtype=float32)
+                gz_ez=zeros(nz, dtype=float32)
+
+                nx1,ny1,nz1,gx_bx,gy_bx,gz_bx = read_grid_for_vector(grid_file,'bx',gx_bx,gy_bx,gz_bx)
                 if nx1 <= 0 or ny1 <=0 or nz1 <=0:
                     raise IOError("bx grid not found")
                 gx_bx=-flip(gx_bx[0:nx1])
                 gy_bx=-flip(gy_bx[0:ny1])
                 gz_bx=gz_bx[0:nz1]
 
-                nx1,ny1,nz1,gx_by,gy_by,gz_by = ropgm.read_grid_for_vector(10,grid_file,'by',gx_by,gy_by,gz_by)
+                nx1,ny1,nz1,gx_by,gy_by,gz_by = read_grid_for_vector(grid_file,'by',gx_by,gy_by,gz_by)
                 if nx1 <= 0 or ny1 <=0 or nz1 <=0:
                     raise IOError("by grid not found")
                 gx_by=-flip(gx_by[0:nx1])
                 gy_by=-flip(gy_by[0:ny1])
                 gz_by=gz_by[0:nz1]
 
-                nx1,ny1,nz1,gx_bz,gy_bz,gz_bz = ropgm.read_grid_for_vector(10,grid_file,'bz',gx_bz,gy_bz,gz_bz)
+                nx1,ny1,nz1,gx_bz,gy_bz,gz_bz = read_grid_for_vector(grid_file,'bz',gx_bz,gy_bz,gz_bz)
                 if nx1 <= 0 or ny1 <=0 or nz1 <=0:
                     raise IOError("bz grid not found")
 
@@ -315,21 +331,21 @@ def openggcm_combine_magnetosphere_files(full_file_prefix,cadence=None,requested
                 gy_bz=-flip(gy_bz[0:ny1])
                 gz_bz=gz_bz[0:nz1]
 
-                nx1,ny1,nz1,gx_ex,gy_ex,gz_ex = ropgm.read_grid_for_vector(grid_file,'ex',gx_ex,gy_ex,gz_ex)
+                nx1,ny1,nz1,gx_ex,gy_ex,gz_ex = read_grid_for_vector(grid_file,'ex',gx_ex,gy_ex,gz_ex)
                 if nx1 <= 0 or ny1 <=0 or nz1 <=0:
                     raise IOError("ex grid not found")
                 gx_ex=-flip(gx_ex[0:nx1])
                 gy_ex=-flip(gy_ex[0:ny1])
                 gz_ex=gz_ex[0:nz1]
 
-                nx1,ny1,nz1,gx_ey,gy_ey,gz_ey = ropgm.read_grid_for_vector(10,grid_file,'ey',gx_ey,gy_ey,gz_ey)
+                nx1,ny1,nz1,gx_ey,gy_ey,gz_ey = read_grid_for_vector(grid_file,'ey',gx_ey,gy_ey,gz_ey)
                 if nx1 <= 0 or ny1 <=0 or nz1 <=0:
                     raise IOError("ey grid not found")
                 gx_ey=-flip(gx_ey[0:nx1])
                 gy_ey=-flip(gy_ey[0:ny1])
                 gz_ey=gz_ey[0:nz1]
 
-                nx1,ny1,nz1,gx_ez,gy_ez,gz_ez = ropgm.read_grid_for_vector(10,grid_file,'ez',gx_ez,gy_ez,gz_ez)
+                nx1,ny1,nz1,gx_ez,gy_ez,gz_ez = read_grid_for_vector(grid_file,'ez',gx_ez,gy_ez,gz_ez)
                 if nx1 <= 0 or ny1 <=0 or nz1 <=0:
                     raise IOError("ez grid not found")
                 gx_ez=-flip(gx_ez[0:nx1])
@@ -422,7 +438,7 @@ def openggcm_combine_magnetosphere_files(full_file_prefix,cadence=None,requested
         for ifile in range(ntime):
             filename=file_names[ifile]
             fielddata=zeros(shape=(nx,ny,nz),dtype=float32,order='F')
-            fieldarray,nx_field,ny_field,nz_field,asciitime = ropgm.read_3d_field(file_path+filename,fielddata,varname);
+            fieldarray,nx_field,ny_field,nz_field,asciitime = read_3d_field(file_path+filename,fielddata,varname);
             asciitime_str=asciitime.decode('utf-8')
             if verbose:
                 print('asciitime_str: ',asciitime_str)
