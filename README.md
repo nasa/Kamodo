@@ -83,7 +83,7 @@ import plotly.io as pio
 fig = kamodo.plot('fvec')
 pio.write_image(fig, 'images/fig2d-usage.svg')
 ```
-![usage](https://raw.github.com/nasa/Kamodo-core/docs/notebooks/images/fig2d-usage.svg)
+![usage](https://raw.github.com/nasa/Kamodo-core/main/docs/notebooks/images/fig2d-usage.svg)
 
 Head over to the [Introduction](notebooks/Kamodo.ipynb) page for more details.
 
@@ -99,7 +99,7 @@ pip install kamodo
 To get the latest version of Kamodo Core, install from the NASA git repo:
 
 ```console
-pip install git+https://github.com/ccmc/Kamodo-core.git
+pip install git+https://github.com/nasa/Kamodo-core.git
 ```
 
 ### Kamodo Environment
