@@ -10,7 +10,7 @@ python-markdown-math
 markdown_include
 kamodo
 cffi
-numpy<2.0.0
+numpy>=1.24.0
 pandas<2.0.0
 netCDF4<1.7.0
 nbformat

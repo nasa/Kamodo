@@ -122,7 +122,7 @@ class HAPI(Kamodo):
                     # Fix wonky geotail data
                     aunit="nT"
                     afill = 0.1*float(afill)
-                    adata = 0.1*adata.astype(np.float)
+                    adata = 0.1*adata.astype(np.float64)
                 if aunit == "n/cc":
                     # The unit n/cc should be 1/cc to register properly in Kamodo
                     aunit = "1/cc"
