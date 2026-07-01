@@ -175,12 +175,12 @@ def df_data(df_file, verbose=False):
             tmp[:, 2:-1] = variables[var]  # copy data into grid
             tmp[:, -1] = np.mean(tmp[:, -2], axis=0)
             tmp[:, 1] = variables[var][:, 0]  # buffer row
-            tmp[:, 0] = np.nan  # add NaNs on equator side
+            tmp[:, 0] = np.NaN  # add NaNs on equator side
         else:  # south pole at beginning of array
             tmp[:, 1:-2] = variables[var]  # copy data into grid
             tmp[:, 0] = np.mean(tmp[:, 1], axis=0)
             tmp[:, -2] = variables[var][:, 0]  # buffer row
-            tmp[:, -1] = np.nan  # add NaNs on equator side
+            tmp[:, -1] = np.NaN  # add NaNs on equator side
         variables[var] = tmp
 
     # latitude wrapping in coordinate grid
@@ -357,7 +357,7 @@ def ea_data(ea_file, verbose=False):
 
         # addind NaN on equator-side assuming the data never reaches it.
         variables[var][new_vals[1]] = variables[var][lat_equator]  # buffer row
-        variables[var][new_vals[0]] = np.nan * \
+        variables[var][new_vals[0]] = np.NaN * \
             np.ones(shape=variables[var][lat_equator].shape)
 
     # hemisphere spcific data wrangling complete. return data.
