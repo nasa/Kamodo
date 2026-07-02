@@ -108,7 +108,8 @@ class FakeDataGenerator:
         grid = FakeDataGenerator.grid
         time_steps = grid.T.linspace()
         if random_data:
-            data = np.random.random((grid.T.n, 13))
+            rng = np.random.default_rng(seed=31415)
+            data = rng.random((grid.T.n, 13))
         else:
             data = np.zeros((grid.T.n, 13))
 
@@ -145,7 +146,8 @@ class FakeDataGenerator:
             for t in time_steps:
                 file.write(f'ZONE T="{t}" I={data_shape[2]}, J={data_shape[1]}, K={data_shape[0]}\n')
                 if random_data:
-                    data = np.random.random(np.prod(data_shape))
+                    rng = np.random.default_rng(seed=31415)
+                    data = rng.random(np.prod(data_shape))
                 else:
                     # Make profile increasing with time, a very basic approach
                     data = L_profile * A_profile * E_profile * (1 + 0.1*t)
@@ -160,7 +162,8 @@ class FakeDataGenerator:
         E_values = 10. ** grid.E.linspace()
         A_values = np.deg2rad(grid.A.linspace())  # VERB code actually saves the grid in radians, not in degrees!
         if random_data:
-            pc_values = np.random.random((grid.L.n, grid.E.n, grid.A.n))
+            rng = np.random.default_rng(seed=31415)
+            pc_values = rng.random((grid.L.n, grid.E.n, grid.A.n))
         else:
             # Create 3D arrays for each coordinate using meshgrid
             _, E_grid, _ = np.meshgrid(L_values, E_values, A_values, indexing='ij')
@@ -240,7 +243,8 @@ class FakeDataGenerator:
 
     @staticmethod
     def _grid_rand(tvec_grid, xvec=False):
-        tvec = list((np.array(tvec_grid[0]) + (np.array(tvec_grid[1]) - np.array(tvec_grid[0])) * np.random.random()))
+        rng = np.random.default_rng(seed=31415)
+        tvec = list((np.array(tvec_grid[0]) + (np.array(tvec_grid[1]) - np.array(tvec_grid[0])) * rng.random()))
 
         if xvec:
             return tvec[1::]
@@ -252,7 +256,7 @@ class FakeDataGenerator:
         FDG = FakeDataGenerator
 
         # Setup random seed (old style) for constancy of the tests
-        np.random.seed(31415)
+        rng = np.random.default_rng(seed=31415)
 
         output_exists = os.path.exists(FDG.output_dir)
 
@@ -744,17 +748,19 @@ class TestVerb03DatasetCheck(TestCase):
 
     def _random_grid_points(self):
         def select_value_within_bounds(grid, min_bound, max_bound):
+            rng = np.random.default_rng(seed=31415)
             values = np.unique(grid.ravel())
             valid_values = values[(values >= min_bound) & (values <= max_bound)]
-            return np.random.choice(valid_values)
+            return rng.choice(valid_values)
 
         ko = self.reader(self.output_path, variables_requested=['L', 'E_e', 'alpha_e', 'mu', 'K'])
 
         # Choose grid value on a grid node available at all L shells
-        L = np.random.choice(ko._gridL.ravel())
+        rng = np.random.default_rng(seed=31415)
+        L = rng.choice(ko._gridL.ravel())
 
         # Choose grid value on a grid node available at all L shells
-        alpha_e = np.random.choice(ko._gridAlpha.ravel())  # Alpha does not change with L
+        alpha_e = rng.choice(ko._gridAlpha.ravel())  # Alpha does not change with L
 
         # Energy (E_e) changes with L in realistic cases, select a valid E_e within the range
         e_min, e_max = np.max(ko._gridE[:, 0, :]), np.min(ko._gridE[:, -1, :])
@@ -1006,8 +1012,9 @@ class TestVerb05flyby(unittest.TestCase):
         # Testing PSD L-shell profile on the first point of time
         L_min, L_max, _ = FakeDataGenerator.grid.L
 
+        rng = np.random.default_rng(seed=31415)
         n = 10
-        L_arr = np.sort(np.random.uniform(L_min, L_max, n))
+        L_arr = np.sort(rng.uniform(L_min, L_max, n))
 
         # Generate grid values for ech and al_eq from grid_lea_rand, and mu and K from grid_lmk_rand
         t, _, ech, al_eq = FakeDataGenerator.grid_lea_rand()
@@ -1033,8 +1040,9 @@ class TestVerb05flyby(unittest.TestCase):
         # Testing that flyby returns sin dependence of pitch angle distribution
         A_min, A_max, _ = FakeDataGenerator.grid.A
 
+        rng = np.random.default_rng(seed=31415)
         n = 10
-        a_arr = np.sort(np.random.uniform(A_min, A_max, n))
+        a_arr = np.sort(rng.uniform(A_min, A_max, n))
 
         # Generate grid values for ech and al_eq from grid_lea_rand, and mu and K from grid_lmk_rand
         t, L, ech, _ = FakeDataGenerator.grid_lea_rand()
@@ -1064,8 +1072,9 @@ class TestVerb05flyby(unittest.TestCase):
         # Testing that flyby returns power law dependence of energy spectrum
         E_min, E_max, _ = FakeDataGenerator.grid.E
 
+        rng = np.random.default_rng(seed=31415)
         n = 10
-        e_arr = 10 ** np.sort(np.random.uniform(E_min, E_max, n))
+        e_arr = 10 ** np.sort(rng.uniform(E_min, E_max, n))
 
         # Generate grid values for ech and al_eq from grid_lea_rand, and mu and K from grid_lmk_rand
         t, L, _, al_eq = FakeDataGenerator.grid_lea_rand()
@@ -1108,7 +1117,8 @@ class TestVerb05flyby(unittest.TestCase):
         ts_min = self.timestamp_from_timegrid(T_min)
         ts_max = self.timestamp_from_timegrid(T_max)
 
-        t_arr = np.sort(np.random.uniform(ts_min, ts_max, n))
+        rng = np.random.default_rng(seed=31415)
+        t_arr = np.sort(rng.uniform(ts_min, ts_max, n))
 
         for var in self.tvar_list:
             if '_lea' in var:

@@ -1853,10 +1853,10 @@ def benchmark_vectorfield_tracer(kamodo_object, n_lines=10, use_numba_options=[T
     print(f"Starting comprehensive benchmark with {n_lines} field lines")
     
     # Generate random start points in magnetosphere
-    np.random.seed(42)  # For reproducibility
-    theta = np.random.uniform(0, 2*np.pi, n_lines)
-    phi = np.random.uniform(0, np.pi, n_lines)
-    r = np.random.uniform(3, 10, n_lines)
+    rng = np.random.default_rng(42)  # For reproducibility
+    theta = rng.uniform(0, 2*np.pi, n_lines)
+    phi = rng.uniform(0, np.pi, n_lines)
+    r = rng.uniform(3, 10, n_lines)
     
     start_points = np.array([
         r * np.cos(theta) * np.sin(phi),
