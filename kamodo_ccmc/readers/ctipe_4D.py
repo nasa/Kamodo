@@ -14,6 +14,7 @@ filling on, default _FillValue of 9.969209968386869e+36 used
 '''
 
 # constants and dictionaries
+from numpy import nan
 model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ',
                               'sph', ['time', 'lon', 'lat', 'ilev1'],
                               'kg/m**3'],
@@ -618,7 +619,7 @@ def MODEL():
             # print files to screen if option requested
             if printfiles:
                 print('Files: \n',  self.filename)
-            self.missing_value = NaN
+            self.missing_value = nan
             self._registered = 0
 
             # Check for presence of necessary height variables in varname_list.
@@ -722,7 +723,7 @@ def MODEL():
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
                 if fill_value is not None:  # if defined, replace with NaN
-                    data = where(data != fill_value, data, NaN)
+                    data = where(data != fill_value, data, nan)
                 if len(data.shape) == 3 and 'Elon' not in coord_dict.keys():
                     variable = transpose(data, (0, 2, 1))
                 elif 'Elon' in coord_dict.keys():
@@ -754,7 +755,7 @@ def MODEL():
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
                 if fill_value is not None:  # if defined, replace with NaN
-                    data = where(data != fill_value, data, NaN)
+                    data = where(data != fill_value, data, nan)
                 if len(data.shape) == 3 and 'Elon' not in coord_dict.keys():
                     variable = transpose(data, (0, 2, 1))
                 elif 'Elon' in coord_dict.keys():
@@ -771,7 +772,7 @@ def MODEL():
                 for i in range(len(coord_dict_data)):
                     print(coord_dict_data[i].shape)
                     print(log_data.shape)
-                rgi = rgiND(coord_dict_data, log_data, bounds_error=False,fill_value=NaN)
+                rgi = rgiND(coord_dict_data, log_data, bounds_error=False,fill_value=nan)
                 def custom_interp(xvec):
                     return exp(rgi(xvec))
                 return custom_interp

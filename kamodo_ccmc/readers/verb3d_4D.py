@@ -647,7 +647,7 @@ def MODEL():
             # Check for NaN values
             nan_check = np.isnan(L) | np.isnan(Y) | np.isnan(Z)
             if np.all(nan_check):
-                return L, Y, Z, np.full(nobs, np.NaN), None, None
+                return L, Y, Z, np.full(nobs, np.nan), None, None
 
             # Handle NaN points in the input data
             L[nan_check] = np.nan
@@ -663,7 +663,7 @@ def MODEL():
             limax = min(limax + 1, num_L_grid - 1)
 
             if (Lmax > max_L_grid and Lmin > max_L_grid) or (Lmax < min_L_grid and Lmin < min_L_grid):
-                return L, Y, Z, np.full(nobs, np.NaN), limin, limax
+                return L, Y, Z, np.full(nobs, np.nan), limin, limax
 
             return L, Y, Z, None, limin, limax
 

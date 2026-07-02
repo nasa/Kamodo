@@ -5,7 +5,7 @@ from netCDF4 import Dataset
 #from astropy.constants import R_earth
 
 from datetime import datetime,timezone,timedelta
-from numpy import zeros, flip,array,float32,NaN
+from numpy import zeros, flip,array,float32,NaN, nan
 
 from glob import glob
 #import kamodo_ccmc.readers.OpenGGCM.read_b_grids as rbg
@@ -163,7 +163,7 @@ def convert_all(file_dir,verbose=False,requested_variables=None):
         nbuffer = 1000000
         data=zeros(shape=(ntime,ny_field,nx_field),dtype=float32,order='C')
         #    fielddata=zeros(shape=(nx,ny,nz),dtype=float32,order='F')
-        missing_value=NaN
+        missing_value=nan
         time=zeros(ntime)
         #print(varnames)
         for varname in varnames:

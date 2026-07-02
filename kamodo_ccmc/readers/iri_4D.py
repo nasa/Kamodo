@@ -3,6 +3,7 @@ Written by Rebecca Ringuette, 2021
 '''
 
 # variable name in file: [standardized variable name, descriptive term, units]
+from numpy import nan
 model_varnames = {'Ne': ['N_e', 'electron number density',
                          0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
                          '1/m**3'],
@@ -260,7 +261,7 @@ def MODEL():
                         'units': model_varnames[var][-1], 'data': p}
 
             # store a few items
-            self.missing_value = NaN
+            self.missing_value = nan
             self._registered = 0
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
@@ -348,7 +349,7 @@ def MODEL():
                 coord_dict_data[0] = array(times_file)
 
                 if fill_value is not None:  # if defined, replace with NaN
-                    data = where(data != fill_value, data, NaN)
+                    data = where(data != fill_value, data, nan)
                 if len(data.shape) == 3:
                     # time, lat, lon -> time, lon, lat
                     log_variable = log(transpose(data, (0, 2, 1)))
@@ -366,7 +367,7 @@ def MODEL():
                         lvs2 = reshape(lvs, (lvs.shape[0], 1, lvs.shape[1], lvs.shape[2]))
                         log_variable = append(log_variable, lvs2, axis=1)
                 rgi = rgiND(coord_dict_data, log_variable[:, lon_idx],
-                            bounds_error=False,fill_value=NaN)
+                            bounds_error=False,fill_value=nan)
                 def interp4d_custom(xvec):
                     return exp(rgi(xvec))
                 return interp4d_custom
@@ -393,7 +394,7 @@ def MODEL():
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
                 if fill_value is not None:  # if defined, replace with NaN
-                    data = where(data != fill_value, data, NaN)
+                    data = where(data != fill_value, data, nan)
                 if len(data.shape) == 3:
                     # time, lat, lon -> time, lon, lat
                     variable = transpose(data, (0, 2, 1))

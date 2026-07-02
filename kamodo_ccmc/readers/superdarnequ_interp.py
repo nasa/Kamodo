@@ -5,7 +5,7 @@
 # the outputs vs latitude.
 
 from scipy.interpolate import interp1d
-from numpy import NaN, array, unique, zeros, ravel, ndarray
+from numpy import NaN, array, unique, zeros, ravel, ndarray, nan
 from kamodo_ccmc.readers.reader_utilities import get_slice_idx
 
 
@@ -44,7 +44,7 @@ def custom_interp(lon_dict, lat_grid, data_dict):
                     latidx_map.append(i)
                     lat_int = interp1d(
                         lon_dict[lat_grid[i]], data_dict[lat_grid[i]],
-                        bounds_error=False, fill_value=NaN)  # returns data_val
+                        bounds_error=False, fill_value=nan)  # returns data_val
                     lat_interps.append(lat_int)
             if len(lat_idxs) > 1:
                 interp_locations = [latidx_map.index(val) for val in lat_idxs]
@@ -56,12 +56,12 @@ def custom_interp(lon_dict, lat_grid, data_dict):
                     for j, vals in enumerate(interp_values):  # loop lons
                         interp_lat = interp1d(lat_grid[lat_idxs], vals,
                                               bounds_error=False,
-                                              fill_value=NaN)
+                                              fill_value=nan)
                         out_vals[uidx[j]] = interp_lat(lat_val)
                 else:  # only one lon, so interp_values.shape =? lon.shape
                     interp_lat = interp1d(lat_grid[lat_idxs],
                                           ravel(interp_values),
-                                          bounds_error=False, fill_value=NaN)
+                                          bounds_error=False, fill_value=nan)
                     out_vals = interp_lat(lat_val)
             else:
                 if isinstance(lat, ndarray):

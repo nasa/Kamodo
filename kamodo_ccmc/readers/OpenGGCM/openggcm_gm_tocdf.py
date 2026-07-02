@@ -5,7 +5,7 @@ from netCDF4 import Dataset
 #from astropy.constants import R_earth
 
 from datetime import datetime,timezone,timedelta
-from numpy import zeros, flip,array,float32,NaN
+from numpy import zeros, flip,array,float32,NaN, nan
 
 from glob import glob
 #import kamodo_ccmc.readers.OpenGGCM.read_b_grids as rbg
@@ -419,7 +419,7 @@ def openggcm_combine_magnetosphere_files(full_file_prefix,cadence=None,requested
 
     data=zeros(shape=(ntime,nx,ny,nz),dtype=float32,order='C')
 #    fielddata=zeros(shape=(nx,ny,nz),dtype=float32,order='F')
-    missing_value=NaN
+    missing_value=nan
     time=zeros(ntime)
     if requested_variables is None:
         convert_varnames=openggcm_gm_varnames

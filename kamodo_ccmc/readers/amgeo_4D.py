@@ -3,7 +3,7 @@ Written by Rebecca Ringuette, 2022
 '''
 
 from datetime import datetime, timezone
-from numpy import vectorize
+from numpy import vectorize, nan
 
 # 'C:/Users/rringuet/Kamodo_WinDev1/AmGEO/'
 model_varnames = {'E_ph': ['E_east', 'Electric Field (eastward)',
@@ -421,7 +421,7 @@ def MODEL():
                     # fill_value = h5_data[tkeys[0]][gvar].fillvalue
                     h5_data.close()
                     data = flip(transpose(tmp, (0, 2, 1)), axis=2)
-                    NaN_row = ones(data[:, :, 0].shape) * NaN
+                    NaN_row = ones(data[:, :, 0].shape) * nan
                     data = insert(data, 0, data[:, :, 0], axis=2)  # add buffer
                     data = insert(data, 0, NaN_row, axis=2)
                     # change from equatorward to northward in N hemi data
@@ -451,7 +451,7 @@ def MODEL():
                     # fill_value = h5_data[tkeys[0]][gvar].fillvalue
                     h5_data.close()
                     data = transpose(tmp, (0, 2, 1))
-                    NaN_row = ones(data[:, :, 0].shape) * NaN
+                    NaN_row = ones(data[:, :, 0].shape) * nan
                     # add buffer row
                     data = insert(data, data.shape[2], data[:, :, -1], axis=2)
                     data = insert(data, data.shape[2], NaN_row, axis=2)
@@ -465,7 +465,7 @@ def MODEL():
                                     order='F')
                         h5_data.close()
                         data1 = flip(tmp.T, axis=1)  # shape = (lon, lat)
-                        NaN_row1 = ones(data1[:, 0].shape) * NaN
+                        NaN_row1 = ones(data1[:, 0].shape) * nan
                         # add buffer row
                         data1 = insert(data1, 0, data1[:, 0], axis=1)
                         data1 = insert(data1, 0, NaN_row1, axis=1)
@@ -493,7 +493,7 @@ def MODEL():
                                     order='F')
                         h5_data.close()
                         data1 = tmp.T
-                        NaN_row1 = ones(data1[:, 0].shape) * NaN
+                        NaN_row1 = ones(data1[:, 0].shape) * nan
                         data1 = insert(data1, data1.shape[1], data1[:, 0],
                                        axis=1)  # add buffer row
                         data1 = insert(data1, data1.shape[1], NaN_row1, axis=1)

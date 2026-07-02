@@ -5,7 +5,7 @@ Created on Thu May 13 18:28:18 2021
 """
 from kamodo import kamodofy, gridify
 from numpy import NaN, vectorize, append, array, meshgrid, ravel, diff
-from numpy import unique, zeros, ndarray, floor, float32, all, insert, where
+from numpy import unique, zeros, ndarray, floor, float32, all, insert, where, nan
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -173,14 +173,14 @@ def create_interp(coord_data, data_dict, func=None, func_default='data'):
     n_coords = len(coord_data.keys())
     if n_coords == 1 and func_default == 'data':
         rgi = rgi1D(*coord_list, data_dict['data'], bounds_error=False,
-                    fill_value=NaN)
+                    fill_value=nan)
         # wrap in a function and return the function
         def interp(xvec):
             return rgi(xvec)
         return interp
     elif n_coords > 1 and func_default == 'data':
         rgi = rgiND(coord_list, data_dict['data'], bounds_error=False,
-                    fill_value=NaN)
+                    fill_value=nan)
         # wrap in a function and return the function
         def interp(xvec):
             return rgi(xvec)
@@ -398,7 +398,7 @@ def time_interp(coord_dict, data_dict, func, func_default='data', use_nearest_ti
     def add_timeinterp(i, time_interps):
         if len(coord_list) > 1 and func_default == 'data':
             time_interps.append(rgiND(coord_list[1:], func(i),
-                                      bounds_error=False, fill_value=NaN))
+                                      bounds_error=False, fill_value=nan))
         elif len(coord_list) == 1:  # has to be different for time series data
             def dummy_1D(spatial_position):
                 return func(i)  # data only
@@ -413,9 +413,9 @@ def time_interp(coord_dict, data_dict, func, func_default='data', use_nearest_ti
         times = position[0]
         sposition = position[1:].T  # spatial coordinates (len(times), ncoords)
         if len(position.shape) == 1:
-            out_vals = zeros(1) * NaN
+            out_vals = zeros(1) * nan
         else:
-            out_vals = zeros(times.shape[0]) * NaN
+            out_vals = zeros(times.shape[0]) * nan
         # loop through time grid instead of input time array
         for i in range(len(coord_list[0])):
             # figure out what times given are in this file, if any
@@ -479,14 +479,14 @@ def time_interp(coord_dict, data_dict, func, func_default='data', use_nearest_ti
                     for j, vals in enumerate(interp_values):  # loop positions
                         time_int = rgi1D(coord_list[0][idx_list], vals,
                                          bounds_error=False,
-                                         fill_value=NaN)
+                                         fill_value=nan)
                         out_vals[st_idx[j]] = time_int(times[st_idx[j]])
                 else:
                     interp_values = array([time_interps[i](sposition)
                                            for i in interp_locations]).T
                     time_int = rgi1D(coord_list[0][idx_list],
                                      interp_values,
-                                     bounds_error=False, fill_value=NaN)
+                                     bounds_error=False, fill_value=nan)
                     out_vals = time_int(times)
             else:
                 interp_location = idx_map.index(idx_list[0])
@@ -556,10 +556,10 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
         if len(coord_list) > 1 and func_default == 'data':
             coord_list_i = [time] + coord_list[1:]
             time_interps.append(rgiND(coord_list_i, data,
-                                      bounds_error=False, fill_value=NaN))
+                                      bounds_error=False, fill_value=nan))
         elif len(coord_list) == 1:  # has to be different for time series data
             time_interps.append(rgi1D(time, data, bounds_error=False,
-                                      fill_value=NaN))
+                                      fill_value=nan))
         elif func_default == 'custom':  # when func returns an interpolator
             time_interps.append(func(i))
         return time_interps, idx_map
@@ -567,9 +567,9 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
     def interp_i(*args, time_interps=time_interps, idx_map=idx_map):
         position = array([*args])  # time coordinate value must be first
         if len(position.shape) == 1:
-            out_vals = zeros(1) * NaN
+            out_vals = zeros(1) * nan
         else:
-            out_vals = zeros(position.shape[1]) * NaN  # (num_cgrids, num_pos)
+            out_vals = zeros(position.shape[1]) * nan  # (num_cgrids, num_pos)
         # loop through start times instead
         for i in range(len(times_dict['start'])):
             # figure out what times given are in this file, if any
@@ -667,7 +667,7 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
     def add_timeinterp(i, fi, time_interps):
         if len(coord_list) > 1 and func_default == 'data':
             time_interps.append(rgiND(coord_list[1:], func(i, fi),
-                                      bounds_error=False, fill_value=NaN))
+                                      bounds_error=False, fill_value=nan))
         # has to be different for time series data
         elif len(coord_list) == 1 and func_default == 'data':
             def dummy_1D(spatial_position):
@@ -683,9 +683,9 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
         times = position[0]
         sposition = position[1:].T  # spatial coordinates (len(times), ncoords)
         if len(position.shape) == 1:
-            out_vals = zeros(1) * NaN
+            out_vals = zeros(1) * nan
         else:
-            out_vals = zeros(times.shape[0]) * NaN
+            out_vals = zeros(times.shape[0]) * nan
         # loop through time grid instead of input time array
         for ti in range(len(coord_list[0])):
             # figure out what times given are in this slice, if any
@@ -747,14 +747,14 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                     for j, vals in enumerate(interp_values):  # loop positions
                         time_int = rgi1D(coord_list[0][idx_list], vals,
                                          bounds_error=False,
-                                         fill_value=NaN)
+                                         fill_value=nan)
                         out_vals[st_idx[j]] = time_int(times[st_idx[j]])
                 else:  # one position
                     interp_values = array([time_interps[ii](sposition)
                                            for ii in interp_locations]).T
                     time_int = rgi1D(coord_list[0][idx_list],
                                      interp_values, bounds_error=False,
-                                     fill_value=NaN)
+                                     fill_value=nan)
                     out_vals = time_int(times)
             else:
                 interp_location = idx_map.index(idx_list[0])
@@ -867,17 +867,17 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
             km_vals = h_func(**{'time': input_arr[0], 'lon': input_arr[1],
                                 'lat': input_arr[2]})
             km_interp = rgi1D(km_vals, ilev, bounds_error=False,
-                              fill_value=NaN)
+                              fill_value=nan)
             return km_interp(km)
 
         # remaining logic is for if there is more than one position given
         pos_arr = unique(input_arr, axis=0)  # only create interp for unique
-        out_ilev = zeros(len(t)) * NaN  # (t, lon, lat) positions to save time
+        out_ilev = zeros(len(t)) * nan  # (t, lon, lat) positions to save time
         for pos in pos_arr:
             pos_idx = [i for i, p in enumerate(input_arr) if all(p == pos)]
             km_vals = h_func(**{'time': pos[0], 'lon': pos[1], 'lat': pos[2]})
             km_interp = rgi1D(km_vals, ilev, bounds_error=False,
-                              fill_value=NaN)
+                              fill_value=nan)
             out_ilev[pos_idx] = km_interp(km[pos_idx])  # interp for all km
         return out_ilev
 
@@ -923,7 +923,7 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
     bounds = array([ravel(item) for item in mesh_list], dtype=float).T
 
     # create the functionalized interpolators and modified function signatures
-    fake_data = zeros((2, 2, 2, 2)) * NaN  # avoiding computation
+    fake_data = zeros((2, 2, 2, 2)) * nan  # avoiding computation
     param_xvec = create_funcsig(coord_data, 'GDZsphkm', bounds)
     new_interp = forge.replace('xvec', param_xvec)(plevconvert)
     interp = kamodofy(units=units, data=fake_data, arg_units=coord_units
@@ -944,7 +944,7 @@ def register_griddedPlev(kamodo_object, new_varname, units, interp_ijk,
 
     new_coord_units = {'time': 'hr', 'lon': 'deg',
                        'lat': 'deg', 'height': 'km'}
-    fake_data = zeros((2, 2, 2, 2)) * NaN  # avoiding computation
+    fake_data = zeros((2, 2, 2, 2)) * nan  # avoiding computation
     coord_data = {key: value['data'] for key, value in
                   coord_dict.items() if key in
                   new_coord_units.keys()}  # exclude ilev

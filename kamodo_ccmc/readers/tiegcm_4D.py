@@ -17,7 +17,7 @@ NOTE:
         will have to be reworked a bit if other variables depend on imlev
         later.
 '''
-from numpy import vectorize
+from numpy import vectorize, nan
 from datetime import datetime, timezone, timedelta
 
 model_varnames = {  # 4D Variables, vert coordinate on midpoint levels (ilev)
@@ -565,7 +565,7 @@ def MODEL():
                 'data': key} for key in gvar_list}
 
             # Store inputs as class attributes
-            self.missing_value = NaN
+            self.missing_value = nan
             self._registered = 0
             if printfiles:
                 print('Files:', self.filename)
@@ -769,7 +769,7 @@ def MODEL():
                 if missingValue > 1e30:  # Avoid warnings for casting large values
                     cdf_data[gvar].set_auto_mask(False)
                     data = array(cdf_data[gvar])
-                    data = where(data >= missingValue, NaN, data)
+                    data = where(data >= missingValue, nan, data)
                 else:
                     data = array(cdf_data[gvar])
                 cdf_data.close()
@@ -780,7 +780,7 @@ def MODEL():
                     if missingValue > 1e30:  # Avoid warnings for casting large values
                         cdf_data[gvar].set_auto_mask(False)
                         data_slice = array(cdf_data[gvar][0])
-                        data_slice = where(data_slice >= missingValue, NaN, data_slice)
+                        data_slice = where(data_slice >= missingValue, nan, data_slice)
                     else:
                         data_slice = array(cdf_data[gvar][0])
                     cdf_data.close()
@@ -815,7 +815,7 @@ def MODEL():
                     if verbose:
                         print('All values at max milev are 1e+36 for ' +
                               f'{varname}. Slicing off top array.')
-                    variable[:, :, :, top_idx] = NaN
+                    variable[:, :, :, top_idx] = nan
                     top_idx -= 1
                     idx_top = where(variable[:, :, :, top_idx] > 1e+35)[0]
                 if variable.shape[0] == 1:  # high-alt data has one time
@@ -836,7 +836,7 @@ def MODEL():
                 if missingValue > 1e30:  # Avoid warnings for casting large values
                     cdf_data[gvar].set_auto_mask(False)
                     data = array(cdf_data[gvar])
-                    data = where(data >= missingValue, NaN, data)
+                    data = where(data >= missingValue, nan, data)
                 else:
                     data = array(cdf_data[gvar])
                 cdf_data.close()
@@ -847,7 +847,7 @@ def MODEL():
                     if missingValue > 1e30:  # Avoid warnings for casting large values
                         cdf_data[gvar].set_auto_mask(False)
                         data_slice = array(cdf_data[gvar][0])
-                        data_slice = where(data_slice >= missingValue, NaN, data_slice)
+                        data_slice = where(data_slice >= missingValue, nan, data_slice)
                     else:
                         data_slice = array(cdf_data[gvar][0])
                     cdf_data.close()
@@ -875,13 +875,13 @@ def MODEL():
                 if 'lat' in coord_list:
                     out = log(self.wrap_4Dlatlon(varname, variable))
                     if out.shape[0] == 1:  # high-alt data has one time
-                        rgi = rgiND(coord_dict_data[1:], squeeze(out), bounds_error=False,fill_value=NaN)
+                        rgi = rgiND(coord_dict_data[1:], squeeze(out), bounds_error=False,fill_value=nan)
                         def interp3d_custom(xvec):
                             return exp(rgi(xvec))                    
                         return interp3d_custom
                         #return squeeze(out)
                     else:
-                        rgi = rgiND(coord_dict_data, out, bounds_error=False,fill_value=NaN)
+                        rgi = rgiND(coord_dict_data, out, bounds_error=False,fill_value=nan)
                         def interp4d_custom(xvec):
                             return exp(rgi(xvec))
                         return interp4d_custom
@@ -897,19 +897,19 @@ def MODEL():
                     if verbose:
                         print('All values at max milev are 1e+36 for ' +
                               f'{varname}. Slicing off top array.')
-                    variable[:, :, :, top_idx] = NaN
+                    variable[:, :, :, top_idx] = nan
                     top_idx -= 1
                     idx_top = where(variable[:, :, :, top_idx] > 1e+35)[0]
 
                 log_data = log(variable)
             
                 if variable.shape[0] == 1:  # high-alt data has one time
-                    rgi = rgiND(coord_dict_data[1:], squeeze(log_data), bounds_error=False,fill_value=NaN)
+                    rgi = rgiND(coord_dict_data[1:], squeeze(log_data), bounds_error=False,fill_value=nan)
                     def interp3d_custom(xvec):
                         return exp(rgi(xvec))                    
                     return interp3d_custom
                 else:
-                    rgi = rgiND(coord_dict_data, log_data, bounds_error=False,fill_value=NaN)
+                    rgi = rgiND(coord_dict_data, log_data, bounds_error=False,fill_value=nan)
                     def interp4d_custom(xvec):
                         return exp(rgi(xvec))
                     return interp4d_custom

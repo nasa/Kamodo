@@ -13,6 +13,7 @@ two pressure level variables:
 data structure order = (time, lev/ilev, lat/mlat, lon/mlon)
 """
 # starts with variables from the h1 files. No h2 files in this set
+from numpy import nan
 model_varnames = {'co2vmr': ['mmr_CO2', 'co2 volume mixing ratio', 0,
                              'GDZ', 'sph', ['time'], ''],
                   'ch4vmr': ['mmr_CH4', 'ch4 volume mixing ratio', 0,
@@ -673,7 +674,7 @@ def MODEL():
                         'units': model_varnames[var][-1], 'data': key}
 
             # store a few items
-            self.missing_value = NaN
+            self.missing_value = nan
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
             if printfiles:

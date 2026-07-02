@@ -54,7 +54,7 @@ class SWMF_GM(Kamodo):
         self.runpath = runpath
         self.runname = runname
         self.start_time = start_time
-        self.missing_value = np.NAN
+        self.missing_value = np.nan
         self.variables=dict()
         mhd = spacepy.pybats.IdlFile(filename,sort_unstructured_data=False) #- spacepy/pybats/__init__.py modified to not sort by default when reading binary *.out IDL files
 

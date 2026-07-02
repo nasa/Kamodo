@@ -11,7 +11,7 @@ Modification History:
 
 """
 from os.path import basename, isfile
-from numpy import array, zeros, float32, float64, mean, arctan2, sqrt, squeeze, flip, int32, where, prod, pi, reshape, all, any, NaN, floor, min, max, mod, pi, arccos
+from numpy import array, zeros, float32, float64, mean, arctan2, sqrt, squeeze, flip, int32, where, prod, pi, reshape, all, any, NaN, floor, min, max, mod, pi, arccos, nan
 from kamodo_ccmc.readers.reader_utilities import _isfile,Dataset
 import h5py                 # should use RU's S3 wrapper
 #from kamodo_ccmc.readers.reader_utilities import h5py
@@ -871,7 +871,7 @@ def Interpolate2D1D(Xvec,data3D,grid,debug=False,verbose=False):
 
     nxvec=len(r)
     for ix in range(nxvec):
-        output_data[ix] = NaN
+        output_data[ix] = nan
         phi_ = phi[ix]
         if phi_ >= PHI[0] and phi_ <= PHI[-1]:
             k = 0

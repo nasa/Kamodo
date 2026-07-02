@@ -1,6 +1,7 @@
 
 # file_prefix = 'C:/Users/rringuet/Kamodo_WinDev1/GITM/3DLST_t150317'
 # varnames in cdf files are standardized (value[0])
+from numpy import nan
 model_varnames = {'r_Ar': ['mmr_Ar', 'mass mixing ratio of argon/neutrals',
                            0, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'],
                            ''],
@@ -415,7 +416,7 @@ def MODEL():
                 return  # return times as is to prevent infinite recursion
 
             # store variables
-            self.missing_value = NaN
+            self.missing_value = nan
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
@@ -557,7 +558,7 @@ def MODEL():
                 log_data = log(array(cdf_data[gvar]))
                 cdf_data.close()
                 coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
-                rgi = rgiND(coord_dict_data[1:], log_data, bounds_error=False,fill_value=NaN)
+                rgi = rgiND(coord_dict_data[1:], log_data, bounds_error=False,fill_value=nan)
                 def custom_interp(xvec):
                     return exp(rgi(xvec))
                 return custom_interp

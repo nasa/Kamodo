@@ -293,7 +293,7 @@ def MODEL():
                 'data': p} for var in gvar_list}
 
             # store a few items
-            self.missing_value = NaN
+            self.missing_value = np.nan
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
             if printfiles:

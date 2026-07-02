@@ -2,6 +2,7 @@
 Written by Rebecca Ringuette, 2021
 '''
 from datetime import datetime, timezone
+from numpy import nan
 
 # variable name in file: [standardized variable name, descriptive term, units]
 model_varnames = {"V": ['V', 'Electric potential', 0, 'SM', 'sph',
@@ -209,7 +210,7 @@ def MODEL():
             cdf_data.close()
 
             # store a few items
-            self.missing_value = NaN
+            self.missing_value = nan
             self._registered = 0
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')

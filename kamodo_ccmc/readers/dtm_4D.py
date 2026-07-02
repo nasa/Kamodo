@@ -5,6 +5,7 @@ Created on Wed Nov  2 12:59:08 2022
 @author: rringuet
 DTM model reader
 """
+from numpy import nan
 
 model_varnames = {'Temp_exo': ['T_exo', 'Exospheric temperature', 0, 'GDZ',
                                'sph', ['time', 'lon', 'lat'], 'K'],
@@ -158,7 +159,7 @@ def MODEL():
                 return  # return times as is 
 
             # store variables
-            self.missing_value = NaN
+            self.missing_value = nan
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
@@ -318,7 +319,7 @@ def MODEL():
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
                 if fill_value is not None:  # if defined, replace with NaN
-                    data = where(data != fill_value, data, NaN)
+                    data = where(data != fill_value, data, nan)
                 if len(data.shape) == 3:
                     variable = transpose(data, (0, 2, 1))
                 elif len(data.shape) == 4:
@@ -347,7 +348,7 @@ def MODEL():
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
                 if fill_value is not None:  # if defined, replace with NaN
-                    data = where(data != fill_value, data, NaN)
+                    data = where(data != fill_value, data, nan)
                 
                 data = log(data)
                 coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
@@ -361,7 +362,7 @@ def MODEL():
                 elif len(data.shape) == 4:
                     variable = transpose(data, (0, 3, 2, 1))
 
-                rgi = rgiND(coord_dict_data, variable, bounds_error=False,fill_value=NaN)
+                rgi = rgiND(coord_dict_data, variable, bounds_error=False,fill_value=nan)
                 def interp_custom(xvec):
                     return exp(rgi(xvec))
                 return interp_custom

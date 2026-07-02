@@ -4,7 +4,7 @@ Created on Wed Jan  4 15:37:59 2023
 
 @author: rringuet,lrastaet
 """
-from numpy import vectorize
+from numpy import vectorize, nan
 from datetime import datetime, timezone
 
 model_varnames = {'Bx': ['B_x', 'X-component of magnetic field',
@@ -321,7 +321,7 @@ def MODEL():
             self._Z = linspace(Z_min, Z_max, endpoint=True, num=4*shape[0]) 
 
             # store a few items
-            self.missing_value = NaN
+            self.missing_value = nan
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
             if printfiles:
@@ -561,7 +561,7 @@ def MODEL():
                         PHI_arr = np.ascontiguousarray(PHI, dtype=np.float32)
 
                         return_data = zeros(len(X),dtype=float32)
-                        return_data[:] = NaN
+                        return_data[:] = nan
                         # Ensure data is contiguous float32 for C call
                         data = np.ascontiguousarray(data, dtype=np.float32)
                         is_cell_centered = 1
@@ -650,7 +650,7 @@ def MODEL():
                         PHI_arr = np.ascontiguousarray(PHI, dtype=np.float32)
 
                         return_data = zeros(len(X),dtype=float32)
-                        return_data[:] = NaN
+                        return_data[:] = nan
                         # Ensure data is contiguous float32 for C call
                         data = np.ascontiguousarray(data, dtype=np.float32)
 

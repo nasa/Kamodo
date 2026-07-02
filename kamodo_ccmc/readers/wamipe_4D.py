@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from numpy import nan
 
 
 # varnames in cdf files are standardized (value[0])
@@ -242,7 +243,7 @@ def MODEL():
                 return  # return times as is to prevent infinite recursion
 
             # store variables
-            self.missing_value = NaN
+            self.missing_value = nan
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
@@ -465,13 +466,13 @@ def MODEL():
                 if hasattr(cdf_data.variables[gvar], '_FillValue'):
                     fill_value = cdf_data.variables[gvar]._FillValue
                     if fill_value in data:
-                        data = where(data == fill_value, NaN, data)
+                        data = where(data == fill_value, nan, data)
                 cdf_data.close()
                 data = log(data)
                 if 1 in list(data.shape):  # for den var in some gs10 files 
                     data = squeeze(data)
                 coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
-                rgi = rgiND(coord_dict_data[1:], data.T[lon_idx], bounds_error=False,fill_value=NaN)
+                rgi = rgiND(coord_dict_data[1:], data.T[lon_idx], bounds_error=False,fill_value=nan)
                 def interp3d_custom(xvec):
                     return exp(rgi(xvec))                    
                 return interp3d_custom
@@ -486,7 +487,7 @@ def MODEL():
                 if hasattr(cdf_data.variables[gvar], '_FillValue'):
                     fill_value = cdf_data.variables[gvar]._FillValue
                     if fill_value in data:
-                        data = where(data == fill_value, NaN, data)
+                        data = where(data == fill_value, nan, data)
                 cdf_data.close()
                 if 1 in list(data.shape):  # for den var in some gs10 files 
                     data = squeeze(data)
