@@ -599,12 +599,12 @@ class TestVerb03DatasetCheck(TestCase):
         tvec = FakeDataGenerator.grid_lea_rand()
 
         val_psd_lea = ko.PSD_lea(tvec)
-        self.assertFalse(isnan(val_psd_lea))
+        self.assertFalse(isnan(val_psd_lea[0]))
 
         val_psd_lea_int = ko.PSD_lea_ijk(time=tvec[0], L=tvec[1], E_e=tvec[2], alpha_e=tvec[3])
         self.assertFalse(isnan(val_psd_lea_int))
 
-        self.assertAlmostEquals(val_psd_lea, val_psd_lea_int, places=2)
+        self.assertAlmostEqual(val_psd_lea, val_psd_lea_int, places=2)
 
     def test08_valid_interpolator(self):
         # Confirm that the interpolator works for each testing variable and type
