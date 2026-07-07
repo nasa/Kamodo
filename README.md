@@ -160,17 +160,13 @@ When publishing research which used Kamodo, please provide appropriate credit to
 - Youtube tutorial channel - https://www.youtube.com/playlist?list=PLBWJQ5-pik_yBBcrpDRPM2hLluh-jreFa  
 
 ## The Kamodo team
-**Dr. Lutz Rastaetter**  
-- ORCiD: https://orcid.org/0000-0002-7343-4147  
-- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/lutz-rastaetter/
-
 **Dr. Darren De Zeeuw**  
 - ORCiD: https://orcid.org/0000-0002-4313-5998  
-- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/darren-de-zeeuw/
+- NASA Staff Page: https://science.gsfc.nasa.gov/sci/bio/darren.dezeeuw
 
-**Dr. Katherine Garcia-Sage**  
-- ORCiD: https://orcid.org/0000-0001-6398-8755  
-- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/katherine-garcia-sage/
+**Dr. Lutz Rastaetter**  
+- ORCiD: https://orcid.org/0000-0002-7343-4147  
+- NASA Staff Page: https://science.gsfc.nasa.gov/sci/bio/lutz.rastaetter-1
 
 
 ## Open-Source License
