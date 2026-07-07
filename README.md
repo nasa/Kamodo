@@ -162,11 +162,11 @@ When publishing research which used Kamodo, please provide appropriate credit to
 ## The Kamodo team
 **Dr. Darren De Zeeuw**  
 - ORCiD: https://orcid.org/0000-0002-4313-5998  
-- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/darren-de-zeeuw/
+- NASA Staff Page: https://science.gsfc.nasa.gov/sci/bio/darren.dezeeuw
 
 **Dr. Lutz Rastaetter**  
 - ORCiD: https://orcid.org/0000-0002-7343-4147  
-- NASA Staff Page: https://ccmc.gsfc.nasa.gov/staff/lutz-rastaetter/
+- NASA Staff Page: https://science.gsfc.nasa.gov/sci/bio/lutz.rastaetter-1
 
 
 ## Open-Source License
