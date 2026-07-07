@@ -12,7 +12,7 @@ kamodo
 cffi
 numpy
 pandas
-netCDF4<1.7.0
+netCDF4
 nbformat
 cdflib
 astropy
