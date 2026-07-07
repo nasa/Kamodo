@@ -17,18 +17,21 @@ conda activate Kamodo_env
 
 Choose one of the following options:
 
-**Option A: Install from PyPI** (when available - coming soon!)
+**Option A: Install from PyPI** (old code version, updates coming soon)
 ```bash
 pip install kamodo-ccmc
 ```
 
-**Option B: Install from Git Repository** (current recommended method)
+**Option B: Install from Git Repository** (recommended method)
 ```bash
+git clone https://github.com/nasa/Kamodo-core.git
+pip install ./Kamodo-core
+
 git clone https://github.com/nasa/Kamodo.git
 pip install ./Kamodo
 ```
 
-**Option C: Developer Installation** (for contributing to Kamodo)
+**Option C: Developer Installation** (for modifying Kamodo)
 ```bash
 git clone https://github.com/nasa/Kamodo.git
 pip install -e ./Kamodo
@@ -44,7 +47,7 @@ pip install ipython jupyter
 ### Compiler Requirements
 
 **For full functionality**, you need:
-- **gcc** (C compiler) - Required for SWMF-GM and GAMER-AM readers
+- **gcc** (C compiler) - Required for SWMF-GM and GAMERA-GM readers
 - **gfortran** (Fortran compiler) - Required for OpenGGCM reader
 
 **If you don't have compilers:** Don't worry! Kamodo will still install successfully. You'll see warnings about which readers are unavailable, but all other model readers will work normally.
