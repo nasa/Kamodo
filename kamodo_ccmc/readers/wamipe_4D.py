@@ -108,7 +108,7 @@ model_varnames = {'den400': ['rho_400km', 'Density at 400 km.',
 def MODEL():
     from time import perf_counter
     from os.path import basename
-    from numpy import array, unique, NaN, append, linspace, where, squeeze
+    from numpy import array, unique, nan, append, linspace, where, squeeze
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU
 

@@ -284,7 +284,7 @@ model_varnames = {'r_Ar': ['mmr_Ar', 'mass mixing ratio of argon/neutrals',
 def MODEL():
     from time import perf_counter
     from os.path import basename
-    from numpy import array, unique, NaN
+    from numpy import array, unique, nan
     from datetime import datetime, timezone
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU

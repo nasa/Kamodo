@@ -55,7 +55,7 @@ def MODEL():
 
     from kamodo import Kamodo
     from os.path import basename
-    from numpy import array, transpose, NaN, unique
+    from numpy import array, transpose, nan, unique
     from numpy import where, append
     from time import perf_counter
     from datetime import datetime, timedelta, timezone

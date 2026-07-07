@@ -4,7 +4,7 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
-from numpy import NaN, vectorize, append, array, meshgrid, ravel, diff
+from numpy import nan, vectorize, append, array, meshgrid, ravel, diff
 from numpy import unique, zeros, ndarray, floor, float32, all, insert, where, nan
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D

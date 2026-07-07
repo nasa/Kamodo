@@ -412,7 +412,7 @@ def MODEL():
     from kamodo import Kamodo
     from os.path import getsize
     import psutil
-    from numpy import array, NaN, where, unique, append, linspace
+    from numpy import array, nan, where, unique, append, linspace
     from numpy import transpose, median, log
     from time import perf_counter
     from datetime import datetime, timezone

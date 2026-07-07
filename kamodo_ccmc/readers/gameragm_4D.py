@@ -60,7 +60,7 @@ def MODEL():
     from os.path import basename
     from astropy.time import Time
     from datetime import datetime, timezone
-    from numpy import array, NaN, ndarray, zeros, linspace, repeat, float32, float64, int32, sqrt, arctan2, arccos, mod, pi
+    from numpy import array, nan, ndarray, zeros, linspace, repeat, float32, float64, int32, sqrt, arctan2, arccos, mod, pi
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
     import kamodo_ccmc.readers.gameragm_grids as G

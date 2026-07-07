@@ -29,7 +29,7 @@ def MODEL():
 
     from kamodo import Kamodo
     from os.path import basename
-    from numpy import array, NaN, unique, zeros, linspace
+    from numpy import array, nan, unique, zeros, linspace
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
 

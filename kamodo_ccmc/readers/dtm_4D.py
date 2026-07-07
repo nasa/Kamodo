@@ -46,7 +46,7 @@ model_varnames = {'Temp_exo': ['T_exo', 'Exospheric temperature', 0, 'GDZ',
 def MODEL():
     from time import perf_counter
     from os.path import basename
-    from numpy import array, unique, NaN, append, transpose, where
+    from numpy import array, unique, nan, append, transpose, where
     from datetime import datetime, timezone
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU

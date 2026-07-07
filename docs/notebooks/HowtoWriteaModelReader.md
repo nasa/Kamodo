@@ -74,7 +74,7 @@ def MODEL():
     from time import perf_counter
     from glob import glob
     from os.path import basename, isfile
-    from numpy import array, unique, NaN, append, transpose, where
+    from numpy import array, unique, nan, append, transpose, where
     from datetime import datetime, timezone
     from netCDF4 import Dataset
     from kamodo import Kamodo
@@ -253,13 +253,13 @@ If the filetime keyword is set to True, then the script returns. The requested t
 
 ## Checking the Variables Requested
 There are several blocks of code that address a variety of scenarios concerning the variables_requested variable (the list of strings corresponding to the LaTeX representation of the variable names). Before diving into these, a few lines of code typically occur at this point in the model reader to initialize the data structures needed later.  
-- The missing_value attribute is typically defined as a NaN (imported from numpy), but should change depending on the convention taken in the data files. The given value is replaced with a NaN before the interpolator is defined.  
+- The missing_value attribute is typically defined as a nan (imported from numpy), but should change depending on the convention taken in the data files. The given value is replaced with a nan before the interpolator is defined.  
 - The varfiles dictionary is used to store what variable names (LaTeX representation) are found in what category of files (e.g. the height files vs the neutral files for the CTIPe data). The keys of this dictionary are set to be the keys of the pattern_files dictionary attribute defined earlier, and the values are a list of the requested variable names found in the files of the same naming pattern as the key.  
 - The gvarfiles dictionary is identical in structure, except the values are a list of the variable names as given in the file for each naming pattern. Recall that the variable names as given in the file are the keys of the model_varnames dictionary at the top of each model reader script, and the LaTeX representation of each variable is always the first element in the list associated with the given key.  
 - The err_list attribute is simply a list of the variable names (LaTeX representation) requested by the user but not found in the data files.  
 ```py
             # store variables
-            self.missing_value = NaN
+            self.missing_value = nan
             self.varfiles = {}  # store which variable came from which file
             self.gvarfiles = {}  # store file variable name similarly
             self.err_list = []
@@ -582,8 +582,8 @@ Interpolation method 2 is used for datasets where data is stored with multiple t
                     cdf_data.close()
                     data = append(data, [data_slice], axis=0)
                 # data wrangling
-                if fill_value is not None:  # if defined, replace with NaN
-                    data = where(data != fill_value, data, NaN)
+                if fill_value is not None:  # if defined, replace with nan
+                    data = where(data != fill_value, data, nan)
                 if len(data.shape) == 3:
                     variable = transpose(data, (0, 2, 1))
                 elif len(data.shape) == 4:
@@ -595,7 +595,7 @@ Interpolation method 2 is used for datasets where data is stored with multiple t
                 gridded_int, coord_str, interp_flag=2, func=func,
                 times_dict=self.times[key])
 ```
-The code required for interpolation method 2 is more complex than the other interpolation methods because it must not only load the data for the chunk required, but it must also load the data for the first time step in the next chunk to enable proper interpolation in time between files. This example also includes logic to test for the presence of a fill value attribute in the data. The block labeled "data wrangling" replaces the given fill value, if defined, with NaN values (imported from NumPy), transposes the array to match the proper coordinate order, and handles the longitude coordinate shift in the return statement. The return statement returns the prepared data stored in the variable array as required by the logic in the *Functionalize_Dataset* function.
+The code required for interpolation method 2 is more complex than the other interpolation methods because it must not only load the data for the chunk required, but it must also load the data for the first time step in the next chunk to enable proper interpolation in time between files. This example also includes logic to test for the presence of a fill value attribute in the data. The block labeled "data wrangling" replaces the given fill value, if defined, with nan values (imported from NumPy), transposes the array to match the proper coordinate order, and handles the longitude coordinate shift in the return statement. The return statement returns the prepared data stored in the variable array as required by the logic in the *Functionalize_Dataset* function.
 
 The only argument accepted by the defined function is an integer *i*, which represents the position of the data chunk in the full dataset, which is the same as the file number in the self.pattern_files list.  Note that the call to the *RU.Functionalize_Dataset* includes the function defined as in the interpolation method 1 example, and also includes the times dictionary. 
 

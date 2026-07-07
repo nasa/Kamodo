@@ -78,7 +78,7 @@ attrs_var = ['imf_By', 'imf_Bz', 'solar_wind_speed']
 
 def MODEL():
     from kamodo import Kamodo
-    from numpy import array, NaN, unique, append, zeros, diff, sin, cos, insert
+    from numpy import array, nan, unique, append, zeros, diff, sin, cos, insert
     from numpy import flip, concatenate, mean, broadcast_to, ones
     from numpy import transpose
     from numpy import pi as nppi

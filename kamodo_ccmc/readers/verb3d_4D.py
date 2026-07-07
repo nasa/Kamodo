@@ -31,7 +31,7 @@ model_varnames = {'PSD': ['PSD_lea', 'Phase Space Density in (L, E_e, alpha_e)',
 def MODEL():
     from kamodo import Kamodo
     import numpy as np
-    from numpy import array, unique, NaN, append, transpose, where
+    from numpy import array, unique, nan, append, transpose, where
     import os
     import kamodo_ccmc.readers.reader_utilities as RU
     from time import perf_counter
@@ -110,7 +110,7 @@ def MODEL():
                     return
 
             # store variables
-            # missing_value = NaN
+            # missing_value = nan
             varfiles = {}  # store which variable came from which file {patterns: [LaTeX requested variables], ...}
             self.gvarfiles = {}  # store file variable name similarly {patterns: [File requested variables], ...}
             self.gvarfiles_full = {}  # All {patterns: [File variables], ...} from cdf files

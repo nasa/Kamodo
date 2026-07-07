@@ -42,12 +42,12 @@ def gmSaveOpenSpace(x_grid, y_grid, z_grid, filename, surface_type,
         Earth radius in meters for unit conversion
     """
     
-    # Handle None values by converting to numpy arrays with masked arrays or NaN
+    # Handle None values by converting to numpy arrays with masked arrays or nan
     x_array = np.array(x_grid, dtype=float)
     y_array = np.array(y_grid, dtype=float)
     z_array = np.array(z_grid, dtype=float)
     
-    # Create mask for valid (non-None, non-NaN) values
+    # Create mask for valid (non-None, non-nan) values
     valid_mask = (~np.isnan(x_array)) & (~np.isnan(y_array)) & (~np.isnan(z_array))
     
     # Also check color_values validity if provided

@@ -5,7 +5,7 @@
 # the outputs vs latitude.
 
 from scipy.interpolate import interp1d
-from numpy import NaN, array, unique, zeros, ravel, ndarray, nan
+from numpy import nan, array, unique, zeros, ravel, ndarray, nan
 from kamodo_ccmc.readers.reader_utilities import get_slice_idx
 
 

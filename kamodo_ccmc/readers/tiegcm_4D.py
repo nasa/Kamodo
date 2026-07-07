@@ -296,7 +296,7 @@ def MODEL():
     from time import perf_counter
     from os.path import basename
     from numpy import zeros, transpose, array, append, insert, where, unique
-    from numpy import NaN, mean, broadcast_to, cos, sin, sum, squeeze
+    from numpy import nan, mean, broadcast_to, cos, sin, sum, squeeze
     from numpy import pi as nppi
     from kamodo import Kamodo
     import kamodo_ccmc.readers.reader_utilities as RU

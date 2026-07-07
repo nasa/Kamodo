@@ -269,7 +269,7 @@ model_varnames = {'density': ['rho_ilev1', 'total mass density', 0, 'GDZ',
 
 
 def MODEL():
-    from numpy import array, NaN, unique, append, where, transpose, squeeze
+    from numpy import array, nan, unique, append, where, transpose, squeeze
     from time import perf_counter
     from os.path import basename
     from datetime import datetime, timezone

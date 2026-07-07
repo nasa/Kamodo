@@ -111,7 +111,7 @@ def MODEL():
     import spacepy.pybats as sp
     import time
     from os.path import basename
-    from numpy import array, NaN, unique, zeros, ravel, ndarray
+    from numpy import array, nan, unique, zeros, ravel, ndarray
     from numpy import min, max, floor, log
     from time import perf_counter
     import kamodo_ccmc.readers.reader_utilities as RU
