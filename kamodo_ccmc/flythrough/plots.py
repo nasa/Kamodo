@@ -631,8 +631,8 @@ iplot(fig)
     ticE = time.perf_counter()
     # Load points and add 1 RE sphere, padded to cover all data positions
     if body == "black":
-        dataXYZ = pd.read_csv('https://ccmc.gsfc.nasa.gov/Kamodo/demo/sphereXYZ.csv')
-        dataIJK = pd.read_csv('https://ccmc.gsfc.nasa.gov/Kamodo/demo/sphereIJK.csv')
+        dataXYZ = pd.read_csv('https://ccmc.gsfc.nasa.gov/viz/kamodo/sphereXYZ.csv')
+        dataIJK = pd.read_csv('https://ccmc.gsfc.nasa.gov/viz/kamodo/sphereIJK.csv')
         if scale == "km":
             dataXYZ *= REkm
         # Build data block
@@ -652,8 +652,8 @@ iplot(fig)
         # Put in main data block
         fig_dict["data"].append(data_dict)
     elif body == "earth" and coord == "GEO":
-        dataXYZ = pd.read_csv('https://ccmc.gsfc.nasa.gov/ungrouped/GM_IM/EarthXYZ.csv')
-        dataIJK = pd.read_csv('https://ccmc.gsfc.nasa.gov/ungrouped/GM_IM/EarthIJKRGB.csv')
+        dataXYZ = pd.read_csv('https://ccmc.gsfc.nasa.gov/viz/kamodo/EarthXYZ.csv')
+        dataIJK = pd.read_csv('https://ccmc.gsfc.nasa.gov/viz/kamodo/EarthIJKRGB.csv')
         if scale == "km":
             dataXYZ *= REkm
         color=np.array(["rgb("+str(dataIJK['r'][i])+","+str(dataIJK['g'][i])+","+str(dataIJK['b'][i])+")" \
