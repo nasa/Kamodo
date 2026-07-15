@@ -20,9 +20,11 @@ def ts_to_hrs(utcts, filedate):
 
 
 def ts_to_ISOstring(utc_ts):
-    '''Convert timestamp to string of format 2017-05-28T00:00:00'''
-    return datetime.fromtimestamp(utc_ts, tz=timezone.utc).isoformat()
-
+    '''
+    Convert timestamp to string of format 2017-05-28T00:00:00Z,
+      removing +00:00 UTC flag from string for HAPI compatibility
+    '''
+    return datetime.fromtimestamp(utc_ts, tz=timezone.utc).isoformat().replace("+00:00", "Z")
 
 def sat_tracks(sat_time, c1, c2, c3, z_dependencies, verbose=False):
     '''Calculate satellite tracks for interpolation'''
