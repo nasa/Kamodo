@@ -270,7 +270,16 @@ model_varnames = {  # 4D Variables, vert coordinate on midpoint levels (ilev)
 def year_mtime_todt0(year, mtime):  # self.filedate
     '''Convert year and day to datetime object in UTC at midnight'''
 
-    day, hour, minute = mtime  # unpack mtime values
+    #####################################################
+
+    #day, hour, minute = mtime  # unpack mtime values
+    #This requires mtime to contain exactly three items.
+    #If mtime has more or fewer than three items, Python crashes with a ValueError
+
+    ########## Francesca Di Mare was here
+    day, hour, minute = mtime[:3]
+    #[:3] slice extracts only the first three elements (indices 0, 1, and 2).
+    #If mtime contains extra data, the code ignores them and runs without errors.
     return datetime(int(year), 1, 1).replace(tzinfo=timezone.utc) +\
         timedelta(days=int(day-1))
 
@@ -421,7 +430,11 @@ def MODEL():
                         cdf_data = RU.Dataset(pattern_files[f],filetype=ncdf_filetype)
                         year = array(cdf_data['year'])
                         mtime = array(cdf_data['mtime'])
-                        day, hour, minute = mtime.T
+                        #day, hour, minute = mtime.T
+                        
+                        #[:3] slice extracts only the first three elements (indices 0, 1, and 2).
+                        #If mtime contains extra data, the code ignores them and runs without errors.
+                        day, hour, minute = mtime.T[:3]
                         # datetime object for file date at midnight UTC
                         if f == 0 and p == patterns[0]:
                             self.filedate = year_mtime_todt0(year[0], mtime[0])
