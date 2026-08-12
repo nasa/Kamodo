@@ -431,7 +431,6 @@ def MODEL():
                         year = array(cdf_data['year'])
                         mtime = array(cdf_data['mtime'])
                         #day, hour, minute = mtime.T
-                        
                         #[:3] slice extracts only the first three elements (indices 0, 1, and 2).
                         #If mtime contains extra data, the code ignores them and runs without errors.
                         day, hour, minute = mtime.T[:3]
