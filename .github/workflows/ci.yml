@@ -17,7 +17,7 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install gfortran (Ubuntu)
         if: runner.os == 'Linux'
@@ -59,6 +59,10 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install . -v
+          # Nuke the legacy kamodo package pulled in by 3rd-party dependencies
+          pip uninstall -y kamodo || true
+          # Force reinstall the modernized core to guarantee clean files
+          pip install --force-reinstall --no-deps kamodo-core-official
 
       - name: Test imports
         # Run from a different directory to ensure we import from site-packages,
