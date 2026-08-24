@@ -11,6 +11,7 @@ from math import isnan
 from dataclasses import dataclass, field
 from typing import List
 import json
+import base64
 
 # LatexFormatter as some point is used to get LaTeX string out of Kamodo object
 # We simply apply this formater to check if the LaTeX is returned.
@@ -28,12 +29,26 @@ def _latex_wrap(text):
     # This regex pattern matches LaTeX-like variables with underscores
     pattern = r'(\w+)_(\w+)'
 
-    # The replacement string uses backreferences to capture groups and add curly braces around the second part
-    replacement = r'\1_{\2}'
+    # The replacement string uses backreferences to capture groups and add curly braces
+    #replacement = r'\1_{\2}'  #old methond
+    def replace_match(match):
+        part1 = match.group(1)
+        part2 = match.group(2)
+        if part1 == 'PSD' or part1 == 'flux':  # exceptions to bracketing the first part
+            return f"{{{part1}}}_{{{part2}}}"
+        return f"{part1}_{{{part2}}}"
 
     # Use re.sub to replace the pattern with the replacement string
-    return re.sub(pattern, replacement, text)
+    return re.sub(pattern, replace_match, text)
 
+def decode_plotly_array(data_field):
+    """Decodes dictionary-wrapped base64 data to a numpy array, or returns as-is."""
+    if isinstance(data_field, dict) and 'bdata' in data_field:
+        binary_data = base64.b64decode(data_field['bdata'])
+        # 'f4' corresponds to float32
+        dtype = data_field.get('dtype', 'f4')
+        return np.frombuffer(binary_data, dtype=dtype).tolist()
+    return data_field
 
 # Supporting class
 class FakeDataGenerator:
@@ -515,7 +530,7 @@ class TestVerb03DatasetCheck(TestCase):
         # Get Kamodo object
         ko = self.reader(self.output_path, variables_requested=['PSD_lea'])
         data = self.formatter(ko)
-        self.assertIn('PSD_{lea}', data, 'The LaTeX output cannot be generated')
+        self.assertIn('{PSD}_{lea}', data, 'The LaTeX output cannot be generated')
 
     @patch('sys.stdout', new_callable=StringIO)
     def test02_unknown_variable(self, mock_stdout):
@@ -826,8 +841,9 @@ class TestVerb04plot(unittest.TestCase):
             else:
                 fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'time': time, 'mu': mu, 'K': K}})
             res = fig.to_dict()
+            actual_x = decode_plotly_array(res['data'][0]['x'])
             self.assertEqual(res['data'][0]['meta'], 'line', f'Not a line plot of {fig_var}')
-            self.assertCountEqual(res['data'][0]['x'], expected_L, f'Incorrect x-axis (L)')
+            self.assertCountEqual(actual_x, expected_L, f'Incorrect x-axis (L)')
 
     def test01_L_line(self):
         time, _, E_e, alpha_e = FakeDataGenerator.grid_lea_rand()
@@ -870,8 +886,9 @@ class TestVerb04plot(unittest.TestCase):
             else:
                 fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'L': L, 'mu': mu, 'K': K}})
             res = fig.to_dict()
+            actual_x = decode_plotly_array(res['data'][0]['x'])
             self.assertEqual(res['data'][0]['meta'], 'line', f'Not a line plot of {fig_var}')
-            self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
+            self.assertCountEqual(actual_x, expected_T, f'Incorrect time axis {fig_var}')
             self.assertIn('time', res['layout']['xaxis']['title']['text'],
                           f'Unexpected time axis name for {fig_var}')
 
@@ -892,10 +909,12 @@ class TestVerb04plot(unittest.TestCase):
             else:
                 fig = self.kamodo_object.plot(fig_var, plot_partial={fig_var: {'mu': mu, 'K': K}})
             res = fig.to_dict()
+            actual_x = decode_plotly_array(res['data'][0]['x'])
+            actual_y = decode_plotly_array(res['data'][0]['y'])
             self.assertEqual(res['data'][0]['meta'], '2d-grid', f'Not a 2D plot of {fig_var}')
             # self.assertIn(fig_var, res['data'][0]['name'], f'Incorrect name of {fig_var}') # The name is in colorbar, but I am not sure why time plot is different from other 2d plots
-            self.assertCountEqual(res['data'][0]['x'], expected_T, f'Incorrect time axis {fig_var}')
-            self.assertCountEqual(res['data'][0]['y'], expected_L, f'Incorrect L axis {fig_var}')
+            self.assertCountEqual(actual_x, expected_T, f'Incorrect time axis {fig_var}')
+            self.assertCountEqual(actual_y, expected_L, f'Incorrect L axis {fig_var}')
             self.assertIn('time', res['layout']['xaxis']['title']['text'],
                           f'Unexpected time axis name for {fig_var}')  # Changed assertion to IN because time text is not consistent in Kamodo
 

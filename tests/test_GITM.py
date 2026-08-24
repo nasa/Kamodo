@@ -6,24 +6,47 @@ import pytest
 from pathlib import Path
 from math import isnan
 
+# Anchor the path to the directory where this test script lives
+TEST_DIR = Path(__file__).parent
+
 model = 'GITM'
-file_dir = 'TestData/'+model+'/'
+file_dir = str(TEST_DIR / 'TestData' / model) + '/'
 variables_requested = ['T_n', 'TEC']
+variables_requested2 = ['TEC']
 
-def test00():
+def test_data(get_test_data):
     '''
-    This tests a list file can be found in output directory
+    This test makes sure data is downloaded
     '''
-    p = Path(file_dir+model+"_list.txt")
-    assert p.is_file()
+    model_dir = get_test_data(model)
 
-def test01_exists():
+def test_exists():
     '''
     This tests whether the model exists in kamodo
     '''
     assert type(MW.Choose_Model(model=model)) == types.ModuleType
 
-def test02_variable():
+def test_metadata():
+    '''
+    This tests metadata files can be recreated
+    '''
+    p1 = Path(file_dir+model+"_list.txt")
+    p2 = Path(file_dir+model+"_times.txt")
+    if p1.is_file(): p1.unlink()
+    if p2.is_file(): p2.unlink()
+    ft = MW.File_Times(model, file_dir)
+    assert p1.is_file() and p2.is_file()
+
+def test_times():
+    '''
+    This tests that proper start and end times are returned
+    '''
+    dt1 = datetime.datetime(2016, 1, 15, 0, 0, 3, tzinfo=datetime.timezone.utc)
+    dt2 = datetime.datetime(2016, 1, 16, 9, 0, 1, tzinfo=datetime.timezone.utc)
+    ft = MW.File_Times(model, file_dir)
+    assert ft[0] == dt1 and ft[1] == dt2
+
+def test_variable():
     '''
     This tests whether a variable search that includes "Temperature"
     has a variable "T_n" with units "K"
@@ -31,23 +54,14 @@ def test02_variable():
     vs = MW.Variable_Search('Temperature', model, return_dict=True)
     assert vs['T_n'][3] == 'K'
 
-def test03_var_in_files():
+def test_var_in_files():
     '''
     This tests that the variable "T_n" is in the test files
     '''
     vs = MW.Variable_Search('Temperature', model, file_dir, return_dict=True)
     assert vs['T_n'][3] == 'K'
 
-def test04_times():
-    '''
-    This tests that proper start and end times are returned
-    '''
-    dt1 = datetime.datetime(2016, 1, 15, 0, 0, 3, tzinfo=datetime.timezone.utc)
-    dt2 = datetime.datetime(2016, 1, 16, 9, 0, 1, 2502, tzinfo=datetime.timezone.utc)
-    ft = MW.File_Times(model, file_dir)
-    assert ft[0] == dt1 and ft[1] == dt2
-
-def test05_interpolation():
+def test_interpolation():
     '''
     This tests creating a kamodo object, ko, and interpolating two different ways
     '''
@@ -60,7 +74,7 @@ def test05_interpolation():
     if not ko.T_n([5.2, 10., 60., 350.]) == ko.T_n_ijk(time=5.2, lon=10., lat=60., height=350.):
         raise AttributeError('Values are not equal.')
 
-def test06_coord_range():
+def test_coord_range():
     '''
     This tests coordinate range logic
     '''
@@ -71,7 +85,7 @@ def test06_coord_range():
     cr = MW.Coord_Range(ko, varijk_list, return_dict=True)
     assert cr['T_n']['time'][1] == pytest.approx(33.00027847, abs=.000001)
 
-def test07_plot_value():
+def test_plot_value():
     '''
     This test makes a plotly figure and pulls a value out to compare to reference
     '''
@@ -80,9 +94,9 @@ def test07_plot_value():
     fig = ko.plot('T_n_ijk', plot_partial={'T_n_ijk': {'time': 15.7, 'height': 405.7}})
     assert fig.data[0]['x'][2] == pytest.approx(-172.5, abs=.000001) and \
            fig.data[0]['y'][3] == pytest.approx(-77.5, abs=.000001) and \
-           fig.data[0]['z'][4,5] == pytest.approx(1279.206219289, abs=.000001)
+           fig.data[0]['z'][4,5] == pytest.approx(1279.20621600, abs=.000001)
 
-def test08_GITM_flythrough():
+def test_GITM_flythrough():
     '''
     This tests simple flythrough extraction for a couple of points
     '''
@@ -91,5 +105,18 @@ def test08_GITM_flythrough():
     results = SF.ModelFlythrough(model, file_dir, [variables_requested[0]],
         [start_utcts, end_utcts], [0., 180.], [60., -60.], [400., 400.], 'GDZ-sph')
     assert results[variables_requested[0]][0] == pytest.approx(1030.98570978, abs=.000001)
-    assert results[variables_requested[0]][1] == pytest.approx(1205.55560519, abs=.000001)
+    assert results[variables_requested[0]][1] == pytest.approx(1205.55560620, abs=.000001)
+
+def test_GITM_RealFlight():
+    '''
+    This tests RealFlight flythrough extraction at iss positions.
+    It extracts values, functionalizes results into Kamodo, creates a plot, and validates it.
+    '''
+    start_utcts = datetime.datetime(2016, 1, 15, 15, tzinfo=datetime.timezone.utc).timestamp()
+    end_utcts = datetime.datetime(2016, 1, 15, 20, tzinfo=datetime.timezone.utc).timestamp()-1
+    dataset = 'iss' 
+    results_real = SF.RealFlight(dataset, start_utcts, end_utcts, model, file_dir, variables_requested2)
+    ko = SF.O.Functionalize_SFResults(model, results_real)
+    fig = ko.plot('TEC')
+    assert fig.data[0].y[7] == pytest.approx(3.0188203385, abs=.000001)
 

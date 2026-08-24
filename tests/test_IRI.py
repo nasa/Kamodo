@@ -6,39 +6,37 @@ import pytest
 from pathlib import Path
 from math import isnan
 
+# Anchor the path to the directory where this test script lives
+TEST_DIR = Path(__file__).parent
+
 model = 'IRI'
-file_dir = 'TestData/'+model+'/'
+file_dir = str(TEST_DIR / 'TestData' / model) + '/'
 variables_requested = ['T_n', 'TEC']
 
-def test00():
+def test_data(get_test_data):
     '''
-    This tests a list file can be found in output directory
+    This test makes sure data is downloaded
     '''
-    p = Path(file_dir+model+"_list.txt")
-    assert p.is_file()
+    model_dir = get_test_data(model)
 
-def test01_exists():
+def test_exists():
     '''
     This tests whether the model exists in kamodo
     '''
     assert type(MW.Choose_Model(model=model)) == types.ModuleType
 
-def test02_variable():
+def test_metadata():
     '''
-    This tests whether a variable search that includes "electron"
-    has a variable "T_e" with units "K"
+    This tests metadata files can be recreated
     '''
-    vs = MW.Variable_Search('Temperature', model, return_dict=True)
-    assert vs['T_e'][3] == 'K'
+    p1 = Path(file_dir+model+"_list.txt")
+    p2 = Path(file_dir+model+"_times.txt")
+    if p1.is_file(): p1.unlink()
+    if p2.is_file(): p2.unlink()
+    ft = MW.File_Times(model, file_dir)
+    assert p1.is_file() and p2.is_file()
 
-def test03_var_in_files():
-    '''
-    This tests that the variable "T_e" is in the test files
-    '''
-    vs = MW.Variable_Search('Temperature', model, file_dir, return_dict=True)
-    assert vs['T_e'][3] == 'K'
-
-def test04_times():
+def test_times():
     '''
     This tests that proper start and end times are returned
     '''
@@ -47,7 +45,22 @@ def test04_times():
     ft = MW.File_Times(model, file_dir)
     assert ft[0] == dt1 and ft[1] == dt2
 
-def test05_interpolation():
+def test_variable():
+    '''
+    This tests whether a variable search that includes "electron"
+    has a variable "T_e" with units "K"
+    '''
+    vs = MW.Variable_Search('Temperature', model, return_dict=True)
+    assert vs['T_e'][3] == 'K'
+
+def test_var_in_files():
+    '''
+    This tests that the variable "T_e" is in the test files
+    '''
+    vs = MW.Variable_Search('Temperature', model, file_dir, return_dict=True)
+    assert vs['T_e'][3] == 'K'
+
+def test_interpolation():
     '''
     This tests creating a kamodo object, ko, and interpolating two different ways
     '''
@@ -60,7 +73,7 @@ def test05_interpolation():
     if not ko.T_n([5.2, 10., 60., 350.]) == ko.T_n_ijk(time=5.2, lon=10., lat=60., height=350.):
         raise AttributeError('Values are not equal.')
 
-def test06_coord_range():
+def test_coord_range():
     '''
     This tests coordinate range logic
     '''
@@ -71,7 +84,7 @@ def test06_coord_range():
     cr = MW.Coord_Range(ko, varijk_list, return_dict=True)
     assert cr['T_n']['time'][1] == pytest.approx(48.0, abs=.000001)
 
-def test07_plot_value():
+def test_plot_value():
     '''
     This test makes a plotly figure and pulls a value out to compare to reference
     '''

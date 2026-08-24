@@ -6,24 +6,44 @@ import pytest
 from pathlib import Path
 from math import isnan
 
+# Anchor the path to the directory where this test script lives
+TEST_DIR = Path(__file__).parent
+
 model = 'ADELPHI'
-file_dir = 'TestData/'+model+'/'
+file_dir = str(TEST_DIR / 'TestData' / model) + '/'
 variables_requested = ['Phi', 'Sigma_P']
 
-def test00():
+def test_data(get_test_data):
     '''
-    This tests a list file can be found in output directory
+    This test makes sure data is downloaded
     '''
-    p = Path(file_dir+model+"_list.txt")
-    assert p.is_file()
+    model_dir = get_test_data(model)
 
-def test01_exists():
-    '''
-    This tests whether the model exists in kamodo
-    '''
+def test_exists():
+    '''This tests whether the model exists in kamodo'''
     assert type(MW.Choose_Model(model=model)) == types.ModuleType
 
-def test02_variable():
+def test_metadata():
+    '''
+    This tests metadata files can be recreated
+    '''
+    p1 = Path(file_dir+model+"_list.txt")
+    p2 = Path(file_dir+model+"_times.txt")
+    if p1.is_file(): p1.unlink()
+    if p2.is_file(): p2.unlink()
+    ft = MW.File_Times(model, file_dir)
+    assert p1.is_file() and p2.is_file()
+
+def test_times():
+    '''
+    This tests that proper start and end times are returned
+    '''
+    dt1 = datetime.datetime(2010, 5, 2, 0, 0, tzinfo=datetime.timezone.utc)
+    dt2 = datetime.datetime(2010, 5, 3, 23, 58, 0, tzinfo=datetime.timezone.utc)
+    ft = MW.File_Times(model, file_dir)
+    assert ft[0] == dt1 and ft[1] == dt2
+
+def test_variable():
     '''
     This tests whether a variable search that includes "Energy"
     has a variable "Phi" with units "mW/m**2"
@@ -31,23 +51,14 @@ def test02_variable():
     vs = MW.Variable_Search('Energy', model, return_dict=True)
     assert vs['Phi'][3] == 'mW/m**2'
 
-def test03_var_in_files():
+def test_var_in_files():
     '''
     This tests that the variable "Phi" is in the test files
     '''
     vs = MW.Variable_Search('Energy', model, file_dir, return_dict=True)
     assert vs['Phi'][3] == 'mW/m**2'
 
-def test04_times():
-    '''
-    This tests that proper start and end times are returned
-    '''
-    dt1 = datetime.datetime(2010, 5, 2, 0, 0, tzinfo=datetime.timezone.utc)
-    dt2 = datetime.datetime(2010, 5, 3, 23, 58, 0, 1831, tzinfo=datetime.timezone.utc)
-    ft = MW.File_Times(model, file_dir)
-    assert ft[0] == dt1 and ft[1] == dt2
-
-def test05_interpolation():
+def test_interpolation():
     '''
     This tests creating a kamodo object, ko, and interpolating two different ways
     '''
@@ -60,7 +71,7 @@ def test05_interpolation():
     if not ko.Phi([5.2, 10., 60.]) == ko.Phi_ijk(time=5.2, lon=10., lat=60.):
         raise AttributeError('Values are not equal.')
 
-def test06_coord_range():
+def test_coord_range():
     '''
     This tests coordinate range logic
     '''
@@ -71,7 +82,7 @@ def test06_coord_range():
     cr = MW.Coord_Range(ko, varijk_list, return_dict=True)
     assert cr['Phi']['time'][1] == pytest.approx(47.96666717529297, abs=.000001)
 
-def test07_plot_value():
+def test_plot_value():
     '''
     This test makes a plotly figure and pulls a value out to compare to reference
     '''
