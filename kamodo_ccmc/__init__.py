@@ -1,5 +1,6 @@
 import os, sys; sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import warnings
+from importlib.metadata import version, PackageNotFoundError
 
 import kamodo # get installed kamodo
 
@@ -22,10 +23,14 @@ if sys.platform == "win32" and os.path.isdir(_libs_dir):
 # insert Kamodo class into kamodo namespace
 from kamodo.kamodo import Kamodo
 
-import readers
-import tools
-import flythrough
-import filedriver
+from . import readers
+from . import tools
+from . import flythrough
+from . import filedriver
 
-__version__ = '23.3.2'
+try:
+    __version__ = version("my_package")
+except PackageNotFoundError:
+    # Package is not installed
+    __version__ = "unknown"
 

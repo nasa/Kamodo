@@ -243,17 +243,17 @@ def MODEL():
                 # get coordinates from first file of each type
                 cdf_data = RU.Dataset(self.pattern_files[p][0],
                                       filetype='netCDF3')
-                lon = array(cdf_data.variables['lon'])
+                lon = array(cdf_data.variables['lon'][:], copy=True)
                 lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
                 lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
                 tmp = lon - 180.  # now -180. to +180.
                 setattr(self, '_lon_'+p, tmp)
                 setattr(self, '_lon_idx_'+p, lon_ge180+lon_le180)
                 setattr(self, '_lat_'+p,
-                        array(cdf_data.variables['lat']))
+                        array(cdf_data.variables['lat'][:], copy=True))
                 if '3D' in p:
                     setattr(self, '_height_'+p,
-                            array(cdf_data.variables['ht']))
+                            array(cdf_data.variables['ht'][:], copy=True))
                 cdf_data.close()
                 # initialize variable dictionaries
                 for var in self.gvarfiles[p]:
@@ -302,7 +302,7 @@ def MODEL():
                 if coord_dict['lon']['data'][-1] < 179.5 and \
                    coord_dict['lon']['data'][0] == -180. and \
                    coord_dict['lon']['data'][-1]+step == 180.:
-                    print('padding missing longitude value')
+                    #print('padding missing longitude value')
                     self.missinglon = True
                     coord_dict['lon']['data'] = append(coord_dict['lon']['data'], [180.], axis=0)
                 coord_dict['lat'] = {'units': 'deg', 'data':
@@ -379,7 +379,7 @@ def MODEL():
                 # get data from file
                 file = self.pattern_files[key][i]
                 cdf_data = RU.Dataset(file, filetype='netCDF3')
-                data = array(cdf_data.variables[gvar])
+                data = array(cdf_data.variables[gvar][:], copy=True)
                 if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
                     fill_value = cdf_data.variables[gvar][0].fill_value
                 else:

@@ -45,6 +45,7 @@ def convert_all(file_dir, pattern_files, times):
         ilev1 = data.variables['ilev']  # grid is constant in time
         if 'ZG' in data.variables.keys():  # H_ilev1 logic
             h_ilev1 = data.variables['ZG']
+            h_ilev1.set_auto_mask(False)  # Fill value is 64bit while values are 32bit, don't mask
             if i == 0:
                 new_dim = data_out.createDimension('ilev1', ilev1.shape[0])
                 new_var1_t = data_out.createVariable(

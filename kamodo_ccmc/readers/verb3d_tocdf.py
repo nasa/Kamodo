@@ -183,7 +183,7 @@ def convert_all(file_dir, start_date=None):
 
     # Load 1d
     import pandas as pd
-    df = pd.read_csv(out1d_filename, sep='\s+', skiprows=2, header=None)
+    df = pd.read_csv(out1d_filename, sep=r'\s+', skiprows=2, header=None)
 
     with open(out1d_filename, 'r') as file:
         for line in file:

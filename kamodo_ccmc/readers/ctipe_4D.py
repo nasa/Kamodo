@@ -377,7 +377,7 @@ def MODEL():
                     for f in range(len(pattern_files)):
                         cdf_data = RU.Dataset(pattern_files[f],
                                               filetype='netCDF3')
-                        tmp = array(cdf_data.variables['time'])  # utc tstamps
+                        tmp = array(cdf_data.variables['time'][:], copy=True)  # utc tstamps
                         self.times[p]['start_index'].append(len(self.times[p]['all']))
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
@@ -560,46 +560,46 @@ def MODEL():
             for p in self.pattern_files.keys():
                 cdf_data = RU.Dataset(self.pattern_files[p][0],
                                       filetype='netCDF3')
-                lon = array(cdf_data.variables['lon'])
+                lon = array(cdf_data.variables['lon'][:], copy=True)
                 lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
                 lon_ge180 = list(where(lon >= 180)[0])
                 tmp = append(lon, 360.) - 180.  # now -180. to +180. -- this works as expected for a grid with 0 and 180 as grid positions
                 setattr(self, '_lon_'+p, tmp)
                 setattr(self, '_lon_idx_'+p, lon_ge180+lon_le180)
                 setattr(self, '_lat_'+p,
-                        array(cdf_data.variables['lat']))
+                        array(cdf_data.variables['lat'][:], copy=True))
                 if p == 'density':
                     setattr(self, '_ilev1',
-                            array(cdf_data.variables['plev']))
+                            array(cdf_data.variables['plev'][:], copy=True))
                     if RU._isfile(file_dir+'CTIPe_km.nc'):  # km_ilev1 from file
                         km_data = RU.Dataset(file_dir+'CTIPe_km.nc',
                                              filetype='netCDF3')
                         setattr(self, '_km_ilev1',
-                                array(km_data.variables['km_ilev1']))
+                                array(km_data.variables['km_ilev1'][:], copy=True))
                         setattr(self, '_km_ilev1_max', km_data.km_ilev1_max)
                         setattr(self, '_km_ilev1_min', km_data.km_ilev1_min)
                         km_data.close()
                 elif p == 'neutral':
                     setattr(self, '_ilev',
-                            array(cdf_data.variables['plev']))
+                            array(cdf_data.variables['plev'][:], copy=True))
                     if RU._isfile(file_dir+'CTIPe_km.nc'):  # km_ilev from file
                         km_data = RU.Dataset(file_dir+'CTIPe_km.nc',
                                              filetype='netCDF3')
                         setattr(self, '_km_ilev',
-                                array(km_data.variables['km_ilev']))
+                                array(km_data.variables['km_ilev'][:], copy=True))
                         setattr(self, '_km_ilev_max', km_data.km_ilev_max)
                         setattr(self, '_km_ilev_min', km_data.km_ilev_min)
                         km_data.close()
-                    lon = array(cdf_data.variables['elon'])  # 0 to 360
+                    lon = array(cdf_data.variables['elon'][:], copy=True)  # 0 to 360
                     lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
                     lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
                     setattr(self, '_Elon_'+p, lon-180.)
                     setattr(self, '_Elon_idx_'+p, lon_ge180+lon_le180)
                     setattr(self, '_Elat_'+p,
-                            array(cdf_data.variables['elat']))
+                            array(cdf_data.variables['elat'][:], copy=True))
                 elif p == 'height':
                     setattr(self, '_height',
-                            array(cdf_data.variables['ht']))
+                            array(cdf_data.variables['ht'][:], copy=True))
                 cdf_data.close()
 
                 # initialize variable dictionaries
@@ -628,9 +628,9 @@ def MODEL():
                                   item[-5:]])
             ilev_check = unique([True for item in varname_list if 'ilev' ==
                                  item[-4:]])
-            if ilev1_check and 'H_ilev1' not in varname_list:
+            if ilev1_check.size > 0 and 'H_ilev1' not in varname_list:
                 self.ilev_sub = 'H_ilev1'
-            elif ilev_check and 'H_ilev' not in varname_list:
+            elif ilev_check.size > 0 and 'H_ilev' not in varname_list:
                 self.ilev_sub = 'H_ilev'
             else:
                 self.ilev_sub = False
@@ -708,7 +708,7 @@ def MODEL():
                 # get data from file
                 file = self.pattern_files[key][i]
                 cdf_data = RU.Dataset(file, filetype='netCDF3')
-                data = array(cdf_data.variables[gvar])
+                data = array(cdf_data.variables[gvar][:], copy=True)
                 if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
                     fill_value = cdf_data.variables[gvar][0].fill_value
                 else:

@@ -571,16 +571,16 @@ def MODEL():
                 print('Files:', self.filename)
 
             # store coordinates
-            lat = array(cdf_data['lat'])  # NOT FULL RANGE IN LAT
+            lat = array(cdf_data['lat'][:], copy=True)  # NOT FULL RANGE IN LAT
             lat = insert(lat, 0, -90)  # insert a grid point before -87.5
             self._lat = append(lat, 90.)   # and at the end (after 87.5)
-            lon = array(cdf_data['lon'])  # NOT WRAPPED IN LONGITUDE
+            lon = array(cdf_data['lon'][:], copy=True)  # NOT WRAPPED IN LONGITUDE
             self._lon = append(lon, 180.)  # add 180. to end of array
-            self._ilev = array(cdf_data['lev'])
-            self._ilev1 = array(cdf_data['ilev'])
-            self._milev = array(cdf_data['imlev'])
-            self._mlat = array(cdf_data['mlat'])
-            self._mlon = array(cdf_data['mlon'])  # -180 to 180
+            self._ilev = array(cdf_data['lev'][:], copy=True)
+            self._ilev1 = array(cdf_data['ilev'][:], copy=True)
+            self._milev = array(cdf_data['imlev'][:], copy=True)
+            self._mlat = array(cdf_data['mlat'][:], copy=True)
+            self._mlon = array(cdf_data['mlon'][:], copy=True)  # -180 to 180
             if verbose:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
 
@@ -768,7 +768,7 @@ def MODEL():
                 missingValue = cdf_data[gvar].missing_value
                 if missingValue > 1e30:  # Avoid warnings for casting large values
                     cdf_data[gvar].set_auto_mask(False)
-                    data = array(cdf_data[gvar])
+                    data = array(cdf_data[gvar][:], copy=True)
                     data = where(data >= missingValue, nan, data)
                 else:
                     data = array(cdf_data[gvar])

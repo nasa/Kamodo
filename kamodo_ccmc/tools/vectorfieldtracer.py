@@ -399,9 +399,9 @@ class KamodoVectorFieldTracer:
         for i, component in enumerate(self.field_components):
             try:
                 if self._call_method == 'array_with_time':
-                    value = component(coords)
+                    value = component(coords)[0]
                 else: # gridded
-                    value = component(time=time_hours, x=x, y=y, z=z)
+                    value = component(time=time_hours, x=x, y=y, z=z)[0]
                 field_components_values.append(float(np.array(value)))
             except Exception as e:
                 raise ValueError(f"Error evaluating {self.component_names[i]} at "

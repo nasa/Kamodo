@@ -203,8 +203,8 @@ def MODEL():
             self.gvarfiles[p] = gvar_list
 
             # get coordinate grids from first file
-            self._lat = array(cdf_data.variables['lat'])  # -90 to 90
-            lon = array(cdf_data.variables['lon'])  # 0 to 360
+            self._lat = array(cdf_data.variables['lat'][:], copy=True)  # -90 to 90
+            lon = array(cdf_data.variables['lon'][:], copy=True)  # 0 to 360
             lon_le180 = list(where(lon <= 180)[0])  # 0 to 180
             lon_ge180 = list(where((lon >= 180) & (lon < 360.))[0])
             lon_list = []
@@ -216,7 +216,7 @@ def MODEL():
             self._lon_idx = lon_ge180 + lon_le180
             #self._lon = lon - 180.  #old shift
             self._lon = lon_shift  #new shift
-            self._height = array(cdf_data.variables['ht'])  # km
+            self._height = array(cdf_data.variables['ht'][:], copy=True)  # km
             cdf_data.close()
 
             # print message if variables not found
@@ -304,7 +304,7 @@ def MODEL():
                 # get data from file
                 file = self.pattern_files[key][i]
                 cdf_data = RU.Dataset(file, filetype='netCDF3')
-                data = array(cdf_data.variables[gvar])
+                data = array(cdf_data.variables[gvar][:], copy=True)
                 if hasattr(cdf_data.variables[gvar][0], 'fill_value'):
                     fill_value = cdf_data.variables[gvar][0].fill_value
                 else:

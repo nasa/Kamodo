@@ -3602,6 +3602,7 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         ylabel = 'Z ['+xunits+'] '+pco
     TS = tf.timeKOtoTS(ko, sOffset=timeHrs*3600.)
     t1 = np.full((len(x1)), TS)
+    t2 = np.full((len(x1)), timeHrs)
 
     # Take grid in preferred plot coordinates and transform into model coordinates
     if co == 'GDZ':
@@ -3609,11 +3610,11 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         return
     elif co == pco and cot == pcot:
         # same
-        g2 = np.stack((t1, x1, y1, z1), axis=-1)  # nx4 grid
+        g2 = np.stack((t2, x1, y1, z1), axis=-1)  # nx4 grid
     else:
         # transform
         x2, y2, z2, units = ConvertCoord(t1, x1, y1, z1, pco, pcot, co, cot)
-        g2 = np.stack((t1, x2, y2, z2), axis=-1)  # nx4 grid
+        g2 = np.stack((t2, x2, y2, z2), axis=-1)  # nx4 grid
 
     toc = time.perf_counter()
     if showtiming:
@@ -4432,7 +4433,7 @@ def fig2darkmode(figIN, colormap=None):
     fig.layout.yaxis.tickfont.color = color2
     for i in range(len(fig.data)):
         if 'colorbar' in fig.data[i]:
-            fig.data[i].colorbar.titlefont.color = color2
+            fig.data[i].colorbar.title.font.color = color2
             fig.data[i].colorbar.tickfont.color = color2
     fig.update_layout(legend=dict(font=dict(color=color2)))
 

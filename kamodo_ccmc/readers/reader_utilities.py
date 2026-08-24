@@ -4,8 +4,9 @@ Created on Thu May 13 18:28:18 2021
 @author: rringuet
 """
 from kamodo import kamodofy, gridify
+import numpy as np
 from numpy import nan, vectorize, append, array, meshgrid, ravel, diff
-from numpy import unique, zeros, ndarray, floor, float32, all, insert, where, nan
+from numpy import unique, zeros, ndarray, floor, all, insert, where, nan
 from scipy.interpolate import RegularGridInterpolator as rgiND
 from scipy.interpolate import interp1d as rgi1D
 import forge
@@ -546,8 +547,15 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
     def add_timeinterp(i, time_interps):  # i is the file number
         idx_map.append(i)
         # determine time grid for file
-        start_idx = list(coord_list[0]).index(times_dict['start'][i])
-        end_idx = list(coord_list[0]).index(times_dict['end'][i]) + 1
+        # Find the closest matching index for start time
+        start_val = float(times_dict['start'][i])
+        start_idx = np.abs(np.array(coord_list[0]) - start_val).argmin()
+        # Find the closest matching index for end time
+        end_val = float(times_dict['end'][i])
+        end_idx = np.abs(np.array(coord_list[0]) - end_val).argmin() + 1
+        ## New method above DBG
+        ##start_idx = list(coord_list[0]).index(times_dict['start'][i])
+        ##end_idx = list(coord_list[0]).index(times_dict['end'][i]) + 1
         if i < len(times_dict['end'])-1:  # interpolating btwn files
             end_idx += 1
         time = coord_list[0][start_idx:end_idx]
@@ -980,7 +988,7 @@ def str_to_hrs(dt_str, filedate, format_string='%Y-%m-%d %H:%M:%S'):
     midnight of filedate.'''
     tmp = datetime.strptime(dt_str, format_string).replace(
         tzinfo=timezone.utc)
-    return float32((tmp - filedate).total_seconds()/3600.)
+    return (tmp - filedate).total_seconds()/3600.
 
 
 @vectorize
@@ -1002,8 +1010,8 @@ def tstr_to_hrs(time_str, ms_timing=False):
     '''Convert str from HH:MM:SS format to float 32. If ms_timing is True,
     str is in format HH:MM:SS.mms'''
     hh, mm, ss = time_str.split(':')
-    t = float32(hh) + float32(mm)/60. + float32(ss)/3600.
-    return float32(t)
+    t = float(hh) + float(mm)/60. + float(ss)/3600.
+    return t
 
 
 def create_timelist(list_file, time_file, modelname, times, pattern_files,
@@ -1138,7 +1146,12 @@ def read_timelist(time_file, list_file, ms_timing=False):
         end_times = [t for f, t in zip(files, end_date_times)
                      if p in f]
         times[p]['end'] = str_to_hrs(end_times, filedate)
-        times[p]['start_index'] = [(where(times[p]['start'][i] == times[p]['all']))[0][0] for i in range(len(times[p]['start']))]
+        # changed exact match to close match for comparing floating point values
+        times[p]['start_index'] = [
+            (where(np.isclose(times[p]['start'][i], times[p]['all'])))[0][0] 
+            for i in range(len(times[p]['start']))
+        ]
+        #times[p]['start_index'] = [(where(times[p]['start'][i] == times[p]['all']))[0][0] for i in range(len(times[p]['start']))]
         times[p]['start_index'].append(len(times[p]['all']))  # add start_index for the next file as if it were there
                                        
     filename = ''.join([f+',' for f in files])[:-1]

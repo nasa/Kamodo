@@ -168,8 +168,8 @@ def MODEL():
                         tmp_var = [key[:-1] for key in h5_data.keys() if key
                                    not in ['lats', 'lons']]
                         h5_data.close()
-                        tmp = RU.str_to_hrs(tmp_var, self.filedate,
-                                            '%Y%m%d_%H%M%S')
+                        tmp = RU.str_to_hrs(tmp_var, self.filedate, '%Y%m%d_%H%M%S')
+                        #tmp = timestr_hrs(tmp_var, self.filedate)  # alternate internal option
                         self.times[p]['start'].append(tmp[0])
                         self.times[p]['end'].append(tmp[-1])
                         self.times[p]['all'].extend(tmp)
