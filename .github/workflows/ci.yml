@@ -28,6 +28,7 @@ jobs:
       - name: Install gfortran (macOS)
         if: runner.os == 'macOS'
         run: |
+          brew untap aws/tap || true
           brew install gcc
           # Create gfortran symlink (brew installs as gfortran-XX)
           GFORTRAN=$(ls /opt/homebrew/bin/gfortran-* 2>/dev/null | head -1 || ls /usr/local/bin/gfortran-* 2>/dev/null | head -1)

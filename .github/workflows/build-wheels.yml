@@ -37,6 +37,7 @@ jobs:
       - name: Install gfortran (macOS)
         if: runner.os == 'macOS'
         run: |
+          brew untap aws/tap || true
           brew install gcc
 
       - name: Install gfortran (Windows)
