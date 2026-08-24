@@ -51,7 +51,7 @@ jobs:
         run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
