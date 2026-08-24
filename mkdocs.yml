@@ -1,27 +1,46 @@
 site_name: Kamodo Analysis Suite
+repo_url: https://github.com/nasa/Kamodo
+
+theme:
+  name: material
+  features:
+    - navigation.top
+    - toc.integrate
+
+use_directory_urls: False
 
 nav:
-- Quick Start: notebooks/QuickStart.ipynb
-- Introduction: notebooks/Introduction.ipynb
-- Data Functionalizion: notebooks/DataFunctionalization.ipynb
-- Functionalizing HAPI: notebooks/FunctionalizeHAPI.ipynb
-- Choosing Models and Variables: notebooks/ChoosingModelsAndVariables.ipynb
-- Functionalizing a Modeled Dataset: notebooks/FunctionalizingModeledDatasets.ipynb
-- Satellite Trajectories: notebooks/SatelliteTrajectories.ipynb
-- Coordinate Conversions: notebooks/CoordinateConversions.ipynb
-- Performing a Flythrough in a Notebook: notebooks/FlythroughNotebook.ipynb
-- Performing a Flythrough from the Command Line: notebooks/FlythroughCommandLine.ipynb
-- Constellation Mission Planning Tool: notebooks/ConstellationMissionPlanningToolIntro.ipynb
-- Advanced Plotting Routines: notebooks/AdvancedPlottingRoutines.ipynb
-- Contribution Guidelines: ContributionGuidelines.md
-- How to Write a Model Reader: notebooks/HowtoWriteaModelReader.md
+  - Quick Start: notebooks/QuickStart.ipynb
+  - Introduction: notebooks/Introduction.ipynb
+  - Data Functionalizion: notebooks/DataFunctionalization.ipynb
+  - Functionalizing HAPI: notebooks/FunctionalizeHAPI.ipynb
+  - Choosing Models and Variables: notebooks/ChoosingModelsAndVariables.ipynb
+  - Functionalizing a Modeled Dataset: notebooks/FunctionalizingModeledDatasets.ipynb
+  - Satellite Trajectories: notebooks/SatelliteTrajectories.ipynb
+  - Coordinate Conversions: notebooks/CoordinateConversions.ipynb
+  - Performing a Flythrough in a Notebook: notebooks/FlythroughNotebook.ipynb
+  - Performing a Flythrough from the Command Line: notebooks/FlythroughCommandLine.ipynb
+  - Constellation Mission Planning Tool: notebooks/ConstellationMissionPlanningToolIntro.ipynb
+  - Advanced Plotting Routines: notebooks/AdvancedPlottingRoutines.ipynb
+  - Contribution Guidelines: ContributionGuidelines.md
+  - How to Write a Model Reader: notebooks/HowtoWriteaModelReader.md
 
-
-theme: readthedocs
-use_directory_urls: False
 plugins:
+  - search
+  - mkdocstrings
   - mkdocs-jupyter:
       include_source: True
       kernel_name: python3
       execute: False
       ignore_h1_titles: False
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+

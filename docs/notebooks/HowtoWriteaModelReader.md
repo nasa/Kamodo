@@ -384,8 +384,7 @@ The register_variable function begins below and creates an interpolator for each
 - The name of the variable in the file is saved in the gvar variable,
 - A list of the coordinate names that the variable depends on is extracted from the model_varnames dictionary. This coordinate list is used a few lines down to determine the dimensionality of the variable data (if len(coord_list) == 4: ...). 
 - A dictionary of the coordinate grids is constructed in the same order as the coordinate name list: time first, followed by longitude and latitude, and ending with height if the variable depends on height. The coordinate names are used as the keys for the coord_dict dictionary, with values that are themselves dictionaries (resulting in a nested dictionary). Just as with the variables dictionary, the strings 'units' and 'data' are used here to store the unit associated with the given coordinate (e.g. 'hr' for time) and the values for the coordinate grid. The values for the time grid are taken from the times dictionary defined at the beginning of the model reader script. The values for the remaining coordinates are taken from the data stored in the class attribute. 
-- Finally, the two strings indicating the coordinate system are combined into a single string stored in the coord_str variable (e.g. GDZsph). This string is later added as a subscript to the LaTeX representation of the coordinates (see the image below).
-![Screenshot](Files/SampleLaTeXFunction.png)
+- Finally, the two strings indicating the coordinate system are combined into a single string stored in the coord_str variable (e.g. GDZsph). This string is later added as a subscript to the LaTeX representation of the coordinates.
 ```py
         def register_variable(self, varname, gridded_int):
             """Registers an interpolator with proper signature"""

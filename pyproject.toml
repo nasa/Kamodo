@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kamodo_ccmc"
-version = "26.08.3"
+version = "26.08.4"
 description = "Reader ecosystem for Kamodo scientific data functionalization"
 readme = "README.md"
 authors = [

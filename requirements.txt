@@ -3,8 +3,6 @@ ipython
 build
 twine
 mkdocs
+mkdocs-material
 mkdocs-jupyter
-mknotebooks
-mkautodoc
-python-markdown-math
-markdown_include
+mkdocstrings[python]
