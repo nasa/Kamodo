@@ -1,0 +1,871 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>How to Write a Model Reader for Diffusion Models - Kamodo Analysis Suite</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#how-to-write-a-model-reader-for-diffusion-models" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Kamodo Analysis Suite" class="md-header__button md-logo" aria-label="Kamodo Analysis Suite" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Kamodo Analysis Suite
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              How to Write a Model Reader for Diffusion Models
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/nasa/Kamodo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Kamodo Analysis Suite" class="md-nav__button md-logo" aria-label="Kamodo Analysis Suite" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Kamodo Analysis Suite
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/nasa/Kamodo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="QuickStart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kamodo Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="Introduction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="DataFunctionalization.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Functionalization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="FunctionalizeHAPI.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functionalizing HAPI Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ChoosingModelsAndVariables.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing Models and Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="FunctionalizingModeledDatasets.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functionalizing a Modeled Dataset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="SatelliteTrajectories.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Satellite Trajectories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="CoordinateConversions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coordinate Conversions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="FlythroughNotebook.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performing a Flythrough in a Notebook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="FlythroughCommandLine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performing a Flythrough from the Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ConstellationMissionPlanningToolIntro.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constellation Mission Planning Tool
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="AdvancedPlottingRoutines.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Plotting Routines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ContributionGuidelines.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribution Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="HowtoWriteaModelReader.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How to Write a Model Reader
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="how-to-write-a-model-reader-for-diffusion-models">How to Write a Model Reader for Diffusion Models</h1>
+<p>This guide demonstrates how the <code>verb3d</code> model reader is structured. 
+Using this example, you can build and maintain your own diffusion model reader efficiently. 
+Diffusion models, such as the VERB code, simulate the dynamics of particles (e.g., electrons) in multi-dimensional space, involving coordinate systems like L-shell, adiabatic invariants, and particle energies en pitch-angles.
+Note, those coordinate systems are not natively supported by Kamodo, limiting the ability to interact with the diffusion model within Kamodo environment.</p>
+<p>Unlike simpler models, diffusion models require modular handling of code, including careful management of multi-dimensional interpolation and integration with Kamodo’s function-based interface.
+This documentation provides a practical approach for structuring your code to write your diffusion model reader.</p>
+<p>In Kamodo, the model reader converts raw model output into files organized by model timesteps. 
+This allows for efficient data access and processing by splitting the data into manageable chunks, improving performance and memory usage. 
+The data or variable is then functionalized and exposed as an <strong>interpolator</strong> — a function that allows continuous data access across the model’s grid points for analysis and visualization.</p>
+<h2 id="key-components-of-a-diffusion-model-reader">Key Components of a Diffusion Model Reader</h2>
+<p>The following are the essential components of a diffusion model reader, as illustrated by the <code>verb3d</code> model reader example:</p>
+<h3 id="1-variable-definitions-and-metadata">1. <strong>Variable Definitions and Metadata</strong></h3>
+<p>Like in other Kamodo model readers, in diffusion model readers, all variables must be defined in the <code>model_varnames</code> dictionary. This dictionary contains the metadata for each variable, including its LaTeX representation, description, coordinate system, and units. The <code>model_varnames</code> dictionary is placed at the top of the model reader module, following a consistent format across all model readers.</p>
+<p>The structure of the <code>model_varnames</code> dictionary is as follows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># model_varnames = {</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">#     &#39;Name in file&#39;: [&#39;LaTeX representation&#39;, &#39;Description&#39;, integer, </span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">#                      &#39;Coordinate system&#39;, &#39;Coordinate grid&#39;, </span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1">#                      [Coordinate list], &#39;Units&#39;]</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># }</span>
+</span></code></pre></div>
+<ul>
+<li><strong>Name in file</strong>: The variable's name as it appears in the converted NetCDF files.</li>
+<li><strong>LaTeX representation</strong>: A LaTeX-formatted representation of the variable.</li>
+<li><strong>Description</strong>: A brief description of the variable.</li>
+<li><strong>Integer</strong>: An identifier for the variable (index number).</li>
+<li><strong>Coordinate system</strong>: The coordinate system associated with the variable (e.g., <code>LEA</code>).</li>
+<li><strong>Coordinate grid</strong>: Specifies the type of grid used. 'rb' represents the coordinate grid used in radiation belt models.</li>
+<li><strong>Coordinate list</strong>: The dimensions of the variable (e.g., <code>['time', 'L', 'E_e', 'alpha_e']</code>).</li>
+<li><strong>Units</strong>: The units of measurement.</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">model_varnames</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="s1">&#39;PSD&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;PSD_lea&#39;</span><span class="p">,</span> <span class="s1">&#39;Phase Space Density in (L, E_e, alpha_e)&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;LEA&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="s1">&#39;E_e&#39;</span><span class="p">,</span> <span class="s1">&#39;alpha_e&#39;</span><span class="p">],</span> <span class="s1">&#39;(c/MeV/cm)**3&#39;</span><span class="p">],</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="s1">&#39;Flux&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;flux_lea&#39;</span><span class="p">,</span> <span class="s1">&#39;Electron flux (L, E_e, alpha_e)&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;LEA&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="s1">&#39;E_e&#39;</span><span class="p">,</span> <span class="s1">&#39;alpha_e&#39;</span><span class="p">],</span> <span class="s1">&#39;1/(s*cm**2*keV*sr)&#39;</span><span class="p">],</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">}</span>
+</span></code></pre></div>
+<h3 id="2-data-conversion">2. <strong>Data Conversion</strong></h3>
+<p>Model reader needs to convert raw model output into a Kamodo-compatible format, such as NetCDF.</p>
+<p><strong>Modular Processing</strong>: To ensure modularity, data conversion is handled by a separate module. For instance, the <code>verb3d_tocdf.py</code> provides functionality to process the raw output, convert it to NetCDF, and store it for use by the main model reader.</p>
+<h3 id="3-handling-coordinate-systems">3. <strong>Handling Coordinate Systems</strong></h3>
+<p><strong>Coordinate System Handling</strong>: Diffusion models use coordinate systems that are different from the space-based systems (e.g., GEO, GSM). Instead of spatial coordinates, these systems are often related to physical properties like adiabatic invariants or particle motion. For instance, the <code>verb3d</code> reader operates in two specific coordinate systems: 
+ - <strong>LEA (L-shell, Electron Energy, Equatorial Pitch Angle)</strong>: This system is based on the L-shell <code>L</code>, electron energy (<code>E_e</code>), and equatorial pitch angle (<code>alpha_e</code>). These are common parameters used in radiation belt models.
+ - <strong>LMK (L-shell, Mu, K)</strong>: In this system, <code>L</code> represents the L-shell, <code>Mu</code> and <code>K</code> are the first and second adiabatic invariants. This system is commonly used to analyze electron phase space density.</p>
+<p><strong>Grid Definitions</strong>: Kamodo does not automatically convert between these complex, physics-based coordinate systems and spatial systems like GEO or GSM. Therefore, to prevent unwanted coordinate conversion, the type <code>'rb'</code> (radiation belts) is used to indicate that these grids should remain in their specialized coordinate systems.</p>
+<h3 id="4-modularity">4. <strong>Modularity</strong></h3>
+<p>Diffusion models often require complex data processing, which can quickly clutter the code based on the other model reader examples. Therefore, writing the diffusion model reader requires a modular approach, where key tasks are separated into individual functions within the same model python module.</p>
+<h2 id="refactored-functions-in-the-verb-code-model-reader">Refactored Functions in the VERB Code Model Reader</h2>
+<p>This section shows how the <code>verb3d_4D.py</code> code has been restructured from simpler models like <code>dtm</code> by explaining the <strong>refactored functions</strong> in the diffusion model reader.</p>
+<h3 id="1-initialization">1. <strong>Initialization</strong></h3>
+<ul>
+<li><strong><code>__init__(...)</code></strong>: Constructor is rewritten to be modular, but it still initializes the model reader by setting up the file directory, loading the requested variables, and preparing the model for Kamodo funtionalization.</li>
+</ul>
+<h3 id="2-handling-time-and-file-lists">2. <strong>Handling Time and File Lists</strong></h3>
+<p>Check for the presence of the list and time files in the of the model output data. If they are missing, the model reader creates them and converts model's raw output to NetCDF files. </p>
+<ul>
+<li><strong><code>time_list_files(file_dir)</code></strong>:  Check if '_list.txt' and '_time.txt' files exist. Creates dataset files if needed.</li>
+<li><strong>Parameters</strong>:</li>
+<li><strong><code>file_dir</code></strong>: Directory of the model output data.</li>
+</ul>
+<h3 id="3-initial-variable-check-and-validation">3. <strong>Initial Variable Check and Validation</strong></h3>
+<p>Performs an initial check on the requested variables to ensure they are valid and processes requests for all variables.
+- <strong><code>_variable_requested_check(variables_requested)</code></strong>: Checks if the requested variables are valid by comparing them to the available variables in the model.
+- <strong>Parameters</strong>:
+  - <strong><code>variables_requested</code></strong>: A list of requested variables.</p>
+<h3 id="4-storing-and-organizing-variables">4. <strong>Storing and Organizing Variables</strong></h3>
+<p>The model organizes the variables by mapping them to their respective files and stores this information for later use.</p>
+<p><strong>User refactored functionality</strong>:
+- <strong><code>_model_vars.file_variables(...)</code></strong>: Retrieves the list of file variables that match the requested variables from the dataset.
+- <strong><code>varfiles[p] = [_model_vars.vars[v].var for v in _gvar_list]</code></strong>: Maps the LaTeX names of the requested variables to their corresponding file pattern (<code>p</code>). 
+- <strong><code>self.gvarfiles_full.update(...)</code></strong>: Updates the dictionary with all available file variables for the current file pattern, storing them for future use.</p>
+<h3 id="5-error-handling-and-loging">5. <strong>Error Handling and loging</strong></h3>
+<p>Handle preliminary errors and logs information about the variables and files processed, helping to identify issues.
+- <strong><code>print_err_list(variables_requested, varfiles)</code></strong>: Prints a list of errors related to the requested variables, helping identify which variables failed to load or register properly.
+- <strong><code>_print_files(printfiles)</code></strong>: Prints a list of files that have been processed, aiding in debugging by showing which files were successfully read and loaded into the model.
+- <strong>Parameters</strong>:
+  - <strong><code>variables_requested</code></strong>: The list of requested variables.
+  - <strong><code>varfiles</code></strong>: The list of files associated with the requested variables.
+  - <strong><code>printfiles</code></strong>: The list of files to be printed for debugging.</p>
+<h3 id="6-variable-definitions-and-metadata"><strong>6. Variable Definitions and Metadata</strong></h3>
+<p>Create and update the internal variable dictionary to ensure all relevant data is prepared for variables to be functionalized.</p>
+<ul>
+<li><strong><code>_update_var_dict(varfiles)</code></strong>: Updates the internal variable dictionary according to the model output files. Refactored to be called when <code>variables_requested == 'all'</code>.</li>
+<li><strong><code>_create_variables()</code></strong>: Initialized storage structure and preparing them for use in Kamodo.</li>
+<li><strong>Parameters</strong>:</li>
+<li><strong><code>varfiles</code></strong>: The list of files associated with the requested variables.</li>
+</ul>
+<h3 id="7-loading-grids-and-static-variables">7. <strong>Loading Grids and Static Variables</strong></h3>
+<p>Load the necessary grid data and static variables from files and store them as class properties.
+- <strong><code>load_grid(file_dir)</code></strong>: Loads grid data and making it available as class properties.
+- <strong><code>load_static(file_dir)</code></strong>: Loads static data (e.g., <code>pc</code>) and making it available as class properties.
+- <strong>Parameters</strong>:
+  - <strong><code>file_dir</code></strong>: Directory of the model output data.</p>
+<h3 id="8-registering-variables">8. <strong>Registering Variables</strong></h3>
+<p>Register the requested variables in Kamodo. 
+This includes handling different types of variables, such as PSD, 1D, and grid variables, each requiring different registration methods.
+- <strong><code>register_ncfile_variable(varname, gridded_int, file_dir)</code></strong>: Registers a variable from an NetCDF by extracting its metadata and grid information and prepares it for Kamodo.
+- <strong><code>register_grid_variable(varname, gridded_int, file_dir)</code></strong>: Similar to <code>register_ncfile_variable</code>, but specifically handles variables that are part of a grid.
+- <strong><code>register_1d_variable(varname, gridded_int, file_dir)</code></strong>: Registers 1D variables, which are simpler and do not involve complex grids, and prepares them for use in Kamodo.
+- <strong>Parameters</strong>:
+  - <strong><code>file_dir</code></strong>: Directory of the model output data.
+  - <strong><code>varname</code></strong>: The name of the registered variable.
+  - <strong><code>gridded_int</code></strong>: Kamodo flag, indicates whether the variable should be gridded.</p>
+<h3 id="9-final-timing-and-verbose-output">9. <strong>Final Timing and Verbose Output</strong></h3>
+<p>Log the time taken to register the variables, providing performance metrics if verbosity is enabled.</p>
+<h3 id="handling-interpolations"><strong>Handling interpolations</strong></h3>
+<p>This section explains interpolation functions for the data within different coordinate systems (LEA and LMK).
+The registration of variables depends on the type of variable being functionalized (e.g., PSD variables, 1D variables, or grid variables). 
+Based on the variable's characteristics, different <code>register_*</code> functions are called, which handle the interpolation process accordingly.</p>
+<p>For <strong>PSD and flux variables</strong> such as <code>PSD_lmk</code>, <code>PSD_lea</code>, and <code>flux_lea</code>, <strong>multi-dimensional interpolation</strong> is used.
+This method interpolates smoothly across complex grids in the LEA (<code>L</code>, <code>E_e</code>, <code>alpha_e</code>) or LMK (<code>L</code>, <code>mu</code>, <code>K</code>) coordinate systems.</p>
+<p>For <strong>1D variables</strong> like <code>bf</code>, <code>kp</code>, and <code>Lpp</code>, as well as <strong>grid variables</strong>, <strong>nearest-neighbor interpolation</strong> is used.
+This method identifies the closest data point, which is usually sufficient for these types of variables.</p>
+<ul>
+<li><strong><code>_nearest_xvec_data_LEA(xvec, data)</code></strong>: Finds the nearest data point to the given input vector <code>xvec</code> in the LEA coordinate system, using nearest-neighbor interpolation to retrieve the data.</li>
+<li><strong><code>_nearest_xvec_data_LMK(xvec, data)</code></strong>: Similar to <code>_nearest_xvec_data_LEA</code>, but operates in the LMK coordinate system.</li>
+<li><strong><code>_interp_xvec_data_LEA(xvec, data)</code></strong>: Interpolates data based on the input vector <code>xvec</code> in the LEA coordinate system, preparing the data for use in Kamodo functions.</li>
+<li><strong><code>_interp_xvec_data_LMK(xvec, data)</code></strong>: Interpolates data based on <code>xvec</code> in the LMK coordinate system, ensuring smooth data handling for Kamodo.</li>
+<li><strong><code>_nearest_index(arr, val)</code></strong>: Finds the nearest index in the array <code>arr</code> for the given value <code>val</code>, used in various interpolation and nearest-neighbor functions to efficiently locate data points.</li>
+<li><strong><code>_interpolate(X, Y, Z, x, y, z, Psi_tt)</code></strong>: Handles multi-dimensional interpolation of data points in 3D space, ensuring accurate data retrieval across complex grids and coordinate systems.</li>
+<li><strong><code>_intrep_stack_hstack(self, Xit, Xi, Yit, Yi, Zit, Zi, PSDit, PSDi)</code></strong>: This function handles stacking grid points and interpolation values using <code>np.hstack</code>.</li>
+<li><strong><code>_intrep_stack_list(self, Xit_list, Xi, Yit_list, Yi, Zit_list, Zi, PSDit_list, PSDi)</code></strong>: Similar to <code>_intrep_stack_hstack</code>, but stores grid points and interpolation values in lists for further processing.</li>
+<li>
+<p><strong><code>_finalize_stack(Xit_list, Yit_list, Zit_list, PSDit_list)</code></strong>: Converts lists of stacked grid points and values into arrays after all data has been processed.</p>
+</li>
+<li>
+<p><strong>Parameters</strong>:</p>
+</li>
+<li><strong><code>xvec</code></strong>: The input vector used for interpolation calculations.</li>
+<li><strong><code>data</code></strong>: The dataset to be interpolated.</li>
+<li><strong><code>arr</code></strong>: The array in which the nearest index is to be found.</li>
+<li><strong><code>val</code></strong>: The value for which the nearest index is sought.</li>
+<li><strong><code>X</code>, <code>Y</code>, <code>Z</code></strong>: The multi-dimensional coordinates used for interpolation.</li>
+<li><strong><code>x</code>, <code>y</code>, <code>z</code></strong>: The specific input coordinates for interpolation.</li>
+<li><strong><code>Psi_tt</code></strong>: The data array being interpolated.</li>
+<li><strong><code>Xit</code>, <code>Yit</code>, <code>Zit</code></strong>: Arrays or lists of grid coordinates, typically representing different dimensions in the interpolation (e.g., <code>L</code>, <code>E_e</code>, <code>alpha_e</code> or <code>L</code>, <code>mu</code>, <code>K</code>).</li>
+<li><strong><code>Xi</code>, <code>Yi</code>, <code>Zi</code></strong>: Individual sets of grid coordinates, corresponding to specific points in the data grid.</li>
+<li><strong><code>PSDit</code></strong>: The array or list of phase space density (or other variable) values that correspond to the grid points.</li>
+<li><strong><code>PSDi</code></strong>: Individual phase space density (or other variable) values at specific grid points.</li>
+<li><strong><code>Xit_list</code>, <code>Yit_list</code>, <code>Zit_list</code>, <code>PSDit_list</code></strong>: Lists that accumulate grid coordinates and corresponding values for further stacking and processing.</li>
+</ul>
+<h3 id="model-variable-management"><strong>Model Variable Management</strong></h3>
+<p>In the VERB code model reader, the <code>ModelVariable</code> and <code>ModelVariables</code> classes are introduced to simplify handling and managing <code>model_varnames</code> associated variables. </p>
+<h4 id="modelvariable-class"><code>ModelVariable</code> Class</h4>
+<p>A data class representing a single variable within the diffusion model, encapsulating its metadata and providing access to essential attributes. This class simplifies the management of Kamodo variables by replacing the previous list-based structure with an object-oriented approach. 
+<strong>Methods</strong>:
+- <strong><code>to_list()</code></strong>: Converts the <code>ModelVariable</code> instance into a list format, representing <code>model_varnames</code>.</p>
+<h4 id="modelvariables-class"><code>ModelVariables</code>  Class</h4>
+<p>A container class that manages multiple <code>ModelVariable</code> instances. It provides methods for accessing, filtering, and retrieving variable metadata by name or other criteria.</p>
+<p><strong>Attributes</strong>:
+- <strong><code>vars</code></strong> (<code>dict</code>): A dictionary storing all model variables, where the key is the variable's LaTeX representation name and the value is an instance of <code>ModelVariable</code>.
+- <strong><code>keys</code></strong> (<code>dict</code>): A dictionary that maps the LaTeX representation to the variable's internal name.</p>
+<p><strong>Methods</strong>:
+- <strong><code>__init__(model_varnames)</code></strong>: Initializes the <code>ModelVariables</code> class with a dictionary of variable metadata (<code>model_varnames</code>).
+  - <strong>Parameters</strong>: 
+    - <code>model_varnames</code> (<code>dict</code>): A <code>model_varnames</code> dictionary corresponding to the model. 
+- <strong><code>latex_variables(variables_requested=None)</code></strong>: Returns a list of LaTeX representations for all variables or filtered by a requested variable name.
+  - <strong>Parameters</strong>:
+    - <code>variables_requested</code> (<code>str</code>, optional): The name of a specific variable to filter by.
+  - <strong>Returns</strong>: (<code>list</code>): A list of LaTeX-formatted variable names.</p>
+<ul>
+<li><strong><code>file_variables(variables_requested=None, cdf_keys=None)</code></strong>: Returns a list "Name in file" representations that match the requested variable name and/or "Name in file" keys.</li>
+<li><strong>Parameters</strong>:<ul>
+<li><code>variables_requested</code> (<code>str</code>, optional): The name of the variable to filter by.</li>
+<li><code>cdf_keys</code> (<code>list</code>, optional): A list of "Name in file" keys to match with the variables.</li>
+</ul>
+</li>
+<li>
+<p><strong>Returns</strong>: (<code>list</code>): A list of "Name in file" variables.</p>
+</li>
+<li>
+<p><strong><code>model_var_by_name(name)</code></strong>: Retrieves a specific <code>ModelVariable</code> instance by its internal name.</p>
+</li>
+<li><strong>Parameters</strong>:<ul>
+<li><code>name</code> (<code>str</code>): The internal name of the model variable.</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: (<code>ModelVariable</code>): The corresponding <code>ModelVariable</code> instance.</li>
+</ul>
+<h4 id="usage">Usage</h4>
+<p>In the <code>verb3d_4D.py</code> model reader, <code>_model_vars</code> is initialized and used to efficiently manage the model's variables by providing structured access to the variables' metadata. It enables functions to retrieve specific variables, access their coordinate systems, units, and descriptions, and ensures proper alignment of data arrays. For example, <code>_model_vars</code> is utilized to access coordinate grids, units for variables like <code>L</code> and <code>E_e</code>, and to map variables from the file to their respective LaTeX representations.
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">_model_vars</span> <span class="o">=</span> <span class="n">ModelVariables</span><span class="p">(</span><span class="n">model_varnames</span><span class="p">)</span>
+</span></code></pre></div></p>
+<h3 id="static-control-properties-in-the-modelkamodo-class"><strong>Static Control Properties in the <code>MODEL(Kamodo)</code> Class</strong></h3>
+<p>The <code>MODEL(Kamodo)</code> class in the VERB reader includes several static properties that control default behaviors and configurations for processing and functionalizing data.</p>
+<p><strong>Note</strong>: Many of these properties are primarily intended for development and debugging purposes, and should not be modified. Some properties like <code>_interpolation_method</code> will not affect the model reader's behavior unless explicitly modified within the class's code.</p>
+<ul>
+<li><strong><code>modelname</code></strong>: The name of the model being processed. In this case, it is set to <code>'VERB-3D'</code>, identifying the specific diffusion model.</li>
+<li><strong><code>_grid_prefix</code></strong>: This prefix, set to <code>'_grid'</code>, is used to identify and store grid variables within the class. It helps differentiate grid data from other types of variables during processing.</li>
+<li><strong><code>_force_convert_all</code></strong>: A boolean flag that, when set to <code>True</code>, forces the reader to recompute all NetCDF files, even if they already exist. By default, it is set to <code>False</code>, indicating that existing files will be used unless otherwise specified.</li>
+<li><strong><code>_start_date</code></strong>: This property allows the user to specify a forced start date for the dataset. By default, it is set to <code>None</code>, meaning the start date is determined from the data itself.</li>
+<li><strong><code>_interpolation_method</code></strong>: This property defines the default interpolation method used for functionalizing PSD and flux variables. It is set to <code>'interp'</code> for multi-dimensional interpolation. The commented-out option <code>'nearest'</code> indicates that nearest-neighbor interpolation could be used instead if required.</li>
+</ul>
+<h2 id="conclusion">Conclusion</h2>
+<p>Writing a model reader for diffusion models requires careful consideration of data conversion, coordinate systems, and modularity. By following the example of the <code>verb3d</code> model reader, you can create a robust and maintainable reader that integrates with Kamodo.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
