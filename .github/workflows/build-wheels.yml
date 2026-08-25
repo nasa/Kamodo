@@ -55,6 +55,15 @@ jobs:
       - name: Install cibuildwheel
         run: pip install cibuildwheel==2.21.3
 
+      - name: Set macOS deployment target
+        if: runner.os == 'macOS'
+        run: |
+          if [ "${{ matrix.os }}" == "macos-14" ]; then
+            echo "MACOSX_DEPLOYMENT_TARGET=14.0" >> $GITHUB_ENV
+          else
+            echo "MACOSX_DEPLOYMENT_TARGET=13.0" >> $GITHUB_ENV
+          fi
+
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:

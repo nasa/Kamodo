@@ -82,15 +82,6 @@ before-all = "yum install -y gcc-gfortran || (apt-get update && apt-get install 
 manylinux-x86_64-image = "manylinux2014"
 manylinux-aarch64-image = "manylinux2014"
 
-[tool.cibuildwheel.macos]
-# Intel Macs (macos-13 runner) use Homebrew libraries compiled for 13.0
-environment = { MACOSX_DEPLOYMENT_TARGET = "13.0" }
-
-[[tool.cibuildwheel.overrides]]
-select = "*-macosx_arm64"
-# Apple Silicon Macs (macos-14 runner) use Homebrew libraries compiled for 14.0
-environment = { MACOSX_DEPLOYMENT_TARGET = "14.0" }
-
 [tool.cibuildwheel.windows]
 before-build = "pip install delvewheel"
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
