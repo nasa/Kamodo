@@ -433,7 +433,8 @@ class build_ext(_build_ext):
             # Link to shared library; set rpath at link time on macOS
             ldflags = ['-shared', '-fPIC']
             if sys.platform == 'darwin':
-                ldflags.extend(['-mmacosx-version-min=11.0',
+                mac_target = os.environ.get('MACOSX_DEPLOYMENT_TARGET', '11.0')
+                ldflags.extend([f'-mmacosx-version-min={mac_target}',
                                 '-Wl,-rpath,@loader_path/../libs'])
 
             link_cmd = [fc] + ldflags + glob.glob('*.o') + ['-o', libname]

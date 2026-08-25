@@ -60,7 +60,11 @@ jobs:
         env:
           CIBW_BUILD: "cp310-*"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
-          CIBW_BEFORE_ALL_LINUX: yum install -y gcc-gfortran || apt-get update && apt-get install -y gfortran
+          CIBW_BEFORE_ALL_LINUX: >
+            if command -v dnf; then dnf install -y gcc-gfortran;
+            elif command -v yum; then yum install -y gcc-gfortran;
+            elif command -v apt-get; then apt-get update && apt-get install -y gfortran;
+            else echo "No known package manager found" && exit 1; fi
           CIBW_ENVIRONMENT_WINDOWS: >
             PATH="C:\\msys64\\mingw64\\bin;$PATH"
           # Clean out the legacy kamodo package before testing the wheel
