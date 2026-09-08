@@ -206,15 +206,15 @@ def figMods(fig, log10=False, lockAR=False, ncont=-1, colorscale='',
         if llText != '':
             fig.add_annotation(text=llText, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                      xshift=xs1, yshift=ys1, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000"))
+                     font=dict(size=12, color="#000000"))
         if llText2 != '':
             fig.add_annotation(text=llText2, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                      xshift=xs1, yshift=ys2, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000"))
+                     font=dict(size=12, color="#000000"))
         if coText != '':
             fig.add_annotation(text=coText, x=1.0, y=0.0, ax=0, ay=0, xanchor="right",
                      xshift=xs2, yshift=ys1, xref="paper", yref="paper",
-                     font=dict(size=12, family="sans serif", color="#000000"))
+                     font=dict(size=12, color="#000000"))
 
     if xtic != '':
         fig.update_layout(xaxis = dict(tick0 = 0., dtick = xtic))
@@ -308,7 +308,7 @@ def XYC(Xlabel, X, Ylabel, Y, Clabel, C, title='Plot Title',
         scene_aspectmode='data',
         title=dict(text=title,
                    yref="container", yanchor="top", x=0.01, y=0.97,
-                   font=dict(size=16, family="sans serif", color="#000000")),
+                   font=dict(size=16, color="#000000")),
         margin=dict(l=0), xaxis_title=Xlabel, yaxis_title=Ylabel
     )
 
@@ -558,24 +558,24 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
         if '2Dpolar2' in plotType:
             figN.data[0].showscale = True
 
-            figN.add_annotation(xref='paper', yref='paper', x=1.015, y=.5, textangle=90,
+            figN.add_annotation(xref='paper', yref='paper', x=1.01, y=.5, textangle=90,
                                yanchor='middle', showarrow=False, text='Dawn')
-            figN.add_annotation(xref='paper', yref='paper', x=0.015, y=.5, textangle=-90,
+            figN.add_annotation(xref='paper', yref='paper', x=0.02, y=.5, textangle=-90,
                                yanchor='middle', showarrow=False, text='Dusk')
-            figN.add_annotation(xref='paper', yref='paper', x=.515, y=1.,
+            figN.add_annotation(xref='paper', yref='paper', x=.51, y=0.99,
                                xanchor='center', showarrow=False, text='Noon')
-            figN.add_annotation(xref='paper', yref='paper', x=.515, y=0.,
+            figN.add_annotation(xref='paper', yref='paper', x=.51, y=0.01,
                                xanchor='center', showarrow=False, text='Midnight')
             figN.add_annotation(xref='paper', yref='paper', x=.9, y=1.,
                                showarrow=False, text='<b>NORTH</b>')
 
-            figS.add_annotation(xref='paper', yref='paper', x=0.015, y=.5, textangle=-90,
+            figS.add_annotation(xref='paper', yref='paper', x=0.02, y=.5, textangle=-90,
                                yanchor='middle', showarrow=False, text='Dawn')
-            figS.add_annotation(xref='paper', yref='paper', x=1.015, y=.5, textangle=90,
+            figS.add_annotation(xref='paper', yref='paper', x=1.01, y=.5, textangle=90,
                                yanchor='middle', showarrow=False, text='Dusk')
-            figS.add_annotation(xref='paper', yref='paper', x=0.515, y=1.,
+            figS.add_annotation(xref='paper', yref='paper', x=0.51, y=0.99,
                                xanchor='center', showarrow=False, text='Noon')
-            figS.add_annotation(xref='paper', yref='paper', x=0.515, y=0.,
+            figS.add_annotation(xref='paper', yref='paper', x=0.51, y=0.01,
                                xanchor='center', showarrow=False, text='Midnight')
             figS.add_annotation(xref='paper', yref='paper', x=0.1, y=1.,
                                showarrow=False, text='<b>SOUTH</b>')
@@ -621,15 +621,15 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
             figN.update_layout(title_text="2D Polar Plot North",
                 xaxis=dict(scaleanchor="y", scaleratio=1, visible=False),
                 yaxis=dict(scaleanchor="x", scaleratio=1, visible=False),
-                width=500, height=400,
-                margin=dict(t=28, b=0, l=0, r=130),
+                width=475, height=428,
+                margin=dict(t=28, b=28, l=5, r=100),
                 plot_bgcolor='rgb(255, 255, 255)',
             )
             figS.update_layout(title_text="2D Polar Plot South",
                 xaxis=dict(scaleanchor="y", scaleratio=1, visible=False, autorange="reversed"),
                 yaxis=dict(scaleanchor="x", scaleratio=1, visible=False),
-                width=500, height=400,
-                margin=dict(t=28, b=0, l=0, r=130),
+                width=475, height=428,
+                margin=dict(t=28, b=28, l=5, r=100),
                 plot_bgcolor='rgb(255, 255, 255)',
             )
 
@@ -778,11 +778,11 @@ def ReplotLL3D(figIn, model, altkm, plotts, plotCoord='GEO',
         scene_aspectmode='data',
         title=dict(text=title,
                    yref="container", yanchor="top", x=0.01, y=0.95,
-                   font=dict(size=16, family="sans serif", color="#000000")),
+                   font=dict(size=16, color="#000000")),
         annotations=[
             dict(text=lltxt, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                  xshift=0, yshift=-20, xref="paper", yref="paper",
-                 font=dict(size=16, family="sans serif", color="#000000"))
+                 font=dict(size=16, color="#000000"))
         ],
         margin=dict(l=0),
         width=750,
@@ -1173,7 +1173,7 @@ def GDZSlice4D(interp, varname, model, date, plotType, plotCoord='GEO',
         plot_bgcolor="white", scene_aspectmode='data',
         title=dict(text=title + '<br>' + subt,
                    yref="container", yanchor="top", x=0.01, y=0.97,
-                   font=dict(size=16, family="sans serif", color="#000000")),
+                   font=dict(size=16, color="#000000")),
         margin=dict(l=0), width=750, height=375)
 
     if plotType == 'Lon-Lat':
@@ -1443,7 +1443,7 @@ def swmfgm3D(ko, var, time=0., title='',
         scene_aspectmode='data',
         title=dict(text=title,
                    yref="container", yanchor="top", x=0.01, y=0.97,
-                   font=dict(size=16, family="sans serif", color="#000000"))
+                   font=dict(size=16, color="#000000"))
     )
 
     return fig
@@ -1656,7 +1656,7 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
         scene_aspectmode='data',
         title=dict(text=title,
                    yref="container", yanchor="top", x=0.01, y=0.97,
-                   font=dict(size=16, family="sans serif", color="#000000")),
+                   font=dict(size=16, color="#000000")),
         scene=dict(
             xaxis=dict(showbackground=False, showgrid=False),
             yaxis=dict(showbackground=False, showgrid=False),
@@ -1664,7 +1664,7 @@ def swmfgm3Darb(ko, var, time=0., pos=[0, 0, 0], normal=[0, 1, 0],
         annotations=[
             dict(text=lowerlabel, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                  xshift=0, yshift=-20, xref="paper", yref="paper",
-                 font=dict(size=16, family="sans serif", color="#000000"))
+                 font=dict(size=16, color="#000000"))
         ],
         margin=dict(l=0, t=35),
     )
@@ -2558,7 +2558,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
         scene_aspectmode='data',
         title=dict(text=upperlabel,
                    yref="container", yanchor="top", x=0.01, y=0.98,
-                   font=dict(size=16, family="sans serif", color="#000000")),
+                   font=dict(size=16, color="#000000")),
         scene=dict(
             xaxis=dict(showbackground=False, showgrid=False),
             yaxis=dict(showbackground=False, showgrid=False),
@@ -2566,19 +2566,19 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
         annotations=[
             dict(text=plotDateStr, x=1.0, y=1.0, ax=0, ay=0, xanchor="right",
                  xshift=0, yshift=14, xref="paper", yref="paper",
-                 font=dict(size=16, family="sans serif", color="#000000")),
+                 font=dict(size=16, color="#000000")),
             dict(text=lowerlabel, x=0.0, y=0.0, ax=0, ay=0, xanchor="left",
                  xshift=0, yshift=-20, xref="paper", yref="paper",
-                 font=dict(size=16, family="sans serif", color="#000000")),
+                 font=dict(size=16, color="#000000")),
             dict(text=lrText1, x=1.0, y=0.0, ax=0, ay=0, xanchor="left",
                 xshift=xs2, yshift=ys1, xref="paper", yref="paper",
-                font=dict(size=12, family="sans serif", color="#000000")),
+                font=dict(size=12, color="#000000")),
             dict(text=lrText2, x=1.0, y=0.0, ax=0, ay=0, xanchor="left",
                 xshift=xs2, yshift=ys2, xref="paper", yref="paper",
-                font=dict(size=12, family="sans serif", color="#000000")),
+                font=dict(size=12, color="#000000")),
             dict(text=lrText3, x=1.0, y=0.0, ax=0, ay=0, xanchor="left",
                 xshift=xs2, yshift=ys3, xref="paper", yref="paper",
-                font=dict(size=12, family="sans serif", color="#000000")),
+                font=dict(size=12, color="#000000")),
          ],
         margin=dict(l=10, t=35),
         height=800,
@@ -2831,7 +2831,7 @@ def gmGetSurfacePlot(ko='', timeHrs='', wireframe=False, Gridsize=21, what='BS',
         scene_aspectmode='data',
         title=dict(text=titleStr,
                    yref="container", yanchor="top", x=0.01, y=0.97,
-                   font=dict(size=16, family="sans serif", color="#000000")) )
+                   font=dict(size=16, color="#000000")) )
 
     return fig2,True
 
@@ -3760,15 +3760,16 @@ def gm2DSliceFig(ko, timeHrs=1., var='P', pco='GSM', slicedir='Z', sliceval=0.,
         annotations=[
             dict(text=label1, x=1.18, y=1.07, ax=0, ay=0, xanchor="right",
                  xshift=0, yshift=0, xref="paper", yref="paper",
-                 font=dict(size=16, family="sans serif", color="#000000")),
+                 font=dict(size=16, color="#000000")),
             dict(text=label2, x=-0.07, y=-0.1, ax=0, ay=0, xanchor="left",
                  xshift=0, yshift=0, xref="paper", yref="paper",
-                 font=dict(size=16, family="sans serif", color="#000000")),
+                 font=dict(size=16, color="#000000")),
         ],
         width=800, height=400,
         margin=dict(r=120), )
     if makeSquare:
-        fig.update_layout(width=490)
+        fig.update_layout(width=450, height=385)
+        fig.update_layout(margin=dict(r=80, t=25))
     fig.data[0]['colorbar']['xpad'] = 5
     fig.data[0]['colorbar']['y'] = -.03
     fig.data[0]['colorbar']['yanchor'] = 'bottom'
@@ -4261,16 +4262,16 @@ def ITM_Cutout_Plot(ko, var, it=0, ptime=-1., hfactor=1., runID='_unspecified_',
     figF.update_layout(
         title=dict(text=ptitle+'<br>',
             yref="container", yanchor="top", x=0.05, y=0.95,
-            font=dict(size=16, family="sans serif", color="#000000")),
+            font=dict(size=16, color="#000000")),
         annotations=[
             dict(text='Time: '+timestr, 
                  x=0.05, y=0.04, ax=0, ay=0, xanchor="left",
                  xshift=0, yshift=-26, xref="paper", yref="paper",
-                 font=dict(size=14, family="sans serif", color="#000000")),
+                 font=dict(size=14, color="#000000")),
             dict(text='Altitude stretch factor = '+str(hfactor), 
                  x=1., y=0.04, ax=0, ay=0, xanchor="right",
                  xshift=0, yshift=-26, xref="paper", yref="paper",
-                 font=dict(size=14, family="sans serif", color="#000000"))
+                 font=dict(size=14, color="#000000"))
         ],
         scene_camera=dict(eye=dict(x=eyex, y=eyey, z=eyez), center=dict(x=0., y=0., z=0.)),
         scene=dict(xaxis=dict(visible=False),
@@ -4408,34 +4409,38 @@ def fig2darkmode(figIN, colormap=None):
     '''
     import plotly.graph_objects as go
 
+    # set colors
+    DM_white = "#F0F0F0"
+    DM_darkgray = "#1F1F1F"  # 'rgb(31, 31, 31)'
+
     # duplicate incoming figure
     fig = go.Figure(figIN)
 
     # apply plotly default dark mode
     fig.update_layout(template="plotly_dark")
 
-    # set background color inside plot area black
+    # set background color inside plot area black and gray matching ISWA  everywhere else
     fig.update_layout(plot_bgcolor='rgb(0, 0, 0)')
+    fig.update_layout(paper_bgcolor=DM_darkgray)
 
     # set text colors
-    color1 = "#565656"
-    fig.layout.title.font.color = color1
+    fig.layout.title.font.color = DM_white
     if 'annotations' in fig.layout:
         for i in range(len(fig.layout.annotations)):
-            fig.layout.annotations[i].font.color = color1
+            fig.layout.annotations[i].font.color = DM_white
+    color1 = "#999999"
     if 'shapes' in fig.layout:
         for i in range(len(fig.layout.shapes)):
             fig.layout.shapes[i].line.color = color1
-    color2 = "#ababab"
-    fig.layout.xaxis.title.font.color = color2
-    fig.layout.yaxis.title.font.color = color2
-    fig.layout.xaxis.tickfont.color = color2
-    fig.layout.yaxis.tickfont.color = color2
+    fig.layout.xaxis.title.font.color = DM_white
+    fig.layout.yaxis.title.font.color = DM_white
+    fig.layout.xaxis.tickfont.color = DM_white
+    fig.layout.yaxis.tickfont.color = DM_white
     for i in range(len(fig.data)):
         if 'colorbar' in fig.data[i]:
-            fig.data[i].colorbar.title.font.color = color2
-            fig.data[i].colorbar.tickfont.color = color2
-    fig.update_layout(legend=dict(font=dict(color=color2)))
+            fig.data[i].colorbar.title.font.color = DM_white
+            fig.data[i].colorbar.tickfont.color = DM_white
+    fig.update_layout(legend=dict(font=dict(color=DM_white)))
 
     # Optional change to colormap
     BlueBlackOrange = [[0.0, 'rgb(0, 0, 255)'], [0.5, 'rgb(0, 0, 0)'], [1.0, 'rgb(255, 165, 0)']]
@@ -4451,13 +4456,13 @@ def fig2darkmode(figIN, colormap=None):
     for i in range(len(fig.data)):
         if fig.data[i].name is not None:
             if 'Bow Shock' in fig.data[i].name:
-                fig.data[i].colorscale = [[0.0, color2], [0.5, color2], [1.0, color2]]
+                fig.data[i].colorscale = [[0.0, DM_white], [0.5, DM_white], [1.0, DM_white]]
 
     # Last closed B color
     for i in range(len(fig.data)):
         if fig.data[i].name is not None:
             if 'Last Closed B' in fig.data[i].name:
-                fig.data[i].line.color = color2
+                fig.data[i].line.color = DM_white
 
     # PCB scatter plot marker and line color black to white
     for i in range(len(fig.data)):
