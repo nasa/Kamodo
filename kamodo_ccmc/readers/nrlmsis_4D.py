@@ -28,7 +28,9 @@ model_varnames = {
     'H': ['N_H', 'number density of atomic hydrogen', 
           9, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/cm**3'],
     'N': ['N_N', 'number density of atomic nitrogen', 
-          10, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/cm**3']
+          10, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/cm**3'],
+    'NO': ['N_NO', 'number density of nitric oxide', 
+           11, 'GDZ', 'sph', ['time', 'lon', 'lat', 'height'], '1/cm**3']
 }
 
 def MODEL():
