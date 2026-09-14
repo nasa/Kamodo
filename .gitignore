@@ -118,7 +118,6 @@ venv.bak/
 
 # mkdocs documentation
 /site
-/Validation
 RealFlightExample*html
 
 # mypy
@@ -135,6 +134,8 @@ hourly-outputs/
 # kamodo
 kamodo_output/
 KAMODO_DATA
+TestData
+iframe_figures
 
 # MacOS
 .DS_Store

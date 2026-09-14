@@ -1,7 +1,21 @@
-![CCMC](https://github.com/nasa/Kamodo/blob/master/docs/notebooks/Files/CCMC.png) ![Kamodo](https://github.com/nasa/Kamodo/blob/master/docs/notebooks/Files/Kamodo.png)
+![CCMC](https://github.com/nasa/Kamodo/raw/master/docs/notebooks/Files/CCMC.png) ![Kamodo](https://github.com/nasa/Kamodo/raw/master/docs/notebooks/Files/Kamodo.png)
 # The CCMC Kamodo Analysis Suite
 ## Online Documentation
-https://nasa.github.io/Kamodo/
+- https://nasa.github.io/Kamodo/ 
+- https://nasa.github.io/Kamodo-core/ 
+
+## What's New?
+2026 - September 
+- Added support for NRLMSIS output in Kamodo 
+
+2026 - August 
+- Full support of the latest Numpy, Pandas, NetCDF4, and Plotly versions 
+- Full Python 3.14 support 
+- Automated data management 
+- Upgraded documentation 
+- Improved test suite 
+- Automated CI/CD with pushes directly to PyPI 
+
 ## Vision Statement
 Kamodo is an official NASA open-source python package built upon the functionalization of datasets. Once a dataset is functionalized in Kamodo, several important capabilities are then available to the user, including data analysis via function composition, automatic unit conversions, and publication quality graphics all using intuitive and simplistic syntax. By applying these capabilities to heliophysics model outputs, we aim to:
 -	Drastically simplify the currently complex data utilization process for model outputs,
@@ -29,6 +43,7 @@ Kamodo is an official NASA open-source python package built upon the functionali
 - DTM: The Drag Temperature Model, https://doi.org/10.1051/swsc/2015001  
 - GITM: Global Ionosphere Thermosphere Model, https://doi.org/10.1016/j.jastp.2006.01.008  
 - IRI: International Reference Ionosphere Model, https://doi.org/10.5194/ars-16-1-2018  
+- NRLMSIS: Naval Research Laboratory Mass Spectrometer and Incoherent Scatter Radar, https://doi.org/10.1029/2022JA030896  
 - OpenGGCM_GM: The Open Geospace General Circulation Model - GM outputs only, https://doi.org/10.1023/A:1014228230714  
 - SuperDARN_uni: SuperDARN uniform grid output ,https://doi.org/10.1029/2010JA016017  
 - SuperDARN_equ: SuperDARN equal area grid output, https://doi.org/10.1029/2010JA016017  
@@ -172,4 +187,4 @@ When publishing research which used Kamodo, please provide appropriate credit to
 
 
 ## Open-Source License
-Kamodo is an official NASA open source software package. Kamodo's official source code is hosted on github under a permissive NASA open source license: For more details, go here: https://github.com/nasa/Kamodo/blob/master/LICENSE
+Kamodo is an official NASA open source software package. Kamodo's official source code is hosted on github under a permissive NASA open source license: For more details, go here: https://github.com/nasa/Kamodo/raw/master/LICENSE
