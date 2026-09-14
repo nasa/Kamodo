@@ -779,7 +779,7 @@ def MODEL():
                 cdf_data = RU.Dataset(file,filetype=ncdf_filetype)
                 missingValue = cdf_data[gvar].missing_value
                 if missingValue > 1e30:  # Avoid warnings for casting large values
-                    if ncdf_filetype == 'netCDF3':  # h5netcdf does not mask
+                    if hasattr(cdf_data[gvar], 'set_auto_mask'):
                         cdf_data[gvar].set_auto_mask(False)
                     data = array(cdf_data[gvar][:], copy=True)
                     data = where(data >= missingValue, nan, data)
@@ -791,7 +791,7 @@ def MODEL():
                     next_file = self.pattern_files[p][i+1]
                     cdf_data = RU.Dataset(next_file,filetype=ncdf_filetype)
                     if missingValue > 1e30:  # Avoid warnings for casting large values
-                        if ncdf_filetype == 'netCDF3':  # h5netcdf does not mask
+                        if hasattr(cdf_data[gvar], 'set_auto_mask'):
                             cdf_data[gvar].set_auto_mask(False)
                         data_slice = array(cdf_data[gvar][0])
                         data_slice = where(data_slice >= missingValue, nan, data_slice)
@@ -848,7 +848,7 @@ def MODEL():
                 cdf_data = RU.Dataset(file,filetype=ncdf_filetype)
                 missingValue = cdf_data[gvar].missing_value
                 if missingValue > 1e30:  # Avoid warnings for casting large values
-                    if ncdf_filetype == 'netCDF3':  # h5netcdf does not mask
+                    if hasattr(cdf_data[gvar], 'set_auto_mask'):
                         cdf_data[gvar].set_auto_mask(False)
                     data = array(cdf_data[gvar])
                     data = where(data >= missingValue, nan, data)
@@ -860,7 +860,7 @@ def MODEL():
                     next_file = self.pattern_files[p][i+1]
                     cdf_data = RU.Dataset(next_file,filetype=ncdf_filetype)
                     if missingValue > 1e30:  # Avoid warnings for casting large values
-                        if ncdf_filetype == 'netCDF3':  # h5netcdf does not mask
+                        if hasattr(cdf_data[gvar], 'set_auto_mask'):
                             cdf_data[gvar].set_auto_mask(False)
                         data_slice = array(cdf_data[gvar][0])
                         data_slice = where(data_slice >= missingValue, nan, data_slice)
