@@ -4434,12 +4434,12 @@ def fig2darkmode(figIN, colormap=None):
             fig.layout.shapes[i].line.color = color1
     fig.layout.xaxis.title.font.color = DM_white
     fig.layout.yaxis.title.font.color = DM_white
-    fig.layout.xaxis.tickfont.color = DM_white
-    fig.layout.yaxis.tickfont.color = DM_white
+    fig.layout.xaxis.tick.font.color = DM_white
+    fig.layout.yaxis.tick.font.color = DM_white
     for i in range(len(fig.data)):
         if 'colorbar' in fig.data[i]:
             fig.data[i].colorbar.title.font.color = DM_white
-            fig.data[i].colorbar.tickfont.color = DM_white
+            fig.data[i].colorbar.tick.font.color = DM_white
     fig.update_layout(legend=dict(font=dict(color=DM_white)))
 
     # Optional change to colormap
