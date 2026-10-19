@@ -2136,7 +2136,7 @@ def LastClosedBfig(ko, time_hours, n_traces=36, showE=True, showIT=True):
 def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
                   pco='', upperlabel='', lowerlabel='', colorscale='RdBu',
                   addTraceTime=False, showGrid=False, showE=False,
-                  log10=False, csym=False,
+                  log10=False, logCustom=False, csym=False, 
                   showMP=True, showBS=True, wireframe=False, crange='',
                   xrange=[-999., 999.], yrange=[-999., 999.], zrange=[-999., 999.],
                   showCarpet=False, showCarpetZ=False, showIT=False):
@@ -2159,6 +2159,7 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     showGrid:     logical to show dots at grid locations
     showE:        logical to show a sphere at R=1
     log10:        logical to take log10 of contour value
+    logCustom:    logical to adjust label on colorscale to more human interpretable values
     csym:         logical to force contour symmetry around 0
     showMP:       logical to show magnetopause boundary (requires 'status' variable)
     showBS:       logical to show bow shock (requires 'v_x' variable)
@@ -2436,7 +2437,10 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
     if log10 and not showCarpetZ:
         value[value <= 0.] = np.nan
         value = np.log10(value)
-        varlabel = "log10("+varlabel+")"
+        if logCustom:
+            varlabel = "log scale<br>"+varlabel
+        else:
+            varlabel = "log10("+varlabel+")"
     vmin = np.nanmin(value)
     vmax = np.nanmax(value)
     
@@ -2547,6 +2551,11 @@ def gm3DSlicePlus(ko, var, timeHrs=0., pos=[0, 0, 0], normal=[0, 0, 1], gdeg=2.,
             fig.add_trace(fig2.data[0])
 
     # Final figure modifications
+    if log10 and logCustom:
+        fig.update_traces(colorbar=dict(
+            tickvals=[-5,-4,-3,-2,-1,0,1,2],
+            ticktext=['.00001','.0001','.001','.01','.1','1.','10.','100.'],
+        ))
     xs2 = 12
     ys1 = -40
     ys2 = -24
