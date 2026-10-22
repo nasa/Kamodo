@@ -34,8 +34,8 @@ def adelphi_data_hemisphere(file_name):
     '''Read in data from given file and return in a dictionary of arrays.'''
 
     # read in data from file
-    file_obj = open(file_name, 'r')
-    csv_reader = reader(file_obj, delimiter='\n')  # splits file by \n char
+    file_obj = open(file_name, 'r', newline='')
+    csv_reader = reader(file_obj) # , delimiter='\n')  # splits file by \n char
 
     # pull in date and time
     line = next(csv_reader)
@@ -110,7 +110,7 @@ def combine_hemispheres(north_file, south_file):
     len_lat = len(data_N['MLAT'])
     data = {'Time': data_N['Time'], 'Lon': np.append(data_N['MLT'], 360.)-180.}
     data['Lat'] = np.zeros(len_lat*2+4)  # need NaN and buffer rows at equator
-    data['Lat'][:len_lat] = -1.*np.flip(data_S['MLAT'])
+    data['Lat'][:len_lat] = np.flip(data_S['MLAT']) # the minus sign in latitude values is already in the text files
     # add buffer rows for S hemisphere
     data['Lat'][len_lat] = data['Lat'][len_lat-1] +\
         abs(np.diff(data_S['MLAT'])[0])/10.
