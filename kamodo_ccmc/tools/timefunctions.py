@@ -9,6 +9,8 @@ Kamodo time conversion functions in this file:
  timeTStoSTR
  timeKOtoTS
  timeTStoKOoffset
+ timeDTtoKOoffset
+ timeKOminmax
 '''
 
 def timeDTtoSTR(inDT, datesep=None):
@@ -117,8 +119,49 @@ def timeTStoKOoffset(ko, inTS):
       ko      A Kamodo object with ko.filedate defined (datetime)
       inTS    Timestamp in seconds to convert from
     OUT:
-      returns floating point hours from start of Kamodo object
+      returns floating point hours from start of Kamodo object (None if out of range)
     '''
+    t_min, t_max = timeKOminmax(ko)
     Hrs = (float(inTS) - ko.filedate.timestamp()) / 3600.
+    if Hrs < t_min or Hrs > t_max:
+        Hrs = None
     return Hrs
+
+def timeDTtoKOoffset(ko, inDT):
+    '''
+    UTC time conversion from datetime to hours offset from start of Kamodo object
+
+    IN:
+      ko      A Kamodo object with ko.filedate defined (datetime)
+      inDT    Datetime object to convert from, ie. 2005-06-01 13:00:00.000000+00:00
+    OUT:
+      returns floating point hours from start of Kamodo object (None if out of range)
+    '''
+    t_min, t_max = timeKOminmax(ko)
+    Hrs = timeTStoKOoffset(ko, timeDTtoTS(inDT))
+    if Hrs < t_min or Hrs > t_max:
+        Hrs = None
+    return Hrs
+
+def timeKOminmax(ko):
+    '''
+    Gets the start and end time in hours for the passed Kamodo object
+
+    IN:
+      ko      A Kamodo object with ko.filedate defined (datetime)
+    OUT:
+      returns min and max time, t_min, t_max
+    '''
+    from kamodo import get_defaults
+    import numpy as np
+
+    # Get the min,max time from the Kamodo object
+    var_name = list(ko.keys())[0]
+    defaults = get_defaults(ko[var_name])
+    data_array = list(defaults.values())[0]
+    time_data = data_array[:, 0]
+    t_min = np.min(time_data)
+    t_max = np.max(time_data)
+
+    return t_min, t_max
 
