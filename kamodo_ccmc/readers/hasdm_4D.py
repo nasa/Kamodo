@@ -43,7 +43,8 @@ def MODEL():
             if not RU._isfile(list_file) or not RU._isfile(time_file):
                 files = sorted(RU.glob(file_dir+'*.nc'))
                 # Filename format: HASDM_YYYY.nc
-                patterns = unique([basename(f)[:-3] for f in files])
+                # Strip '_YYYY.nc' (8 characters) to group all files under the 'HASDM' pattern
+                patterns = unique([basename(f)[:-8] for f in files])
                 self.filename = ''.join([f+',' for f in files])[:-1]
 
                 for p in patterns:
@@ -51,8 +52,8 @@ def MODEL():
                     self.pattern_files[p] = pattern_files
                     self.times[p] = {'start': [], 'end': [], 'all': []}
 
-                    # Extract year from filename (e.g., HASDM_2025 -> 2025)
-                    year = int(p.split('_')[1])
+                    # Extract year from the first filename (e.g., HASDM_2019.nc -> 2019)
+                    year = int(basename(pattern_files[0])[-7:-3])
                     if not hasattr(self, 'filedate'):
                         self.filedate = datetime(year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
                     
