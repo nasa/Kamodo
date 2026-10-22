@@ -143,7 +143,7 @@ def timeDTtoKOoffset(ko, inDT):
         Hrs = None
     return Hrs
 
-def timeKOminmax(ko):
+def timeKOminmaxHrs(ko):
     '''
     Gets the start and end time in hours for the passed Kamodo object
 
