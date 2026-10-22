@@ -18,6 +18,8 @@ model_dict = {'ADELPHI': 'AMPERE-Derived ELectrodynamic Properties of the ' +
                         ' (coming soon)',
               'GITM': 'Global Ionosphere Thermosphere Model ' +
                       'https://doi.org/10.1016/j.jastp.2006.01.008',
+              'HASDM': 'High Accuracy Satellite Drag Model ' +
+                       'https://doi.org/10.1029/2020SW002682',
               'IRI': 'International Reference Ionosphere Model ' +
                      'https://doi.org/10.5194/ars-16-1-2018',
               'NRLMSIS': 'Naval Research Laboratory Mass Spectrometer and Incoherent Scatter Radar ' +
@@ -84,6 +86,10 @@ def Choose_Model(model=''):
 
     elif model == 'GITM':
         import kamodo_ccmc.readers.gitm_4Dcdf as module
+        return module
+
+    elif model == 'HASDM':
+        import kamodo_ccmc.readers.hasdm_4D as module
         return module
 
     elif model == 'NRLMSIS':
