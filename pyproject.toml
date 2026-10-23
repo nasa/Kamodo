@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kamodo_ccmc"
-version = "26.10.1"
+version = "26.10.2"
 description = "Reader ecosystem for Kamodo scientific data functionalization"
 readme = "README.md"
 authors = [
@@ -40,7 +40,6 @@ dependencies = [
     "rbamlib",
     "pyverbplt>=24.9",
     "plotly",
-    "numba"
 ]
 
 [project.urls]
