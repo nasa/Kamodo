@@ -102,11 +102,23 @@ def MODEL():
               file, so interpolation method 2 is chosen. The standard SciPy
               interpolator is used.
         '''
+
+        @property
+        def MUTED(self):
+            return RU.MUTED
+
+        @MUTED.setter
+        def MUTED(self, value):
+            RU.MUTED = value
+
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
-                     verbose=False, **kwargs):
+                     verbose=False, MUTED=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'ADELPHI'
+            self.MUTED = MUTED
+            if not file_dir.endswith('/'):
+                file_dir += '/'
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
@@ -155,7 +167,8 @@ def MODEL():
                 for i, f in enumerate(nc_files):
                     cdf_data = RU.Dataset(f)
                     tmp = array(cdf_data['time'])  # hrs since midnit
-                    print(i, f, tmp[0], tmp[-1], len(tmp))
+                    if not self.MUTED:
+                        print(i, f, tmp[0], tmp[-1], len(tmp))
                     self.times[p]['start'].append(tmp[0] + 24.*i)
                     self.times[p]['end'].append(tmp[-1] + 24.*i)
                     self.times[p]['all'].extend(tmp + 24.*i)
@@ -182,7 +195,8 @@ def MODEL():
                 err_list = [item for item in variables_requested if item
                             not in test_list]
                 if len(err_list) > 0:
-                    print('Variable name(s) not recognized:', err_list)
+                    if not self.MUTED:
+                        print('Variable name(s) not recognized:', err_list)
                 for item in err_list:
                     variables_requested.remove(item)
                 if len(variables_requested) == 0:
@@ -208,8 +222,8 @@ def MODEL():
                                 if key not in cdf_data.keys() and
                                 value[0] in variables_requested]
                     if len(err_list) > 0:
-                        print('Some requested variables are not available: ',
-                              err_list)
+                        if not self.MUTED:
+                            print('Some requested variables are not available: ', err_list)
             else:
                 gvar_list = [key for key in model_varnames.keys()
                              if key in cdf_data.keys()]
@@ -230,7 +244,7 @@ def MODEL():
                 'units': model_varnames[gvar][-1],
                 'data': p} for gvar in gvar_list}
 
-            if printfiles:
+            if printfiles and not self.MUTED:
                 print(f'{len(self.filename)} Files:')
                 files = self.filename.split(',')
                 for f in files:
@@ -243,10 +257,10 @@ def MODEL():
             for varname in varname_list:
                 self.register_variable(varname, gridded_int)
 
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 

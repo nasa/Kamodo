@@ -339,13 +339,25 @@ def MODEL():
               interpolation method 2 is chosen. The standard SciPy interpolator
               is used.
         '''
+
+        @property
+        def MUTED(self):
+            return RU.MUTED
+
+        @MUTED.setter
+        def MUTED(self, value):
+            RU.MUTED = value
+
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, printfiles=False, gridded_int=True,
-                     verbose=False, **kwargs):
+                     verbose=False, MUTED=False, **kwargs):
 
             # only the density, height and neutral files are combined
             super(MODEL, self).__init__()
             self.modelname = 'CTIPe'
+            self.MUTED = MUTED
+            if not file_dir.endswith('/'):
+                file_dir += '/'
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
@@ -433,7 +445,8 @@ def MODEL():
                 err_list = [item for item in variables_requested if item
                             not in test_list]
                 if len(err_list) > 0:
-                    print('Variable name(s) not recognized: ', err_list)
+                    if not self.MUTED:
+                        print('Variable name(s) not recognized: ', err_list)
                 for item in err_list:
                     variables_requested.remove(item)
                 if len(variables_requested) == 0:
@@ -545,15 +558,17 @@ def MODEL():
                 var_list.extend(self.varfiles[p])
             err_list = [var for var in self.err_list if var not in var_list]
             if len(err_list) > 0:
-                print('Some requested variables are not available: ',
-                      err_list)
+                if not self.MUTED:
+                    print('Some requested variables are not available: ', err_list)
             # perform height substitution if missing
             if 'H_ilev1' in self.err_list:  # density H missing
                 self.gvarfiles['neutral'].append('height')
-                print('Retrieving the H_ilev variable instead.')
+                if not self.MUTED:
+                    print('Retrieving the H_ilev variable instead.')
             if 'H_ilev' in self.err_list:  # neutral H missing
                 self.gvarfiles['density'].append('height')
-                print('Retrieving the H_ilev1 variable instead.')
+                if not self.MUTED:
+                    print('Retrieving the H_ilev1 variable instead.')
 
             # get coordinates from first file of each type
             self.variables = {}
@@ -617,7 +632,7 @@ def MODEL():
                             'data': p}
 
             # print files to screen if option requested
-            if printfiles:
+            if printfiles and not self.MUTED:
                 print('Files: \n',  self.filename)
             self.missing_value = nan
             self._registered = 0
@@ -646,10 +661,9 @@ def MODEL():
             t_reg = perf_counter()
             for varname in varname_list:
                 self.register_variable(varname, gridded_int)
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter() - t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
-            if verbose:
                 print(f'Took a total of {perf_counter() - t0:.5f}s to ' +
                       f'kamodofy {len(varname_list)} variables.')
             return
@@ -770,8 +784,9 @@ def MODEL():
                 times_file = self.times[key]['all'][time_index_start:time_index_end]  # self.times[key]['all'][0:97] for first day
                 coord_dict_data[0] = array(times_file)
                 for i in range(len(coord_dict_data)):
-                    print(coord_dict_data[i].shape)
-                    print(log_data.shape)
+                    if not self.MUTED:
+                        print(coord_dict_data[i].shape)
+                        print(log_data.shape)
                 rgi = rgiND(coord_dict_data, log_data, bounds_error=False,fill_value=nan)
                 def custom_interp(xvec):
                     return exp(rgi(xvec))
@@ -796,9 +811,10 @@ def MODEL():
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
                 other_name = ['H_ilev', 'H_ilev1']
                 other_name.remove(varname)  # first element is the other name
-                print(f'{other_name[0]} missing in data and is needed to ' +
-                      'convert the requested variables to depend on height.' +
-                      f' Using {varname} instead.')
+                if not self.MUTED:
+                    print(f'{other_name[0]} missing in data and is needed to ' +
+                          'convert the requested variables to depend on height.' +
+                          f' Using {varname} instead.')
                 self.variables[other_name[0]] = self.variables[varname]
                 # register the other variable by linking to this one
                 self[varname] = other_name[0]

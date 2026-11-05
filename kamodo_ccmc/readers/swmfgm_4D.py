@@ -165,9 +165,18 @@ def MODEL():
         The OCTREE_BLOCK_GRID C extension is compiled automatically
         during ``pip install``.
         '''
+
+        @property
+        def MUTED(self):
+            return RU.MUTED
+
+        @MUTED.setter
+        def MUTED(self, value):
+            RU.MUTED = value
+
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, use_nearest_time=False, **kwargs):
+                     printfiles=False, use_nearest_time=False, MUTED=False, **kwargs):
             # Check if required C extension is available
             if not OCTREE_AVAILABLE:
                 raise ImportError(
@@ -177,6 +186,9 @@ def MODEL():
                 )
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'SWMF_GM'
+            self.MUTED = MUTED
+            if not file_dir.endswith('/'):
+                file_dir += '/'
             self.use_nearest_time = use_nearest_time
             t0 = perf_counter()
 
@@ -232,7 +244,8 @@ def MODEL():
                 err_list = [item for item in variables_requested if item not in
                             test_list]
                 if len(err_list) > 0:
-                    print('Variable name(s) not recognized:', err_list)
+                    if not self.MUTED:
+                        print('Variable name(s) not recognized:', err_list)
                 for item in err_list:
                     variables_requested.remove(item)
                 if len(variables_requested) == 0:
@@ -259,8 +272,8 @@ def MODEL():
                              if value[0] == errval and key in file_variables]
                         if len(err_not) > 0: err_list.remove(errval)
                     if len(err_list) > 0:
-                        print('Some requested variables are not available:',
-                              err_list)
+                        if not self.MUTED:
+                            print('Some requested variables are not available:', err_list)
             else:  # only input variables on the avoid_list if requested
                 self.check_alt_varnames(file_variables)
                 gvar_list = [key for key in file_variables
@@ -294,9 +307,9 @@ def MODEL():
 
             # store a few items
             self.missing_value = np.nan
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
-            if printfiles:
+            if printfiles and not self.MUTED:
                 print(self.filename)
             self.octree = {p: {} for p in self.pattern_files.keys()}
 
@@ -306,10 +319,9 @@ def MODEL():
             varname_list = [key for key in self.variables.keys()]
             for varname in varname_list:
                 self.register_variables(varname, gridded_int, verbose=verbose)
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
-            if verbose:
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
@@ -340,7 +352,7 @@ def MODEL():
 
             Ncell = int(len(x))
 
-            if verbose:
+            if verbose and not self.MUTED:
                 print("setup_octree: Ncell=", Ncell)
 
             if 'NX' in self.constants.keys():
@@ -450,7 +462,7 @@ def MODEL():
                 p2 = int(p2/2)
                 p3 = int(p3/2)
 
-            if verbose:
+            if verbose and not self.MUTED:
                 print("XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX: ",
                       XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX)
                 print("p1, p2, p3: ", p1, p2, p3, "dxmin,dymin,dzmin: ",
@@ -459,7 +471,7 @@ def MODEL():
             MAX_AMRLEVEL = int(log((XMAX-XMIN)/(p1*dxmin_blk))/log(2.)+0.5)+1
             octree['MAX_AMRLEVEL'] = MAX_AMRLEVEL
 
-            if verbose:
+            if verbose and not self.MUTED:
                 print("MAX_AMRLEVEL:", MAX_AMRLEVEL)
 
             octree['numparents_at_AMRlevel'] = np.zeros(
@@ -481,7 +493,7 @@ def MODEL():
                 octree['block_at_AMRlevel'].ctypes.data_as(ctypes.POINTER(ctypes.c_int))
             )
 
-            if verbose:
+            if verbose and not self.MUTED:
                 toc = time.time()
                 print('setup_octree: ', toc-tic, 'seconds elapsed')
 
@@ -596,7 +608,7 @@ def MODEL():
 
                     # return_data is already a list-like numpy array
                     toc = perf_counter()
-                    if verbose:
+                    if verbose and not self.MUTED:
                         print(varname, ' interp: ', toc-tic, 'seconds elapsed')
 
                     return return_data

@@ -124,11 +124,23 @@ def MODEL():
               per file, so interpolation method 1 is chosen. The standard SciPy
               interpolator is used.
         '''
+
+        @property
+        def MUTED(self):
+            return RU.MUTED
+
+        @MUTED.setter
+        def MUTED(self, value):
+            RU.MUTED = value
+
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, use_nearest_time=False, **kwargs):
+                     printfiles=False, use_nearest_time=False, MUTED=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'SWMF_IE'
+            self.MUTED = MUTED
+            if not file_dir.endswith('/'):
+                file_dir += '/'
             self.use_nearest_time = use_nearest_time
             t0 = perf_counter()
 
@@ -149,7 +161,8 @@ def MODEL():
                         convert_all
                     convert_all(file_dir)
                 else:
-                    print('All files already converted.')
+                    if not self.MUTED:
+                        print('All files already converted.')
 
                 # continue
                 files = sorted(RU.glob(file_dir+'*.nc'))
@@ -198,7 +211,8 @@ def MODEL():
                 err_list = [item for item in variables_requested if item not in
                             test_list]
                 if len(err_list) > 0:
-                    print('Variable name(s) not recognized:', err_list)
+                    if not self.MUTED:
+                        print('Variable name(s) not recognized:', err_list)
                 for item in err_list:
                     variables_requested.remove(item)
                 if len(variables_requested) == 0:
@@ -217,8 +231,8 @@ def MODEL():
                                 if value[0] in variables_requested and
                                 key not in cdf_data.variables.keys()]
                     if len(err_list) > 0:
-                        print('Some requested variables are not available:',
-                              err_list)
+                        if not self.MUTED:
+                            print('Some requested variables are not available:', err_list)
             else:
                 gvar_list = [key for key in cdf_data.variables.keys()
                              if key in model_varnames.keys()]
@@ -237,7 +251,7 @@ def MODEL():
 
             # initialize
             self._registered = 0
-            if printfiles:
+            if printfiles and not self.MUTED:
                 print('Files:')
                 for file in self.filename:
                     print(file)
@@ -246,7 +260,7 @@ def MODEL():
             self._lat = array(cdf_data.variables['lat'])
             self._lon = array(cdf_data.variables['lon'])
             cdf_data.close()
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
 
             # register interpolators for each variable
@@ -255,10 +269,9 @@ def MODEL():
             t_reg = perf_counter()
             for varname in varname_list:  # all are 3D variables
                 self.register_variable(varname, gridded_int)
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
-            if verbose:
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(gvar_list)} variables.')
 

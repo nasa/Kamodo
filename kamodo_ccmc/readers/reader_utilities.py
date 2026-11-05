@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May 13 18:28:18 2021
-@author: rringuet
+Reader utilities for all models
 """
 from kamodo import kamodofy, gridify
 import numpy as np
@@ -20,6 +19,8 @@ import h5netcdf
 import re
 import io
 import boto3
+
+MUTED = False
 
 def _fileheader(filename):
     if filename[:5] == 's3://':
@@ -458,7 +459,8 @@ def time_interp(coord_dict, data_dict, func, func_default='data', use_nearest_ti
                     try:  # allow for memory errors
                         time_interps = add_timeinterp(i, time_interps)
                     except MemoryError:  # remove one time slice first
-                        print('Avoiding memory error...')
+                        if not MUTED:
+                            print('Avoiding memory error...')
                         if len_map == 0:
                             print('Not enough memory to load one time slice.' +
                                   ' Please close some applications.')
@@ -470,7 +472,8 @@ def time_interp(coord_dict, data_dict, func, func_default='data', use_nearest_ti
                         else:
                             del idx_map[-1], time_interps[-1]
                         time_interps = add_timeinterp(i, time_interps)
-                    print(f'Time slice index {i} added from file.')
+                    if not MUTED:
+                        print(f'Time slice index {i} added from file.')
                     idx_map.append(i)
             if len(idx_list) > 1:
                 interp_locations = [idx_map.index(val) for val in idx_list]
@@ -604,7 +607,8 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
                 try:  # allow for memory errors
                     time_interps, idx_map = add_timeinterp(i, time_interps)
                 except MemoryError:  # remove two(?) items first
-                    print('Avoiding memory error...')
+                    if not MUTED:
+                        print('Avoiding memory error...')
                     if len_map == 0:  # tried but failed
                         print('Not enough memory to load a time chunk. ' +
                               'Please close some applications.')
@@ -613,7 +617,8 @@ def multitime_interp(coord_dict, data_dict, times_dict, func,
                     else:
                         del idx_map[-1], time_interps[-1]
                     time_interps, idx_map = add_timeinterp(i, time_interps)
-                    print(f'Time chunk added from file {i+1}.')
+                    if not MUTED:
+                        print(f'Time chunk added from file {i+1}.')
             # interpolate all the positions with times in this time chunk
             if isinstance(position[0], ndarray):
                 out_vals[st_idx] = time_interps[idx_map.index(i)](
@@ -730,7 +735,8 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                     try:  # allow for memory errors
                         time_interps = add_timeinterp(i, fi, time_interps)
                     except MemoryError:  # remove one time slice first
-                        print('Avoiding memory error...')
+                        if not MUTED:
+                            print('Avoiding memory error...')
                         if len_map == 0:
                             print('Not enough memory to load one time slice.' +
                                   ' Please close some applications.')
@@ -745,8 +751,9 @@ def multitime_biginterp(coord_dict, data_dict, times_dict, func,
                             del idx_map[-1], time_interps[-1]
                         time_interps = add_timeinterp(i, fi, time_interps)
                     idx_map.append(idx)
-                    print(f'Time slice index {idx} (file time {fi}) added ' +
-                          f'from file {i+1}.')
+                    if not MUTED:
+                        print(f'Time slice index {idx} (file time {fi}) added ' +
+                              f'from file {i+1}.')
             if len(idx_list) > 1:  # this section is identical to interp=1
                 interp_locations = [idx_map.index(val) for val in idx_list]
                 if isinstance(times, ndarray):
@@ -895,11 +902,13 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
         Input xvec is a tuple or list of arrays/values.
         Returns the 4D position as a tuple of four 1D arrarys to feed into
         the original function.'''
-        print('Inverting the pressure level grid. Please wait...', end="")
+        if not MUTED:
+            print('Inverting the pressure level grid. Please wait...', end="")
         t, lon, lat, km = array(xvec).T
         out_ilev = km_to_ilev(t, lon, lat, km)
         data = array([t, lon, lat, out_ilev]).T
-        print('done.')
+        if not MUTED:
+            print('done.')
         return data
 
     def plevconvert_ijk(xvec):
@@ -907,10 +916,12 @@ def PLevelInterp(h_func, time, longitude, latitude, ilev, units, km_grid,
         Input xvec is a tuple or list of arrays/values.
         Returns the 4D position as a tuple of four 1D arrarys to feed into
         the original function.'''
-        print('Inverting the pressure level grid. Please wait...', end="")
+        if not MUTED:
+            print('Inverting the pressure level grid. Please wait...', end="")
         t, lon, lat, km = array(xvec).T
         data = km_to_ilev(t, lon, lat, km)
-        print('done.')
+        if not MUTED:
+            print('done.')
         return data
 
     # split the coord_dict into data and units
@@ -1043,7 +1054,8 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
     Returns nothing.
     '''
     # create time list file if DNE
-    print('Creating the time files...', end="")
+    if not MUTED:
+        print('Creating the time files...', end="")
     list_out = _open(list_file, 'w')
     time_out = _open(time_file, 'w')
     list_out.write(f'{modelname} file list start and end ' +
@@ -1066,7 +1078,8 @@ def create_timelist(list_file, time_file, modelname, times, pattern_files,
                            start_time_str[i] + '  ' + end_time_str[i])
     time_out.close()
     list_out.close()
-    print('done.')
+    if not MUTED:
+        print('done.')
     return
 
 

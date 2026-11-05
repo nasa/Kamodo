@@ -103,11 +103,22 @@ def MODEL():
               is used.
         '''
 
+        @property
+        def MUTED(self):
+            return RU.MUTED
+
+        @MUTED.setter
+        def MUTED(self, value):
+            RU.MUTED = value
+
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, **kwargs):
+                     printfiles=False, MUTED=False, **kwargs):
             super(MODEL, self).__init__()
             self.modelname = 'DTM'
+            self.MUTED = MUTED
+            if not file_dir.endswith('/'):
+                file_dir += '/'
 
             # first, check for file list, create if DNE
             list_file = file_dir + self.modelname + '_list.txt'
@@ -170,7 +181,8 @@ def MODEL():
                 err_list = [item for item in variables_requested if item not in
                             test_list]
                 if len(err_list) > 0:
-                    print('Variable name(s) not recognized:', err_list)
+                    if not self.MUTED:
+                        print('Variable name(s) not recognized:', err_list)
                 for item in err_list:
                     variables_requested.remove(item)
                 if len(variables_requested) == 0:
@@ -221,8 +233,8 @@ def MODEL():
 
             # print message if variables not found
             if len(self.err_list) > 0:
-                print('Some requested variables are not available: ',
-                      self.err_list)
+                if not self.MUTED:
+                    print('Some requested variables are not available: ', self.err_list)
 
             # collect all possible variables in set of files and return
             if variables_requested == 'all':
@@ -233,7 +245,7 @@ def MODEL():
                 return
 
             # option to print files
-            if printfiles:
+            if printfiles and not self.MUTED:
                 print(f'{len(self.filename)} Files:')
                 files = self.filename.split(',')
                 for f in files:
@@ -251,10 +263,9 @@ def MODEL():
             for varname in varname_list:
                 self.register_variable(varname, gridded_int)
 
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
-            if verbose:
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
@@ -280,9 +291,10 @@ def MODEL():
                     data_1dvar.append(list(array(cdf_dataset_tmp[gvar])))
                     cdf_dataset_tmp.close()
                 self.variables[varname]['data'] = array(data_1dvar)
-                #                print(varname,self.variables[varname]['data'])
-                print(coord_list)
-                #                print(coord_dict)
+                if not self.MUTED:
+                    #print(varname,self.variables[varname]['data'])
+                    print(coord_list)
+                    #print(coord_dict)
 
                 self = RU.Functionalize_Dataset(
                     self, coord_dict, varname, self.variables[varname],

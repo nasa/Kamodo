@@ -48,12 +48,24 @@ def MODEL():
     
     class MODEL(Kamodo):
         '''NRLMSIS model data reader.'''
-        
+
+        @property
+        def MUTED(self):
+            return RU.MUTED
+
+        @MUTED.setter
+        def MUTED(self, value):
+            RU.MUTED = value
+
         def __init__(self, file_dir, variables_requested=[],
                      printfiles=False, filetime=False, gridded_int=True,
-                     verbose=False, logD=True, **kwargs):
+                     verbose=False, logD=True, MUTED=False, **kwargs):
             super(MODEL, self).__init__(**kwargs)
             self.modelname = 'NRLMSIS'
+            self.MUTED = MUTED
+            if not file_dir.endswith('/'):
+                file_dir += '/'
+
             self.doublemidnight = False
             self.missinglon = False
             self.logD = logD
@@ -120,7 +132,8 @@ def MODEL():
                 err_list = [item for item in variables_requested if item not in
                             test_list]
                 if len(err_list) > 0:
-                    print('Variable name(s) not recognized:', err_list)
+                    if not self.MUTED:
+                        print('Variable name(s) not recognized:', err_list)
                 for item in err_list:
                     variables_requested.remove(item)
                 if len(variables_requested) == 0:
@@ -153,7 +166,8 @@ def MODEL():
                 var_list.extend(self.varfiles[p])
             err_list = [var for var in self.err_list if var not in var_list]
             if len(err_list) > 0:
-                print('Some requested variables are not available: ', err_list)
+                if not self.MUTED:
+                    print('Some requested variables are not available: ', err_list)
 
             if variables_requested == 'all':
                 self.var_dict = {value[0]: value[1:] for key, value in
@@ -183,16 +197,16 @@ def MODEL():
 
             self.missing_value = nan
             self._registered = 0
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
-            if printfiles:
+            if printfiles and not self.MUTED:
                 print(self.filename)
 
             t_reg = perf_counter()
             varname_list = list(self.variables.keys())
             for varname in varname_list:
                 self.register_variable(varname, gridded_int)
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register {len(varname_list)} variables.')
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy {len(varname_list)} variables.')
 

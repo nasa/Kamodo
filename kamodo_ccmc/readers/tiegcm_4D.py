@@ -390,11 +390,23 @@ def MODEL():
             new variables depend on imlev to avoid repeatedly slicing off the
             coordinate values.
         '''
+
+        @property
+        def MUTED(self):
+            return RU.MUTED
+
+        @MUTED.setter
+        def MUTED(self, value):
+            RU.MUTED = value
+
         def __init__(self, file_dir, variables_requested=[],
                      filetime=False, verbose=False, gridded_int=True,
-                     printfiles=False, **kwargs):
+                     printfiles=False, MUTED=False, **kwargs):
             super(MODEL, self).__init__()
             self.modelname = 'TIEGCM'
+            self.MUTED = MUTED
+            if not file_dir.endswith('/'):
+                file_dir += '/'
             t0 = perf_counter()
 
             # first, check for file list, create if DNE
@@ -425,7 +437,8 @@ def MODEL():
 
                     # loop through to get times
                     for f in range(len(pattern_files)):
-                        print(pattern_files[f])
+                        if not self.MUTED:
+                            print(pattern_files[f])
                         ncdf_filetype = RU.netcdf_type(pattern_files[f])
                         cdf_data = RU.Dataset(pattern_files[f],filetype=ncdf_filetype)
                         year = array(cdf_data['year'])
@@ -490,7 +503,8 @@ def MODEL():
                 err_list = [item for item in variables_requested if item not in
                             test_list]
                 if len(err_list) > 0:
-                    print('Variable name(s) not recognized:', err_list)
+                    if not self.MUTED:
+                        print('Variable name(s) not recognized:', err_list)
                 for item in err_list:
                     variables_requested.remove(item)
                 if len(variables_requested) == 0:
@@ -501,7 +515,8 @@ def MODEL():
             p = list(self.pattern_files.keys())[0]
             pattern_files = self.pattern_files[p]
             ncdf_filetype = RU.netcdf_type(pattern_files[0])
-            print('file type: ',ncdf_filetype)
+            if not self.MUTED:
+                print('file type: ',ncdf_filetype)
             cdf_data = RU.Dataset(pattern_files[0],filetype=ncdf_filetype)
             if len(variables_requested) > 0 and variables_requested != 'all':
                 # add ilev version of variables to the list, adding H_ilev(1)
@@ -527,8 +542,8 @@ def MODEL():
                                 short_var and key not in
                                 cdf_data.variables.keys()]
                     if len(err_list) > 0:
-                        print('Some requested variables are not available: ',
-                              err_list)
+                        if not self.MUTED:
+                            print('Some requested variables are not available: ', err_list)
                     if 'H_ilev' in err_list or 'H_ilev1' in err_list:
                         other_name = ['H_ilev', 'H_ilev1']
                         err_name = [name for name in other_name if name in
@@ -538,8 +553,8 @@ def MODEL():
                                      model_varnames.items() if value[0] ==
                                      other_name[0]]
                         gvar_list += gvar_name  # add other height name to list
-                        print(f'Retrieving the {other_name[0]} variable' +
-                              ' instead.')
+                        if not self.MUTED:
+                            print(f'Retrieving the {other_name[0]} variable instead.')
 
             else:  # only input variables on the avoid_list if requested
                 avoid_list = ['TLBC', 'ULBC', 'VLBC', 'TLBC_NM', 'ULBC_NM',
@@ -579,7 +594,7 @@ def MODEL():
             # Store inputs as class attributes
             self.missing_value = nan
             self._registered = 0
-            if printfiles:
+            if printfiles and not self.MUTED:
                 print('Files:', self.filename)
 
             # store coordinates
@@ -593,7 +608,7 @@ def MODEL():
             self._milev = array(cdf_data['imlev'][:], copy=True)
             self._mlat = array(cdf_data['mlat'][:], copy=True)
             self._mlon = array(cdf_data['mlon'][:], copy=True)  # -180 to 180
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t0:.6f}s to read in data')
 
             # Check for presence of necessary height variables in varname_list.
@@ -636,10 +651,9 @@ def MODEL():
             t_reg = perf_counter()
             for varname in varname_list:
                 self.register_variable(varname, gridded_int, verbose)
-            if verbose:
+            if verbose and not self.MUTED:
                 print(f'Took {perf_counter()-t_reg:.5f}s to register ' +
                       f'{len(varname_list)} variables.')
-            if verbose:
                 print(f'Took a total of {perf_counter()-t0:.5f}s to kamodofy' +
                       f' {len(varname_list)} variables.')
 
@@ -826,7 +840,7 @@ def MODEL():
                 top_size = top_shape[0] * top_shape[1] * top_shape[2]  # 3D arr
                 idx_top = where(variable[:, :, :, top_idx] > 1e+35)[0]
                 while top_size == len(idx_top):  # replace undefined top row(s)
-                    if verbose:
+                    if verbose and not self.MUTED:
                         print('All values at max milev are 1e+36 for ' +
                               f'{varname}. Slicing off top array.')
                     variable[:, :, :, top_idx] = nan
@@ -910,7 +924,7 @@ def MODEL():
                 top_size = top_shape[0] * top_shape[1] * top_shape[2]  # 3D arr
                 idx_top = where(variable[:, :, :, top_idx] > 1e+35)[0]
                 while top_size == len(idx_top):  # replace undefined top row(s)
-                    if verbose:
+                    if verbose and not self.MUTED:
                         print('All values at max milev are 1e+36 for ' +
                               f'{varname}. Slicing off top array.')
                     variable[:, :, :, top_idx] = nan
@@ -957,9 +971,10 @@ def MODEL():
             if isinstance(self.ilev_sub, str) and varname == self.ilev_sub:
                 other_name = ['H_ilev', 'H_ilev1']
                 other_name.remove(varname)  # first element is the other name
-                print(f'{other_name[0]} missing in data and is needed to ' +
-                      'convert the requested variables to depend on height.' +
-                      f' Using {varname} instead.')
+                if not self.MUTED:
+                    print(f'{other_name[0]} missing in data and is needed to ' +
+                          'convert the requested variables to depend on height.' +
+                          f' Using {varname} instead.')
                 del coord_dict[other_name[0]]
                 # e.g. set ilev1 grid equal to ilev grid if H_ilev1 is missing
                 coord_dict[varname[2:]] = {
