@@ -59,6 +59,73 @@ def _is_field_line_closed(trace_result):
     return earth_hits >= 2
 
 
+def _find_last_closed_radius_bisection(tracer, longitude_deg, time_hours, 
+                                     r_min=2.0, r_max=15.0, tolerance=0.1,
+                                     max_iterations=20, verbose=False):
+    """
+    Find the last closed field line radius at a given longitude using bisection method.
+    Restored for external script compatibility.
+    """
+    longitude_rad = np.deg2rad(longitude_deg)
+    
+    # Test function to check if field line at radius r is closed
+    def is_closed_at_radius(r):
+        start_pos = [r * np.cos(longitude_rad), r * np.sin(longitude_rad), 0.0]
+        try:
+            # Updated to explicitly use rk4 for topological accuracy
+            trace_result = tracer.trace_vector_line(
+                start_pos, time_hours,
+                max_steps=2000,
+                step_size_re=0.05,
+                direction='both',
+                solver='rk4'
+            )
+            return _is_field_line_closed(trace_result)
+        except Exception as e:
+            if verbose:
+                print(f"    Error tracing at r={r:.2f}: {e}")
+            return False
+    
+    # Check if we have any closed field lines in the range
+    if not is_closed_at_radius(r_min):
+        if verbose:
+            print(f"    No closed field lines found at minimum radius {r_min:.2f}")
+        return np.nan, np.nan
+    
+    # Check if all field lines are closed up to maximum radius
+    if is_closed_at_radius(r_max):
+        if verbose:
+            print(f"    All field lines closed up to maximum radius {r_max:.2f}")
+        return r_max, tolerance
+    
+    # Bisection method
+    r_low = r_min
+    r_high = r_max
+    
+    for iteration in range(max_iterations):
+        r_mid = (r_low + r_high) / 2.0
+        
+        if verbose:
+            print(f"    Iteration {iteration+1}: testing r={r_mid:.3f} RE")
+        
+        if is_closed_at_radius(r_mid):
+            r_low = r_mid  # Last closed is at least r_mid
+        else:
+            r_high = r_mid  # Last closed is less than r_mid
+        
+        # Check convergence
+        if (r_high - r_low) < tolerance:
+            break
+    
+    last_closed_r = (r_low + r_high) / 2.0
+    accuracy = (r_high - r_low) / 2.0
+    
+    if verbose:
+        print(f"    Found last closed at r={last_closed_r:.3f} ± {accuracy:.3f} RE")
+    
+    return last_closed_r, accuracy
+
+
 def _check_closed_batch(tracer, start_pts, time_hours, max_steps=2000):
     """
     Determines if a batch of points are closed field lines using short-circuiting.
