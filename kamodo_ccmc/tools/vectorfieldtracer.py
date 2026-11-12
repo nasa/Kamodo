@@ -257,6 +257,9 @@ class KamodoVectorFieldTracer:
         start_points_re = np.array(start_points_re)
         n_lines = len(start_points_re)
         
+        if n_lines == 0:
+            return []
+        
         if use_batches is None:
             use_batches = n_lines > self.params['batch_size']
             
