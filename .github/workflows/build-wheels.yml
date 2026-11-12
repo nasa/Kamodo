@@ -56,7 +56,9 @@ jobs:
 
       - name: Set macOS deployment target
         if: runner.os == 'macOS'
-        run: echo "MACOSX_DEPLOYMENT_TARGET=14.0" >> $GITHUB_ENV
+        run: |
+          MAC_MAJOR=$(sw_vers -productVersion | cut -d. -f1)
+          echo "MACOSX_DEPLOYMENT_TARGET=${MAC_MAJOR}.0" >> $GITHUB_ENV
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
