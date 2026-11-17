@@ -69,7 +69,7 @@ class KamodoVectorFieldTracer:
             'total_points': 0
         }
         
-        self._determine_call_method()
+        self._call_method = None
     
     def _cache_field_components(self):
         self.field_components = []
@@ -79,7 +79,7 @@ class KamodoVectorFieldTracer:
             else:
                 raise ValueError(f"Component '{component}' not found in Kamodo object.")
     
-    def _determine_call_method(self):
+    def _determine_call_method(self, time_hours):
         self._call_method = 'array_with_time'
         t_c = self.component_names[0]
         t_cr = MW.Coord_Range(self.kamodo_object, [t_c], print_output=False, return_dict=True)
@@ -87,9 +87,9 @@ class KamodoVectorFieldTracer:
             self.xyztype = 'XYZ'
             
         if self.xyztype == 'xyz':
-            coords = [t_cr[t_c]['time'][0], t_cr[t_c]['x'][0], t_cr[t_c]['y'][0], t_cr[t_c]['z'][0]]
+            coords = [time_hours, t_cr[t_c]['x'][0], t_cr[t_c]['y'][0], t_cr[t_c]['z'][0]]
         else:
-            coords = [t_cr[t_c]['time'][0], t_cr[t_c]['X'][0], t_cr[t_c]['Y'][0], t_cr[t_c]['Z'][0]]
+            coords = [time_hours, t_cr[t_c]['X'][0], t_cr[t_c]['Y'][0], t_cr[t_c]['Z'][0]]
             
         try:
             value = np.array(self.kamodo_object[t_c](coords))
@@ -101,9 +101,9 @@ class KamodoVectorFieldTracer:
         self._call_method = 'gridded'
         try:
             if self.xyztype == 'xyz':
-                value = np.array(self.kamodo_object[t_c](time=t_cr[t_c]['time'][0], x=t_cr[t_c]['x'][0], y=t_cr[t_c]['y'][0], z=t_cr[t_c]['z'][0]))
+                value = np.array(self.kamodo_object[t_c](time=time_hours, x=t_cr[t_c]['x'][0], y=t_cr[t_c]['y'][0], z=t_cr[t_c]['z'][0]))
             else:
-                value = np.array(self.kamodo_object[t_c](time=t_cr[t_c]['time'][0], x=t_cr[t_c]['X'][0], y=t_cr[t_c]['Y'][0], z=t_cr[t_c]['Z'][0]))
+                value = np.array(self.kamodo_object[t_c](time=time_hours, x=t_cr[t_c]['X'][0], y=t_cr[t_c]['Y'][0], z=t_cr[t_c]['Z'][0]))
             if len(value.shape) == 0:
                 return
         except Exception:
@@ -115,6 +115,9 @@ class KamodoVectorFieldTracer:
         """
         Get field vectors for multiple positions simultaneously using C-level Kamodo batching.
         """
+        if self._call_method is None:
+            self._determine_call_method(time_hours)
+            
         positions_re = np.asarray(positions_re, dtype=np.float64)
         if positions_re.ndim == 1:
             positions_re = positions_re.reshape(1, -1)
@@ -137,11 +140,13 @@ class KamodoVectorFieldTracer:
             field_components_values.append(np.asarray(values, dtype=np.float64).flatten())
             
         field_vectors = np.column_stack(field_components_values)
-        field_magnitudes = np.linalg.norm(field_vectors, axis=1)
         
+        # Zero out components BEFORE calculating magnitude to ensure proper unit vectors
         if self.zeroX: field_vectors[:, 0] = 0.0
         if self.zeroY: field_vectors[:, 1] = 0.0
         if self.zeroZ: field_vectors[:, 2] = 0.0
+        
+        field_magnitudes = np.linalg.norm(field_vectors, axis=1)
         
         return field_vectors, field_magnitudes
 
