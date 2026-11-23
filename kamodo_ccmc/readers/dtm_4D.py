@@ -363,23 +363,45 @@ def MODEL():
                     data = where(data != fill_value, data, nan)
                 
                 data = log(data)
-                coord_dict_data = [ coord_dict[key]['data'] for key in coord_dict ]
-                time_index_start = self.times[key]['start_index'][i]
-                time_index_end = self.times[key]['start_index'][i+1]+1
+                # FIX (F. Di Mare, Nov 2026): time grid of file i, valid also for the last file
+                coord_dict_data = [coord_dict[key]['data'] for key in coord_dict]
+                # Select the time grid of file i only (the custom interpolator
+                # is built one file at a time, so its time axis must match the
+                # time steps actually present in 'data').
+                # start_index[i] is the position in self.times[key]['all'] of
+                # the first time step of file i.
+                start_index = self.times[key]['start_index']
+                time_index_start = start_index[i]
+                if i + 1 < len(start_index):
+                    # Not the last file: 'data' includes all time steps of
+                    # file i plus the first time step of file i+1 (appended
+                    # above to interpolate across the file boundary), so the
+                    # time grid ends one step after the start of file i+1.
+                    time_index_end = start_index[i + 1] + 1
+                else:
+                    # Last file: there is no next file and nothing was
+                    # appended to 'data', so the time grid runs to the end of
+                    # the full time list. (The original code used
+                    # start_index[i+1] here, which raised an IndexError.)
+                    time_index_end = len(self.times[key]['all'])
                 times_file = self.times[key]['all'][time_index_start:time_index_end]
                 coord_dict_data[0] = array(times_file)
-                
+
                 if len(data.shape) == 3:
                     variable = transpose(data, (0, 2, 1))
                 elif len(data.shape) == 4:
                     variable = transpose(data, (0, 3, 2, 1))
 
+                # FIX (F. Di Mare, Nov 2026): reorder the longitude axis to match
+                # the grid self._lon (-180..180). Without this the data stay in
+                # the file order (0..360) and the density is shifted by 180 deg
+                # in longitude.
+                variable = variable[:, self._lon_idx]
+
                 rgi = rgiND(coord_dict_data, variable, bounds_error=False,fill_value=nan)
                 def interp_custom(xvec):
                     return exp(rgi(xvec))
                 return interp_custom
-
-                return variable[:, self._lon_idx]
 
 
             if varname[0:3] == "rho" and varname != "rho_unc":
